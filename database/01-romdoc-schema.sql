@@ -353,8 +353,8 @@ on public.doctors(slug);
 create index idx_doctor_city
 on public.doctors(city_id);
 
-create index idx_doctor_verified
-on public.doctors(verified);
+create index idx_doctor_status
+on public.doctors(status);
 
 create index idx_doctor_rating
 on public.doctors(average_rating);

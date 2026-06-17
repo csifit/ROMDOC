@@ -126,24 +126,29 @@ create policy "admin_all_profiles"
 on public.profiles
 for all
 using (public.is_admin());
+with check (public.is_admin());
 
 create policy "admin_all_doctors"
 on public.doctors
 for all
 using (public.is_admin());
+with check (public.is_admin());
 
 create policy "admin_all_clinics"
 on public.clinics
 for all
 using (public.is_admin());
+with check (public.is_admin());
 
 create policy "admin_all_reviews"
 on public.reviews
 for all
 using (public.is_admin());
+with check (public.is_admin());
 
 create policy "admin_all_appointments"
 on public.appointments
 for all
 using (public.is_admin());
+with check (public.is_admin());
 
