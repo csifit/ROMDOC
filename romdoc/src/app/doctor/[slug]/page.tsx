@@ -93,7 +93,7 @@ export default async function DoctorPage({ params }: Props) {
           <section className="mt-10">
             <button
               className="rounded-xl px-6 py-3 font-medium text-white"
-              style={{ backgroundColor: "#D97757" }}
+              style={{ backgroundColor: "#F0EEE9" }}
             >
               Solicită programare
             </button>
