@@ -1,6 +1,35 @@
 -- =====================================================
 -- ROMDOC RLS
 -- =====================================================
+
+-- =====================================================
+-- CLEANUP (safe re-run)
+-- =====================================================
+
+drop policy if exists "profiles_select_own" on public.profiles;
+drop policy if exists "profiles_insert_own" on public.profiles;
+drop policy if exists "profiles_update_own" on public.profiles;
+
+drop policy if exists "cities_public_read" on public.cities;
+drop policy if exists "city_translations_public_read" on public.city_translations;
+
+drop policy if exists "specialties_public_read" on public.specialties;
+drop policy if exists "specialty_translations_public_read" on public.specialty_translations;
+
+drop policy if exists "clinics_public_read" on public.clinics;
+drop policy if exists "clinic_translations_public_read" on public.clinic_translations;
+
+drop policy if exists "doctors_public_read" on public.doctors;
+drop policy if exists "doctor_translations_public_read" on public.doctor_translations;
+
+drop policy if exists "reviews_public_read" on public.reviews;
+
+drop policy if exists "admin_all_profiles" on public.profiles;
+drop policy if exists "admin_all_doctors" on public.doctors;
+drop policy if exists "admin_all_clinics" on public.clinics;
+drop policy if exists "admin_all_reviews" on public.reviews;
+drop policy if exists "admin_all_appointments" on public.appointments;
+
 -- =====================================================
 -- ENABLE RLS
 -- =====================================================
@@ -27,7 +56,7 @@ alter table public.availability enable row level security;
 alter table public.appointments enable row level security;
 
 -- =====================================================
--- IS_ADMIN
+-- IS_ADMIN HELPER
 -- =====================================================
 
 create or replace function public.is_admin()
@@ -44,6 +73,7 @@ as $$
       and role = 'admin'
   );
 $$;
+
 -- =====================================================
 -- PROFILES
 -- =====================================================
@@ -67,7 +97,11 @@ on public.profiles
 for update
 using (
   auth.uid() = id
+)
+with check (
+  auth.uid() = id
 );
+
 -- =====================================================
 -- PUBLIC DIRECTORY READ ACCESS
 -- =====================================================
@@ -118,6 +152,7 @@ for select
 using (
   approved = true
 );
+
 -- =====================================================
 -- ADMIN ACCESS
 -- =====================================================
@@ -125,30 +160,49 @@ using (
 create policy "admin_all_profiles"
 on public.profiles
 for all
-using (public.is_admin());
-with check (public.is_admin());
+using (
+  public.is_admin()
+)
+with check (
+  public.is_admin()
+);
 
 create policy "admin_all_doctors"
 on public.doctors
 for all
-using (public.is_admin());
-with check (public.is_admin());
+using (
+  public.is_admin()
+)
+with check (
+  public.is_admin()
+);
 
 create policy "admin_all_clinics"
 on public.clinics
 for all
-using (public.is_admin());
-with check (public.is_admin());
+using (
+  public.is_admin()
+)
+with check (
+  public.is_admin()
+);
 
 create policy "admin_all_reviews"
 on public.reviews
 for all
-using (public.is_admin());
-with check (public.is_admin());
+using (
+  public.is_admin()
+)
+with check (
+  public.is_admin()
+);
 
 create policy "admin_all_appointments"
 on public.appointments
 for all
-using (public.is_admin());
-with check (public.is_admin());
-
+using (
+  public.is_admin()
+)
+with check (
+  public.is_admin()
+);
