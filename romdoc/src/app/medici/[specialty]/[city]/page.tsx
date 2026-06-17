@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
 
 type Props = {
   params: Promise<{
@@ -121,7 +122,12 @@ export default async function SpecialtyCityPage({ params }: Props) {
                 className="rounded-xl border bg-white p-6 shadow-sm"
               >
                 <h2 className="text-2xl font-semibold">
-                  {formatDoctorName(doctor.slug)}
+                  <Link
+                    href={`/doctor/${doctor.slug}`}
+                    className="hover:underline"
+                  >
+                   {formatDoctorName(doctor.slug)} 
+                  </Link>
                 </h2>
 
                 <p className="mt-2 text-gray-700">

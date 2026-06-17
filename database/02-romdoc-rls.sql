@@ -30,6 +30,10 @@ drop policy if exists "admin_all_clinics" on public.clinics;
 drop policy if exists "admin_all_reviews" on public.reviews;
 drop policy if exists "admin_all_appointments" on public.appointments;
 
+drop policy if exists "doctor_specialties_public_read" on public.doctor_specialties;
+drop policy if exists "doctor_clinics_public_read" on public.doctor_clinics;
+drop policy if exists "availability_public_read" on public.availability;
+
 -- =====================================================
 -- ENABLE RLS
 -- =====================================================
@@ -152,6 +156,21 @@ for select
 using (
   approved = true
 );
+
+create policy "doctor_specialties_public_read"
+on public.doctor_specialties
+for select
+using (true);
+
+create policy "doctor_clinics_public_read"
+on public.doctor_clinics
+for select
+using (true);
+
+create policy "availability_public_read"
+on public.availability
+for select
+using (true);
 
 -- =====================================================
 -- ADMIN ACCESS
