@@ -8,6 +8,20 @@ type Props = {
   }>;
 };
 
+type Translation = {
+  locale: string;
+  name?: string;
+  title?: string;
+  biography?: string;
+};
+
+function formatDoctorName(slug: string) {
+  return slug
+    .split("-")
+    .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 export default async function SpecialtyCityPage({ params }: Props) {
   const { specialty, city } = await params;
 
@@ -15,13 +29,27 @@ export default async function SpecialtyCityPage({ params }: Props) {
 
   const { data: specialtyData } = await supabase
     .from("specialties")
-    .select("id, slug, specialty_translations(locale, name)")
+    .select(`
+      id,
+      slug,
+      specialty_translations (
+        locale,
+        name
+      )
+    `)
     .eq("slug", specialty)
     .single();
 
   const { data: cityData } = await supabase
     .from("cities")
-    .select("id, slug, city_translations(locale, name)")
+    .select(`
+      id,
+      slug,
+      city_translations (
+        locale,
+        name
+      )
+    `)
     .eq("slug", city)
     .single();
 
@@ -30,34 +58,43 @@ export default async function SpecialtyCityPage({ params }: Props) {
   }
 
   const specialtyTranslation = specialtyData.specialty_translations?.find(
-    (t: { locale: string }) => t.locale === "ro"
+    (translation: Translation) => translation.locale === "ro"
   );
 
   const cityTranslation = cityData.city_translations?.find(
-    (t: { locale: string }) => t.locale === "ro"
+    (translation: Translation) => translation.locale === "ro"
   );
 
-  const { data: doctors } = await supabase
-    .from("doctors")
-    .select(`
-      id,
-      slug,
-      years_experience,
-      consultation_price,
-      average_rating,
-      review_count,
-      doctor_translations (
-        locale,
-        title,
-        biography
-      ),
-      doctor_specialties!inner (
-        specialty_id
-      )
-    `)
-    .eq("city_id", cityData.id)
-    .eq("status", "active")
-    .eq("doctor_specialties.specialty_id", specialtyData.id);
+  const { data: doctorSpecialties } = await supabase
+    .from("doctor_specialties")
+    .select("doctor_id")
+    .eq("specialty_id", specialtyData.id);
+
+  const doctorIds =
+    doctorSpecialties?.map((item: { doctor_id: string }) => item.doctor_id) ??
+    [];
+
+  const { data: doctors } =
+    doctorIds.length > 0
+      ? await supabase
+          .from("doctors")
+          .select(`
+            id,
+            slug,
+            years_experience,
+            consultation_price,
+            average_rating,
+            review_count,
+            doctor_translations (
+              locale,
+              title,
+              biography
+            )
+          `)
+          .eq("city_id", cityData.id)
+          .eq("status", "active")
+          .in("id", doctorIds)
+      : { data: [] };
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12">
@@ -66,22 +103,17 @@ export default async function SpecialtyCityPage({ params }: Props) {
       </h1>
 
       <p className="mt-4 text-gray-600">
-        Găsește medici pentru {specialtyTranslation?.name.toLowerCase()} în{" "}
-        {cityTranslation?.name} și trimite o cerere de programare online.
+        Găsește medici pentru{" "}
+        {specialtyTranslation?.name?.toLowerCase()} în {cityTranslation?.name} și
+        trimite o cerere de programare online.
       </p>
 
       <section className="mt-10 space-y-4">
         {doctors && doctors.length > 0 ? (
           doctors.map((doctor) => {
-            const translation = doctor.doctor_translations?.find(
-              (t: { locale: string }) => t.locale === "ro"
+            const doctorTranslation = doctor.doctor_translations?.find(
+              (translation: Translation) => translation.locale === "ro"
             );
-            function formatDoctorName(slug: string) {
-              return slug
-              .split("-")
-              .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
-             .join(" ");
-             }
 
             return (
               <article
@@ -93,11 +125,11 @@ export default async function SpecialtyCityPage({ params }: Props) {
                 </h2>
 
                 <p className="mt-2 text-gray-700">
-                  {translation?.title}
+                  {doctorTranslation?.title}
                 </p>
 
                 <p className="mt-3 text-gray-600">
-                  {translation?.biography}
+                  {doctorTranslation?.biography}
                 </p>
 
                 <div className="mt-4 flex flex-wrap gap-4 text-sm text-gray-600">
@@ -105,19 +137,15 @@ export default async function SpecialtyCityPage({ params }: Props) {
                     ⭐ {doctor.average_rating} ({doctor.review_count} recenzii)
                   </span>
 
-                  <span>
-                    {doctor.years_experience} ani experiență
-                  </span>
+                  <span>{doctor.years_experience} ani experiență</span>
 
-                  <span>
-                    {doctor.consultation_price} RON consultație
-                  </span>
+                  <span>{doctor.consultation_price} RON consultație</span>
                 </div>
               </article>
             );
           })
         ) : (
-          <div className="rounded-lg border p-6">
+          <div className="rounded-lg border bg-white p-6">
             Nu există încă medici pentru această combinație.
           </div>
         )}
