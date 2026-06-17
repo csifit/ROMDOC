@@ -1,0 +1,25 @@
+# ROMDOC/.gitignore
+# OS
+.DS_Store
+Thumbs.db
+
+# Local environment files
+.env
+.env.local
+.env.*.local
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+
+# Node modules anywhere
+**/node_modules
+
+# Next.js builds anywhere
+**/.next
+**/out
+
+# Vercel
+**/.vercel
