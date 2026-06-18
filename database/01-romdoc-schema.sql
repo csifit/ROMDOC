@@ -326,7 +326,10 @@ create table public.appointments (
     check (char_length(trim(patient_phone)) >= 7),
 
   requested_date date,
+  scheduled_date date,
   requested_time time,
+  scheduled_time time,
+  reschedule_reason text,
 
   notes text,
 
@@ -340,7 +343,8 @@ create table public.appointments (
       )
     ),
 
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 -- =====================================================
@@ -402,5 +406,10 @@ execute function public.handle_updated_at();
 
 create trigger doctors_updated_at
 before update on public.doctors
+for each row
+execute function public.handle_updated_at();
+
+create trigger appointments_updated_at
+before update on public.appointments
 for each row
 execute function public.handle_updated_at();
