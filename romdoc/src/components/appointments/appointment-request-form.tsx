@@ -1,7 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { FormEvent, useState } from "react";
 
 type ClinicOption = {
   id: string;
@@ -40,8 +39,6 @@ export default function AppointmentRequestForm({
   doctorName,
   clinics,
 }: AppointmentRequestFormProps) {
-  const supabase = useMemo(() => createClient(), []);
-
   const [form, setForm] = useState<FormState>({
     ...initialFormState,
     clinicId: clinics.length === 1 ? clinics[0].id : "",
@@ -91,38 +88,74 @@ export default function AppointmentRequestForm({
       return;
     }
 
-    setIsSubmitting(true);
+    const selectedClinic = clinics.find(
+      (clinic: ClinicOption) => clinic.id === form.clinicId
+    );
 
-    const { error } = await supabase.from("appointments").insert({
-      doctor_id: doctorId,
-      clinic_id: form.clinicId,
-      patient_name: form.patientName.trim(),
-      patient_email: form.patientEmail.trim().toLowerCase(),
-      patient_phone: form.patientPhone.trim(),
-      requested_date: form.requestedDate,
-      requested_time: form.requestedTime || null,
-      notes: form.notes.trim() || null,
-      status: "pending",
-    });
-
-    setIsSubmitting(false);
-
-    if (error) {
-      console.error("Appointment request failed:", error);
-      setErrorMessage(
-        "Cererea nu a putut fi trimisă. Verifică datele și încearcă din nou."
-      );
+    if (!selectedClinic) {
+      setErrorMessage("Clinica selectată nu este validă.");
       return;
     }
 
-    setSuccessMessage(
-      `Cererea pentru ${doctorName} a fost trimisă. Clinica te va contacta pentru confirmare.`
-    );
+    setIsSubmitting(true);
 
-    setForm({
-      ...initialFormState,
-      clinicId: clinics.length === 1 ? clinics[0].id : "",
-    });
+    try {
+      const response = await fetch("/api/appointments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          doctorId,
+          clinicId: form.clinicId,
+          doctorName,
+          clinicName: selectedClinic.name,
+          patientName: form.patientName,
+          patientEmail: form.patientEmail,
+          patientPhone: form.patientPhone,
+          requestedDate: form.requestedDate,
+          requestedTime: form.requestedTime,
+          notes: form.notes,
+        }),
+      });
+
+      const result = (await response.json()) as {
+        success?: boolean;
+        emailSent?: boolean;
+        error?: string;
+      };
+
+      if (!response.ok || !result.success) {
+        setErrorMessage(
+          result.error ??
+            "Cererea nu a putut fi trimisă. Încearcă din nou."
+        );
+        return;
+      }
+
+      if (result.emailSent) {
+        setSuccessMessage(
+          `Cererea pentru ${doctorName} a fost trimisă. Am trimis și un e-mail de confirmare. Clinica te va contacta pentru confirmarea programării.`
+        );
+      } else {
+        setSuccessMessage(
+          `Cererea pentru ${doctorName} a fost salvată. Clinica te va contacta pentru confirmarea programării.`
+        );
+      }
+
+      setForm({
+        ...initialFormState,
+        clinicId: clinics.length === 1 ? clinics[0].id : "",
+      });
+    } catch (error) {
+      console.error("Appointment request failed:", error);
+
+      setErrorMessage(
+        "Cererea nu a putut fi trimisă. Verifică conexiunea și încearcă din nou."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   if (clinics.length === 0) {
@@ -159,13 +192,15 @@ export default function AppointmentRequestForm({
           <select
             id="clinic"
             value={form.clinicId}
-            onChange={(event) => updateField("clinicId", event.target.value)}
+            onChange={(event) =>
+              updateField("clinicId", event.target.value)
+            }
             required
             className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-gray-500"
           >
             <option value="">Selectează clinica</option>
 
-            {clinics.map((clinic) => (
+            {clinics.map((clinic: ClinicOption) => (
               <option key={clinic.id} value={clinic.id}>
                 {clinic.name}
                 {clinic.address ? ` — ${clinic.address}` : ""}
@@ -239,11 +274,12 @@ export default function AppointmentRequestForm({
             inputMode="tel"
             placeholder="+40 7..."
             className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-gray-500"
-         />
+          />
 
-         <p className="mt-2 text-xs text-gray-500">
-            Numărul va fi folosit pentru confirmarea și notificarea programării.
-         </p>
+          <p className="mt-2 text-xs text-gray-500">
+            Numărul va fi folosit pentru confirmarea și notificarea
+            programării.
+          </p>
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2">
@@ -300,7 +336,9 @@ export default function AppointmentRequestForm({
             id="notes"
             rows={4}
             value={form.notes}
-            onChange={(event) => updateField("notes", event.target.value)}
+            onChange={(event) =>
+              updateField("notes", event.target.value)
+            }
             placeholder="Poți adăuga informații utile pentru clinică."
             className="mt-2 w-full resize-y rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-gray-500"
           />
