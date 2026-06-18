@@ -240,7 +240,9 @@ with check (
   status = 'pending'
   and patient_name is not null
   and patient_email is not null
+  and patient_phone is not null
+  and char_length(trim(patient_phone)) >= 7
   and requested_date is not null
   and doctor_id is not null
-  and clinic_id is not null
+  and clinic_id is not null 
 );

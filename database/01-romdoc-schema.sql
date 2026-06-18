@@ -322,7 +322,8 @@ create table public.appointments (
 
   patient_email text not null,
 
-  patient_phone text,
+  patient_phone text not null
+    check (char_length(trim(patient_phone)) >= 7),
 
   requested_date date,
   requested_time time,
