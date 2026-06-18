@@ -1,8 +1,10 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import {
+  FormEvent,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 type AppointmentActionsProps = {
   appointmentId: string;
@@ -12,6 +14,17 @@ type AppointmentActionsProps = {
   scheduledDate: string | null;
   scheduledTime: string | null;
   currentReason: string | null;
+};
+
+type AppointmentUpdateStatus =
+  | "confirmed"
+  | "rescheduled"
+  | "completed"
+  | "cancelled";
+
+type AppointmentUpdateResponse = {
+  success?: boolean;
+  error?: string;
 };
 
 export default function AppointmentActions({
@@ -24,85 +37,157 @@ export default function AppointmentActions({
   currentReason,
 }: AppointmentActionsProps) {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
 
-  const [date, setDate] = useState(scheduledDate ?? requestedDate);
-  const [time, setTime] = useState(
-    scheduledTime?.slice(0, 5) ?? requestedTime?.slice(0, 5) ?? ""
+  const [date, setDate] = useState(
+    scheduledDate ?? requestedDate
   );
-  const [reason, setReason] = useState(currentReason ?? "");
-  const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
 
-  const today = new Date().toISOString().split("T")[0];
+  const [time, setTime] = useState(
+    scheduledTime?.slice(0, 5) ??
+      requestedTime?.slice(0, 5) ??
+      ""
+  );
+
+  const [reason, setReason] = useState(
+    currentReason ?? ""
+  );
+
+  const [isSaving, setIsSaving] =
+    useState(false);
+
+  const [message, setMessage] =
+    useState("");
+
+  const [errorMessage, setErrorMessage] =
+    useState("");
+
+  const today = new Date()
+    .toISOString()
+    .split("T")[0];
 
   async function updateAppointment(
-    status: "confirmed" | "rescheduled" | "completed" | "cancelled"
+    status: AppointmentUpdateStatus
   ) {
     setMessage("");
     setErrorMessage("");
 
     if (
-      (status === "confirmed" || status === "rescheduled") &&
+      (status === "confirmed" ||
+        status === "rescheduled") &&
       (!date || !time)
     ) {
-      setErrorMessage("Selectează data și ora programării.");
+      setErrorMessage(
+        "Selectează data și ora programării."
+      );
+
       return;
     }
 
-    if (status === "rescheduled" && reason.trim().length < 3) {
-      setErrorMessage("Adaugă motivul reprogramării.");
+    if (
+      status === "rescheduled" &&
+      reason.trim().length < 3
+    ) {
+      setErrorMessage(
+        "Adaugă motivul reprogramării."
+      );
+
       return;
     }
 
     setIsSaving(true);
 
-    const updateData = {
-      status,
-      scheduled_date:
-        status === "confirmed" || status === "rescheduled" ? date : null,
-      scheduled_time:
-        status === "confirmed" || status === "rescheduled" ? time : null,
-      reschedule_reason:
-        status === "rescheduled" ? reason.trim() : null,
-    };
-
-    const { error } = await supabase
-      .from("appointments")
-      .update(updateData)
-      .eq("id", appointmentId);
-
-    setIsSaving(false);
-
-    if (error) {
-      console.error("Appointment update failed:", error);
-      setErrorMessage(
-        "Programarea nu a putut fi actualizată. Încearcă din nou."
+    try {
+      const response = await fetch(
+        "/api/appointments",
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            appointmentId,
+            status,
+            scheduledDate:
+              status === "confirmed" ||
+              status === "rescheduled"
+                ? date
+                : null,
+            scheduledTime:
+              status === "confirmed" ||
+              status === "rescheduled"
+                ? time
+                : null,
+            rescheduleReason:
+              status === "rescheduled"
+                ? reason.trim()
+                : null,
+          }),
+        }
       );
-      return;
+
+      const result =
+        (await response.json()) as AppointmentUpdateResponse;
+
+      if (!response.ok) {
+        setErrorMessage(
+          result.error ??
+            "Programarea nu a putut fi actualizată."
+        );
+
+        return;
+      }
+
+      const successMessages: Record<
+        AppointmentUpdateStatus,
+        string
+      > = {
+        confirmed:
+          "Programarea a fost confirmată.",
+        rescheduled:
+          "Programarea a fost reprogramată.",
+        completed:
+          "Programarea a fost marcată ca finalizată.",
+        cancelled:
+          "Programarea a fost anulată.",
+      };
+
+      setMessage(successMessages[status]);
+      router.refresh();
+    } catch (error) {
+      console.error(
+        "Appointment update request failed:",
+        error
+      );
+
+      setErrorMessage(
+        "Nu s-a putut comunica cu serverul. Încearcă din nou."
+      );
+    } finally {
+      setIsSaving(false);
     }
-
-    const successMessages = {
-      confirmed: "Programarea a fost confirmată.",
-      rescheduled: "Programarea a fost reprogramată.",
-      completed: "Programarea a fost marcată ca finalizată.",
-      cancelled: "Programarea a fost anulată.",
-    };
-
-    setMessage(successMessages[status]);
-    router.refresh();
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
 
-    const requestedSlotChanged =
-      date !== requestedDate ||
-      time !== (requestedTime?.slice(0, 5) ?? "");
+    const originalDate =
+      scheduledDate ?? requestedDate;
+
+    const originalTime =
+      scheduledTime?.slice(0, 5) ??
+      requestedTime?.slice(0, 5) ??
+      "";
+
+    const appointmentSlotChanged =
+      date !== originalDate ||
+      time !== originalTime;
 
     updateAppointment(
-      requestedSlotChanged ? "rescheduled" : "confirmed"
+      appointmentSlotChanged
+        ? "rescheduled"
+        : "confirmed"
     );
   }
 
@@ -112,7 +197,10 @@ export default function AppointmentActions({
         Gestionare programare
       </h3>
 
-      <form onSubmit={handleSubmit} className="mt-4">
+      <form
+        onSubmit={handleSubmit}
+        className="mt-4"
+      >
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label
@@ -127,9 +215,12 @@ export default function AppointmentActions({
               type="date"
               min={today}
               value={date}
-              onChange={(event) => setDate(event.target.value)}
+              onChange={(event) =>
+                setDate(event.target.value)
+              }
               required
-              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500"
+              disabled={isSaving}
+              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500 disabled:cursor-not-allowed disabled:opacity-60"
             />
           </div>
 
@@ -145,9 +236,12 @@ export default function AppointmentActions({
               id={`scheduled-time-${appointmentId}`}
               type="time"
               value={time}
-              onChange={(event) => setTime(event.target.value)}
+              onChange={(event) =>
+                setTime(event.target.value)
+              }
               required
-              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500"
+              disabled={isSaving}
+              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500 disabled:cursor-not-allowed disabled:opacity-60"
             />
           </div>
         </div>
@@ -164,9 +258,12 @@ export default function AppointmentActions({
             id={`reschedule-reason-${appointmentId}`}
             rows={3}
             value={reason}
-            onChange={(event) => setReason(event.target.value)}
+            onChange={(event) =>
+              setReason(event.target.value)
+            }
+            disabled={isSaving}
             placeholder="Completează acest câmp dacă modifici data sau ora solicitată."
-            className="mt-2 w-full resize-y rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500"
+            className="mt-2 w-full resize-y rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500 disabled:cursor-not-allowed disabled:opacity-60"
           />
         </div>
 
@@ -204,8 +301,10 @@ export default function AppointmentActions({
           <button
             type="button"
             disabled={isSaving}
-            onClick={() => updateAppointment("completed")}
-            className="rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-medium text-gray-800 transition hover:bg-gray-50 disabled:opacity-60"
+            onClick={() =>
+              updateAppointment("completed")
+            }
+            className="rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-medium text-gray-800 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Marchează finalizată
           </button>
@@ -213,8 +312,10 @@ export default function AppointmentActions({
           <button
             type="button"
             disabled={isSaving}
-            onClick={() => updateAppointment("cancelled")}
-            className="rounded-xl border border-red-300 bg-white px-5 py-3 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-60"
+            onClick={() =>
+              updateAppointment("cancelled")
+            }
+            className="rounded-xl border border-red-300 bg-white px-5 py-3 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Anulează
           </button>

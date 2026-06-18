@@ -1,12 +1,18 @@
 -- =====================================================
 -- ROMDOC MVP DATABASE SCHEMA
--- Version: 1.0
+-- Version: 1.1
+--
+-- File:
+-- ROMDOC/database/01-romdoc-schema.sql
+--
+-- This is the consolidated schema used when creating
+-- a new RomDoc database from scratch.
 -- =====================================================
 
 create extension if not exists pgcrypto;
 
 -- =====================================================
--- UPDATED_AT TRIGGER
+-- UPDATED_AT TRIGGER FUNCTION
 -- =====================================================
 
 create or replace function public.handle_updated_at()
@@ -28,8 +34,16 @@ create table public.profiles (
     references auth.users(id)
     on delete cascade,
 
-  role text not null default 'doctor'
-    check (role in ('admin', 'doctor', 'staff')),
+  role text not null default 'patient'
+    constraint profiles_role_check
+    check (
+      role in (
+        'patient',
+        'doctor',
+        'staff',
+        'admin'
+      )
+    ),
 
   first_name text,
   last_name text,
@@ -37,6 +51,9 @@ create table public.profiles (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+comment on column public.profiles.role is
+  'RomDoc application role: patient, doctor, staff, or admin.';
 
 -- =====================================================
 -- CITIES
@@ -135,6 +152,7 @@ create table public.clinics (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
 -- =====================================================
 -- CLINIC TRANSLATIONS
 -- =====================================================
@@ -167,6 +185,7 @@ create table public.doctors (
 
   profile_id uuid
     references public.profiles(id)
+    on update cascade
     on delete set null,
 
   city_id uuid
@@ -184,15 +203,15 @@ create table public.doctors (
   phone text,
   email text,
 
- status text not null default 'pending'
- check (
-  status in (
-    'pending',
-    'active',
-    'suspended',
-    'rejected'
-  )
- ),
+  status text not null default 'pending'
+    check (
+      status in (
+        'pending',
+        'active',
+        'suspended',
+        'rejected'
+      )
+    ),
 
   average_rating numeric(3,2) not null default 0,
   review_count integer not null default 0,
@@ -200,6 +219,9 @@ create table public.doctors (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+comment on column public.doctors.profile_id is
+  'Authenticated profile that owns this doctor record. NULL means that the doctor listing has not been connected to a dashboard account.';
 
 -- =====================================================
 -- DOCTOR TRANSLATIONS
@@ -313,22 +335,26 @@ create table public.appointments (
   doctor_id uuid not null
     references public.doctors(id)
     on delete cascade,
-  
+
   clinic_id uuid
     references public.clinics(id)
     on delete set null,
-  
+
   patient_name text not null,
 
   patient_email text not null,
 
   patient_phone text not null
-    check (char_length(trim(patient_phone)) >= 7),
+    check (
+      char_length(trim(patient_phone)) >= 7
+    ),
 
   requested_date date,
   scheduled_date date,
+
   requested_time time,
   scheduled_time time,
+
   reschedule_reason text,
 
   notes text,
@@ -352,6 +378,9 @@ create table public.appointments (
 -- INDEXES
 -- =====================================================
 
+create index idx_profiles_role
+on public.profiles(role);
+
 create index idx_city_slug
 on public.cities(slug);
 
@@ -370,8 +399,21 @@ on public.doctors(status);
 create index idx_doctor_rating
 on public.doctors(average_rating);
 
+-- Multiple unclaimed doctor listings may have NULL profile_id.
+-- A claimed profile may own only one doctor record.
+
+create unique index idx_doctors_profile_unique
+on public.doctors(profile_id)
+where profile_id is not null;
+
 create index idx_appointments_status
 on public.appointments(status);
+
+create index idx_appointments_doctor
+on public.appointments(doctor_id);
+
+create index idx_appointments_clinic
+on public.appointments(clinic_id);
 
 create index idx_reviews_doctor
 on public.reviews(doctor_id);
@@ -383,8 +425,9 @@ create index idx_doctor_clinics_clinic
 on public.doctor_clinics(clinic_id);
 
 -- =====================================================
--- Trigger sections
+-- UPDATED_AT TRIGGERS
 -- =====================================================
+
 create trigger profiles_updated_at
 before update on public.profiles
 for each row
