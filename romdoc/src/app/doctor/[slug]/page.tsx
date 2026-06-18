@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import AppointmentRequestForm from "@/components/appointments/appointment-request-form";
 import { createClient } from "@/lib/supabase/server";
 
 type Props = {
@@ -36,16 +37,18 @@ type ClinicRelation = {
   website: string | null;
   street_address: string | null;
   clinic_translations: ClinicTranslation[] | null;
-
-  // Supabase returns this nested relationship as an array.
-  cities: CityRelation[] | null;
+  cities: CityRelation | CityRelation[] | null;
 };
 
 type DoctorClinicRelation = {
   clinic_id: string;
+  clinics: ClinicRelation | ClinicRelation[] | null;
+};
 
-  // Supabase returns this nested relationship as an array.
-  clinics: ClinicRelation[] | null;
+type ClinicOption = {
+  id: string;
+  name: string;
+  address: string;
 };
 
 function formatDoctorName(slug: string) {
@@ -55,6 +58,18 @@ function formatDoctorName(slug: string) {
       return part.charAt(0).toUpperCase() + part.slice(1);
     })
     .join(" ");
+}
+
+function getFirstRelation<T>(relation: T | T[] | null | undefined): T | null {
+  if (!relation) {
+    return null;
+  }
+
+  if (Array.isArray(relation)) {
+    return relation[0] ?? null;
+  }
+
+  return relation;
 }
 
 export default async function DoctorPage({ params }: Props) {
@@ -119,7 +134,44 @@ export default async function DoctorPage({ params }: Props) {
   );
 
   const clinicRelations =
-    (doctor.doctor_clinics as DoctorClinicRelation[] | null) ?? [];
+    (doctor.doctor_clinics as unknown as DoctorClinicRelation[] | null) ?? [];
+
+  const clinicOptions: ClinicOption[] = clinicRelations.flatMap(
+    (relation: DoctorClinicRelation) => {
+      const clinic = getFirstRelation(relation.clinics);
+
+      if (!clinic) {
+        return [];
+      }
+
+      const clinicTranslation = clinic.clinic_translations?.find(
+        (item: ClinicTranslation) => item.locale === "ro"
+      );
+
+      const city = getFirstRelation(clinic.cities);
+
+      const cityTranslation = city?.city_translations?.find(
+        (item: CityTranslation) => item.locale === "ro"
+      );
+
+      const address = [clinic.street_address, cityTranslation?.name]
+        .filter(
+          (value): value is string =>
+            typeof value === "string" && value.trim().length > 0
+        )
+        .join(", ");
+
+      return [
+        {
+          id: clinic.id,
+          name: clinicTranslation?.name ?? "Clinică medicală",
+          address,
+        },
+      ];
+    }
+  );
+
+  const doctorName = formatDoctorName(doctor.slug);
 
   return (
     <main className="min-h-screen bg-[#F0EEE9] py-12">
@@ -127,7 +179,7 @@ export default async function DoctorPage({ params }: Props) {
         <article className="rounded-2xl bg-white p-8 shadow-sm">
           <header>
             <h1 className="text-4xl font-bold text-gray-900">
-              {formatDoctorName(doctor.slug)}
+              {doctorName}
             </h1>
 
             <p className="mt-3 text-lg text-gray-700">
@@ -165,12 +217,11 @@ export default async function DoctorPage({ params }: Props) {
               Locații
             </h2>
 
-            {clinicRelations.length > 0 ? (
+            {clinicOptions.length > 0 ? (
               <div className="mt-5 space-y-4">
                 {clinicRelations.map(
                   (relation: DoctorClinicRelation) => {
-                    // Supabase returns clinics as an array.
-                    const clinic = relation.clinics?.[0];
+                    const clinic = getFirstRelation(relation.clinics);
 
                     if (!clinic) {
                       return null;
@@ -181,8 +232,7 @@ export default async function DoctorPage({ params }: Props) {
                         (item: ClinicTranslation) => item.locale === "ro"
                       );
 
-                    // Supabase also returns cities as an array.
-                    const city = clinic.cities?.[0];
+                    const city = getFirstRelation(clinic.cities);
 
                     const cityTranslation =
                       city?.city_translations?.find(
@@ -195,7 +245,8 @@ export default async function DoctorPage({ params }: Props) {
                     ]
                       .filter(
                         (value): value is string =>
-                          typeof value === "string" && value.length > 0
+                          typeof value === "string" &&
+                          value.trim().length > 0
                       )
                       .join(", ");
 
@@ -258,12 +309,11 @@ export default async function DoctorPage({ params }: Props) {
           </section>
 
           <section className="mt-10">
-            <button
-              type="button"
-              className="rounded-xl bg-[#D97757] px-6 py-3 font-medium text-white transition hover:opacity-90"
-            >
-              Solicită programare
-            </button>
+            <AppointmentRequestForm
+              doctorId={doctor.id}
+              doctorName={doctorName}
+              clinics={clinicOptions}
+            />
           </section>
         </article>
       </div>
