@@ -338,6 +338,7 @@ create table public.appointments (
       status in (
         'pending',
         'confirmed',
+        'rescheduled',
         'cancelled',
         'completed'
       )

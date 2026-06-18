@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import AppointmentActions from "@/components/admin/appointment-actions";
 import { createClient } from "@/lib/supabase/server";
 
 type DoctorRelation = {
@@ -22,9 +23,13 @@ type Appointment = {
   patient_phone: string;
   requested_date: string;
   requested_time: string | null;
+  scheduled_date: string | null;
+  scheduled_time: string | null;
+  reschedule_reason: string | null;
   notes: string | null;
   status: string;
   created_at: string;
+  updated_at: string;
   doctors: DoctorRelation | DoctorRelation[] | null;
   clinics: ClinicRelation | ClinicRelation[] | null;
 };
@@ -74,6 +79,8 @@ function getStatusLabel(status: string) {
   switch (status) {
     case "confirmed":
       return "Confirmată";
+    case "rescheduled":
+      return "Reprogramată";
     case "cancelled":
       return "Anulată";
     case "completed":
@@ -87,6 +94,8 @@ function getStatusClasses(status: string) {
   switch (status) {
     case "confirmed":
       return "bg-green-100 text-green-800";
+    case "rescheduled":
+      return "bg-blue-100 text-blue-800";
     case "cancelled":
       return "bg-red-100 text-red-800";
     case "completed":
@@ -126,9 +135,13 @@ export default async function AdminAppointmentsPage() {
       patient_phone,
       requested_date,
       requested_time,
+      scheduled_date,
+      scheduled_time,
+      reschedule_reason,
       notes,
       status,
       created_at,
+      updated_at,
       doctors (
         slug
       ),
@@ -163,7 +176,7 @@ export default async function AdminAppointmentsPage() {
           </h1>
 
           <p className="mt-3 text-gray-600">
-            Vizualizează cererile trimise de pacienți.
+            Confirmă, reprogramează sau actualizează cererile pacienților.
           </p>
         </header>
 
@@ -242,6 +255,21 @@ export default async function AdminAppointmentsPage() {
                         </p>
                       </div>
 
+                      {appointment.scheduled_date && (
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            Data confirmată
+                          </p>
+
+                          <p className="mt-1 font-medium text-gray-900">
+                            {formatDate(appointment.scheduled_date)}
+                            {appointment.scheduled_time
+                              ? `, ${appointment.scheduled_time.slice(0, 5)}`
+                              : ""}
+                          </p>
+                        </div>
+                      )}
+
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                           Telefon
@@ -275,7 +303,7 @@ export default async function AdminAppointmentsPage() {
                     {appointment.notes && (
                       <div className="mt-6 rounded-xl bg-gray-50 p-4">
                         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          Mesaj
+                          Mesaj pacient
                         </p>
 
                         <p className="mt-2 whitespace-pre-wrap text-gray-700">
@@ -283,6 +311,28 @@ export default async function AdminAppointmentsPage() {
                         </p>
                       </div>
                     )}
+
+                    {appointment.reschedule_reason && (
+                      <div className="mt-4 rounded-xl bg-blue-50 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                          Motivul reprogramării
+                        </p>
+
+                        <p className="mt-2 whitespace-pre-wrap text-blue-900">
+                          {appointment.reschedule_reason}
+                        </p>
+                      </div>
+                    )}
+
+                    <AppointmentActions
+                      appointmentId={appointment.id}
+                      currentStatus={appointment.status}
+                      requestedDate={appointment.requested_date}
+                      requestedTime={appointment.requested_time}
+                      scheduledDate={appointment.scheduled_date}
+                      scheduledTime={appointment.scheduled_time}
+                      currentReason={appointment.reschedule_reason}
+                    />
                   </article>
                 );
               })}
