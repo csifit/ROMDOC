@@ -34,6 +34,8 @@ drop policy if exists "doctor_specialties_public_read" on public.doctor_specialt
 drop policy if exists "doctor_clinics_public_read" on public.doctor_clinics;
 drop policy if exists "availability_public_read" on public.availability;
 
+drop policy if exists "appointments_public_insert" on public.appointments;
+
 -- =====================================================
 -- ENABLE RLS
 -- =====================================================
@@ -224,4 +226,21 @@ using (
 )
 with check (
   public.is_admin()
+);
+
+-- =====================================================
+-- PUBLIC APPOINTMENT REQUESTS
+-- =====================================================
+
+create policy "appointments_public_insert"
+on public.appointments
+for insert
+to anon, authenticated
+with check (
+  status = 'pending'
+  and patient_name is not null
+  and patient_email is not null
+  and requested_date is not null
+  and doctor_id is not null
+  and clinic_id is not null
 );

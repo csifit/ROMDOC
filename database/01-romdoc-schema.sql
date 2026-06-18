@@ -313,7 +313,11 @@ create table public.appointments (
   doctor_id uuid not null
     references public.doctors(id)
     on delete cascade,
-
+  
+  clinic_id uuid
+    references public.clinics(id)
+    on delete set null,
+  
   patient_name text not null,
 
   patient_email text not null,
@@ -321,6 +325,7 @@ create table public.appointments (
   patient_phone text,
 
   requested_date date,
+  requested_time time,
 
   notes text,
 
