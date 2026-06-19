@@ -18,7 +18,11 @@ type DoctorDashboardSidebarProps = {
 type NavigationItem = {
   href: string;
   label: string;
-  icon: "appointments" | "calendar" | "home";
+  icon: 
+    | "appointments"
+    | "calendar"
+    | "profile"
+    | "home";
 };
 
 const navigationItems: NavigationItem[] = [
@@ -31,6 +35,11 @@ const navigationItems: NavigationItem[] = [
     href: "/doctor-dashboard/calendar",
     label: "Calendar",
     icon: "calendar",
+  },
+  {
+    href: "/doctor-dashboard/profile",
+    label: "Profilul meu",
+    icon: "profile",
   },
   {
     href: "/",
@@ -195,6 +204,35 @@ function HomeIcon() {
   );
 }
 
+function ProfileIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-5 w-5 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <circle
+        cx="12"
+        cy="8"
+        r="4"
+      />
+
+      <path
+        strokeLinecap="round"
+        d="M5 21c.7-4 3.1-6 7-6s6.3 2 7 6"
+      />
+
+      <path
+        strokeLinecap="round"
+        d="M17 4h4M19 2v4"
+      />
+    </svg>
+  );
+}
+
 function LogoutIcon() {
   return (
     <svg
@@ -228,6 +266,9 @@ function NavigationIcon({
   switch (icon) {
     case "calendar":
       return <CalendarIcon />;
+
+    case "profile":
+      return <ProfileIcon />;
 
     case "home":
       return <HomeIcon />;
