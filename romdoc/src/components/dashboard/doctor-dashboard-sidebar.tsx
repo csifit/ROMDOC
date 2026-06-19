@@ -21,6 +21,7 @@ type NavigationItem = {
   icon: 
     | "appointments"
     | "calendar"
+    | "availability"
     | "profile"
     | "home";
 };
@@ -35,6 +36,11 @@ const navigationItems: NavigationItem[] = [
     href: "/doctor-dashboard/calendar",
     label: "Calendar",
     icon: "calendar",
+  },
+  {
+    href: "/doctor-dashboard/availability",
+    label: "Disponibilitate",
+    icon: "availability",
   },
   {
     href: "/doctor-dashboard/profile",
@@ -178,6 +184,35 @@ function CalendarIcon() {
     </svg>
   );
 }
+function AvailabilityIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-5 w-5 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="9"
+      />
+
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 7v5l3 2"
+      />
+
+      <path
+        strokeLinecap="round"
+        d="m17.5 5.5 1-1"
+      />
+    </svg>
+  );
+}
 
 function HomeIcon() {
   return (
@@ -269,12 +304,15 @@ function NavigationIcon({
 
     case "profile":
       return <ProfileIcon />;
+    
+    case "availability":
+      return <AvailabilityIcon />;
 
     case "home":
       return <HomeIcon />;
 
     default:
-      return <AppointmentIcon />;
+      return <AppointmentIcon />;    
   }
 }
 
