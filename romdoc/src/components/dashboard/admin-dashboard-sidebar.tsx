@@ -20,7 +20,6 @@ type NavigationItem = {
   label: string;
   icon:
     | "overview"
-    | "appointments"
     | "doctors"
     | "clinics"
     | "specialties"
@@ -38,16 +37,10 @@ const navigationItems: NavigationItem[] = [
     available: true,
   },
   {
-    href: "/admin/appointments",
-    label: "Programări",
-    icon: "appointments",
-    available: true,
-  },
-  {
     href: "/admin/doctors",
     label: "Medici",
     icon: "doctors",
-    available: false,
+    available: true,
   },
   {
     href: "/admin/clinics",
@@ -165,63 +158,10 @@ function OverviewIcon() {
       stroke="currentColor"
       strokeWidth="1.8"
     >
-      <rect
-        x="4"
-        y="4"
-        width="6"
-        height="6"
-        rx="1"
-      />
-
-      <rect
-        x="14"
-        y="4"
-        width="6"
-        height="6"
-        rx="1"
-      />
-
-      <rect
-        x="4"
-        y="14"
-        width="6"
-        height="6"
-        rx="1"
-      />
-
-      <rect
-        x="14"
-        y="14"
-        width="6"
-        height="6"
-        rx="1"
-      />
-    </svg>
-  );
-}
-
-function AppointmentIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="h-5 w-5 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-    >
-      <rect
-        x="4"
-        y="5"
-        width="16"
-        height="15"
-        rx="2"
-      />
-
-      <path
-        strokeLinecap="round"
-        d="M8 3v4M16 3v4M4 10h16M8 14h3M8 17h5"
-      />
+      <rect x="4" y="4" width="6" height="6" rx="1" />
+      <rect x="14" y="4" width="6" height="6" rx="1" />
+      <rect x="4" y="14" width="6" height="6" rx="1" />
+      <rect x="14" y="14" width="6" height="6" rx="1" />
     </svg>
   );
 }
@@ -236,11 +176,7 @@ function DoctorIcon() {
       stroke="currentColor"
       strokeWidth="1.8"
     >
-      <circle
-        cx="12"
-        cy="8"
-        r="4"
-      />
+      <circle cx="12" cy="8" r="4" />
 
       <path
         strokeLinecap="round"
@@ -400,9 +336,6 @@ function NavigationIcon({
     case "overview":
       return <OverviewIcon />;
 
-    case "appointments":
-      return <AppointmentIcon />;
-
     case "doctors":
       return <DoctorIcon />;
 
@@ -429,9 +362,7 @@ function getInitials(name: string) {
     .map((part) => part.trim())
     .filter(Boolean)
     .slice(0, 2)
-    .map((part) =>
-      part.charAt(0).toUpperCase()
-    )
+    .map((part) => part.charAt(0).toUpperCase())
     .join("");
 
   return initials || "A";
@@ -497,15 +428,13 @@ export default function AdminDashboardSidebar({
     }
   }
 
-  const desktopWidthClass =
-    isCollapsed
-      ? "lg:w-20"
-      : "lg:w-72";
+  const desktopWidthClass = isCollapsed
+    ? "lg:w-20"
+    : "lg:w-72";
 
-  const contentPaddingClass =
-    isCollapsed
-      ? "lg:pl-20"
-      : "lg:pl-72";
+  const contentPaddingClass = isCollapsed
+    ? "lg:pl-20"
+    : "lg:pl-72";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -519,9 +448,7 @@ export default function AdminDashboardSidebar({
 
         <button
           type="button"
-          onClick={() =>
-            setIsMobileOpen(true)
-          }
+          onClick={() => setIsMobileOpen(true)}
           aria-label="Deschide meniul"
           className="rounded-xl border border-gray-300 bg-white p-2 text-gray-700 transition hover:bg-gray-50"
         >
@@ -533,9 +460,7 @@ export default function AdminDashboardSidebar({
         <button
           type="button"
           aria-label="Închide meniul"
-          onClick={() =>
-            setIsMobileOpen(false)
-          }
+          onClick={() => setIsMobileOpen(false)}
           className="fixed inset-0 z-40 bg-black/40 lg:hidden"
         />
       )}
@@ -551,9 +476,7 @@ export default function AdminDashboardSidebar({
           {!isCollapsed ? (
             <Link
               href="/admin"
-              onClick={() =>
-                setIsMobileOpen(false)
-              }
+              onClick={() => setIsMobileOpen(false)}
               className="text-2xl font-bold text-gray-900"
             >
               RomDoc Admin
@@ -569,9 +492,7 @@ export default function AdminDashboardSidebar({
 
           <button
             type="button"
-            onClick={() =>
-              setIsMobileOpen(false)
-            }
+            onClick={() => setIsMobileOpen(false)}
             aria-label="Închide meniul"
             className="rounded-lg p-2 text-gray-600 transition hover:bg-gray-100 lg:hidden"
           >
@@ -616,74 +537,72 @@ export default function AdminDashboardSidebar({
         </div>
 
         <nav className="flex-1 space-y-2 overflow-y-auto px-3 py-5">
-          {navigationItems.map(
-            (item) => {
-              const isActive =
-                isActiveRoute(item.href);
+          {navigationItems.map((item) => {
+            const isActive =
+              isActiveRoute(item.href);
 
-              const commonClasses = `flex items-center rounded-xl px-3 py-3 text-sm font-medium transition ${
-                isCollapsed
-                  ? "justify-center"
-                  : "gap-3"
-              }`;
+            const commonClasses = `flex items-center rounded-xl px-3 py-3 text-sm font-medium transition ${
+              isCollapsed
+                ? "justify-center"
+                : "gap-3"
+            }`;
 
-              if (!item.available) {
-                return (
-                  <div
-                    key={item.href}
-                    title={
-                      isCollapsed
-                        ? `${item.label} — în curând`
-                        : undefined
-                    }
-                    className={`${commonClasses} cursor-not-allowed text-gray-400`}
-                  >
-                    <NavigationIcon
-                      icon={item.icon}
-                    />
-
-                    {!isCollapsed && (
-                      <>
-                        <span>{item.label}</span>
-
-                        <span className="ml-auto rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
-                          În curând
-                        </span>
-                      </>
-                    )}
-                  </div>
-                );
-              }
-
+            if (!item.available) {
               return (
-                <Link
+                <div
                   key={item.href}
-                  href={item.href}
-                  onClick={() =>
-                    setIsMobileOpen(false)
-                  }
                   title={
                     isCollapsed
-                      ? item.label
+                      ? `${item.label} — în curând`
                       : undefined
                   }
-                  className={`${commonClasses} ${
-                    isActive
-                      ? "bg-[#F0EEE9] text-[#9A4F35]"
-                      : "text-gray-700 hover:bg-gray-100 hover:text-gray-950"
-                  }`}
+                  className={`${commonClasses} cursor-not-allowed text-gray-400`}
                 >
                   <NavigationIcon
                     icon={item.icon}
                   />
 
                   {!isCollapsed && (
-                    <span>{item.label}</span>
+                    <>
+                      <span>{item.label}</span>
+
+                      <span className="ml-auto rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
+                        În curând
+                      </span>
+                    </>
                   )}
-                </Link>
+                </div>
               );
             }
-          )}
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() =>
+                  setIsMobileOpen(false)
+                }
+                title={
+                  isCollapsed
+                    ? item.label
+                    : undefined
+                }
+                className={`${commonClasses} ${
+                  isActive
+                    ? "bg-[#F0EEE9] text-[#9A4F35]"
+                    : "text-gray-700 hover:bg-gray-100 hover:text-gray-950"
+                }`}
+              >
+                <NavigationIcon
+                  icon={item.icon}
+                />
+
+                {!isCollapsed && (
+                  <span>{item.label}</span>
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="border-t border-gray-200 p-3">
