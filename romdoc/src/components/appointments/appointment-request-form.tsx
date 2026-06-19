@@ -19,6 +19,8 @@ type AppointmentRequestFormProps = {
   doctorId: string;
   doctorName: string;
   clinics: ClinicOption[];
+  initialPatientName: string;
+  authenticatedEmail: string;
 };
 
 type AppointmentApiResponse = {
@@ -46,6 +48,8 @@ export default function AppointmentRequestForm({
   doctorId,
   doctorName,
   clinics,
+  initialPatientName,
+  authenticatedEmail,
 }: AppointmentRequestFormProps) {
   const [isPending, startTransition] =
     useTransition();
@@ -58,10 +62,7 @@ export default function AppointmentRequestForm({
     );
 
   const [patientName, setPatientName] =
-    useState("");
-
-  const [patientEmail, setPatientEmail] =
-    useState("");
+    useState(initialPatientName);
 
   const [patientPhone, setPatientPhone] =
     useState("");
@@ -130,8 +131,7 @@ export default function AppointmentRequestForm({
         : ""
     );
 
-    setPatientName("");
-    setPatientEmail("");
+    setPatientName(initialPatientName);
     setPatientPhone("");
     setRequestedDate("");
     setRequestedTime("");
@@ -147,17 +147,9 @@ export default function AppointmentRequestForm({
     setMessage(null);
     setError(null);
 
-    if (!clinicId) {
+    if (!clinicId || !selectedClinic) {
       setError(
-        "Selectează clinica."
-      );
-
-      return;
-    }
-
-    if (!selectedClinic) {
-      setError(
-        "Clinica selectată nu este validă."
+        "Selectează o clinică validă."
       );
 
       return;
@@ -168,18 +160,6 @@ export default function AppointmentRequestForm({
     ) {
       setError(
         "Introdu un nume valid."
-      );
-
-      return;
-    }
-
-    if (
-      !patientEmail
-        .trim()
-        .includes("@")
-    ) {
-      setError(
-        "Introdu o adresă de e-mail validă."
       );
 
       return;
@@ -222,19 +202,6 @@ export default function AppointmentRequestForm({
       return;
     }
 
-    if (
-      !Number.isInteger(
-        durationMinutes
-      ) ||
-      durationMinutes < 5
-    ) {
-      setError(
-        "Durata programării nu este validă."
-      );
-
-      return;
-    }
-
     startTransition(async () => {
       try {
         const response = await fetch(
@@ -256,11 +223,6 @@ export default function AppointmentRequestForm({
               patientName:
                 patientName.trim(),
 
-              patientEmail:
-                patientEmail
-                  .trim()
-                  .toLowerCase(),
-
               patientPhone:
                 patientPhone.trim(),
 
@@ -278,6 +240,15 @@ export default function AppointmentRequestForm({
         const result =
           (await response.json()) as AppointmentApiResponse;
 
+        if (response.status === 401) {
+          window.location.href =
+            `/login?next=${encodeURIComponent(
+              window.location.pathname
+            )}`;
+
+          return;
+        }
+
         if (!response.ok) {
           throw new Error(
             result.error ??
@@ -289,7 +260,7 @@ export default function AppointmentRequestForm({
           result.emailSent === false
         ) {
           setMessage(
-            "Cererea a fost înregistrată, dar e-mailul de confirmare nu a putut fi trimis."
+            "Cererea a fost înregistrată, dar e-mailul nu a putut fi trimis."
           );
         } else {
           setMessage(
@@ -329,8 +300,8 @@ export default function AppointmentRequestForm({
         </h2>
 
         <p className="mt-2 text-sm leading-6 text-gray-600">
-          Selectează clinica, data și una
-          dintre orele disponibile pentru{" "}
+          Selectează clinica, data și una dintre
+          orele disponibile pentru{" "}
           <strong>{doctorName}</strong>.
         </p>
       </header>
@@ -367,19 +338,17 @@ export default function AppointmentRequestForm({
               Selectează clinica
             </option>
 
-            {clinics.map(
-              (clinic: ClinicOption) => (
-                <option
-                  key={clinic.id}
-                  value={clinic.id}
-                >
-                  {clinic.name}
-                  {clinic.address
-                    ? ` — ${clinic.address}`
-                    : ""}
-                </option>
-              )
-            )}
+            {clinics.map((clinic) => (
+              <option
+                key={clinic.id}
+                value={clinic.id}
+              >
+                {clinic.name}
+                {clinic.address
+                  ? ` — ${clinic.address}`
+                  : ""}
+              </option>
+            ))}
           </select>
         </label>
 
@@ -401,7 +370,6 @@ export default function AppointmentRequestForm({
                   event.target.value
                 )
               }
-              placeholder="Ex. Maria Popescu"
               className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:opacity-60"
             />
           </label>
@@ -431,23 +399,19 @@ export default function AppointmentRequestForm({
 
         <label className="block">
           <span className="text-sm font-medium text-gray-700">
-            E-mail
+            E-mail verificat
           </span>
 
           <input
             type="email"
-            required
-            value={patientEmail}
-            disabled={isPending}
-            autoComplete="email"
-            onChange={(event) =>
-              setPatientEmail(
-                event.target.value
-              )
-            }
-            placeholder="maria@example.com"
-            className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:opacity-60"
+            value={authenticatedEmail}
+            readOnly
+            className="mt-2 w-full cursor-not-allowed rounded-xl border border-gray-300 bg-gray-100 px-4 py-3 text-gray-700"
           />
+
+          <span className="mt-1 block text-xs text-gray-500">
+            Programarea va fi asociată acestui cont.
+          </span>
         </label>
 
         <label className="block">
@@ -518,7 +482,7 @@ export default function AppointmentRequestForm({
                 event.target.value
               )
             }
-            placeholder="Descrie pe scurt motivul consultației sau alte informații relevante."
+            placeholder="Descrie pe scurt motivul consultației."
             className="mt-2 w-full resize-y rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:opacity-60"
           />
 

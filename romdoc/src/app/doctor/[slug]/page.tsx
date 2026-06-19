@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import AppointmentRequestForm from "@/components/appointments/appointment-request-form";
+import AuthenticatedAppointmentRequest from "@/components/appointments/authenticated-appointment-request";
 import PublicDoctorServices from "@/components/doctor/public-doctor-services";
 import { createClient } from "@/lib/supabase/server";
 
@@ -28,7 +28,9 @@ type CityTranslation = {
 
 type CityRelation = {
   slug: string;
-  city_translations: CityTranslation[] | null;
+  city_translations:
+    | CityTranslation[]
+    | null;
 };
 
 type ClinicRelation = {
@@ -37,13 +39,24 @@ type ClinicRelation = {
   phone: string | null;
   website: string | null;
   street_address: string | null;
-  clinic_translations: ClinicTranslation[] | null;
-  cities: CityRelation | CityRelation[] | null;
+
+  clinic_translations:
+    | ClinicTranslation[]
+    | null;
+
+  cities:
+    | CityRelation
+    | CityRelation[]
+    | null;
 };
 
 type DoctorClinicRelation = {
   clinic_id: string;
-  clinics: ClinicRelation | ClinicRelation[] | null;
+
+  clinics:
+    | ClinicRelation
+    | ClinicRelation[]
+    | null;
 };
 
 type ClinicOption = {
@@ -52,7 +65,9 @@ type ClinicOption = {
   address: string;
 };
 
-function formatDoctorName(slug: string) {
+function formatDoctorName(
+  slug: string
+) {
   return slug
     .split("-")
     .map((part: string) => {
@@ -65,7 +80,11 @@ function formatDoctorName(slug: string) {
 }
 
 function getFirstRelation<T>(
-  relation: T | T[] | null | undefined
+  relation:
+    | T
+    | T[]
+    | null
+    | undefined
 ): T | null {
   if (!relation) {
     return null;
@@ -78,12 +97,33 @@ function getFirstRelation<T>(
   return relation;
 }
 
+function formatConsultationPrice(
+  value: number | string
+) {
+  const numericValue =
+    Number(value);
+
+  if (
+    Number.isNaN(numericValue)
+  ) {
+    return String(value);
+  }
+
+  return new Intl.NumberFormat(
+    "ro-RO",
+    {
+      maximumFractionDigits: 2,
+    }
+  ).format(numericValue);
+}
+
 export default async function DoctorPage({
   params,
 }: Props) {
   const { slug } = await params;
 
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
 
   const {
     data: doctor,
@@ -93,6 +133,8 @@ export default async function DoctorPage({
     .select(`
       id,
       slug,
+      phone,
+      email,
       years_experience,
       consultation_price,
       average_rating,
@@ -147,9 +189,12 @@ export default async function DoctorPage({
 
   const translation =
     doctorTranslations?.find(
-      (item: DoctorTranslation) =>
-        item.locale === "ro"
-    );
+      (
+        item: DoctorTranslation
+      ) => item.locale === "ro"
+    ) ??
+    doctorTranslations?.[0] ??
+    null;
 
   const clinicRelations =
     (doctor.doctor_clinics as unknown as
@@ -159,7 +204,8 @@ export default async function DoctorPage({
   const clinicOptions: ClinicOption[] =
     clinicRelations.flatMap(
       (
-        relation: DoctorClinicRelation
+        relation:
+          DoctorClinicRelation
       ) => {
         const clinic =
           getFirstRelation(
@@ -173,9 +219,12 @@ export default async function DoctorPage({
         const clinicTranslation =
           clinic.clinic_translations?.find(
             (
-              item: ClinicTranslation
+              item:
+                ClinicTranslation
             ) => item.locale === "ro"
-          );
+          ) ??
+          clinic.clinic_translations?.[0] ??
+          null;
 
         const city =
           getFirstRelation(
@@ -185,9 +234,12 @@ export default async function DoctorPage({
         const cityTranslation =
           city?.city_translations?.find(
             (
-              item: CityTranslation
+              item:
+                CityTranslation
             ) => item.locale === "ro"
-          );
+          ) ??
+          city?.city_translations?.[0] ??
+          null;
 
         const address = [
           clinic.street_address,
@@ -197,7 +249,8 @@ export default async function DoctorPage({
             (
               value
             ): value is string =>
-              typeof value === "string" &&
+              typeof value ===
+                "string" &&
               value.trim().length > 0
           )
           .join(", ");
@@ -205,9 +258,11 @@ export default async function DoctorPage({
         return [
           {
             id: clinic.id,
+
             name:
               clinicTranslation?.name ??
               "Clinică medicală",
+
             address,
           },
         ];
@@ -235,8 +290,13 @@ export default async function DoctorPage({
 
             <div className="mt-6 flex flex-wrap gap-6 text-sm text-gray-600">
               <span>
-                ⭐ {doctor.average_rating} (
-                {doctor.review_count} recenzii)
+                ⭐{" "}
+                {doctor.average_rating ??
+                  0}{" "}
+                (
+                {doctor.review_count ??
+                  0}{" "}
+                recenzii)
               </span>
 
               {doctor.years_experience !==
@@ -252,13 +312,39 @@ export default async function DoctorPage({
               {doctor.consultation_price !==
                 null && (
                 <span>
-                  {
+                  {formatConsultationPrice(
                     doctor.consultation_price
-                  }{" "}
+                  )}{" "}
                   RON consultație
                 </span>
               )}
             </div>
+
+            {(doctor.phone ||
+              doctor.email) && (
+              <div className="mt-6 flex flex-wrap gap-4 text-sm">
+                {doctor.phone && (
+                  <a
+                    href={`tel:${doctor.phone.replace(
+                      /\s+/g,
+                      ""
+                    )}`}
+                    className="font-medium text-gray-800 underline-offset-4 hover:underline"
+                  >
+                    {doctor.phone}
+                  </a>
+                )}
+
+                {doctor.email && (
+                  <a
+                    href={`mailto:${doctor.email}`}
+                    className="font-medium text-gray-800 underline-offset-4 hover:underline"
+                  >
+                    {doctor.email}
+                  </a>
+                )}
+              </div>
+            )}
           </header>
 
           <section className="mt-10">
@@ -266,7 +352,7 @@ export default async function DoctorPage({
               Despre medic
             </h2>
 
-            <p className="mt-4 leading-7 text-gray-700">
+            <p className="mt-4 whitespace-pre-line leading-7 text-gray-700">
               {translation?.biography ??
                 "Informațiile despre acest medic vor fi disponibile în curând."}
             </p>
@@ -284,11 +370,13 @@ export default async function DoctorPage({
               Locații
             </h2>
 
-            {clinicOptions.length > 0 ? (
+            {clinicOptions.length >
+            0 ? (
               <div className="mt-5 space-y-4">
                 {clinicRelations.map(
                   (
-                    relation: DoctorClinicRelation
+                    relation:
+                      DoctorClinicRelation
                   ) => {
                     const clinic =
                       getFirstRelation(
@@ -302,11 +390,15 @@ export default async function DoctorPage({
                     const clinicTranslation =
                       clinic.clinic_translations?.find(
                         (
-                          item: ClinicTranslation
+                          item:
+                            ClinicTranslation
                         ) =>
                           item.locale ===
                           "ro"
-                      );
+                      ) ??
+                      clinic
+                        .clinic_translations?.[0] ??
+                      null;
 
                     const city =
                       getFirstRelation(
@@ -316,11 +408,15 @@ export default async function DoctorPage({
                     const cityTranslation =
                       city?.city_translations?.find(
                         (
-                          item: CityTranslation
+                          item:
+                            CityTranslation
                         ) =>
                           item.locale ===
                           "ro"
-                      );
+                      ) ??
+                      city
+                        ?.city_translations?.[0] ??
+                      null;
 
                     const address = [
                       clinic.street_address,
@@ -332,7 +428,8 @@ export default async function DoctorPage({
                         ): value is string =>
                           typeof value ===
                             "string" &&
-                          value.trim()
+                          value
+                            .trim()
                             .length > 0
                       )
                       .join(", ");
@@ -412,9 +509,10 @@ export default async function DoctorPage({
           </section>
 
           <section className="mt-10">
-            <AppointmentRequestForm
+            <AuthenticatedAppointmentRequest
               doctorId={doctor.id}
               doctorName={doctorName}
+              doctorSlug={doctor.slug}
               clinics={clinicOptions}
             />
           </section>

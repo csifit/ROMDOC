@@ -8,30 +8,17 @@ type AppointmentRequestBody = {
   doctorName?: string;
   clinicName?: string;
   patientName?: string;
-  patientEmail?: string;
   patientPhone?: string;
   requestedDate?: string;
   requestedTime?: string;
   durationMinutes?: number;
-  notes?: string;
+  notes?: string | null;
 };
 
-function formatAppointmentDate(date: string) {
-  return new Intl.DateTimeFormat("ro-RO", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(`${date}T12:00:00`));
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
+type AvailableSlotRow = {
+  slot_time: string;
+  duration_minutes: number;
+};
 
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -44,9 +31,13 @@ function isValidDate(value: string) {
     return false;
   }
 
-  const date = new Date(`${value}T12:00:00`);
+  const parsedDate = new Date(
+    `${value}T12:00:00`
+  );
 
-  return !Number.isNaN(date.getTime());
+  return !Number.isNaN(
+    parsedDate.getTime()
+  );
 }
 
 function isValidTime(value: string) {
@@ -69,6 +60,28 @@ function getLocalDateString(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function formatAppointmentDate(date: string) {
+  return new Intl.DateTimeFormat(
+    "ro-RO",
+    {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    }
+  ).format(
+    new Date(`${date}T12:00:00`)
+  );
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function getFriendlyAppointmentError(
   message: string | undefined
 ) {
@@ -81,6 +94,9 @@ function getFriendlyAppointmentError(
     ) ||
     normalizedMessage.includes(
       "conflicting key value violates exclusion constraint"
+    ) ||
+    normalizedMessage.includes(
+      "exclusion constraint"
     )
   ) {
     return "Intervalul selectat tocmai a fost ocupat. Alege o altă oră disponibilă.";
@@ -126,10 +142,20 @@ function getFriendlyAppointmentError(
     return "Clinica selectată nu este asociată acestui medic.";
   }
 
-  return "Cererea nu a putut fi salvată. Reîncarcă orele disponibile și încearcă din nou.";
+  if (
+    normalizedMessage.includes(
+      "row-level security"
+    )
+  ) {
+    return "Contul nu are permisiunea necesară pentru a crea această programare.";
+  }
+
+  return "Intervalul selectat nu mai este disponibil. Reîncarcă orele și încearcă din nou.";
 }
 
-export async function POST(request: Request) {
+export async function POST(
+  request: Request
+) {
   try {
     const body =
       (await request.json()) as AppointmentRequestBody;
@@ -148,11 +174,6 @@ export async function POST(request: Request) {
 
     const patientName =
       body.patientName?.trim();
-
-    const patientEmail =
-      body.patientEmail
-        ?.trim()
-        .toLowerCase();
 
     const patientPhone =
       body.patientPhone?.trim();
@@ -175,7 +196,6 @@ export async function POST(request: Request) {
       !doctorName ||
       !clinicName ||
       !patientName ||
-      !patientEmail ||
       !patientPhone ||
       !requestedDate ||
       !requestedTime
@@ -220,18 +240,6 @@ export async function POST(request: Request) {
         {
           error:
             "Introdu un nume valid.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    if (!patientEmail.includes("@")) {
-      return NextResponse.json(
-        {
-          error:
-            "Introdu o adresă de e-mail validă.",
         },
         {
           status: 400,
@@ -293,6 +301,21 @@ export async function POST(request: Request) {
       );
     }
 
+    if (
+      notes &&
+      notes.length > 2000
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Mesajul pentru medic este prea lung.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
     const today =
       getLocalDateString(new Date());
 
@@ -332,6 +355,100 @@ export async function POST(request: Request) {
     const supabase =
       await createClient();
 
+    /*
+     * Appointment creation requires an authenticated
+     * patient account.
+     */
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json(
+        {
+          error:
+            "Trebuie să fii autentificat pentru a solicita o programare.",
+        },
+        {
+          status: 401,
+        }
+      );
+    }
+
+    if (!user.email_confirmed_at) {
+      return NextResponse.json(
+        {
+          error:
+            "Confirmă adresa de e-mail înainte de a solicita o programare.",
+        },
+        {
+          status: 403,
+        }
+      );
+    }
+
+    if (!user.email) {
+      return NextResponse.json(
+        {
+          error:
+            "Contul autentificat nu are o adresă de e-mail validă.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    const {
+      data: patientProfile,
+      error: patientProfileError,
+    } = await supabase
+      .from("profiles")
+      .select("id, role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (patientProfileError) {
+      console.error(
+        "Patient profile lookup failed:",
+        patientProfileError
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "Contul pacientului nu a putut fi verificat.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    if (
+      !patientProfile ||
+      !["patient", "user"].includes(
+        patientProfile.role
+      )
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Doar conturile de pacient pot solicita programări.",
+        },
+        {
+          status: 403,
+        }
+      );
+    }
+
+    const patientEmail =
+      user.email.trim().toLowerCase();
+
+    /*
+     * Verify that the doctor is active.
+     */
     const {
       data: doctor,
       error: doctorError,
@@ -371,6 +488,9 @@ export async function POST(request: Request) {
       );
     }
 
+    /*
+     * Verify that the clinic belongs to the doctor.
+     */
     const {
       data: doctorClinic,
       error: doctorClinicError,
@@ -413,12 +533,7 @@ export async function POST(request: Request) {
     }
 
     /*
-     * Verify that the selected slot is still available immediately
-     * before inserting the appointment.
-     *
-     * The database trigger remains the final authority, so this check
-     * improves the message shown to the patient but does not replace
-     * database-level validation.
+     * Recheck the selected slot immediately before insert.
      */
     const {
       data: availableSlots,
@@ -454,12 +569,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const slotRows =
+      (availableSlots as
+        | AvailableSlotRow[]
+        | null) ?? [];
+
     const selectedSlot =
-      availableSlots?.find(
-        (slot: {
-          slot_time: string;
-          duration_minutes: number;
-        }) =>
+      slotRows.find(
+        (slot) =>
           slot.slot_time.slice(0, 5) ===
             requestedTime &&
           Number(
@@ -480,13 +597,8 @@ export async function POST(request: Request) {
     }
 
     /*
-     * Generate the ID before insertion.
-     *
-     * This avoids using:
-     * .insert(...).select("id").single()
-     *
-     * which can fail when INSERT is permitted but the post-insert
-     * SELECT is restricted by RLS.
+     * Generate the ID before insertion so no post-insert
+     * SELECT is required.
      */
     const appointmentId =
       crypto.randomUUID();
@@ -497,6 +609,9 @@ export async function POST(request: Request) {
       .from("appointments")
       .insert({
         id: appointmentId,
+
+        patient_profile_id:
+          user.id,
 
         doctor_id:
           doctorId,
@@ -529,6 +644,9 @@ export async function POST(request: Request) {
 
         source:
           "online_request",
+
+        created_by_profile_id:
+          user.id,
       });
 
     if (appointmentError) {
@@ -536,6 +654,15 @@ export async function POST(request: Request) {
         "Appointment insert failed:",
         appointmentError
       );
+
+      const isConflict =
+        appointmentError.code ===
+          "23P01" ||
+        appointmentError.message
+          .toLowerCase()
+          .includes(
+            "exclusion constraint"
+          );
 
       return NextResponse.json(
         {
@@ -546,14 +673,15 @@ export async function POST(request: Request) {
         },
         {
           status:
-            appointmentError.code ===
-              "23P01"
-              ? 409
-              : 500,
+            isConflict ? 409 : 500,
         }
       );
     }
 
+    /*
+     * The appointment remains saved even when email
+     * delivery fails.
+     */
     const resendApiKey =
       process.env.RESEND_API_KEY;
 
@@ -663,8 +791,7 @@ export async function POST(request: Request) {
 
                 <p style="line-height: 1.7;">
                   Am primit cererea ta de programare.
-                  Clinica te va contacta pentru confirmarea
-                  programării.
+                  Clinica te va contacta pentru confirmare.
                 </p>
 
                 <div
@@ -755,7 +882,7 @@ export async function POST(request: Request) {
 
     if (emailError) {
       console.error(
-        "Appointment confirmation email failed:",
+        "Appointment request email failed:",
         emailError
       );
 

@@ -1,108 +1,268 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import {
+  type FormEvent,
+  useState,
+  useTransition,
+} from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginForm() {
+type LoginFormProps = {
+  initialMessage?: string | null;
+};
+
+function getSafeNextPath() {
+  if (
+    typeof window === "undefined"
+  ) {
+    return "/dashboard";
+  }
+
+  const searchParams =
+    new URLSearchParams(
+      window.location.search
+    );
+
+  const nextPath =
+    searchParams.get("next");
+
+  if (
+    !nextPath ||
+    !nextPath.startsWith("/") ||
+    nextPath.startsWith("//")
+  ) {
+    return "/dashboard";
+  }
+
+  return nextPath;
+}
+
+export default function LoginForm({
+  initialMessage = null,
+}: LoginFormProps) {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [isPending, startTransition] =
+    useTransition();
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  const [email, setEmail] =
+    useState("");
+
+  const [password, setPassword] =
+    useState("");
+
+  const [error, setError] =
+    useState<string | null>(null);
+
+  const [message, setMessage] =
+    useState<string | null>(
+      initialMessage
+    );
+
+  function handleSubmit(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
 
-    setErrorMessage("");
-    setIsSubmitting(true);
+    setError(null);
+    setMessage(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password,
-    });
+    const normalizedEmail =
+      email.trim().toLowerCase();
 
-    setIsSubmitting(false);
+    if (!normalizedEmail) {
+      setError(
+        "Introdu adresa de e-mail."
+      );
 
-    if (error) {
-      console.error("Login failed:", error);
-      setErrorMessage("E-mailul sau parola nu sunt corecte.");
       return;
     }
 
-    router.replace("/dashboard");
-    router.refresh();
+    if (!password) {
+      setError(
+        "Introdu parola."
+      );
+
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        const supabase =
+          createClient();
+
+        const {
+          error: loginError,
+        } =
+          await supabase.auth.signInWithPassword(
+            {
+              email:
+                normalizedEmail,
+
+              password,
+            }
+          );
+
+        if (loginError) {
+          switch (
+            loginError.message
+              .toLowerCase()
+          ) {
+            case "invalid login credentials":
+              setError(
+                "Adresa de e-mail sau parola este incorectă."
+              );
+              return;
+
+            case "email not confirmed":
+              setError(
+                "Adresa de e-mail nu a fost confirmată."
+              );
+              return;
+
+            default:
+              setError(
+                loginError.message
+              );
+              return;
+          }
+        }
+
+        /*
+         * When login was opened from a doctor page, return
+         * to that doctor page. Otherwise, /dashboard routes
+         * the user according to their role:
+         *
+         * admin   -> /admin
+         * doctor  -> /doctor-dashboard/appointments
+         * patient -> /patient-dashboard
+         * staff   -> /staff-dashboard
+         */
+        const destination =
+          getSafeNextPath();
+
+        router.replace(destination);
+        router.refresh();
+      } catch (submitError) {
+        console.error(
+          "Login failed:",
+          submitError
+        );
+
+        setError(
+          "Autentificarea nu a putut fi finalizată. Încearcă din nou."
+        );
+      }
+    });
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="rounded-2xl bg-white p-8 shadow-sm"
-    >
-      <h1 className="text-3xl font-bold text-gray-900">
-        Autentificare RomDoc
-      </h1>
-
-      <p className="mt-2 text-sm text-gray-600">
-        Introdu datele contului de administrator.
-      </p>
-
-      <div className="mt-8">
-        <label
-          htmlFor="email"
-          className="block text-sm font-medium text-gray-800"
+    <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+      <header className="text-center">
+        <Link
+          href="/"
+          className="inline-block text-3xl font-bold text-gray-900"
         >
-          E-mail
-        </label>
+          RomDoc
+        </Link>
 
-        <input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          required
-          autoComplete="email"
-          className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-gray-500"
-        />
-      </div>
+        <h1 className="mt-6 text-2xl font-bold text-gray-900">
+          Autentificare
+        </h1>
 
-      <div className="mt-5">
-        <label
-          htmlFor="password"
-          className="block text-sm font-medium text-gray-800"
-        >
-          Parolă
-        </label>
+        <p className="mt-2 text-sm leading-6 text-gray-600">
+          Introdu adresa de e-mail și
+          parola pentru a accesa contul.
+        </p>
+      </header>
 
-        <input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          required
-          autoComplete="current-password"
-          className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-gray-500"
-        />
-      </div>
-
-      {errorMessage && (
-        <div
-          role="alert"
-          className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
-        >
-          {errorMessage}
-        </div>
-      )}
-
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="mt-6 w-full rounded-xl bg-[#D97757] px-6 py-3 font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+      <form
+        onSubmit={handleSubmit}
+        className="mt-8 space-y-5"
       >
-        {isSubmitting ? "Se autentifică..." : "Autentificare"}
-      </button>
-    </form>
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">
+            E-mail
+          </span>
+
+          <input
+            type="email"
+            required
+            autoComplete="email"
+            value={email}
+            disabled={isPending}
+            onChange={(event) =>
+              setEmail(
+                event.target.value
+              )
+            }
+            placeholder="nume@example.com"
+            className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:cursor-not-allowed disabled:opacity-60"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">
+            Parolă
+          </span>
+
+          <input
+            type="password"
+            required
+            autoComplete="current-password"
+            value={password}
+            disabled={isPending}
+            onChange={(event) =>
+              setPassword(
+                event.target.value
+              )
+            }
+            placeholder="Parola contului"
+            className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:cursor-not-allowed disabled:opacity-60"
+          />
+        </label>
+
+        {message && (
+          <div
+            role="status"
+            className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
+          >
+            {message}
+          </div>
+        )}
+
+        {error && (
+          <div
+            role="alert"
+            className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+          >
+            {error}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={isPending}
+          className="w-full rounded-xl bg-[#D97757] px-5 py-3.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isPending
+            ? "Se autentifică..."
+            : "Autentificare"}
+        </button>
+      </form>
+
+      <div className="mt-6 text-center text-sm text-gray-600">
+        Nu ai încă un cont?{" "}
+
+        <Link
+          href="/register"
+          className="font-semibold text-[#9A4F35] underline-offset-4 hover:underline"
+        >
+          Creează cont
+        </Link>
+      </div>
+    </div>
   );
 }
