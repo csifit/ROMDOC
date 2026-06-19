@@ -246,3 +246,66 @@ with check (
   and doctor_id is not null
   and clinic_id is not null 
 );
+
+-- =====================================================
+-- DOCTOR-CREATED APPOINTMENTS
+-- =====================================================
+
+create or replace function public.can_doctor_create_appointment(
+  target_doctor_id uuid,
+  target_clinic_id uuid
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.doctors as d
+    join public.doctor_clinics as dc
+      on dc.doctor_id = d.id
+    where d.id = target_doctor_id
+      and d.profile_id = auth.uid()
+      and dc.clinic_id = target_clinic_id
+  );
+$$;
+
+revoke all
+on function public.can_doctor_create_appointment(uuid, uuid)
+from public;
+
+grant execute
+on function public.can_doctor_create_appointment(uuid, uuid)
+to authenticated;
+
+drop policy if exists
+  "Doctors can create their own appointments"
+on public.appointments;
+
+create policy
+  "Doctors can create their own appointments"
+on public.appointments
+for insert
+to authenticated
+with check (
+  public.can_doctor_create_appointment(
+    doctor_id,
+    clinic_id
+  )
+  and created_by_profile_id = auth.uid()
+  and source in (
+    'phone',
+    'walk_in',
+    'email',
+    'other'
+  )
+  and status = 'confirmed'
+  and requested_date is not null
+  and requested_time is not null
+  and scheduled_date is not null
+  and scheduled_time is not null
+  and requested_date = scheduled_date
+  and requested_time = scheduled_time
+);

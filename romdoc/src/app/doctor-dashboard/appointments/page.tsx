@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import AppointmentActions from "@/components/admin/appointment-actions";
+import CreateAppointmentForm from "@/components/doctor/create-appointment-form";
 import { createClient } from "@/lib/supabase/server";
 
 type ClinicTranslation = {
@@ -8,8 +9,19 @@ type ClinicTranslation = {
 };
 
 type ClinicRelation = {
+  id?: string;
   slug: string;
   clinic_translations: ClinicTranslation[] | null;
+};
+
+type DoctorClinicRow = {
+  clinic_id: string;
+  clinics: ClinicRelation | ClinicRelation[] | null;
+};
+
+type ClinicOption = {
+  id: string;
+  name: string;
 };
 
 type Appointment = {
@@ -23,6 +35,7 @@ type Appointment = {
   scheduled_time: string | null;
   reschedule_reason: string | null;
   notes: string | null;
+  source: string;
   status: string;
   created_at: string;
   updated_at: string;
@@ -108,6 +121,48 @@ function getStatusClasses(status: string) {
   }
 }
 
+function getSourceLabel(source: string) {
+  switch (source) {
+    case "phone":
+      return "Telefon";
+
+    case "walk_in":
+      return "Direct la clinică";
+
+    case "email":
+      return "E-mail";
+
+    case "other":
+      return "Altă sursă";
+
+    default:
+      return "Cerere online";
+  }
+}
+
+function getClinicName(
+  clinic: ClinicRelation | null
+) {
+  if (!clinic) {
+    return "Clinică indisponibilă";
+  }
+
+  const romanianTranslation =
+    clinic.clinic_translations?.find(
+      (translation: ClinicTranslation) =>
+        translation.locale === "ro"
+    );
+
+  const fallbackTranslation =
+    clinic.clinic_translations?.[0];
+
+  return (
+    romanianTranslation?.name ??
+    fallbackTranslation?.name ??
+    formatDoctorName(clinic.slug)
+  );
+}
+
 export default async function DoctorAppointmentsPage() {
   const supabase = await createClient();
 
@@ -120,11 +175,14 @@ export default async function DoctorAppointmentsPage() {
     redirect("/login");
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("role, first_name, last_name")
-    .eq("id", user.id)
-    .maybeSingle();
+  const { data: profile, error: profileError } =
+    await supabase
+      .from("profiles")
+      .select(
+        "role, first_name, last_name"
+      )
+      .eq("id", user.id)
+      .maybeSingle();
 
   if (profileError) {
     console.error(
@@ -137,11 +195,12 @@ export default async function DoctorAppointmentsPage() {
     redirect("/");
   }
 
-  const { data: doctor, error: doctorError } = await supabase
-    .from("doctors")
-    .select("id, slug, status")
-    .eq("profile_id", user.id)
-    .maybeSingle();
+  const { data: doctor, error: doctorError } =
+    await supabase
+      .from("doctors")
+      .select("id, slug, status")
+      .eq("profile_id", user.id)
+      .maybeSingle();
 
   if (doctorError) {
     console.error(
@@ -152,7 +211,10 @@ export default async function DoctorAppointmentsPage() {
 
   const displayName =
     profile.first_name || profile.last_name
-      ? [profile.first_name, profile.last_name]
+      ? [
+          profile.first_name,
+          profile.last_name,
+        ]
           .filter(Boolean)
           .join(" ")
       : doctor
@@ -179,8 +241,8 @@ export default async function DoctorAppointmentsPage() {
             </h2>
 
             <p className="mt-3 leading-7 text-amber-800">
-              Contul tău are rolul de medic, dar nu este încă asociat
-              unui profil din directorul RomDoc.
+              Contul tău are rolul de medic, dar nu este încă
+              asociat unui profil din directorul RomDoc.
             </p>
 
             <p className="mt-3 leading-7 text-amber-800">
@@ -196,7 +258,79 @@ export default async function DoctorAppointmentsPage() {
     );
   }
 
-  const { data, error: appointmentsError } = await supabase
+  const {
+    data: doctorClinicData,
+    error: doctorClinicsError,
+  } = await supabase
+    .from("doctor_clinics")
+    .select(
+      `
+        clinic_id,
+        clinics (
+          id,
+          slug,
+          clinic_translations (
+            locale,
+            name
+          )
+        )
+      `
+    )
+    .eq("doctor_id", doctor.id);
+
+  if (doctorClinicsError) {
+    console.error(
+      "Doctor dashboard clinic query failed:",
+      doctorClinicsError
+    );
+  }
+
+  const doctorClinicRows =
+    (doctorClinicData as unknown as
+      | DoctorClinicRow[]
+      | null) ?? [];
+
+  const clinicOptions: ClinicOption[] =
+    doctorClinicRows
+      .map(
+        (
+          doctorClinic: DoctorClinicRow
+        ): ClinicOption | null => {
+          const clinic = getFirstRelation(
+            doctorClinic.clinics
+          );
+
+          if (!clinic) {
+            return null;
+          }
+
+          return {
+            id: doctorClinic.clinic_id,
+            name: getClinicName(clinic),
+          };
+        }
+      )
+      .filter(
+        (
+          clinic: ClinicOption | null
+        ): clinic is ClinicOption =>
+          clinic !== null
+      )
+      .sort(
+        (
+          firstClinic: ClinicOption,
+          secondClinic: ClinicOption
+        ) =>
+          firstClinic.name.localeCompare(
+            secondClinic.name,
+            "ro"
+          )
+      );
+
+  const {
+    data: appointmentsData,
+    error: appointmentsError,
+  } = await supabase
     .from("appointments")
     .select(`
       id,
@@ -209,10 +343,12 @@ export default async function DoctorAppointmentsPage() {
       scheduled_time,
       reschedule_reason,
       notes,
+      source,
       status,
       created_at,
       updated_at,
       clinics (
+        id,
         slug,
         clinic_translations (
           locale,
@@ -233,7 +369,9 @@ export default async function DoctorAppointmentsPage() {
   }
 
   const appointments =
-    (data as unknown as Appointment[] | null) ?? [];
+    (appointmentsData as unknown as
+      | Appointment[]
+      | null) ?? [];
 
   return (
     <main className="min-h-screen bg-gray-50 px-6 py-12">
@@ -248,8 +386,9 @@ export default async function DoctorAppointmentsPage() {
           </h1>
 
           <p className="mt-3 text-gray-600">
-            Bun venit, {displayName}. Aici poți confirma, reprograma,
-            finaliza sau anula programările pacienților tăi.
+            Bun venit, {displayName}. Aici poți crea, confirma,
+            reprograma, finaliza sau anula programările pacienților
+            tăi.
           </p>
         </header>
 
@@ -257,192 +396,222 @@ export default async function DoctorAppointmentsPage() {
           <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900">
             Profilul tău de medic are momentan starea{" "}
             <strong>{doctor.status}</strong>. Poți vedea programările
-            existente, dar activarea publică a profilului este gestionată
-            separat de administrator.
+            existente, dar activarea publică a profilului este
+            gestionată separat de administrator.
           </div>
         )}
 
+        <CreateAppointmentForm
+          clinics={clinicOptions}
+        />
+
         <section className="mt-10">
+          <div className="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                Lista programărilor
+              </h2>
+
+              <p className="mt-1 text-sm text-gray-600">
+                {appointments.length === 1
+                  ? "1 programare"
+                  : `${appointments.length} programări`}
+              </p>
+            </div>
+          </div>
+
           {appointmentsError ? (
             <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-red-800 shadow-sm">
-              Programările nu au putut fi încărcate. Verifică politicile
-              Supabase și încearcă din nou.
+              Programările nu au putut fi încărcate. Verifică
+              politicile Supabase și încearcă din nou.
             </div>
           ) : appointments.length > 0 ? (
             <div className="space-y-5">
-              {appointments.map((appointment: Appointment) => {
-                const clinic = getFirstRelation(
-                  appointment.clinics
-                );
+              {appointments.map(
+                (appointment: Appointment) => {
+                  const clinic =
+                    getFirstRelation(
+                      appointment.clinics
+                    );
 
-                const clinicTranslation =
-                  clinic?.clinic_translations?.find(
-                    (translation: ClinicTranslation) =>
-                      translation.locale === "ro"
-                  );
+                  return (
+                    <article
+                      key={appointment.id}
+                      className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+                    >
+                      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+                        <div>
+                          <h3 className="text-xl font-semibold text-gray-900">
+                            {appointment.patient_name}
+                          </h3>
 
-                return (
-                  <article
-                    key={appointment.id}
-                    className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
-                  >
-                    <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-                      <div>
-                        <h2 className="text-xl font-semibold text-gray-900">
-                          {appointment.patient_name}
-                        </h2>
+                          <p className="mt-1 text-sm text-gray-500">
+                            Creată la{" "}
+                            {formatCreatedAt(
+                              appointment.created_at
+                            )}
+                          </p>
+                        </div>
 
-                        <p className="mt-1 text-sm text-gray-500">
-                          Cerere trimisă la{" "}
-                          {formatCreatedAt(
-                            appointment.created_at
-                          )}
-                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <span className="w-fit rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
+                            {getSourceLabel(
+                              appointment.source
+                            )}
+                          </span>
+
+                          <span
+                            className={`w-fit rounded-full px-3 py-1 text-sm font-medium ${getStatusClasses(
+                              appointment.status
+                            )}`}
+                          >
+                            {getStatusLabel(
+                              appointment.status
+                            )}
+                          </span>
+                        </div>
                       </div>
 
-                      <span
-                        className={`w-fit rounded-full px-3 py-1 text-sm font-medium ${getStatusClasses(
-                          appointment.status
-                        )}`}
-                      >
-                        {getStatusLabel(
-                          appointment.status
-                        )}
-                      </span>
-                    </div>
-
-                    <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          Clinica
-                        </p>
-
-                        <p className="mt-1 text-gray-900">
-                          {clinicTranslation?.name ??
-                            "Clinică indisponibilă"}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          Data solicitată
-                        </p>
-
-                        <p className="mt-1 text-gray-900">
-                          {formatDate(
-                            appointment.requested_date
-                          )}
-
-                          {appointment.requested_time
-                            ? `, ${appointment.requested_time.slice(
-                                0,
-                                5
-                              )}`
-                            : ""}
-                        </p>
-                      </div>
-
-                      {appointment.scheduled_date && (
+                      <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                            Data confirmată
+                            Clinica
                           </p>
 
-                          <p className="mt-1 font-medium text-gray-900">
+                          <p className="mt-1 text-gray-900">
+                            {getClinicName(
+                              clinic
+                            )}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            Data solicitată
+                          </p>
+
+                          <p className="mt-1 text-gray-900">
                             {formatDate(
-                              appointment.scheduled_date
+                              appointment.requested_date
                             )}
 
-                            {appointment.scheduled_time
-                              ? `, ${appointment.scheduled_time.slice(
+                            {appointment.requested_time
+                              ? `, ${appointment.requested_time.slice(
                                   0,
                                   5
                                 )}`
                               : ""}
                           </p>
                         </div>
+
+                        {appointment.scheduled_date && (
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                              Data confirmată
+                            </p>
+
+                            <p className="mt-1 font-medium text-gray-900">
+                              {formatDate(
+                                appointment.scheduled_date
+                              )}
+
+                              {appointment.scheduled_time
+                                ? `, ${appointment.scheduled_time.slice(
+                                    0,
+                                    5
+                                  )}`
+                                : ""}
+                            </p>
+                          </div>
+                        )}
+
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            Telefon
+                          </p>
+
+                          <a
+                            href={`tel:${appointment.patient_phone.replace(
+                              /\s+/g,
+                              ""
+                            )}`}
+                            className="mt-1 block text-gray-900 underline-offset-4 hover:underline"
+                          >
+                            {appointment.patient_phone}
+                          </a>
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            E-mail
+                          </p>
+
+                          <a
+                            href={`mailto:${appointment.patient_email}`}
+                            className="mt-1 block break-all text-gray-900 underline-offset-4 hover:underline"
+                          >
+                            {appointment.patient_email}
+                          </a>
+                        </div>
+                      </div>
+
+                      {appointment.notes && (
+                        <div className="mt-6 rounded-xl bg-gray-50 p-4">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            Observații
+                          </p>
+
+                          <p className="mt-2 whitespace-pre-wrap text-gray-700">
+                            {appointment.notes}
+                          </p>
+                        </div>
                       )}
 
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          Telefon
-                        </p>
+                      {appointment.reschedule_reason && (
+                        <div className="mt-4 rounded-xl bg-blue-50 p-4">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                            Motivul reprogramării
+                          </p>
 
-                        <a
-                          href={`tel:${appointment.patient_phone.replace(
-                            /\s+/g,
-                            ""
-                          )}`}
-                          className="mt-1 block text-gray-900 underline-offset-4 hover:underline"
-                        >
-                          {appointment.patient_phone}
-                        </a>
-                      </div>
+                          <p className="mt-2 whitespace-pre-wrap text-blue-900">
+                            {
+                              appointment.reschedule_reason
+                            }
+                          </p>
+                        </div>
+                      )}
 
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          E-mail
-                        </p>
-
-                        <a
-                          href={`mailto:${appointment.patient_email}`}
-                          className="mt-1 block break-all text-gray-900 underline-offset-4 hover:underline"
-                        >
-                          {appointment.patient_email}
-                        </a>
-                      </div>
-                    </div>
-
-                    {appointment.notes && (
-                      <div className="mt-6 rounded-xl bg-gray-50 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          Mesaj pacient
-                        </p>
-
-                        <p className="mt-2 whitespace-pre-wrap text-gray-700">
-                          {appointment.notes}
-                        </p>
-                      </div>
-                    )}
-
-                    {appointment.reschedule_reason && (
-                      <div className="mt-4 rounded-xl bg-blue-50 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                          Motivul reprogramării
-                        </p>
-
-                        <p className="mt-2 whitespace-pre-wrap text-blue-900">
-                          {appointment.reschedule_reason}
-                        </p>
-                      </div>
-                    )}
-
-                    <AppointmentActions
-                      appointmentId={appointment.id}
-                      currentStatus={appointment.status}
-                      requestedDate={
-                        appointment.requested_date
-                      }
-                      requestedTime={
-                        appointment.requested_time
-                      }
-                      scheduledDate={
-                        appointment.scheduled_date
-                      }
-                      scheduledTime={
-                        appointment.scheduled_time
-                      }
-                      currentReason={
-                        appointment.reschedule_reason
-                      }
-                    />
-                  </article>
-                );
-              })}
+                      <AppointmentActions
+                        appointmentId={
+                          appointment.id
+                        }
+                        currentStatus={
+                          appointment.status
+                        }
+                        requestedDate={
+                          appointment.requested_date
+                        }
+                        requestedTime={
+                          appointment.requested_time
+                        }
+                        scheduledDate={
+                          appointment.scheduled_date
+                        }
+                        scheduledTime={
+                          appointment.scheduled_time
+                        }
+                        currentReason={
+                          appointment.reschedule_reason
+                        }
+                      />
+                    </article>
+                  );
+                }
+              )}
             </div>
           ) : (
             <div className="rounded-2xl border border-gray-200 bg-white p-8 text-gray-600 shadow-sm">
-              Nu există încă cereri de programare pentru profilul tău.
+              Nu există încă programări pentru profilul tău.
             </div>
           )}
         </section>
