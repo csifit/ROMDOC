@@ -1,41 +1,74 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
+import DoctorDashboardSidebar from "@/components/dashboard/doctor-dashboard-sidebar";
+import { createClient } from "@/lib/supabase/server";
 
 type DoctorDashboardLayoutProps = {
   children: ReactNode;
 };
 
-export default function DoctorDashboardLayout({
+export default async function DoctorDashboardLayout({
   children,
 }: DoctorDashboardLayoutProps) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    redirect("/login");
+  }
+
+  const {
+    data: profile,
+    error: profileError,
+  } = await supabase
+    .from("profiles")
+    .select(
+      "role, first_name, last_name"
+    )
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    console.error(
+      "Doctor dashboard layout profile query failed:",
+      profileError
+    );
+  }
+
+  if (
+    !profile ||
+    profile.role !== "doctor"
+  ) {
+    redirect("/");
+  }
+
+  const fullName = [
+    profile.first_name,
+    profile.last_name,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  const userName =
+    fullName ||
+    user.email?.split("@")[0] ||
+    "Medic RomDoc";
+
+  const userEmail =
+    user.email ?? "E-mail indisponibil";
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-6 py-4">
-          <Link
-            href="/doctor-dashboard/appointments"
-            className="rounded-xl px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-[#F0EEE9] hover:text-gray-950"
-          >
-            Lista programărilor
-          </Link>
-
-          <Link
-            href="/doctor-dashboard/calendar"
-            className="rounded-xl px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-[#F0EEE9] hover:text-gray-950"
-          >
-            Calendar
-          </Link>
-
-          <Link
-            href="/"
-            className="ml-auto rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-          >
-            Pagina principală
-          </Link>
-        </div>
-      </nav>
-
+    <DoctorDashboardSidebar
+      userName={userName}
+      userEmail={userEmail}
+      roleLabel="Medic"
+    >
       {children}
-    </div>
+    </DoctorDashboardSidebar>
   );
 }
