@@ -1,12 +1,12 @@
 -- =====================================================
 -- ROMDOC MVP DATABASE SCHEMA
--- Version: 1.1
+-- Version: 1.2
 --
 -- File:
 -- ROMDOC/database/01-romdoc-schema.sql
 --
--- This is the consolidated schema used when creating
--- a new RomDoc database from scratch.
+-- Consolidated schema for creating a new RomDoc
+-- database from scratch.
 -- =====================================================
 
 create extension if not exists pgcrypto;
@@ -221,7 +221,7 @@ create table public.doctors (
 );
 
 comment on column public.doctors.profile_id is
-  'Authenticated profile that owns this doctor record. NULL means that the doctor listing has not been connected to a dashboard account.';
+  'Authenticated profile that owns this doctor record. NULL means the doctor listing has not been connected to a dashboard account.';
 
 -- =====================================================
 -- DOCTOR TRANSLATIONS
@@ -340,6 +340,23 @@ create table public.appointments (
     references public.clinics(id)
     on delete set null,
 
+  created_by_profile_id uuid
+    references public.profiles(id)
+    on update cascade
+    on delete set null,
+
+  source text not null default 'online'
+    constraint appointments_source_check
+    check (
+      source in (
+        'online',
+        'phone',
+        'walk_in',
+        'email',
+        'other'
+      )
+    ),
+
   patient_name text not null,
 
   patient_email text not null,
@@ -374,6 +391,12 @@ create table public.appointments (
   updated_at timestamptz not null default now()
 );
 
+comment on column public.appointments.source is
+  'How the appointment was received: online, phone, walk_in, email, or other.';
+
+comment on column public.appointments.created_by_profile_id is
+  'Authenticated profile that manually created the appointment. NULL for unauthenticated public requests or when the creator no longer exists.';
+
 -- =====================================================
 -- INDEXES
 -- =====================================================
@@ -399,9 +422,6 @@ on public.doctors(status);
 create index idx_doctor_rating
 on public.doctors(average_rating);
 
--- Multiple unclaimed doctor listings may have NULL profile_id.
--- A claimed profile may own only one doctor record.
-
 create unique index idx_doctors_profile_unique
 on public.doctors(profile_id)
 where profile_id is not null;
@@ -414,6 +434,12 @@ on public.appointments(doctor_id);
 
 create index idx_appointments_clinic
 on public.appointments(clinic_id);
+
+create index idx_appointments_source
+on public.appointments(source);
+
+create index idx_appointments_created_by_profile
+on public.appointments(created_by_profile_id);
 
 create index idx_reviews_doctor
 on public.reviews(doctor_id);
