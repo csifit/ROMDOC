@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { createClient } from "@/lib/supabase/server";
 import { authorizeAppointmentAccess } from "@/lib/appointments/authorize-appointment-access";
+import {
+  sendAppointmentStatusEmail,
+  type PatientNotificationStatus,
+} from "@/lib/appointments/send-appointment-status-email";
 
 type AppointmentRequestBody = {
   doctorId?: string;
@@ -30,12 +34,60 @@ type AppointmentUpdateBody = {
   rescheduleReason?: string | null;
 };
 
+type DoctorRelation = {
+  slug: string;
+};
+
+type ClinicTranslation = {
+  locale: string;
+  name: string;
+};
+
+type ClinicRelation = {
+  slug: string;
+  clinic_translations: ClinicTranslation[] | null;
+};
+
+type AppointmentNotificationData = {
+  id: string;
+  patient_name: string;
+  patient_email: string;
+  scheduled_date: string | null;
+  scheduled_time: string | null;
+  reschedule_reason: string | null;
+  doctors: DoctorRelation | DoctorRelation[] | null;
+  clinics: ClinicRelation | ClinicRelation[] | null;
+};
+
 const allowedUpdateStatuses: AppointmentUpdateStatus[] = [
   "confirmed",
   "rescheduled",
   "completed",
   "cancelled",
 ];
+
+function getFirstRelation<T>(
+  relation: T | T[] | null | undefined
+): T | null {
+  if (!relation) {
+    return null;
+  }
+
+  if (Array.isArray(relation)) {
+    return relation[0] ?? null;
+  }
+
+  return relation;
+}
+
+function formatNameFromSlug(slug: string) {
+  return slug
+    .split("-")
+    .map((part: string) => {
+      return part.charAt(0).toUpperCase() + part.slice(1);
+    })
+    .join(" ");
+}
 
 function formatAppointmentDate(date: string) {
   return new Intl.DateTimeFormat("ro-RO", {
@@ -108,7 +160,7 @@ function normalizeTime(value: string) {
 /**
  * Public appointment-request endpoint.
  *
- * This remains available to patients who are not authenticated.
+ * Patients do not need to be logged in to submit a request.
  */
 export async function POST(request: Request) {
   try {
@@ -119,13 +171,17 @@ export async function POST(request: Request) {
     const doctorName = body.doctorName?.trim();
     const clinicName = body.clinicName?.trim();
     const patientName = body.patientName?.trim();
+
     const patientEmail = body.patientEmail
       ?.trim()
       .toLowerCase();
+
     const patientPhone = body.patientPhone?.trim();
     const requestedDate = body.requestedDate?.trim();
+
     const requestedTime =
       body.requestedTime?.trim() || null;
+
     const notes = body.notes?.trim() || null;
 
     if (
@@ -140,7 +196,8 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json(
         {
-          error: "Completează toate câmpurile obligatorii.",
+          error:
+            "Completează toate câmpurile obligatorii.",
         },
         {
           status: 400,
@@ -162,7 +219,8 @@ export async function POST(request: Request) {
     if (!patientEmail.includes("@")) {
       return NextResponse.json(
         {
-          error: "Introdu o adresă de e-mail validă.",
+          error:
+            "Introdu o adresă de e-mail validă.",
         },
         {
           status: 400,
@@ -173,7 +231,8 @@ export async function POST(request: Request) {
     if (patientPhone.length < 7) {
       return NextResponse.json(
         {
-          error: "Introdu un număr de telefon valid.",
+          error:
+            "Introdu un număr de telefon valid.",
         },
         {
           status: 400,
@@ -184,7 +243,8 @@ export async function POST(request: Request) {
     if (!isTodayOrFuture(requestedDate)) {
       return NextResponse.json(
         {
-          error: "Selectează o dată validă din viitor.",
+          error:
+            "Selectează o dată validă din viitor.",
         },
         {
           status: 400,
@@ -240,7 +300,8 @@ export async function POST(request: Request) {
     if (!doctor) {
       return NextResponse.json(
         {
-          error: "Medicul selectat nu este disponibil.",
+          error:
+            "Medicul selectat nu este disponibil.",
         },
         {
           status: 400,
@@ -345,7 +406,10 @@ export async function POST(request: Request) {
     const safeDoctorName = escapeHtml(doctorName);
     const safeClinicName = escapeHtml(clinicName);
     const safePatientPhone = escapeHtml(patientPhone);
-    const safeNotes = notes ? escapeHtml(notes) : null;
+
+    const safeNotes = notes
+      ? escapeHtml(notes)
+      : null;
 
     const formattedDate =
       formatAppointmentDate(requestedDate);
@@ -364,6 +428,7 @@ export async function POST(request: Request) {
           <html lang="ro">
             <head>
               <meta charset="utf-8" />
+              <meta name="viewport" content="width=device-width" />
             </head>
 
             <body
@@ -404,8 +469,9 @@ export async function POST(request: Request) {
                   </p>
 
                   <p style="line-height: 1.7;">
-                    Am primit cererea ta de programare. Clinica te va
-                    contacta pentru confirmarea datei și orei.
+                    Am primit cererea ta de programare.
+                    Clinica te va contacta pentru confirmarea
+                    datei și orei.
                   </p>
 
                   <div
@@ -417,11 +483,13 @@ export async function POST(request: Request) {
                     "
                   >
                     <p style="margin: 0 0 10px;">
-                      <strong>Medic:</strong> ${safeDoctorName}
+                      <strong>Medic:</strong>
+                      ${safeDoctorName}
                     </p>
 
                     <p style="margin: 0 0 10px;">
-                      <strong>Clinică:</strong> ${safeClinicName}
+                      <strong>Clinică:</strong>
+                      ${safeClinicName}
                     </p>
 
                     <p style="margin: 0 0 10px;">
@@ -467,8 +535,8 @@ export async function POST(request: Request) {
                       line-height: 1.7;
                     "
                   >
-                    Aceasta nu este încă o confirmare finală a
-                    programării.
+                    Aceasta nu este încă o confirmare
+                    finală a programării.
                   </p>
 
                   <p
@@ -489,7 +557,7 @@ export async function POST(request: Request) {
 
     if (emailError) {
       console.error(
-        "Appointment confirmation email failed:",
+        "Appointment request email failed:",
         emailError
       );
 
@@ -506,7 +574,10 @@ export async function POST(request: Request) {
       emailSent: true,
     });
   } catch (error) {
-    console.error("Appointment POST API failed:", error);
+    console.error(
+      "Appointment POST API failed:",
+      error
+    );
 
     return NextResponse.json(
       {
@@ -525,13 +596,16 @@ export async function POST(request: Request) {
  *
  * Used by:
  * - /admin/appointments
- * - the future /doctor-dashboard/appointments
+ * - /doctor-dashboard/appointments
  */
 export async function PATCH(request: Request) {
   try {
-    const body = (await request.json()) as AppointmentUpdateBody;
+    const body =
+      (await request.json()) as AppointmentUpdateBody;
 
-    const appointmentId = body.appointmentId?.trim();
+    const appointmentId =
+      body.appointmentId?.trim();
+
     const status = body.status;
 
     if (!appointmentId || !status) {
@@ -549,7 +623,8 @@ export async function PATCH(request: Request) {
     if (!allowedUpdateStatuses.includes(status)) {
       return NextResponse.json(
         {
-          error: "Starea programării nu este validă.",
+          error:
+            "Starea programării nu este validă.",
         },
         {
           status: 400,
@@ -559,10 +634,11 @@ export async function PATCH(request: Request) {
 
     const supabase = await createClient();
 
-    const access = await authorizeAppointmentAccess(
-      supabase,
-      appointmentId
-    );
+    const access =
+      await authorizeAppointmentAccess(
+        supabase,
+        appointmentId
+      );
 
     if (!access.authorized) {
       return NextResponse.json(
@@ -624,7 +700,8 @@ export async function PATCH(request: Request) {
       if (!scheduledTime) {
         return NextResponse.json(
           {
-            error: "Ora programării nu este validă.",
+            error:
+              "Ora programării nu este validă.",
           },
           {
             status: 400,
@@ -693,12 +770,111 @@ export async function PATCH(request: Request) {
       );
     }
 
+    if (status === "completed") {
+      return NextResponse.json({
+        success: true,
+        appointment: updatedAppointment,
+        emailSent: null,
+      });
+    }
+
+    const {
+      data: notificationData,
+      error: notificationDataError,
+    } = await supabase
+      .from("appointments")
+      .select(`
+        id,
+        patient_name,
+        patient_email,
+        scheduled_date,
+        scheduled_time,
+        reschedule_reason,
+        doctors (
+          slug
+        ),
+        clinics (
+          slug,
+          clinic_translations (
+            locale,
+            name
+          )
+        )
+      `)
+      .eq("id", appointmentId)
+      .single();
+
+    if (notificationDataError || !notificationData) {
+      console.error(
+        "Appointment was updated, but notification data could not be loaded:",
+        notificationDataError
+      );
+
+      return NextResponse.json({
+        success: true,
+        appointment: updatedAppointment,
+        emailSent: false,
+      });
+    }
+
+    const appointmentForEmail =
+      notificationData as unknown as AppointmentNotificationData;
+
+    const doctor = getFirstRelation(
+      appointmentForEmail.doctors
+    );
+
+    const clinic = getFirstRelation(
+      appointmentForEmail.clinics
+    );
+
+    const romanianClinicTranslation =
+      clinic?.clinic_translations?.find(
+        (translation: ClinicTranslation) =>
+          translation.locale === "ro"
+      );
+
+    const fallbackClinicTranslation =
+      clinic?.clinic_translations?.[0];
+
+    const doctorName = doctor
+      ? formatNameFromSlug(doctor.slug)
+      : "Medicul RomDoc";
+
+    const clinicName =
+      romanianClinicTranslation?.name ??
+      fallbackClinicTranslation?.name ??
+      (clinic
+        ? formatNameFromSlug(clinic.slug)
+        : "Clinica RomDoc");
+
+    const emailResult =
+      await sendAppointmentStatusEmail({
+        status: status as PatientNotificationStatus,
+        patientName:
+          appointmentForEmail.patient_name,
+        patientEmail:
+          appointmentForEmail.patient_email,
+        doctorName,
+        clinicName,
+        scheduledDate:
+          appointmentForEmail.scheduled_date,
+        scheduledTime:
+          appointmentForEmail.scheduled_time,
+        rescheduleReason:
+          appointmentForEmail.reschedule_reason,
+      });
+
     return NextResponse.json({
       success: true,
       appointment: updatedAppointment,
+      emailSent: emailResult.sent,
     });
   } catch (error) {
-    console.error("Appointment PATCH API failed:", error);
+    console.error(
+      "Appointment PATCH API failed:",
+      error
+    );
 
     return NextResponse.json(
       {

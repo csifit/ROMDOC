@@ -25,6 +25,7 @@ type AppointmentUpdateStatus =
 type AppointmentUpdateResponse = {
   success?: boolean;
   error?: string;
+  emailSent?: boolean | null;
 };
 
 export default function AppointmentActions({
@@ -58,6 +59,9 @@ export default function AppointmentActions({
   const [message, setMessage] =
     useState("");
 
+  const [warningMessage, setWarningMessage] =
+    useState("");
+
   const [errorMessage, setErrorMessage] =
     useState("");
 
@@ -69,6 +73,7 @@ export default function AppointmentActions({
     status: AppointmentUpdateStatus
   ) {
     setMessage("");
+    setWarningMessage("");
     setErrorMessage("");
 
     if (
@@ -152,6 +157,16 @@ export default function AppointmentActions({
       };
 
       setMessage(successMessages[status]);
+
+      if (
+        status !== "completed" &&
+        result.emailSent === false
+      ) {
+        setWarningMessage(
+          "Modificarea a fost salvată, dar e-mailul către pacient nu a putut fi trimis."
+        );
+      }
+
       router.refresh();
     } catch (error) {
       console.error(
@@ -273,6 +288,15 @@ export default function AppointmentActions({
             className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
           >
             {errorMessage}
+          </div>
+        )}
+
+        {warningMessage && (
+          <div
+            role="alert"
+            className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800"
+          >
+            {warningMessage}
           </div>
         )}
 
