@@ -1,6 +1,13 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import {
+  type FormEvent,
+  useCallback,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
+import AvailableSlotSelector from "@/components/appointments/available-slot-selector";
 
 type ClinicOption = {
   id: string;
@@ -14,362 +21,545 @@ type AppointmentRequestFormProps = {
   clinics: ClinicOption[];
 };
 
-type FormState = {
-  clinicId: string;
-  patientName: string;
-  patientEmail: string;
-  patientPhone: string;
-  requestedDate: string;
-  requestedTime: string;
-  notes: string;
+type AppointmentApiResponse = {
+  success?: boolean;
+  appointmentId?: string;
+  emailSent?: boolean;
+  error?: string;
 };
 
-const initialFormState: FormState = {
-  clinicId: "",
-  patientName: "",
-  patientEmail: "",
-  patientPhone: "",
-  requestedDate: "",
-  requestedTime: "",
-  notes: "",
-};
+function getLocalDateString(date: Date) {
+  const year = date.getFullYear();
+
+  const month = String(
+    date.getMonth() + 1
+  ).padStart(2, "0");
+
+  const day = String(
+    date.getDate()
+  ).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
 
 export default function AppointmentRequestForm({
   doctorId,
   doctorName,
   clinics,
 }: AppointmentRequestFormProps) {
-  const [form, setForm] = useState<FormState>({
-    ...initialFormState,
-    clinicId: clinics.length === 1 ? clinics[0].id : "",
-  });
+  const [isPending, startTransition] =
+    useTransition();
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
-
-  const today = new Date().toISOString().split("T")[0];
-
-  function updateField(field: keyof FormState, value: string) {
-    setForm((current) => ({
-      ...current,
-      [field]: value,
-    }));
-  }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    setSuccessMessage("");
-    setErrorMessage("");
-
-    if (!form.clinicId) {
-      setErrorMessage("Selectează clinica pentru programare.");
-      return;
-    }
-
-    if (form.patientName.trim().length < 2) {
-      setErrorMessage("Introdu un nume valid.");
-      return;
-    }
-
-    if (!form.patientEmail.includes("@")) {
-      setErrorMessage("Introdu o adresă de e-mail validă.");
-      return;
-    }
-
-    if (form.patientPhone.trim().length < 7) {
-      setErrorMessage("Introdu un număr de telefon valid.");
-      return;
-    }
-
-    if (!form.requestedDate) {
-      setErrorMessage("Selectează data dorită.");
-      return;
-    }
-
-    const selectedClinic = clinics.find(
-      (clinic: ClinicOption) => clinic.id === form.clinicId
+  const [clinicId, setClinicId] =
+    useState(
+      clinics.length === 1
+        ? clinics[0].id
+        : ""
     );
 
-    if (!selectedClinic) {
-      setErrorMessage("Clinica selectată nu este validă.");
+  const [patientName, setPatientName] =
+    useState("");
+
+  const [patientEmail, setPatientEmail] =
+    useState("");
+
+  const [patientPhone, setPatientPhone] =
+    useState("");
+
+  const [requestedDate, setRequestedDate] =
+    useState("");
+
+  const [requestedTime, setRequestedTime] =
+    useState("");
+
+  const [
+    durationMinutes,
+    setDurationMinutes,
+  ] = useState(30);
+
+  const [notes, setNotes] =
+    useState("");
+
+  const [message, setMessage] =
+    useState<string | null>(null);
+
+  const [error, setError] =
+    useState<string | null>(null);
+
+  const today = useMemo(
+    () => getLocalDateString(new Date()),
+    []
+  );
+
+  const maximumDate = useMemo(() => {
+    const date = new Date();
+
+    date.setDate(
+      date.getDate() + 180
+    );
+
+    return getLocalDateString(date);
+  }, []);
+
+  const selectedClinic =
+    clinics.find(
+      (clinic) =>
+        clinic.id === clinicId
+    ) ?? null;
+
+  const handleTimeChange = useCallback(
+    (
+      time: string,
+      selectedDuration: number
+    ) => {
+      setRequestedTime(time);
+
+      if (selectedDuration > 0) {
+        setDurationMinutes(
+          selectedDuration
+        );
+      }
+    },
+    []
+  );
+
+  function resetForm() {
+    setClinicId(
+      clinics.length === 1
+        ? clinics[0].id
+        : ""
+    );
+
+    setPatientName("");
+    setPatientEmail("");
+    setPatientPhone("");
+    setRequestedDate("");
+    setRequestedTime("");
+    setDurationMinutes(30);
+    setNotes("");
+  }
+
+  function handleSubmit(
+    event: FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    setMessage(null);
+    setError(null);
+
+    if (!clinicId) {
+      setError(
+        "Selectează clinica."
+      );
+
       return;
     }
 
-    setIsSubmitting(true);
-
-    try {
-      const response = await fetch("/api/appointments", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          doctorId,
-          clinicId: form.clinicId,
-          doctorName,
-          clinicName: selectedClinic.name,
-          patientName: form.patientName,
-          patientEmail: form.patientEmail,
-          patientPhone: form.patientPhone,
-          requestedDate: form.requestedDate,
-          requestedTime: form.requestedTime,
-          notes: form.notes,
-        }),
-      });
-
-      const result = (await response.json()) as {
-        success?: boolean;
-        emailSent?: boolean;
-        error?: string;
-      };
-
-      if (!response.ok || !result.success) {
-        setErrorMessage(
-          result.error ??
-            "Cererea nu a putut fi trimisă. Încearcă din nou."
-        );
-        return;
-      }
-
-      if (result.emailSent) {
-        setSuccessMessage(
-          `Cererea pentru ${doctorName} a fost trimisă. Am trimis și un e-mail de confirmare. Clinica te va contacta pentru confirmarea programării.`
-        );
-      } else {
-        setSuccessMessage(
-          `Cererea pentru ${doctorName} a fost salvată. Clinica te va contacta pentru confirmarea programării.`
-        );
-      }
-
-      setForm({
-        ...initialFormState,
-        clinicId: clinics.length === 1 ? clinics[0].id : "",
-      });
-    } catch (error) {
-      console.error("Appointment request failed:", error);
-
-      setErrorMessage(
-        "Cererea nu a putut fi trimisă. Verifică conexiunea și încearcă din nou."
+    if (!selectedClinic) {
+      setError(
+        "Clinica selectată nu este validă."
       );
-    } finally {
-      setIsSubmitting(false);
+
+      return;
     }
+
+    if (
+      patientName.trim().length < 2
+    ) {
+      setError(
+        "Introdu un nume valid."
+      );
+
+      return;
+    }
+
+    if (
+      !patientEmail
+        .trim()
+        .includes("@")
+    ) {
+      setError(
+        "Introdu o adresă de e-mail validă."
+      );
+
+      return;
+    }
+
+    if (
+      patientPhone.trim().length < 7
+    ) {
+      setError(
+        "Introdu un număr de telefon valid."
+      );
+
+      return;
+    }
+
+    if (!requestedDate) {
+      setError(
+        "Selectează data programării."
+      );
+
+      return;
+    }
+
+    if (
+      requestedDate < today ||
+      requestedDate > maximumDate
+    ) {
+      setError(
+        "Selectează o dată validă pentru programare."
+      );
+
+      return;
+    }
+
+    if (!requestedTime) {
+      setError(
+        "Selectează una dintre orele disponibile."
+      );
+
+      return;
+    }
+
+    if (
+      !Number.isInteger(
+        durationMinutes
+      ) ||
+      durationMinutes < 5
+    ) {
+      setError(
+        "Durata programării nu este validă."
+      );
+
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        const response = await fetch(
+          "/api/appointments",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              doctorId,
+              doctorName,
+
+              clinicId,
+              clinicName:
+                selectedClinic.name,
+
+              patientName:
+                patientName.trim(),
+
+              patientEmail:
+                patientEmail
+                  .trim()
+                  .toLowerCase(),
+
+              patientPhone:
+                patientPhone.trim(),
+
+              requestedDate,
+              requestedTime,
+              durationMinutes,
+
+              notes:
+                notes.trim() ||
+                null,
+            }),
+          }
+        );
+
+        const result =
+          (await response.json()) as AppointmentApiResponse;
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ??
+              "Cererea de programare nu a putut fi trimisă."
+          );
+        }
+
+        if (
+          result.emailSent === false
+        ) {
+          setMessage(
+            "Cererea a fost înregistrată, dar e-mailul de confirmare nu a putut fi trimis."
+          );
+        } else {
+          setMessage(
+            "Cererea de programare a fost trimisă. Vei primi un e-mail cu detaliile."
+          );
+        }
+
+        resetForm();
+      } catch (submitError) {
+        setError(
+          submitError instanceof Error
+            ? submitError.message
+            : "Cererea de programare nu a putut fi trimisă."
+        );
+      }
+    });
   }
 
   if (clinics.length === 0) {
     return (
-      <div className="rounded-xl border border-gray-200 bg-white p-6 text-gray-600">
-        Programările online nu sunt încă disponibile pentru acest medic.
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
+        Programările online nu sunt încă
+        disponibile pentru acest medic.
       </div>
     );
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8"
-    >
-      <h2 className="text-2xl font-semibold text-gray-900">
-        Solicită o programare
-      </h2>
+    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <header>
+        <p className="text-sm font-medium text-gray-500">
+          Programare online
+        </p>
 
-      <p className="mt-2 text-sm leading-6 text-gray-600">
-        Trimite cererea, iar clinica te va contacta pentru confirmarea
-        programării.
-      </p>
+        <h2 className="mt-2 text-2xl font-bold text-gray-900">
+          Solicită o programare
+        </h2>
 
-      <div className="mt-6 grid gap-5">
-        <div>
-          <label
-            htmlFor="clinic"
-            className="block text-sm font-medium text-gray-800"
-          >
+        <p className="mt-2 text-sm leading-6 text-gray-600">
+          Selectează clinica, data și una
+          dintre orele disponibile pentru{" "}
+          <strong>{doctorName}</strong>.
+        </p>
+      </header>
+
+      <form
+        onSubmit={handleSubmit}
+        className="mt-8 space-y-6"
+      >
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">
             Clinica
-          </label>
+          </span>
 
           <select
-            id="clinic"
-            value={form.clinicId}
-            onChange={(event) =>
-              updateField("clinicId", event.target.value)
-            }
             required
-            className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-gray-500"
-          >
-            <option value="">Selectează clinica</option>
+            value={clinicId}
+            disabled={
+              isPending ||
+              clinics.length === 1
+            }
+            onChange={(event) => {
+              setClinicId(
+                event.target.value
+              );
 
-            {clinics.map((clinic: ClinicOption) => (
-              <option key={clinic.id} value={clinic.id}>
-                {clinic.name}
-                {clinic.address ? ` — ${clinic.address}` : ""}
-              </option>
-            ))}
+              setRequestedTime("");
+              setDurationMinutes(30);
+              setMessage(null);
+              setError(null);
+            }}
+            className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:bg-gray-100 disabled:opacity-70"
+          >
+            <option value="">
+              Selectează clinica
+            </option>
+
+            {clinics.map(
+              (clinic: ClinicOption) => (
+                <option
+                  key={clinic.id}
+                  value={clinic.id}
+                >
+                  {clinic.name}
+                  {clinic.address
+                    ? ` — ${clinic.address}`
+                    : ""}
+                </option>
+              )
+            )}
           </select>
-        </div>
+        </label>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <div>
-            <label
-              htmlFor="patientName"
-              className="block text-sm font-medium text-gray-800"
-            >
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">
               Nume complet
-            </label>
+            </span>
 
             <input
-              id="patientName"
               type="text"
-              value={form.patientName}
-              onChange={(event) =>
-                updateField("patientName", event.target.value)
-              }
               required
+              minLength={2}
+              value={patientName}
+              disabled={isPending}
               autoComplete="name"
-              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-gray-500"
+              onChange={(event) =>
+                setPatientName(
+                  event.target.value
+                )
+              }
+              placeholder="Ex. Maria Popescu"
+              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:opacity-60"
             />
-          </div>
+          </label>
 
-          <div>
-            <label
-              htmlFor="patientEmail"
-              className="block text-sm font-medium text-gray-800"
-            >
-              E-mail
-            </label>
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">
+              Telefon
+            </span>
 
             <input
-              id="patientEmail"
-              type="email"
-              value={form.patientEmail}
-              onChange={(event) =>
-                updateField("patientEmail", event.target.value)
-              }
+              type="tel"
               required
-              autoComplete="email"
-              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-gray-500"
+              minLength={7}
+              value={patientPhone}
+              disabled={isPending}
+              autoComplete="tel"
+              onChange={(event) =>
+                setPatientPhone(
+                  event.target.value
+                )
+              }
+              placeholder="+40 700 000 000"
+              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:opacity-60"
             />
-          </div>
+          </label>
         </div>
 
-        <div>
-          <label
-            htmlFor="patientPhone"
-            className="block text-sm font-medium text-gray-800"
-          >
-            Telefon
-          </label>
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">
+            E-mail
+          </span>
 
           <input
-            id="patientPhone"
-            type="tel"
-            value={form.patientPhone}
-            onChange={(event) =>
-              updateField("patientPhone", event.target.value)
-            }
+            type="email"
             required
-            minLength={7}
-            autoComplete="tel"
-            inputMode="tel"
-            placeholder="+40 7..."
-            className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-gray-500"
+            value={patientEmail}
+            disabled={isPending}
+            autoComplete="email"
+            onChange={(event) =>
+              setPatientEmail(
+                event.target.value
+              )
+            }
+            placeholder="maria@example.com"
+            className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:opacity-60"
           />
+        </label>
 
-          <p className="mt-2 text-xs text-gray-500">
-            Numărul va fi folosit pentru confirmarea și notificarea
-            programării.
-          </p>
-        </div>
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">
+            Data programării
+          </span>
 
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div>
-            <label
-              htmlFor="requestedDate"
-              className="block text-sm font-medium text-gray-800"
-            >
-              Data dorită
-            </label>
+          <input
+            type="date"
+            required
+            min={today}
+            max={maximumDate}
+            value={requestedDate}
+            disabled={isPending}
+            onChange={(event) => {
+              setRequestedDate(
+                event.target.value
+              );
 
-            <input
-              id="requestedDate"
-              type="date"
-              min={today}
-              value={form.requestedDate}
-              onChange={(event) =>
-                updateField("requestedDate", event.target.value)
-              }
-              required
-              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-gray-500"
-            />
+              setRequestedTime("");
+              setDurationMinutes(30);
+              setMessage(null);
+              setError(null);
+            }}
+            className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:opacity-60"
+          />
+        </label>
+
+        <AvailableSlotSelector
+          doctorId={doctorId}
+          clinicId={clinicId}
+          date={requestedDate}
+          selectedTime={requestedTime}
+          disabled={isPending}
+          onTimeChange={
+            handleTimeChange
+          }
+        />
+
+        {requestedTime && (
+          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
+            <strong>
+              Interval selectat:
+            </strong>{" "}
+            {requestedDate},{" "}
+            {requestedTime}
+            {" — "}
+            {durationMinutes} minute
           </div>
+        )}
 
-          <div>
-            <label
-              htmlFor="requestedTime"
-              className="block text-sm font-medium text-gray-800"
-            >
-              Ora preferată
-            </label>
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">
+            Mesaj pentru medic
+          </span>
 
-            <input
-              id="requestedTime"
-              type="time"
-              value={form.requestedTime}
-              onChange={(event) =>
-                updateField("requestedTime", event.target.value)
-              }
-              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-gray-500"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label
-            htmlFor="notes"
-            className="block text-sm font-medium text-gray-800"
-          >
-            Mesaj opțional
-          </label>
+          <span className="ml-2 text-xs text-gray-500">
+            Opțional
+          </span>
 
           <textarea
-            id="notes"
-            rows={4}
-            value={form.notes}
+            value={notes}
+            disabled={isPending}
+            rows={5}
+            maxLength={2000}
             onChange={(event) =>
-              updateField("notes", event.target.value)
+              setNotes(
+                event.target.value
+              )
             }
-            placeholder="Poți adăuga informații utile pentru clinică."
-            className="mt-2 w-full resize-y rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-gray-500"
+            placeholder="Descrie pe scurt motivul consultației sau alte informații relevante."
+            className="mt-2 w-full resize-y rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:opacity-60"
           />
-        </div>
-      </div>
 
-      {errorMessage && (
-        <div
-          role="alert"
-          className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+          <span className="mt-1 block text-right text-xs text-gray-500">
+            {notes.length} / 2000
+          </span>
+        </label>
+
+        {message && (
+          <div
+            role="status"
+            className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
+          >
+            {message}
+          </div>
+        )}
+
+        {error && (
+          <div
+            role="alert"
+            className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+          >
+            {error}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={
+            isPending ||
+            !clinicId ||
+            !requestedDate ||
+            !requestedTime
+          }
+          className="w-full rounded-xl bg-[#D97757] px-5 py-3.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {errorMessage}
-        </div>
-      )}
-
-      {successMessage && (
-        <div
-          role="status"
-          className="mt-5 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800"
-        >
-          {successMessage}
-        </div>
-      )}
-
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="mt-6 rounded-xl bg-[#D97757] px-6 py-3 font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {isSubmitting ? "Se trimite..." : "Trimite cererea"}
-      </button>
-    </form>
+          {isPending
+            ? "Se trimite cererea..."
+            : "Trimite cererea de programare"}
+        </button>
+      </form>
+    </div>
   );
 }
