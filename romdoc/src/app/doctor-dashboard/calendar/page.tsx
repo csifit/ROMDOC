@@ -11,7 +11,9 @@ type ClinicTranslation = {
 
 type ClinicRelation = {
   slug: string;
-  clinic_translations: ClinicTranslation[] | null;
+  clinic_translations:
+    | ClinicTranslation[]
+    | null;
 };
 
 type CalendarAppointmentRow = {
@@ -19,14 +21,22 @@ type CalendarAppointmentRow = {
   patient_name: string;
   patient_email: string;
   patient_phone: string;
+
   requested_date: string | null;
   requested_time: string | null;
+
   scheduled_date: string | null;
   scheduled_time: string | null;
+
+  reschedule_reason: string | null;
   status: string;
   source: string;
   notes: string | null;
-  clinics: ClinicRelation | ClinicRelation[] | null;
+
+  clinics:
+    | ClinicRelation
+    | ClinicRelation[]
+    | null;
 };
 
 function getFirstRelation<T>(
@@ -43,7 +53,9 @@ function getFirstRelation<T>(
   return relation;
 }
 
-function formatNameFromSlug(slug: string) {
+function formatNameFromSlug(
+  slug: string
+) {
   return slug
     .split("-")
     .map((part: string) => {
@@ -64,8 +76,9 @@ function getClinicName(
 
   const romanianTranslation =
     clinic.clinic_translations?.find(
-      (translation: ClinicTranslation) =>
-        translation.locale === "ro"
+      (
+        translation: ClinicTranslation
+      ) => translation.locale === "ro"
     );
 
   const fallbackTranslation =
@@ -107,7 +120,9 @@ export default async function DoctorCalendarPage() {
     error: profileError,
   } = await supabase
     .from("profiles")
-    .select("role, first_name, last_name")
+    .select(
+      "role, first_name, last_name"
+    )
     .eq("id", user.id)
     .maybeSingle();
 
@@ -118,7 +133,10 @@ export default async function DoctorCalendarPage() {
     );
   }
 
-  if (!profile || profile.role !== "doctor") {
+  if (
+    !profile ||
+    profile.role !== "doctor"
+  ) {
     redirect("/");
   }
 
@@ -143,7 +161,8 @@ export default async function DoctorCalendarPage() {
       <main className="px-6 py-12">
         <div className="mx-auto max-w-5xl">
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-amber-900">
-            Contul tău nu este asociat unui profil de medic.
+            Contul tău nu este asociat unui
+            profil de medic.
           </div>
         </div>
       </main>
@@ -164,6 +183,7 @@ export default async function DoctorCalendarPage() {
       requested_time,
       scheduled_date,
       scheduled_time,
+      reschedule_reason,
       status,
       source,
       notes,
@@ -178,9 +198,15 @@ export default async function DoctorCalendarPage() {
     .eq("doctor_id", doctor.id)
     .order("scheduled_date", {
       ascending: true,
+      nullsFirst: false,
     })
     .order("scheduled_time", {
       ascending: true,
+      nullsFirst: false,
+    })
+    .order("requested_date", {
+      ascending: true,
+      nullsFirst: false,
     });
 
   if (appointmentsError) {
@@ -200,34 +226,64 @@ export default async function DoctorCalendarPage() {
       .map(
         (
           row: CalendarAppointmentRow
-        ): DoctorCalendarAppointment | null => {
-          const date =
-            row.scheduled_date ??
-            row.requested_date;
-
-          const time =
-            row.scheduled_time ??
-            row.requested_time;
-
+        ):
+          | DoctorCalendarAppointment
+          | null => {
+          /*
+           * Public requests should already have a requested date.
+           * Manual appointments have both requested and scheduled
+           * dates populated.
+           */
           if (
-            !date ||
-            !isAppointmentStatus(row.status)
+            !row.requested_date ||
+            !isAppointmentStatus(
+              row.status
+            )
           ) {
             return null;
           }
 
-          const clinic = getFirstRelation(
-            row.clinics
-          );
+          const calendarDate =
+            row.scheduled_date ??
+            row.requested_date;
+
+          const calendarTime =
+            row.scheduled_time ??
+            row.requested_time;
+
+          const clinic =
+            getFirstRelation(
+              row.clinics
+            );
 
           return {
             id: row.id,
-            patientName: row.patient_name,
-            patientEmail: row.patient_email,
-            patientPhone: row.patient_phone,
-            clinicName: getClinicName(clinic),
-            date,
-            time,
+            patientName:
+              row.patient_name,
+            patientEmail:
+              row.patient_email,
+            patientPhone:
+              row.patient_phone,
+
+            clinicName:
+              getClinicName(clinic),
+
+            requestedDate:
+              row.requested_date,
+            requestedTime:
+              row.requested_time,
+
+            scheduledDate:
+              row.scheduled_date,
+            scheduledTime:
+              row.scheduled_time,
+
+            calendarDate,
+            calendarTime,
+
+            rescheduleReason:
+              row.reschedule_reason,
+
             status: row.status,
             source: row.source,
             notes: row.notes,
@@ -244,14 +300,17 @@ export default async function DoctorCalendarPage() {
       );
 
   const displayName =
-    profile.first_name || profile.last_name
+    profile.first_name ||
+    profile.last_name
       ? [
           profile.first_name,
           profile.last_name,
         ]
           .filter(Boolean)
           .join(" ")
-      : formatNameFromSlug(doctor.slug);
+      : formatNameFromSlug(
+          doctor.slug
+        );
 
   return (
     <main className="px-6 py-12">
@@ -266,26 +325,34 @@ export default async function DoctorCalendarPage() {
           </h1>
 
           <p className="mt-3 text-gray-600">
-            {displayName}, poți vizualiza programările
-            tale pe zi, săptămână, lună sau an.
+            {displayName}, poți vizualiza și
+            gestiona programările tale pe zi,
+            săptămână, lună sau an.
           </p>
         </header>
 
         {doctor.status !== "active" && (
           <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900">
-            Profilul medicului are momentan starea{" "}
-            <strong>{doctor.status}</strong>.
+            Profilul medicului are momentan
+            starea{" "}
+            <strong>
+              {doctor.status}
+            </strong>
+            .
           </div>
         )}
 
         <section className="mt-10">
           {appointmentsError ? (
             <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-red-800">
-              Calendarul nu a putut fi încărcat.
+              Calendarul nu a putut fi
+              încărcat.
             </div>
           ) : (
             <AppointmentCalendar
-              appointments={appointments}
+              appointments={
+                appointments
+              }
             />
           )}
         </section>

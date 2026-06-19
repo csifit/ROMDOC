@@ -12,6 +12,7 @@ import type {
   EventContentArg,
   EventInput,
 } from "@fullcalendar/core";
+import AppointmentActions from "@/components/admin/appointment-actions";
 
 type AppointmentStatus =
   | "pending"
@@ -26,8 +27,17 @@ export type DoctorCalendarAppointment = {
   patientEmail: string;
   patientPhone: string;
   clinicName: string;
-  date: string;
-  time: string | null;
+
+  requestedDate: string;
+  requestedTime: string | null;
+
+  scheduledDate: string | null;
+  scheduledTime: string | null;
+
+  calendarDate: string;
+  calendarTime: string | null;
+
+  rescheduleReason: string | null;
   status: AppointmentStatus;
   source: string;
   notes: string | null;
@@ -36,8 +46,6 @@ export type DoctorCalendarAppointment = {
 type AppointmentCalendarProps = {
   appointments: DoctorCalendarAppointment[];
 };
-
-type SelectedAppointment = DoctorCalendarAppointment | null;
 
 const statusColors: Record<
   AppointmentStatus,
@@ -54,24 +62,28 @@ const statusColors: Record<
     text: "#111827",
     label: "În așteptare",
   },
+
   confirmed: {
     background: "#16A34A",
     border: "#15803D",
     text: "#FFFFFF",
     label: "Confirmată",
   },
+
   rescheduled: {
     background: "#2563EB",
     border: "#1D4ED8",
     text: "#FFFFFF",
     label: "Reprogramată",
   },
+
   completed: {
     background: "#6B7280",
     border: "#4B5563",
     text: "#FFFFFF",
     label: "Finalizată",
   },
+
   cancelled: {
     background: "#DC2626",
     border: "#B91C1C",
@@ -105,7 +117,9 @@ function formatDate(date: string) {
 }
 
 function formatTime(time: string | null) {
-  return time ? time.slice(0, 5) : "Ora nespecificată";
+  return time
+    ? time.slice(0, 5)
+    : "Ora nespecificată";
 }
 
 function getSourceLabel(source: string) {
@@ -130,50 +144,98 @@ function getSourceLabel(source: string) {
 export default function AppointmentCalendar({
   appointments,
 }: AppointmentCalendarProps) {
-  const [selectedAppointment, setSelectedAppointment] =
-    useState<SelectedAppointment>(null);
+  /*
+   * We store only the selected appointment ID.
+   *
+   * After AppointmentActions calls router.refresh(), the server sends
+   * updated appointment data to this component. Deriving the selected
+   * appointment from the latest props prevents the details panel from
+   * keeping an outdated status or appointment time.
+   */
+  const [
+    selectedAppointmentId,
+    setSelectedAppointmentId,
+  ] = useState<string | null>(null);
+
+  const selectedAppointment = useMemo(() => {
+    if (!selectedAppointmentId) {
+      return null;
+    }
+
+    return (
+      appointments.find(
+        (appointment) =>
+          appointment.id === selectedAppointmentId
+      ) ?? null
+    );
+  }, [appointments, selectedAppointmentId]);
 
   const events = useMemo<EventInput[]>(() => {
     return appointments.map((appointment) => {
-      const colors = statusColors[appointment.status];
+      const colors =
+        statusColors[appointment.status];
 
       return {
         id: appointment.id,
         title: appointment.patientName,
-        start: `${appointment.date}T${normalizeTime(
-          appointment.time
+        start: `${
+          appointment.calendarDate
+        }T${normalizeTime(
+          appointment.calendarTime
         )}`,
         backgroundColor: colors.background,
         borderColor: colors.border,
         textColor: colors.text,
         extendedProps: {
-          appointment,
+          appointmentId: appointment.id,
+          status: appointment.status,
         },
       };
     });
   }, [appointments]);
 
-  function handleEventClick(clickInfo: EventClickArg) {
-    const appointment = clickInfo.event.extendedProps
-      .appointment as DoctorCalendarAppointment;
-
-    setSelectedAppointment(appointment);
+  function handleEventClick(
+    clickInfo: EventClickArg
+  ) {
+    setSelectedAppointmentId(
+      clickInfo.event.id
+    );
   }
 
-  function renderEventContent(eventInfo: EventContentArg) {
-    const appointment = eventInfo.event.extendedProps
-      .appointment as DoctorCalendarAppointment;
+  function renderEventContent(
+    eventInfo: EventContentArg
+  ) {
+    const appointment =
+      appointments.find(
+        (item) =>
+          item.id === eventInfo.event.id
+      ) ?? null;
 
-    if (eventInfo.view.type === "multiMonthYear") {
+    if (!appointment) {
+      return null;
+    }
+
+    /*
+     * The year view shows only status dots.
+     * Patient names remain hidden in the full-year overview.
+     */
+    if (
+      eventInfo.view.type ===
+      "multiMonthYear"
+    ) {
       return (
         <span
-          title={`${appointment.patientName} — ${
-            statusColors[appointment.status].label
-          }`}
+          title={
+            statusColors[
+              appointment.status
+            ].label
+          }
           className="block h-2.5 w-2.5 rounded-full"
           style={{
             backgroundColor:
-              statusColors[appointment.status].background,
+              statusColors[
+                appointment.status
+              ].background,
           }}
         />
       );
@@ -199,7 +261,9 @@ export default function AppointmentCalendar({
       <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
         <div className="mb-5 flex flex-wrap gap-3">
           {(
-            Object.entries(statusColors) as Array<
+            Object.entries(
+              statusColors
+            ) as Array<
               [
                 AppointmentStatus,
                 (typeof statusColors)[AppointmentStatus],
@@ -213,7 +277,8 @@ export default function AppointmentCalendar({
               <span
                 className="h-3 w-3 rounded-full"
                 style={{
-                  backgroundColor: colors.background,
+                  backgroundColor:
+                    colors.background,
                 }}
               />
 
@@ -265,12 +330,15 @@ export default function AppointmentCalendar({
                 timeGridDay: {
                   buttonText: "Zi",
                 },
+
                 timeGridWeek: {
                   buttonText: "Săptămână",
                 },
+
                 dayGridMonth: {
                   buttonText: "Lună",
                 },
+
                 multiMonthYear: {
                   buttonText: "An",
                   multiMonthMaxColumns: 3,
@@ -283,7 +351,10 @@ export default function AppointmentCalendar({
       </section>
 
       {selectedAppointment && (
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <section
+          id={`calendar-appointment-${selectedAppointment.id}`}
+          className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+        >
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
             <div>
               <p className="text-sm font-medium text-gray-500">
@@ -298,7 +369,9 @@ export default function AppointmentCalendar({
             <button
               type="button"
               onClick={() =>
-                setSelectedAppointment(null)
+                setSelectedAppointmentId(
+                  null
+                )
               }
               className="w-fit rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
             >
@@ -318,7 +391,8 @@ export default function AppointmentCalendar({
                   style={{
                     backgroundColor:
                       statusColors[
-                        selectedAppointment.status
+                        selectedAppointment
+                          .status
                       ].background,
                   }}
                 />
@@ -326,7 +400,8 @@ export default function AppointmentCalendar({
                 <span className="font-medium text-gray-900">
                   {
                     statusColors[
-                      selectedAppointment.status
+                      selectedAppointment
+                        .status
                     ].label
                   }
                 </span>
@@ -335,11 +410,13 @@ export default function AppointmentCalendar({
 
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Data
+                Data din calendar
               </p>
 
               <p className="mt-1 text-gray-900">
-                {formatDate(selectedAppointment.date)}
+                {formatDate(
+                  selectedAppointment.calendarDate
+                )}
               </p>
             </div>
 
@@ -349,7 +426,9 @@ export default function AppointmentCalendar({
               </p>
 
               <p className="mt-1 text-gray-900">
-                {formatTime(selectedAppointment.time)}
+                {formatTime(
+                  selectedAppointment.calendarTime
+                )}
               </p>
             </div>
 
@@ -359,7 +438,9 @@ export default function AppointmentCalendar({
               </p>
 
               <p className="mt-1 text-gray-900">
-                {selectedAppointment.clinicName}
+                {
+                  selectedAppointment.clinicName
+                }
               </p>
             </div>
 
@@ -375,7 +456,9 @@ export default function AppointmentCalendar({
                 )}`}
                 className="mt-1 block text-gray-900 underline-offset-4 hover:underline"
               >
-                {selectedAppointment.patientPhone}
+                {
+                  selectedAppointment.patientPhone
+                }
               </a>
             </div>
 
@@ -388,7 +471,9 @@ export default function AppointmentCalendar({
                 href={`mailto:${selectedAppointment.patientEmail}`}
                 className="mt-1 block break-all text-gray-900 underline-offset-4 hover:underline"
               >
-                {selectedAppointment.patientEmail}
+                {
+                  selectedAppointment.patientEmail
+                }
               </a>
             </div>
 
@@ -403,6 +488,44 @@ export default function AppointmentCalendar({
                 )}
               </p>
             </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Data solicitată
+              </p>
+
+              <p className="mt-1 text-gray-900">
+                {formatDate(
+                  selectedAppointment.requestedDate
+                )}
+
+                {selectedAppointment.requestedTime
+                  ? `, ${formatTime(
+                      selectedAppointment.requestedTime
+                    )}`
+                  : ""}
+              </p>
+            </div>
+
+            {selectedAppointment.scheduledDate && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Data confirmată
+                </p>
+
+                <p className="mt-1 font-medium text-gray-900">
+                  {formatDate(
+                    selectedAppointment.scheduledDate
+                  )}
+
+                  {selectedAppointment.scheduledTime
+                    ? `, ${formatTime(
+                        selectedAppointment.scheduledTime
+                      )}`
+                    : ""}
+                </p>
+              </div>
+            )}
           </div>
 
           {selectedAppointment.notes && (
@@ -416,6 +539,44 @@ export default function AppointmentCalendar({
               </p>
             </div>
           )}
+
+          {selectedAppointment.rescheduleReason && (
+            <div className="mt-4 rounded-xl bg-blue-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                Motivul reprogramării
+              </p>
+
+              <p className="mt-2 whitespace-pre-wrap text-blue-900">
+                {
+                  selectedAppointment.rescheduleReason
+                }
+              </p>
+            </div>
+          )}
+
+          <AppointmentActions
+            appointmentId={
+              selectedAppointment.id
+            }
+            currentStatus={
+              selectedAppointment.status
+            }
+            requestedDate={
+              selectedAppointment.requestedDate
+            }
+            requestedTime={
+              selectedAppointment.requestedTime
+            }
+            scheduledDate={
+              selectedAppointment.scheduledDate
+            }
+            scheduledTime={
+              selectedAppointment.scheduledTime
+            }
+            currentReason={
+              selectedAppointment.rescheduleReason
+            }
+          />
         </section>
       )}
 
@@ -450,19 +611,28 @@ export default function AppointmentCalendar({
           color: #111827;
         }
 
-        .doctor-calendar .fc-button-primary:not(:disabled).fc-button-active,
-        .doctor-calendar .fc-button-primary:not(:disabled):active {
+        .doctor-calendar
+          .fc-button-primary:not(
+            :disabled
+          ).fc-button-active,
+        .doctor-calendar
+          .fc-button-primary:not(
+            :disabled
+          ):active {
           border-color: #d97757;
           background-color: #d97757;
           color: #ffffff;
         }
 
         .doctor-calendar .fc-button:focus {
-          box-shadow: 0 0 0 3px rgba(217, 119, 87, 0.2);
+          box-shadow: 0 0 0 3px
+            rgba(217, 119, 87, 0.2);
         }
 
-        .doctor-calendar .fc-col-header-cell-cushion,
-        .doctor-calendar .fc-daygrid-day-number {
+        .doctor-calendar
+          .fc-col-header-cell-cushion,
+        .doctor-calendar
+          .fc-daygrid-day-number {
           color: #374151;
         }
 
@@ -475,10 +645,11 @@ export default function AppointmentCalendar({
           border: 0;
         }
 
-        .doctor-calendar .fc-multimonth-month {
-          border-radius: 0.75rem;
-          border: 1px solid #e5e7eb;
+        .doctor-calendar
+          .fc-multimonth-month {
           overflow: hidden;
+          border: 1px solid #e5e7eb;
+          border-radius: 0.75rem;
         }
       `}</style>
     </div>
