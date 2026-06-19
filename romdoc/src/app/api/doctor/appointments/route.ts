@@ -37,10 +37,6 @@ const allowedSources: AppointmentSource[] = [
   "other",
 ];
 
-function escapeForLog(value: string) {
-  return value.replaceAll("\n", " ").replaceAll("\r", " ");
-}
-
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -123,16 +119,16 @@ function getClinicName(clinic: ClinicRelation) {
 }
 
 /**
- * Creates a confirmed appointment in the authenticated doctor's
- * own schedule.
+ * Creates a confirmed appointment in the authenticated
+ * doctor's own schedule.
  *
  * Security rules:
  *
  * 1. The user must be authenticated.
- * 2. The profile role must be "doctor".
- * 3. The doctor record is derived from doctors.profile_id.
- * 4. The selected clinic must belong to that doctor.
- * 5. The client cannot choose another doctor_id.
+ * 2. The profile role must be doctor.
+ * 3. The doctor is derived from doctors.profile_id.
+ * 4. The clinic must be associated with that doctor.
+ * 5. The client cannot choose doctor_id, creator ID or status.
  */
 export async function POST(request: Request) {
   try {
@@ -225,7 +221,8 @@ export async function POST(request: Request) {
     if (!scheduledTime) {
       return NextResponse.json(
         {
-          error: "Ora programării nu este validă.",
+          error:
+            "Ora programării nu este validă.",
         },
         {
           status: 400,
@@ -284,12 +281,16 @@ export async function POST(request: Request) {
     // 2. VERIFY DOCTOR ROLE
     // =================================================
 
-    const { data: profile, error: profileError } =
-      await supabase
-        .from("profiles")
-        .select("id, role, first_name, last_name")
-        .eq("id", user.id)
-        .maybeSingle();
+    const {
+      data: profile,
+      error: profileError,
+    } = await supabase
+      .from("profiles")
+      .select(
+        "id, role, first_name, last_name"
+      )
+      .eq("id", user.id)
+      .maybeSingle();
 
     if (profileError) {
       console.error(
@@ -324,12 +325,16 @@ export async function POST(request: Request) {
     // 3. DERIVE DOCTOR FROM AUTHENTICATED PROFILE
     // =================================================
 
-    const { data: doctor, error: doctorError } =
-      await supabase
-        .from("doctors")
-        .select("id, slug, profile_id, status")
-        .eq("profile_id", user.id)
-        .maybeSingle();
+    const {
+      data: doctor,
+      error: doctorError,
+    } = await supabase
+      .from("doctors")
+      .select(
+        "id, slug, profile_id, status"
+      )
+      .eq("profile_id", user.id)
+      .maybeSingle();
 
     if (doctorError) {
       console.error(
@@ -385,7 +390,7 @@ export async function POST(request: Request) {
     }
 
     // =================================================
-    // 4. VERIFY THAT THE CLINIC BELONGS TO THE DOCTOR
+    // 4. VERIFY DOCTOR-CLINIC RELATIONSHIP
     // =================================================
 
     const {
@@ -461,59 +466,49 @@ export async function POST(request: Request) {
     }
 
     // =================================================
-    // 5. CREATE THE APPOINTMENT
+    // 5. CREATE APPOINTMENT WITHOUT RETURNING THE ROW
     // =================================================
     //
-    // A manually created appointment is already agreed with
-    // the patient, so it is inserted as confirmed.
+    // The UUID is generated here so we already know the
+    // appointment ID.
     //
-    // requested_date/time and scheduled_date/time are both set
-    // so the appointment remains compatible with existing views.
+    // We intentionally do not call:
+    //
+    // .select()
+    // .single()
+    //
+    // after insert. This prevents Supabase from applying
+    // a separate SELECT policy to the inserted row.
     // =================================================
 
-    const {
-      data: appointment,
-      error: appointmentError,
-    } = await supabase
-      .from("appointments")
-      .insert({
-        doctor_id: doctor.id,
-        clinic_id: clinicId,
-        created_by_profile_id: user.id,
-        source,
-        patient_name: patientName,
-        patient_email: patientEmail,
-        patient_phone: patientPhone,
-        requested_date: scheduledDate,
-        requested_time: scheduledTime,
-        scheduled_date: scheduledDate,
-        scheduled_time: scheduledTime,
-        reschedule_reason: null,
-        notes,
-        status: "confirmed",
-      })
-      .select(
-        `
-          id,
-          doctor_id,
-          clinic_id,
-          created_by_profile_id,
-          source,
-          patient_name,
-          patient_email,
-          patient_phone,
-          requested_date,
-          requested_time,
-          scheduled_date,
-          scheduled_time,
-          notes,
-          status,
-          created_at
-        `
-      )
-      .single();
+    const appointmentId = crypto.randomUUID();
+    const createdAt = new Date().toISOString();
 
-    if (appointmentError || !appointment) {
+    const appointment = {
+      id: appointmentId,
+      doctor_id: doctor.id,
+      clinic_id: clinicId,
+      created_by_profile_id: user.id,
+      source,
+      patient_name: patientName,
+      patient_email: patientEmail,
+      patient_phone: patientPhone,
+      requested_date: scheduledDate,
+      requested_time: scheduledTime,
+      scheduled_date: scheduledDate,
+      scheduled_time: scheduledTime,
+      reschedule_reason: null,
+      notes,
+      status: "confirmed" as const,
+      created_at: createdAt,
+    };
+
+    const { error: appointmentError } =
+      await supabase
+        .from("appointments")
+        .insert(appointment);
+
+    if (appointmentError) {
       console.error(
         "Doctor-created appointment insert failed:",
         appointmentError
@@ -534,8 +529,7 @@ export async function POST(request: Request) {
     // 6. SEND CONFIRMATION EMAIL
     // =================================================
     //
-    // The database insert is the primary operation.
-    // If Resend fails, the appointment remains saved.
+    // The appointment remains saved if email sending fails.
     // =================================================
 
     const profileName = [
@@ -547,9 +541,11 @@ export async function POST(request: Request) {
       .trim();
 
     const doctorName =
-      profileName || formatNameFromSlug(doctor.slug);
+      profileName ||
+      formatNameFromSlug(doctor.slug);
 
-    const clinicName = getClinicName(clinic);
+    const clinicName =
+      getClinicName(clinic);
 
     const emailResult =
       await sendAppointmentStatusEmail({
@@ -565,9 +561,7 @@ export async function POST(request: Request) {
 
     if (!emailResult.sent) {
       console.error(
-        `Doctor-created appointment ${escapeForLog(
-          appointment.id
-        )} was saved, but its confirmation email was not sent.`
+        `Doctor-created appointment ${appointmentId} was saved, but its confirmation email was not sent.`
       );
     }
 
