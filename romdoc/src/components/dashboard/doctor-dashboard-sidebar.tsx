@@ -24,6 +24,7 @@ type NavigationIcon =
   | "availability"
   | "services"
   | "clinics"
+  | "staff"
   | "profile"
   | "home";
 
@@ -63,6 +64,12 @@ const navigationItems: NavigationItem[] = [
       "/doctor-dashboard/clinics",
     label: "Clinici",
     icon: "clinics",
+  },
+  {
+    href:
+      "/doctor-dashboard/staff",
+    label: "Personal",
+    icon: "staff",
   },
   {
     href: "/",
@@ -287,6 +294,41 @@ function ClinicIcon() {
   );
 }
 
+function StaffIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-5 w-5 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <circle
+        cx="9"
+        cy="8"
+        r="3"
+      />
+
+      <circle
+        cx="17"
+        cy="9"
+        r="2.5"
+      />
+
+      <path
+        strokeLinecap="round"
+        d="M3.5 20c.5-4 2.4-6 5.5-6s5 2 5.5 6"
+      />
+
+      <path
+        strokeLinecap="round"
+        d="M14.5 15c2.8 0 4.6 1.7 5 5"
+      />
+    </svg>
+  );
+}
+
 function ProfileIcon() {
   return (
     <svg
@@ -381,6 +423,9 @@ function NavigationItemIcon({
 
     case "clinics":
       return <ClinicIcon />;
+
+    case "staff":
+      return <StaffIcon />;
 
     case "profile":
       return <ProfileIcon />;
