@@ -1,465 +1,590 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import {
+  redirect,
+} from "next/navigation";
+import {
+  createAdminClient,
+} from "@/lib/supabase/admin";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
-type AppointmentStatusCount = {
-  status: string;
-};
-
-type RecentAppointment = {
+type PendingClinic = {
   id: string;
-  patient_name: string;
-  status: string;
+  slug: string;
+  formatted_address:
+    | string
+    | null;
+
   created_at: string;
-  doctors:
+
+  clinic_translations:
     | {
-        slug: string;
-      }
-    | {
-        slug: string;
+        locale: string;
+        name: string;
       }[]
     | null;
 };
 
-function getFirstRelation<T>(
-  relation: T | T[] | null | undefined
-): T | null {
-  if (!relation) {
-    return null;
+type RecentDoctor = {
+  id: string;
+  slug: string;
+  status: string;
+  created_at: string;
+};
+
+type MetricCardProps = {
+  label: string;
+  value: number;
+  description: string;
+  href?: string;
+  attention?: boolean;
+};
+
+function MetricCard({
+  label,
+  value,
+  description,
+  href,
+  attention = false,
+}: MetricCardProps) {
+  const content = (
+    <>
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-sm font-semibold text-gray-600">
+          {label}
+        </p>
+
+        {attention &&
+          value > 0 && (
+            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-900">
+              Necesită atenție
+            </span>
+          )}
+      </div>
+
+      <p className="mt-4 text-4xl font-bold text-gray-900">
+        {value}
+      </p>
+
+      <p className="mt-2 text-sm leading-6 text-gray-500">
+        {description}
+      </p>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-[#D97757]/40 hover:shadow-md"
+      >
+        {content}
+      </Link>
+    );
   }
 
-  if (Array.isArray(relation)) {
-    return relation[0] ?? null;
-  }
-
-  return relation;
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      {content}
+    </div>
+  );
 }
 
-function formatDoctorName(slug: string) {
+function getClinicName(
+  clinic: PendingClinic
+) {
+  return (
+    clinic.clinic_translations
+      ?.find(
+        (translation) =>
+          translation.locale ===
+          "ro"
+      )?.name ??
+    clinic.clinic_translations?.[0]
+      ?.name ??
+    clinic.slug
+  );
+}
+
+function formatDate(
+  value: string
+) {
+  return new Intl.DateTimeFormat(
+    "ro-RO",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }
+  ).format(
+    new Date(value)
+  );
+}
+
+function formatDoctorName(
+  slug: string
+) {
   return slug
     .split("-")
-    .map((part: string) => {
-      return (
+    .map(
+      (part) =>
         part.charAt(0).toUpperCase() +
         part.slice(1)
-      );
-    })
+    )
     .join(" ");
 }
 
-function formatCreatedAt(date: string) {
-  return new Intl.DateTimeFormat("ro-RO", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(date));
-}
+export default async function AdminPage() {
+  const supabase =
+    await createClient();
 
-function getStatusLabel(status: string) {
-  switch (status) {
-    case "confirmed":
-      return "Confirmată";
+  const {
+    data: { user },
+    error: userError,
+  } =
+    await supabase.auth.getUser();
 
-    case "rescheduled":
-      return "Reprogramată";
-
-    case "cancelled":
-      return "Anulată";
-
-    case "completed":
-      return "Finalizată";
-
-    default:
-      return "În așteptare";
+  if (
+    userError ||
+    !user
+  ) {
+    redirect(
+      "/login?next=/admin"
+    );
   }
-}
 
-function getStatusClasses(status: string) {
-  switch (status) {
-    case "confirmed":
-      return "bg-green-100 text-green-800";
+  const {
+    data: profile,
+    error: profileError,
+  } = await supabase
+    .from("profiles")
+    .select(`
+      role,
+      first_name,
+      last_name
+    `)
+    .eq("id", user.id)
+    .maybeSingle();
 
-    case "rescheduled":
-      return "bg-blue-100 text-blue-800";
-
-    case "cancelled":
-      return "bg-red-100 text-red-800";
-
-    case "completed":
-      return "bg-gray-200 text-gray-800";
-
-    default:
-      return "bg-amber-100 text-amber-800";
+  if (
+    profileError ||
+    profile?.role !== "admin"
+  ) {
+    redirect("/dashboard");
   }
-}
 
-export default async function AdminOverviewPage() {
-  const supabase = await createClient();
+  const admin =
+    createAdminClient();
 
   const [
-    appointmentsResult,
-    doctorsResult,
-    clinicsResult,
-    specialtiesResult,
-    citiesResult,
-    reviewsResult,
-    recentAppointmentsResult,
+    doctorsCountResult,
+    activeDoctorsCountResult,
+    pendingClinicsCountResult,
+    approvedClinicsCountResult,
+    pendingAppointmentsCountResult,
+    activeStaffCountResult,
+    patientsCountResult,
+    recentPendingClinicsResult,
+    recentDoctorsResult,
   ] = await Promise.all([
-    supabase
-      .from("appointments")
-      .select("status"),
-
-    supabase
+    admin
       .from("doctors")
       .select("*", {
         count: "exact",
         head: true,
       }),
 
-    supabase
+    admin
+      .from("doctors")
+      .select("*", {
+        count: "exact",
+        head: true,
+      })
+      .eq(
+        "status",
+        "active"
+      ),
+
+    admin
       .from("clinics")
       .select("*", {
         count: "exact",
         head: true,
-      }),
+      })
+      .eq(
+        "status",
+        "pending"
+      ),
 
-    supabase
-      .from("specialties")
+    admin
+      .from("clinics")
       .select("*", {
         count: "exact",
         head: true,
-      }),
+      })
+      .eq(
+        "status",
+        "approved"
+      ),
 
-    supabase
-      .from("cities")
-      .select("*", {
-        count: "exact",
-        head: true,
-      }),
-
-    supabase
-      .from("reviews")
-      .select("*", {
-        count: "exact",
-        head: true,
-      }),
-
-    supabase
+    admin
       .from("appointments")
+      .select("*", {
+        count: "exact",
+        head: true,
+      })
+      .eq(
+        "status",
+        "pending"
+      ),
+
+    admin
+      .from("doctor_staff")
+      .select("*", {
+        count: "exact",
+        head: true,
+      })
+      .eq(
+        "status",
+        "active"
+      ),
+
+    admin
+      .from("profiles")
+      .select("*", {
+        count: "exact",
+        head: true,
+      })
+      .eq(
+        "role",
+        "patient"
+      ),
+
+    admin
+      .from("clinics")
       .select(`
         id,
-        patient_name,
-        status,
+        slug,
+        formatted_address,
         created_at,
-        doctors (
-          slug
+        clinic_translations (
+          locale,
+          name
         )
       `)
-      .order("created_at", {
-        ascending: false,
-      })
+      .eq(
+        "status",
+        "pending"
+      )
+      .order(
+        "created_at",
+        {
+          ascending: false,
+        }
+      )
+      .limit(5),
+
+    admin
+      .from("doctors")
+      .select(`
+        id,
+        slug,
+        status,
+        created_at
+      `)
+      .order(
+        "created_at",
+        {
+          ascending: false,
+        }
+      )
       .limit(5),
   ]);
 
-  if (appointmentsResult.error) {
-    console.error(
-      "Admin overview appointment count query failed:",
-      appointmentsResult.error
-    );
-  }
+  const totalDoctors =
+    doctorsCountResult.count ??
+    0;
 
-  if (doctorsResult.error) {
-    console.error(
-      "Admin overview doctors count query failed:",
-      doctorsResult.error
-    );
-  }
+  const activeDoctors =
+    activeDoctorsCountResult.count ??
+    0;
 
-  if (clinicsResult.error) {
-    console.error(
-      "Admin overview clinics count query failed:",
-      clinicsResult.error
-    );
-  }
+  const pendingClinics =
+    pendingClinicsCountResult.count ??
+    0;
 
-  if (specialtiesResult.error) {
-    console.error(
-      "Admin overview specialties count query failed:",
-      specialtiesResult.error
-    );
-  }
-
-  if (citiesResult.error) {
-    console.error(
-      "Admin overview cities count query failed:",
-      citiesResult.error
-    );
-  }
-
-  if (reviewsResult.error) {
-    console.error(
-      "Admin overview reviews count query failed:",
-      reviewsResult.error
-    );
-  }
-
-  if (recentAppointmentsResult.error) {
-    console.error(
-      "Admin overview recent appointments query failed:",
-      recentAppointmentsResult.error
-    );
-  }
-
-  const appointmentRows =
-    (appointmentsResult.data as
-      | AppointmentStatusCount[]
-      | null) ?? [];
-
-  const totalAppointments =
-    appointmentRows.length;
+  const approvedClinics =
+    approvedClinicsCountResult.count ??
+    0;
 
   const pendingAppointments =
-    appointmentRows.filter(
-      (appointment) =>
-        appointment.status === "pending"
-    ).length;
+    pendingAppointmentsCountResult.count ??
+    0;
 
-  const confirmedAppointments =
-    appointmentRows.filter(
-      (appointment) =>
-        appointment.status === "confirmed"
-    ).length;
+  const activeStaff =
+    activeStaffCountResult.count ??
+    0;
 
-  const completedAppointments =
-    appointmentRows.filter(
-      (appointment) =>
-        appointment.status === "completed"
-    ).length;
+  const patients =
+    patientsCountResult.count ??
+    0;
 
-  const recentAppointments =
-    (recentAppointmentsResult.data as unknown as
-      | RecentAppointment[]
-      | null) ?? [];
+  const recentPendingClinics =
+    (
+      recentPendingClinicsResult.data ??
+      []
+    ) as PendingClinic[];
 
-  const cards = [
-    {
-      label: "Programări totale",
-      value: totalAppointments,
-      description:
-        "Toate cererile și programările înregistrate.",
-    },
-    {
-      label: "În așteptare",
-      value: pendingAppointments,
-      description:
-        "Programări care necesită confirmare.",
-    },
-    {
-      label: "Confirmate",
-      value: confirmedAppointments,
-      description:
-        "Programări confirmate pentru pacienți.",
-    },
-    {
-      label: "Finalizate",
-      value: completedAppointments,
-      description:
-        "Programări marcate ca îndeplinite.",
-    },
-  ];
+  const recentDoctors =
+    (
+      recentDoctorsResult.data ??
+      []
+    ) as RecentDoctor[];
 
-  const directoryCards = [
-    {
-      label: "Medici",
-      value: doctorsResult.count ?? 0,
-    },
-    {
-      label: "Clinici",
-      value: clinicsResult.count ?? 0,
-    },
-    {
-      label: "Specialități",
-      value: specialtiesResult.count ?? 0,
-    },
-    {
-      label: "Orașe",
-      value: citiesResult.count ?? 0,
-    },
-    {
-      label: "Recenzii",
-      value: reviewsResult.count ?? 0,
-    },
-  ];
+  const adminName = [
+    profile.first_name,
+    profile.last_name,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
 
   return (
-    <main className="px-6 py-12">
-      <div className="mx-auto max-w-7xl">
-        <header className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
-          <div>
-            <p className="text-sm font-medium text-gray-500">
-              Panou administrator
-            </p>
+    <div className="space-y-10">
+      <header>
+        <p className="text-sm font-semibold text-[#9A4F35]">
+          Panou administrator
+        </p>
 
-            <h1 className="mt-2 text-4xl font-bold text-gray-900">
-              Prezentare generală
-            </h1>
+        <h1 className="mt-2 text-3xl font-bold text-gray-900 sm:text-4xl">
+          Bun venit
+          {adminName
+            ? `, ${adminName}`
+            : ""}
+        </h1>
 
-            <p className="mt-3 text-gray-600">
-              Monitorizează activitatea principală a platformei RomDoc.
-            </p>
-          </div>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
+          Urmărește activitatea platformei, aprobă clinicile și
+          gestionează elementele care necesită intervenție
+          administrativă.
+        </p>
+      </header>
 
-          <Link
+      <section>
+        <h2 className="text-xl font-bold text-gray-900">
+          Situația platformei
+        </h2>
+
+        <div className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard
+            label="Total medici"
+            value={totalDoctors}
+            description="Toate profilurile de medici create în RomDoc."
+            href="/admin/doctors"
+          />
+
+          <MetricCard
+            label="Medici activi"
+            value={activeDoctors}
+            description="Medici cu acces activ la platformă."
+            href="/admin/doctors"
+          />
+
+          <MetricCard
+            label="Clinici în așteptare"
+            value={pendingClinics}
+            description="Propuneri care trebuie verificate și moderate."
+            href="/admin/clinics"
+            attention
+          />
+
+          <MetricCard
+            label="Clinici aprobate"
+            value={approvedClinics}
+            description="Clinici comune disponibile medicilor RomDoc."
+            href="/admin/clinics"
+          />
+
+          <MetricCard
+            label="Programări în așteptare"
+            value={pendingAppointments}
+            description="Acces excepțional pentru situații de suport."
             href="/admin/appointments"
-            className="w-fit rounded-xl bg-[#D97757] px-5 py-3 text-sm font-medium text-white transition hover:opacity-90"
-          >
-            Vezi programările
-          </Link>
-        </header>
+            attention
+          />
 
-        <section className="mt-10 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-          {cards.map((card) => (
-            <article
-              key={card.label}
-              className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
-            >
-              <p className="text-sm font-medium text-gray-500">
-                {card.label}
-              </p>
+          <MetricCard
+            label="Personal activ"
+            value={activeStaff}
+            description="Atribuiri active între personal, medic și clinică."
+          />
 
-              <p className="mt-3 text-4xl font-bold text-gray-900">
-                {card.value}
-              </p>
+          <MetricCard
+            label="Pacienți"
+            value={patients}
+            description="Conturi de pacienți înregistrate în platformă."
+          />
 
-              <p className="mt-3 text-sm leading-6 text-gray-600">
-                {card.description}
-              </p>
-            </article>
-          ))}
-        </section>
+          <MetricCard
+            label="Elemente urgente"
+            value={
+              pendingClinics +
+              pendingAppointments
+            }
+            description="Clinici și programări care pot necesita atenție."
+            attention
+          />
+        </div>
+      </section>
 
-        <section className="mt-10">
-          <h2 className="text-2xl font-bold text-gray-900">
-            Director RomDoc
-          </h2>
-
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            {directoryCards.map((card) => (
-              <article
-                key={card.label}
-                className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
-              >
-                <p className="text-sm font-medium text-gray-500">
-                  {card.label}
-                </p>
-
-                <p className="mt-2 text-3xl font-bold text-gray-900">
-                  {card.value}
-                </p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="mt-10">
-          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+      <div className="grid gap-6 xl:grid-cols-2">
+        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">
-                Programări recente
+              <h2 className="text-xl font-bold text-gray-900">
+                Clinici care necesită aprobare
               </h2>
 
-              <p className="mt-1 text-sm text-gray-600">
-                Cele mai recente cinci înregistrări.
+              <p className="mt-1 text-sm text-gray-500">
+                Cele mai recente propuneri.
               </p>
             </div>
 
             <Link
-              href="/admin/appointments"
-              className="text-sm font-medium text-[#9A4F35] underline-offset-4 hover:underline"
+              href="/admin/clinics"
+              className="text-sm font-semibold text-[#9A4F35] hover:underline"
             >
-              Vezi toate programările
+              Vezi toate
             </Link>
           </div>
 
-          <div className="mt-5 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-            {recentAppointments.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Pacient
-                      </th>
+          {recentPendingClinics.length ===
+          0 ? (
+            <p className="mt-6 rounded-xl bg-gray-50 p-5 text-sm text-gray-600">
+              Nu există clinici care așteaptă aprobarea.
+            </p>
+          ) : (
+            <div className="mt-5 divide-y divide-gray-200">
+              {recentPendingClinics.map(
+                (clinic) => (
+                  <Link
+                    key={clinic.id}
+                    href="/admin/clinics"
+                    className="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0"
+                  >
+                    <div>
+                      <p className="font-semibold text-gray-900">
+                        {getClinicName(
+                          clinic
+                        )}
+                      </p>
 
-                      <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Medic
-                      </th>
+                      <p className="mt-1 line-clamp-2 text-sm text-gray-500">
+                        {clinic.formatted_address ??
+                          "Adresă indisponibilă"}
+                      </p>
+                    </div>
 
-                      <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Status
-                      </th>
+                    <span className="shrink-0 text-xs text-gray-500">
+                      {formatDate(
+                        clinic.created_at
+                      )}
+                    </span>
+                  </Link>
+                )
+              )}
+            </div>
+          )}
+        </section>
 
-                      <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Creată
-                      </th>
-                    </tr>
-                  </thead>
+        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">
+                Medici recenți
+              </h2>
 
-                  <tbody className="divide-y divide-gray-200">
-                    {recentAppointments.map(
-                      (appointment) => {
-                        const doctor =
-                          getFirstRelation(
-                            appointment.doctors
-                          );
+              <p className="mt-1 text-sm text-gray-500">
+                Cele mai noi profiluri de medici.
+              </p>
+            </div>
 
-                        return (
-                          <tr key={appointment.id}>
-                            <td className="whitespace-nowrap px-5 py-4 text-sm font-medium text-gray-900">
-                              {appointment.patient_name}
-                            </td>
-
-                            <td className="whitespace-nowrap px-5 py-4 text-sm text-gray-700">
-                              {doctor
-                                ? formatDoctorName(
-                                    doctor.slug
-                                  )
-                                : "Medic indisponibil"}
-                            </td>
-
-                            <td className="whitespace-nowrap px-5 py-4">
-                              <span
-                                className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${getStatusClasses(
-                                  appointment.status
-                                )}`}
-                              >
-                                {getStatusLabel(
-                                  appointment.status
-                                )}
-                              </span>
-                            </td>
-
-                            <td className="whitespace-nowrap px-5 py-4 text-sm text-gray-600">
-                              {formatCreatedAt(
-                                appointment.created_at
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      }
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="p-8 text-gray-600">
-                Nu există încă programări.
-              </div>
-            )}
+            <Link
+              href="/admin/doctors"
+              className="text-sm font-semibold text-[#9A4F35] hover:underline"
+            >
+              Vezi toți
+            </Link>
           </div>
+
+          {recentDoctors.length ===
+          0 ? (
+            <p className="mt-6 rounded-xl bg-gray-50 p-5 text-sm text-gray-600">
+              Nu există medici înregistrați.
+            </p>
+          ) : (
+            <div className="mt-5 divide-y divide-gray-200">
+              {recentDoctors.map(
+                (doctor) => (
+                  <div
+                    key={doctor.id}
+                    className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
+                  >
+                    <div>
+                      <p className="font-semibold text-gray-900">
+                        {formatDoctorName(
+                          doctor.slug
+                        )}
+                      </p>
+
+                      <p className="mt-1 text-xs text-gray-500">
+                        Creat la{" "}
+                        {formatDate(
+                          doctor.created_at
+                        )}
+                      </p>
+                    </div>
+
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                        doctor.status ===
+                        "active"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-amber-100 text-amber-900"
+                      }`}
+                    >
+                      {doctor.status ===
+                      "active"
+                        ? "Activ"
+                        : "În așteptare"}
+                    </span>
+                  </div>
+                )
+              )}
+            </div>
+          )}
         </section>
       </div>
-    </main>
+
+      <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
+        <h2 className="text-lg font-bold text-amber-950">
+          Acces excepțional la programări
+        </h2>
+
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-900">
+          Programările sunt gestionate în mod normal de medic și
+          personalul său. Administratorul poate deschide lista globală
+          numai pentru suport, investigații sau situații excepționale.
+        </p>
+
+        <Link
+          href="/admin/appointments"
+          className="mt-4 inline-flex rounded-xl border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100"
+        >
+          Deschide programările
+        </Link>
+      </section>
+    </div>
   );
 }

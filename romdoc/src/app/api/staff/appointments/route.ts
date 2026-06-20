@@ -213,7 +213,7 @@ export async function GET() {
             requested_time,
             scheduled_date,
             scheduled_time,
-            duration_minutes,
+            duration,
             status,
             notes,
             reschedule_reason,
