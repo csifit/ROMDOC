@@ -70,7 +70,7 @@ const navigationItems: NavigationItem[] = [
       "/admin/cities",
     label: "Orașe",
     icon: "cities",
-    available: false,
+    available: true,
   },
   {
     href:
