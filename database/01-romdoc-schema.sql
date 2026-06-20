@@ -144,6 +144,16 @@ create table public.clinics (
   email text,
   phone text,
   website text,
+  
+  formatted_address text,
+  address_line_1 text,
+  address_line_2 text,
+  postal_code text,
+  county_name text,
+  country_code text not null default 'RO',
+  google_place_id text,
+  google_maps_uri text,
+  address_verified_at timestamptz,
 
   street_address text,
 

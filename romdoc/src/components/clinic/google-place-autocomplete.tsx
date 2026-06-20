@@ -1,0 +1,476 @@
+"use client";
+
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import {
+  loadGoogleMaps,
+} from "@/lib/google-maps/load-google-maps";
+import type {
+  GoogleAddressApiResponse,
+  GoogleClinicAddress,
+} from "@/lib/locations/google-address";
+
+type GooglePlaceAutocompleteProps = {
+  onAddressSelected: (
+    address: GoogleClinicAddress
+  ) => void;
+
+  disabled?: boolean;
+};
+
+type PlaceObject = {
+  id?: string;
+};
+
+type PlacePrediction = {
+  toPlace: () => PlaceObject;
+};
+
+type PlacePredictionSelectEvent =
+  Event & {
+    placePrediction:
+      PlacePrediction;
+  };
+
+type PlaceAutocompleteElementInstance =
+  HTMLElement & {
+    placeholder: string;
+
+    addEventListener: (
+      type: string,
+      listener: EventListener
+    ) => void;
+
+    removeEventListener: (
+      type: string,
+      listener: EventListener
+    ) => void;
+  };
+
+type PlaceAutocompleteElementConstructor =
+  new (
+    options?: {
+      includedRegionCodes?:
+        string[];
+    }
+  ) =>
+    PlaceAutocompleteElementInstance;
+
+type PlacesLibrary = {
+  PlaceAutocompleteElement:
+    PlaceAutocompleteElementConstructor;
+};
+
+type GoogleMapsRuntime = {
+  maps: {
+    importLibrary: (
+      libraryName: string
+    ) => Promise<unknown>;
+  };
+};
+
+type GoogleWindow =
+  Window & {
+    google?: GoogleMapsRuntime;
+  };
+
+export default function GooglePlaceAutocomplete({
+  onAddressSelected,
+  disabled = false,
+}: GooglePlaceAutocompleteProps) {
+  const containerRef =
+    useRef<HTMLDivElement | null>(
+      null
+    );
+
+  const autocompleteRef =
+    useRef<
+      PlaceAutocompleteElementInstance
+      | null
+    >(null);
+
+  const [isLoading, setIsLoading] =
+    useState(true);
+
+  const [
+    isResolvingAddress,
+    setIsResolvingAddress,
+  ] = useState(false);
+
+  const [error, setError] =
+    useState<string | null>(null);
+
+  const [
+    selectedAddress,
+    setSelectedAddress,
+  ] =
+    useState<GoogleClinicAddress | null>(
+      null
+    );
+
+  const handleAddressSelected =
+    useCallback(
+      (
+        address:
+          GoogleClinicAddress
+      ) => {
+        onAddressSelected(
+          address
+        );
+      },
+      [onAddressSelected]
+    );
+
+  useEffect(() => {
+    let isActive = true;
+
+    let autocomplete:
+      | PlaceAutocompleteElementInstance
+      | null = null;
+
+    let handleSelection:
+      | EventListener
+      | null = null;
+
+    async function initialize() {
+      try {
+        setError(null);
+        setIsLoading(true);
+
+        await loadGoogleMaps();
+
+        if (
+          !isActive ||
+          !containerRef.current
+        ) {
+          return;
+        }
+
+        const googleWindow =
+          window as GoogleWindow;
+
+        const importLibrary =
+          googleWindow.google?.maps
+            .importLibrary;
+
+        if (!importLibrary) {
+          throw new Error(
+            "Biblioteca Google Maps nu este disponibilă."
+          );
+        }
+
+        const placesLibrary =
+          (await importLibrary(
+            "places"
+          )) as PlacesLibrary;
+
+        const {
+          PlaceAutocompleteElement,
+        } = placesLibrary;
+
+        autocomplete =
+          new PlaceAutocompleteElement({
+            includedRegionCodes: [
+              "ro",
+            ],
+          });
+
+        autocomplete.placeholder =
+          "Caută adresa clinicii";
+
+        autocomplete.style.width =
+          "100%";
+
+        autocomplete.style.display =
+          "block";
+
+        if (disabled) {
+          autocomplete.setAttribute(
+            "disabled",
+            ""
+          );
+        }
+
+        handleSelection =
+          (async (
+            event: Event
+          ) => {
+            try {
+              setError(null);
+
+              setIsResolvingAddress(
+                true
+              );
+
+              const placeEvent =
+                event as
+                  PlacePredictionSelectEvent;
+
+              const place =
+                placeEvent
+                  .placePrediction
+                  .toPlace();
+
+              const placeId =
+                place.id;
+
+              if (!placeId) {
+                throw new Error(
+                  "Google nu a returnat un identificator valid pentru adresă."
+                );
+              }
+
+              const response =
+                await fetch(
+                  "/api/google/places/details",
+                  {
+                    method:
+                      "POST",
+
+                    headers: {
+                      "Content-Type":
+                        "application/json",
+                    },
+
+                    body:
+                      JSON.stringify({
+                        placeId,
+                      }),
+                  }
+                );
+
+              const result =
+                (await response.json()) as
+                  GoogleAddressApiResponse;
+
+              if (
+                !response.ok ||
+                !result.address
+              ) {
+                throw new Error(
+                  result.error ??
+                    "Adresa nu a putut fi verificată."
+                );
+              }
+
+              if (!isActive) {
+                return;
+              }
+
+              setSelectedAddress(
+                result.address
+              );
+
+              handleAddressSelected(
+                result.address
+              );
+            } catch (
+              selectionError
+            ) {
+              console.error(
+                "Google address selection failed:",
+                selectionError
+              );
+
+              if (!isActive) {
+                return;
+              }
+
+              setSelectedAddress(
+                null
+              );
+
+              setError(
+                selectionError instanceof
+                  Error
+                  ? selectionError.message
+                  : "Adresa nu a putut fi verificată."
+              );
+            } finally {
+              if (isActive) {
+                setIsResolvingAddress(
+                  false
+                );
+              }
+            }
+          }) as EventListener;
+
+        autocomplete.addEventListener(
+          "gmp-select",
+          handleSelection
+        );
+
+        containerRef.current
+          .replaceChildren(
+            autocomplete
+          );
+
+        autocompleteRef.current =
+          autocomplete;
+
+        setIsLoading(false);
+      } catch (
+        initializationError
+      ) {
+        console.error(
+          "Google Places initialization failed:",
+          initializationError
+        );
+
+        if (!isActive) {
+          return;
+        }
+
+        setError(
+          initializationError instanceof
+            Error
+            ? initializationError.message
+            : "Google Places nu a putut fi încărcat."
+        );
+
+        setIsLoading(false);
+      }
+    }
+
+    void initialize();
+
+    return () => {
+      isActive = false;
+
+      if (
+        autocomplete &&
+        handleSelection
+      ) {
+        autocomplete
+          .removeEventListener(
+            "gmp-select",
+            handleSelection
+          );
+      }
+
+      if (
+        containerRef.current
+      ) {
+        containerRef.current
+          .replaceChildren();
+      }
+
+      autocompleteRef.current =
+        null;
+    };
+  }, [
+    disabled,
+    handleAddressSelected,
+  ]);
+
+  return (
+    <div className="space-y-3">
+      <label className="block">
+        <span className="text-sm font-medium text-gray-700">
+          Adresa clinicii
+        </span>
+
+        <span className="ml-2 text-xs text-gray-500">
+          Selectează o adresă din lista Google
+        </span>
+
+        <div
+          ref={containerRef}
+          className="mt-2 min-h-12 w-full rounded-xl border border-gray-300 bg-white p-1"
+        >
+          {isLoading && (
+            <p className="px-3 py-2 text-sm text-gray-500">
+              Se încarcă Google Places...
+            </p>
+          )}
+        </div>
+      </label>
+
+      {isResolvingAddress && (
+        <p className="text-sm text-gray-600">
+          Adresa este verificată...
+        </p>
+      )}
+
+      {selectedAddress && (
+        <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+          <p className="text-sm font-semibold text-green-950">
+            Adresă selectată
+          </p>
+
+          <p className="mt-1 text-sm leading-6 text-green-900">
+            {
+              selectedAddress
+                .formattedAddress
+            }
+          </p>
+
+          <dl className="mt-3 grid gap-2 text-xs text-green-900 sm:grid-cols-2">
+            <div>
+              <dt className="font-semibold">
+                Oraș
+              </dt>
+
+              <dd>
+                {
+                  selectedAddress
+                    .cityName
+                }
+              </dd>
+            </div>
+
+            <div>
+              <dt className="font-semibold">
+                Județ
+              </dt>
+
+              <dd>
+                {selectedAddress
+                  .countyName ??
+                  "—"}
+              </dd>
+            </div>
+
+            <div>
+              <dt className="font-semibold">
+                Cod poștal
+              </dt>
+
+              <dd>
+                {selectedAddress
+                  .postalCode ??
+                  "—"}
+              </dd>
+            </div>
+
+            <div>
+              <dt className="font-semibold">
+                Țară
+              </dt>
+
+              <dd>
+                {
+                  selectedAddress
+                    .countryCode
+                }
+              </dd>
+            </div>
+          </dl>
+        </div>
+      )}
+
+      {error && (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+        >
+          {error}
+        </div>
+      )}
+    </div>
+  );
+}
