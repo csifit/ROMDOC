@@ -1,30 +1,19 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-type UserRole =
+type ProfileRole =
   | "admin"
   | "doctor"
+  | "doctor_applicant"
+  | "staff"
   | "patient"
-  | "staff";
+  | "user";
 
-function getDashboardPath(role: UserRole) {
-  switch (role) {
-    case "admin":
-      return "/admin";
+type ProfileRow = {
+  role: ProfileRole;
+};
 
-    case "doctor":
-      return "/doctor-dashboard/appointments";
-
-    case "staff":
-      return "/staff-dashboard";
-
-    case "patient":
-    default:
-      return "/patient-dashboard";
-  }
-}
-
-export default async function DashboardRedirectPage() {
+export default async function DashboardRouterPage() {
   const supabase = await createClient();
 
   const {
@@ -47,7 +36,7 @@ export default async function DashboardRedirectPage() {
 
   if (profileError) {
     console.error(
-      "Dashboard role lookup failed:",
+      "Dashboard profile lookup failed:",
       profileError
     );
 
@@ -56,13 +45,41 @@ export default async function DashboardRedirectPage() {
 
   if (!profile) {
     console.error(
-      `No profile found for authenticated user ${user.id}.`
+      "Authenticated user does not have a profiles row:",
+      user.id
     );
 
     redirect("/");
   }
 
-  const role = profile.role as UserRole;
+  const typedProfile =
+    profile as ProfileRow;
 
-  redirect(getDashboardPath(role));
+  switch (typedProfile.role) {
+    case "admin":
+      redirect("/admin");
+
+    case "doctor":
+      redirect(
+        "/doctor-dashboard/appointments"
+      );
+
+    case "doctor_applicant":
+      redirect("/doctor-application");
+
+    case "staff":
+      redirect("/staff-dashboard");
+
+    case "patient":
+    case "user":
+      redirect("/patient-dashboard");
+
+    default:
+      console.error(
+        "Unknown profile role:",
+        typedProfile.role
+      );
+
+      redirect("/");
+  }
 }
