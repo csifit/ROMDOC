@@ -9,7 +9,8 @@ import {
   createClient,
 } from "@/lib/supabase/server";
 
-export const runtime = "nodejs";
+export const runtime =
+  "nodejs";
 
 type ClinicActionBody = {
   clinicId?: unknown;
@@ -17,7 +18,25 @@ type ClinicActionBody = {
   rejectionReason?: unknown;
 };
 
-async function requireAdmin() {
+type AdminAuthorizationResult =
+  | {
+      profileId: string;
+      response: null;
+    }
+  | {
+      profileId: null;
+      response: NextResponse;
+    };
+
+type ProposerDetails = {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  doctor_id: string | null;
+  doctor_slug: string | null;
+};
+
+async function requireAdmin(): Promise<AdminAuthorizationResult> {
   const supabase =
     await createClient();
 
@@ -33,6 +52,7 @@ async function requireAdmin() {
   ) {
     return {
       profileId: null,
+
       response:
         NextResponse.json(
           {
@@ -61,6 +81,7 @@ async function requireAdmin() {
   ) {
     return {
       profileId: null,
+
       response:
         NextResponse.json(
           {
@@ -90,14 +111,11 @@ function normalizeString(
 
 export async function GET(
   request: NextRequest
-) {
+): Promise<Response> {
   const authorization =
     await requireAdmin();
 
-  if (
-    authorization.response ||
-    !authorization.profileId
-  ) {
+  if (authorization.response) {
     return authorization.response;
   }
 
@@ -223,13 +241,7 @@ export async function GET(
   const proposerMap =
     new Map<
       string,
-      {
-        id: string;
-        first_name: string | null;
-        last_name: string | null;
-        doctor_id: string | null;
-        doctor_slug: string | null;
-      }
+      ProposerDetails
     >();
 
   if (
@@ -288,10 +300,12 @@ export async function GET(
         (
           doctorsResult.data ??
           []
-        ).map((doctor) => [
-          doctor.profile_id,
-          doctor,
-        ])
+        ).map(
+          (doctor) => [
+            doctor.profile_id,
+            doctor,
+          ]
+        )
       );
 
     for (
@@ -307,14 +321,19 @@ export async function GET(
       proposerMap.set(
         profile.id,
         {
-          id: profile.id,
+          id:
+            profile.id,
+
           first_name:
             profile.first_name,
+
           last_name:
             profile.last_name,
+
           doctor_id:
             doctor?.id ??
             null,
+
           doctor_slug:
             doctor?.slug ??
             null,
@@ -345,16 +364,16 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest
-) {
+): Promise<Response> {
   const authorization =
     await requireAdmin();
 
-  if (
-    authorization.response ||
-    !authorization.profileId
-  ) {
+  if (authorization.response) {
     return authorization.response;
   }
+
+  const adminProfileId =
+    authorization.profileId;
 
   let body: ClinicActionBody;
 
@@ -402,10 +421,8 @@ export async function PATCH(
   }
 
   if (
-    ![
-      "approve",
-      "reject",
-    ].includes(action)
+    action !== "approve" &&
+    action !== "reject"
   ) {
     return NextResponse.json(
       {
@@ -484,6 +501,7 @@ export async function PATCH(
 
   if (action === "reject") {
     const {
+      data: rejectedClinic,
       error: rejectError,
     } = await admin
       .from("clinics")
@@ -507,9 +525,14 @@ export async function PATCH(
       .eq(
         "status",
         "pending"
-      );
+      )
+      .select("id")
+      .maybeSingle();
 
-    if (rejectError) {
+    if (
+      rejectError ||
+      !rejectedClinic
+    ) {
       console.error(
         "Clinic rejection failed:",
         rejectError
@@ -518,10 +541,10 @@ export async function PATCH(
       return NextResponse.json(
         {
           error:
-            "Clinica nu a putut fi respinsă.",
+            "Clinica nu a putut fi respinsă. Este posibil ca statutul ei să fi fost modificat între timp.",
         },
         {
-          status: 500,
+          status: 409,
         }
       );
     }
@@ -574,6 +597,7 @@ export async function PATCH(
   }
 
   const {
+    data: approvedClinic,
     error: approveError,
   } = await admin
     .from("clinics")
@@ -582,7 +606,7 @@ export async function PATCH(
         "approved",
 
       approved_by_profile_id:
-        authorization.profileId,
+        adminProfileId,
 
       approved_at:
         now,
@@ -597,9 +621,14 @@ export async function PATCH(
     .eq(
       "status",
       "pending"
-    );
+    )
+    .select("id")
+    .maybeSingle();
 
-  if (approveError) {
+  if (
+    approveError ||
+    !approvedClinic
+  ) {
     console.error(
       "Clinic approval failed:",
       approveError
@@ -608,10 +637,10 @@ export async function PATCH(
     return NextResponse.json(
       {
         error:
-          "Clinica nu a putut fi aprobată.",
+          "Clinica nu a putut fi aprobată. Este posibil ca statutul ei să fi fost modificat între timp.",
       },
       {
-        status: 500,
+        status: 409,
       }
     );
   }
@@ -640,11 +669,9 @@ export async function PATCH(
       associationError
     );
 
-    /*
-     * Restore the clinic to pending so approval is not
-     * completed without the required doctor association.
-     */
-    await admin
+    const {
+      error: rollbackError,
+    } = await admin
       .from("clinics")
       .update({
         status:
@@ -656,7 +683,18 @@ export async function PATCH(
         approved_at:
           null,
       })
-      .eq("id", clinic.id);
+      .eq("id", clinic.id)
+      .eq(
+        "status",
+        "approved"
+      );
+
+    if (rollbackError) {
+      console.error(
+        "Clinic approval rollback failed:",
+        rollbackError
+      );
+    }
 
     return NextResponse.json(
       {
