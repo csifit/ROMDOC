@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import {
+  usePathname,
+  useRouter,
+} from "next/navigation";
 import {
   type ReactNode,
   useState,
@@ -15,37 +18,51 @@ type DoctorDashboardSidebarProps = {
   children: ReactNode;
 };
 
+type NavigationIcon =
+  | "appointments"
+  | "calendar"
+  | "availability"
+  | "services"
+  | "clinics"
+  | "profile"
+  | "home";
+
 type NavigationItem = {
   href: string;
   label: string;
-  icon: 
-    | "appointments"
-    | "calendar"
-    | "availability"
-    | "profile"
-    | "home";
+  icon: NavigationIcon;
 };
 
 const navigationItems: NavigationItem[] = [
   {
-    href: "/doctor-dashboard/appointments",
+    href:
+      "/doctor-dashboard/appointments",
     label: "Programări",
     icon: "appointments",
   },
   {
-    href: "/doctor-dashboard/calendar",
+    href:
+      "/doctor-dashboard/calendar",
     label: "Calendar",
     icon: "calendar",
   },
   {
-    href: "/doctor-dashboard/availability",
+    href:
+      "/doctor-dashboard/availability",
     label: "Disponibilitate",
     icon: "availability",
   },
   {
-    href: "/doctor-dashboard/profile",
-    label: "Profilul meu",
-    icon: "profile",
+    href:
+      "/doctor-dashboard/profile",
+    label: "Servicii și profil",
+    icon: "services",
+  },
+  {
+    href:
+      "/doctor-dashboard/clinics",
+    label: "Clinici",
+    icon: "clinics",
   },
   {
     href: "/",
@@ -165,25 +182,26 @@ function CalendarIcon() {
       strokeWidth="1.8"
     >
       <rect
-        x="3"
+        x="3.5"
         y="5"
-        width="18"
-        height="16"
+        width="17"
+        height="15"
         rx="2"
       />
 
       <path
         strokeLinecap="round"
-        d="M8 3v4M16 3v4M3 10h18"
+        d="M8 3v4M16 3v4M3.5 10h17"
       />
 
       <path
         strokeLinecap="round"
-        d="M8 14h2M14 14h2M8 17h2M14 17h2"
+        d="M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01"
       />
     </svg>
   );
 }
+
 function AvailabilityIcon() {
   return (
     <svg
@@ -197,18 +215,97 @@ function AvailabilityIcon() {
       <circle
         cx="12"
         cy="12"
-        r="9"
+        r="8.5"
       />
 
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
-        d="M12 7v5l3 2"
+        d="M12 7.5v5l3.5 2"
       />
 
       <path
         strokeLinecap="round"
-        d="m17.5 5.5 1-1"
+        d="M8 3.5 6 1.8M16 3.5l2-1.7"
+      />
+    </svg>
+  );
+}
+
+function ServicesIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-5 w-5 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <rect
+        x="4"
+        y="4"
+        width="16"
+        height="16"
+        rx="2"
+      />
+
+      <path
+        strokeLinecap="round"
+        d="M8 9h8M8 13h8M8 17h5"
+      />
+
+      <path
+        strokeLinecap="round"
+        d="M12 2v4M10 4h4"
+      />
+    </svg>
+  );
+}
+
+function ClinicIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-5 w-5 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 21V7l8-4 8 4v14"
+      />
+
+      <path
+        strokeLinecap="round"
+        d="M9 21v-5h6v5M9 9h6M12 6v6M9 12h6"
+      />
+    </svg>
+  );
+}
+
+function ProfileIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-5 w-5 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <circle
+        cx="12"
+        cy="8"
+        r="4"
+      />
+
+      <path
+        strokeLinecap="round"
+        d="M5 21c.7-4 3.1-6 7-6s6.3 2 7 6"
       />
     </svg>
   );
@@ -239,35 +336,6 @@ function HomeIcon() {
   );
 }
 
-function ProfileIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="h-5 w-5 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-    >
-      <circle
-        cx="12"
-        cy="8"
-        r="4"
-      />
-
-      <path
-        strokeLinecap="round"
-        d="M5 21c.7-4 3.1-6 7-6s6.3 2 7 6"
-      />
-
-      <path
-        strokeLinecap="round"
-        d="M17 4h4M19 2v4"
-      />
-    </svg>
-  );
-}
-
 function LogoutIcon() {
   return (
     <svg
@@ -287,47 +355,78 @@ function LogoutIcon() {
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
-        d="m14 8 4 4-4 4M18 12H9"
+        d="m15 8 4 4-4 4M19 12H9"
       />
     </svg>
   );
 }
 
-function NavigationIcon({
+function NavigationItemIcon({
   icon,
 }: {
-  icon: NavigationItem["icon"];
+  icon: NavigationIcon;
 }) {
   switch (icon) {
+    case "appointments":
+      return <AppointmentIcon />;
+
     case "calendar":
       return <CalendarIcon />;
 
-    case "profile":
-      return <ProfileIcon />;
-    
     case "availability":
       return <AvailabilityIcon />;
 
+    case "services":
+      return <ServicesIcon />;
+
+    case "clinics":
+      return <ClinicIcon />;
+
+    case "profile":
+      return <ProfileIcon />;
+
     case "home":
       return <HomeIcon />;
-
-    default:
-      return <AppointmentIcon />;    
   }
 }
 
-function getInitials(name: string) {
-  const initials = name
-    .split(" ")
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) =>
-      part.charAt(0).toUpperCase()
-    )
-    .join("");
+function getInitials(
+  userName: string
+) {
+  const parts = userName
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
 
-  return initials || "M";
+  if (parts.length === 0) {
+    return "MD";
+  }
+
+  if (parts.length === 1) {
+    return parts[0]
+      .slice(0, 2)
+      .toUpperCase();
+  }
+
+  return `${parts[0][0]}${
+    parts[parts.length - 1][0]
+  }`.toUpperCase();
+}
+
+function isNavigationItemActive(
+  pathname: string,
+  href: string
+) {
+  if (href === "/") {
+    return pathname === "/";
+  }
+
+  return (
+    pathname === href ||
+    pathname.startsWith(
+      `${href}/`
+    )
+  );
 }
 
 export default function DoctorDashboardSidebar({
@@ -336,71 +435,254 @@ export default function DoctorDashboardSidebar({
   roleLabel,
   children,
 }: DoctorDashboardSidebarProps) {
-  const pathname = usePathname();
-  const router = useRouter();
+  const pathname =
+    usePathname();
 
-  const [isCollapsed, setIsCollapsed] =
-    useState(false);
+  const router =
+    useRouter();
 
-  const [isMobileOpen, setIsMobileOpen] =
-    useState(false);
+  const [
+    isMobileMenuOpen,
+    setIsMobileMenuOpen,
+  ] = useState(false);
 
-  const [isSigningOut, setIsSigningOut] =
-    useState(false);
+  const [
+    isSidebarCollapsed,
+    setIsSidebarCollapsed,
+  ] = useState(false);
 
-  function isActiveRoute(href: string) {
-    if (href === "/") {
-      return false;
-    }
+  const [
+    isSigningOut,
+    setIsSigningOut,
+  ] = useState(false);
 
-    return (
-      pathname === href ||
-      pathname.startsWith(`${href}/`)
-    );
-  }
+  const initials =
+    getInitials(userName);
 
   async function handleSignOut() {
+    if (isSigningOut) {
+      return;
+    }
+
     setIsSigningOut(true);
 
     try {
-      const supabase = createClient();
+      const supabase =
+        createClient();
 
-      const { error } =
+      const {
+        error,
+      } =
         await supabase.auth.signOut();
 
       if (error) {
         console.error(
-          "Doctor dashboard sign-out failed:",
+          "Doctor sign-out failed:",
           error
         );
 
+        setIsSigningOut(false);
         return;
       }
 
-      setIsMobileOpen(false);
-
-      router.push("/login");
+      router.replace("/login");
       router.refresh();
-    } finally {
+    } catch (error) {
+      console.error(
+        "Doctor sign-out failed:",
+        error
+      );
+
       setIsSigningOut(false);
     }
   }
 
-  const desktopWidthClass =
-    isCollapsed
+  function closeMobileMenu() {
+    setIsMobileMenuOpen(false);
+  }
+
+  const sidebarWidthClass =
+    isSidebarCollapsed
       ? "lg:w-20"
       : "lg:w-72";
 
-  const contentPaddingClass =
-    isCollapsed
+  const contentOffsetClass =
+    isSidebarCollapsed
       ? "lg:pl-20"
       : "lg:pl-72";
 
+  const sidebarContent = (
+    <div className="flex h-full flex-col">
+      <div
+        className={`flex min-h-20 items-center border-b border-gray-200 px-4 ${
+          isSidebarCollapsed
+            ? "justify-center"
+            : "justify-between"
+        }`}
+      >
+        {!isSidebarCollapsed && (
+          <Link
+            href="/"
+            onClick={
+              closeMobileMenu
+            }
+            className="text-2xl font-bold tracking-tight text-gray-900"
+          >
+            RomDoc
+          </Link>
+        )}
+
+        <button
+          type="button"
+          onClick={() =>
+            setIsSidebarCollapsed(
+              (currentValue) =>
+                !currentValue
+            )
+          }
+          className="hidden rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 lg:inline-flex"
+          aria-label={
+            isSidebarCollapsed
+              ? "Extinde meniul"
+              : "Restrânge meniul"
+          }
+          title={
+            isSidebarCollapsed
+              ? "Extinde meniul"
+              : "Restrânge meniul"
+          }
+        >
+          {isSidebarCollapsed ? (
+            <ChevronRightIcon />
+          ) : (
+            <ChevronLeftIcon />
+          )}
+        </button>
+      </div>
+
+      <div className="border-b border-gray-200 p-4">
+        <div
+          className={`flex items-center ${
+            isSidebarCollapsed
+              ? "justify-center"
+              : "gap-3"
+          }`}
+        >
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#D97757] text-sm font-bold text-white">
+            {initials}
+          </div>
+
+          {!isSidebarCollapsed && (
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-gray-900">
+                {userName}
+              </p>
+
+              <p className="truncate text-xs text-gray-500">
+                {userEmail}
+              </p>
+
+              <span className="mt-1 inline-flex rounded-full bg-[#F0EEE9] px-2 py-0.5 text-xs font-semibold text-[#9A4F35]">
+                {roleLabel}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <nav
+        aria-label="Navigare medic"
+        className="flex-1 space-y-1 overflow-y-auto p-3"
+      >
+        {navigationItems.map(
+          (item) => {
+            const isActive =
+              isNavigationItemActive(
+                pathname,
+                item.href
+              );
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={
+                  closeMobileMenu
+                }
+                title={
+                  isSidebarCollapsed
+                    ? item.label
+                    : undefined
+                }
+                aria-current={
+                  isActive
+                    ? "page"
+                    : undefined
+                }
+                className={`flex min-h-11 items-center rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                  isSidebarCollapsed
+                    ? "justify-center"
+                    : "gap-3"
+                } ${
+                  isActive
+                    ? "bg-[#F0EEE9] text-[#9A4F35]"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                }`}
+              >
+                <NavigationItemIcon
+                  icon={item.icon}
+                />
+
+                {!isSidebarCollapsed && (
+                  <span>
+                    {item.label}
+                  </span>
+                )}
+              </Link>
+            );
+          }
+        )}
+      </nav>
+
+      <div className="border-t border-gray-200 p-3">
+        <button
+          type="button"
+          onClick={
+            handleSignOut
+          }
+          disabled={
+            isSigningOut
+          }
+          title={
+            isSidebarCollapsed
+              ? "Deconectare"
+              : undefined
+          }
+          className={`flex min-h-11 w-full items-center rounded-xl px-3 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 ${
+            isSidebarCollapsed
+              ? "justify-center"
+              : "gap-3"
+          }`}
+        >
+          <LogoutIcon />
+
+          {!isSidebarCollapsed && (
+            <span>
+              {isSigningOut
+                ? "Se deconectează..."
+                : "Deconectare"}
+            </span>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 lg:hidden">
+      <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between border-b border-gray-200 bg-white px-4 lg:hidden">
         <Link
-          href="/doctor-dashboard/appointments"
+          href="/"
           className="text-xl font-bold text-gray-900"
         >
           RomDoc
@@ -409,203 +691,59 @@ export default function DoctorDashboardSidebar({
         <button
           type="button"
           onClick={() =>
-            setIsMobileOpen(true)
+            setIsMobileMenuOpen(
+              true
+            )
           }
+          className="rounded-lg p-2 text-gray-700 hover:bg-gray-100"
           aria-label="Deschide meniul"
-          className="rounded-xl border border-gray-300 bg-white p-2 text-gray-700 transition hover:bg-gray-50"
         >
           <MenuIcon />
         </button>
       </header>
 
-      {isMobileOpen && (
-        <button
-          type="button"
-          aria-label="Închide meniul"
-          onClick={() =>
-            setIsMobileOpen(false)
-          }
-          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-        />
-      )}
-
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-gray-200 bg-white transition-all duration-200 lg:z-40 ${desktopWidthClass} ${
-          isMobileOpen
-            ? "translate-x-0"
-            : "-translate-x-full lg:translate-x-0"
-        }`}
+        className={`fixed inset-y-0 left-0 z-40 hidden border-r border-gray-200 bg-white transition-[width] duration-200 lg:block ${sidebarWidthClass}`}
       >
-        <div className="flex h-20 items-center justify-between border-b border-gray-200 px-5">
-          {!isCollapsed ? (
-            <Link
-              href="/doctor-dashboard/appointments"
-              onClick={() =>
-                setIsMobileOpen(false)
-              }
-              className="text-2xl font-bold text-gray-900"
-            >
-              RomDoc
-            </Link>
-          ) : (
-            <Link
-              href="/doctor-dashboard/appointments"
-              className="mx-auto text-xl font-bold text-[#D97757]"
-            >
-              R
-            </Link>
-          )}
-
-          <button
-            type="button"
-            onClick={() =>
-              setIsMobileOpen(false)
-            }
-            aria-label="Închide meniul"
-            className="rounded-lg p-2 text-gray-600 transition hover:bg-gray-100 lg:hidden"
-          >
-            <CloseIcon />
-          </button>
-        </div>
-
-        <div
-          className={`border-b border-gray-200 ${
-            isCollapsed
-              ? "px-3 py-5"
-              : "px-5 py-6"
-          }`}
-        >
-          <div
-            className={`flex items-center ${
-              isCollapsed
-                ? "justify-center"
-                : "gap-3"
-            }`}
-          >
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#F0EEE9] text-sm font-bold text-[#9A4F35]">
-              {getInitials(userName)}
-            </div>
-
-            {!isCollapsed && (
-              <div className="min-w-0">
-                <p className="truncate font-semibold text-gray-900">
-                  {userName}
-                </p>
-
-                <p className="truncate text-sm text-gray-500">
-                  {userEmail}
-                </p>
-
-                <span className="mt-2 inline-flex rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-800">
-                  {roleLabel}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <nav className="flex-1 space-y-2 overflow-y-auto px-3 py-5">
-          {navigationItems.map(
-            (item) => {
-              const isActive =
-                isActiveRoute(item.href);
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() =>
-                    setIsMobileOpen(false)
-                  }
-                  title={
-                    isCollapsed
-                      ? item.label
-                      : undefined
-                  }
-                  className={`flex items-center rounded-xl px-3 py-3 text-sm font-medium transition ${
-                    isCollapsed
-                      ? "justify-center"
-                      : "gap-3"
-                  } ${
-                    isActive
-                      ? "bg-[#F0EEE9] text-[#9A4F35]"
-                      : "text-gray-700 hover:bg-gray-100 hover:text-gray-950"
-                  }`}
-                >
-                  <NavigationIcon
-                    icon={item.icon}
-                  />
-
-                  {!isCollapsed && (
-                    <span>{item.label}</span>
-                  )}
-                </Link>
-              );
-            }
-          )}
-        </nav>
-
-        <div className="border-t border-gray-200 p-3">
-          <button
-            type="button"
-            onClick={handleSignOut}
-            disabled={isSigningOut}
-            title={
-              isCollapsed
-                ? "Deconectare"
-                : undefined
-            }
-            className={`flex w-full items-center rounded-xl px-3 py-3 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 ${
-              isCollapsed
-                ? "justify-center"
-                : "gap-3"
-            }`}
-          >
-            <LogoutIcon />
-
-            {!isCollapsed && (
-              <span>
-                {isSigningOut
-                  ? "Se deconectează..."
-                  : "Deconectare"}
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              setIsCollapsed(
-                (currentValue) =>
-                  !currentValue
-              )
-            }
-            aria-label={
-              isCollapsed
-                ? "Extinde meniul"
-                : "Restrânge meniul"
-            }
-            className="mt-2 hidden w-full items-center justify-center rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-gray-600 transition hover:bg-gray-50 lg:flex"
-          >
-            {isCollapsed ? (
-              <ChevronRightIcon />
-            ) : (
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <ChevronLeftIcon />
-
-                <span>
-                  Restrânge meniul
-                </span>
-              </div>
-            )}
-          </button>
-        </div>
+        {sidebarContent}
       </aside>
 
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button
+            type="button"
+            aria-label="Închide meniul"
+            onClick={
+              closeMobileMenu
+            }
+            className="absolute inset-0 bg-black/40"
+          />
+
+          <aside className="relative h-full w-[min(20rem,88vw)] bg-white shadow-xl">
+            <div className="absolute right-3 top-3 z-10">
+              <button
+                type="button"
+                onClick={
+                  closeMobileMenu
+                }
+                className="rounded-lg p-2 text-gray-600 hover:bg-gray-100"
+                aria-label="Închide meniul"
+              >
+                <CloseIcon />
+              </button>
+            </div>
+
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+
       <div
-        className={`min-h-screen transition-[padding] duration-200 ${contentPaddingClass}`}
+        className={`transition-[padding] duration-200 ${contentOffsetClass}`}
       >
-        {children}
+        <main className="mx-auto w-full max-w-7xl p-4 sm:p-6 lg:p-8">
+          {children}
+        </main>
       </div>
     </div>
   );

@@ -38,46 +38,43 @@ export async function matchOrCreateCity(
       .trim()
       .toUpperCase();
 
-  const slug =
+  const baseSlug =
     createLocationSlug(cityName);
 
-  if (!slug) {
+  if (!baseSlug) {
     throw new Error(
       "A valid city slug could not be generated."
     );
   }
 
   const {
-    data: existingCity,
-    error: cityLookupError,
+    data: existingBySlug,
+    error: slugLookupError,
   } = await admin
     .from("cities")
     .select("id, slug")
-    .eq("slug", slug)
-    .eq(
-      "country_code",
-      countryCode
-    )
+    .eq("slug", baseSlug)
     .maybeSingle();
 
-  if (cityLookupError) {
+  if (slugLookupError) {
     throw new Error(
-      `City lookup failed: ${cityLookupError.message}`
+      `City lookup failed: ${slugLookupError.message}`
     );
   }
 
-  if (existingCity) {
-    return existingCity;
+  if (existingBySlug) {
+    return existingBySlug;
   }
 
   const {
-    data: translatedCity,
+    data: translationMatches,
     error:
       translationLookupError,
   } = await admin
     .from("city_translations")
     .select(`
       city_id,
+      name,
       cities!inner (
         id,
         slug,
@@ -86,38 +83,34 @@ export async function matchOrCreateCity(
     `)
     .eq("locale", "ro")
     .ilike("name", cityName)
-    .maybeSingle();
+    .limit(10);
 
-  if (
-    translationLookupError
-  ) {
+  if (translationLookupError) {
     console.error(
       "City translation lookup failed:",
       translationLookupError
     );
   }
 
-  if (
-    translatedCity &&
-    Array.isArray(
-      translatedCity.cities
-    )
+  for (
+    const translation of
+      translationMatches ?? []
   ) {
-    const translatedRecord =
-      translatedCity.cities[0];
+    const relatedCity =
+      Array.isArray(
+        translation.cities
+      )
+        ? translation.cities[0]
+        : translation.cities;
 
     if (
-      translatedRecord &&
-      translatedRecord
-        .country_code ===
+      relatedCity &&
+      relatedCity.country_code ===
         countryCode
     ) {
       return {
-        id:
-          translatedRecord.id,
-
-        slug:
-          translatedRecord.slug,
+        id: relatedCity.id,
+        slug: relatedCity.slug,
       };
     }
   }
@@ -127,25 +120,18 @@ export async function matchOrCreateCity(
     error: cityInsertError,
   } = await admin
     .from("cities")
-    .upsert(
-      {
-        slug,
-        country_code:
-          countryCode,
+    .insert({
+      slug: baseSlug,
+      country_code: countryCode,
 
-        latitude:
-          input.latitude ??
-          null,
+      latitude:
+        input.latitude ??
+        null,
 
-        longitude:
-          input.longitude ??
-          null,
-      },
-      {
-        onConflict:
-          "slug",
-      }
-    )
+      longitude:
+        input.longitude ??
+        null,
+    })
     .select("id, slug")
     .single();
 
@@ -153,6 +139,40 @@ export async function matchOrCreateCity(
     cityInsertError ||
     !insertedCity
   ) {
+    /*
+     * Another request may have created the city between
+     * our lookup and insert. Try one final lookup.
+     */
+    if (
+      cityInsertError?.code ===
+      "23505"
+    ) {
+      const {
+        data: concurrentCity,
+        error:
+          concurrentLookupError,
+      } = await admin
+        .from("cities")
+        .select("id, slug")
+        .eq("slug", baseSlug)
+        .single();
+
+      if (
+        concurrentLookupError ||
+        !concurrentCity
+      ) {
+        throw new Error(
+          `Concurrent city lookup failed: ${
+            concurrentLookupError
+              ?.message ??
+            "No city returned"
+          }`
+        );
+      }
+
+      return concurrentCity;
+    }
+
     throw new Error(
       `City creation failed: ${
         cityInsertError?.message ??
@@ -161,63 +181,38 @@ export async function matchOrCreateCity(
     );
   }
 
+  const translations = [
+    {
+      city_id:
+        insertedCity.id,
+
+      locale: "ro",
+      name: cityName,
+    },
+    {
+      city_id:
+        insertedCity.id,
+
+      locale: "en",
+      name: cityName,
+    },
+  ];
+
   const {
-    error:
-      romanianTranslationError,
+    error: translationsError,
   } = await admin
     .from("city_translations")
     .upsert(
-      {
-        city_id:
-          insertedCity.id,
-
-        locale:
-          "ro",
-
-        name:
-          cityName,
-      },
+      translations,
       {
         onConflict:
           "city_id,locale",
       }
     );
 
-  if (
-    romanianTranslationError
-  ) {
+  if (translationsError) {
     throw new Error(
-      `Romanian city translation creation failed: ${romanianTranslationError.message}`
-    );
-  }
-
-  const {
-    error:
-      englishTranslationError,
-  } = await admin
-    .from("city_translations")
-    .upsert(
-      {
-        city_id:
-          insertedCity.id,
-
-        locale:
-          "en",
-
-        name:
-          cityName,
-      },
-      {
-        onConflict:
-          "city_id,locale",
-      }
-    );
-
-  if (
-    englishTranslationError
-  ) {
-    throw new Error(
-      `English city translation creation failed: ${englishTranslationError.message}`
+      `City translations creation failed: ${translationsError.message}`
     );
   }
 
