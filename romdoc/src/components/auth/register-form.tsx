@@ -20,14 +20,11 @@ type SelectOption = {
 };
 
 type RegisterFormProps = {
-  cities: SelectOption[];
   specialties: SelectOption[];
 };
 
 function getSafeNextPath() {
-  if (
-    typeof window === "undefined"
-  ) {
+  if (typeof window === "undefined") {
     return "/patient-dashboard";
   }
 
@@ -52,9 +49,7 @@ function getSafeNextPath() {
 
 function getInitialRegistrationType():
   RegistrationType {
-  if (
-    typeof window === "undefined"
-  ) {
+  if (typeof window === "undefined") {
     return "patient";
   }
 
@@ -91,7 +86,6 @@ function validatePassword(
 }
 
 export default function RegisterForm({
-  cities,
   specialties,
 }: RegisterFormProps) {
   const router = useRouter();
@@ -129,9 +123,6 @@ export default function RegisterForm({
   const [specialtyId, setSpecialtyId] =
     useState("");
 
-  const [cityId, setCityId] =
-    useState("");
-
   const [
     professionalRegistrationNumber,
     setProfessionalRegistrationNumber,
@@ -149,9 +140,7 @@ export default function RegisterForm({
     useState<string | null>(null);
 
   const loginPath = useMemo(() => {
-    if (
-      typeof window === "undefined"
-    ) {
+    if (typeof window === "undefined") {
       return "/login";
     }
 
@@ -279,14 +268,6 @@ export default function RegisterForm({
 
         return;
       }
-
-      if (!cityId) {
-        setError(
-          "Selectează orașul principal."
-        );
-
-        return;
-      }
     }
 
     if (!acceptedTerms) {
@@ -352,12 +333,6 @@ export default function RegisterForm({
                   registrationType ===
                   "doctor"
                     ? specialtyId
-                    : null,
-
-                city_id:
-                  registrationType ===
-                  "doctor"
-                    ? cityId
                     : null,
 
                 professional_registration_number:
@@ -645,79 +620,38 @@ export default function RegisterForm({
               />
             </label>
 
-            <div className="grid gap-5 sm:grid-cols-2">
-              <label className="block">
-                <span className="text-sm font-medium text-gray-700">
-                  Specialitate
-                </span>
+            <label className="block">
+              <span className="text-sm font-medium text-gray-700">
+                Specialitate
+              </span>
 
-                <select
-                  required
-                  value={specialtyId}
-                  disabled={isPending}
-                  onChange={(event) =>
-                    setSpecialtyId(
-                      event.target.value
-                    )
-                  }
-                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3"
-                >
-                  <option value="">
-                    Selectează specialitatea
-                  </option>
+              <select
+                required
+                value={specialtyId}
+                disabled={isPending}
+                onChange={(event) =>
+                  setSpecialtyId(
+                    event.target.value
+                  )
+                }
+                className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3"
+              >
+                <option value="">
+                  Selectează specialitatea
+                </option>
 
-                  {specialties.map(
-                    (specialty) => (
-                      <option
-                        key={
-                          specialty.id
-                        }
-                        value={
-                          specialty.id
-                        }
-                      >
-                        {
-                          specialty.name
-                        }
-                      </option>
-                    )
-                  )}
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="text-sm font-medium text-gray-700">
-                  Oraș principal
-                </span>
-
-                <select
-                  required
-                  value={cityId}
-                  disabled={isPending}
-                  onChange={(event) =>
-                    setCityId(
-                      event.target.value
-                    )
-                  }
-                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3"
-                >
-                  <option value="">
-                    Selectează orașul
-                  </option>
-
-                  {cities.map(
-                    (city) => (
-                      <option
-                        key={city.id}
-                        value={city.id}
-                      >
-                        {city.name}
-                      </option>
-                    )
-                  )}
-                </select>
-              </label>
-            </div>
+                {specialties.map(
+                  (specialty) => (
+                    <option
+                      key={specialty.id}
+                      value={specialty.id}
+                    >
+                      {specialty.name}
+                    </option>
+                  )
+                )}
+              </select>
+            </label>
 
             <label className="block">
               <span className="text-sm font-medium text-gray-700">

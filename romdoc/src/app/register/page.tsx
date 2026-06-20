@@ -15,14 +15,6 @@ type SpecialtyRow = {
     | null;
 };
 
-type CityRow = {
-  id: string;
-  slug: string;
-  city_translations:
-    | TranslationRow[]
-    | null;
-};
-
 function getRomanianName(
   translations:
     | TranslationRow[]
@@ -51,87 +43,56 @@ export default async function RegisterPage() {
     redirect("/dashboard");
   }
 
-  const [
-    specialtiesResult,
-    citiesResult,
-  ] = await Promise.all([
-    supabase
-      .from("specialties")
-      .select(`
-        id,
-        slug,
-        specialty_translations (
-          locale,
-          name
-        )
-      `)
-      .order("slug"),
+  const {
+    data: specialtiesData,
+    error: specialtiesError,
+  } = await supabase
+    .from("specialties")
+    .select(`
+      id,
+      slug,
+      specialty_translations (
+        locale,
+        name
+      )
+    `)
+    .order("slug");
 
-    supabase
-      .from("cities")
-      .select(`
-        id,
-        slug,
-        city_translations (
-          locale,
-          name
-        )
-      `)
-      .order("slug"),
-  ]);
-
-  if (specialtiesResult.error) {
+  if (specialtiesError) {
     console.error(
       "Registration specialties query failed:",
-      specialtiesResult.error
-    );
-  }
-
-  if (citiesResult.error) {
-    console.error(
-      "Registration cities query failed:",
-      citiesResult.error
+      specialtiesError
     );
   }
 
   const specialtyRows =
-    (specialtiesResult.data as unknown as
+    (specialtiesData as unknown as
       | SpecialtyRow[]
       | null) ?? [];
 
-  const cityRows =
-    (citiesResult.data as unknown as
-      | CityRow[]
-      | null) ?? [];
-
   const specialties =
-    specialtyRows.map((specialty) => ({
-      id: specialty.id,
+    specialtyRows
+      .map((specialty) => ({
+        id: specialty.id,
 
-      name:
-        getRomanianName(
-          specialty
-            .specialty_translations,
-          specialty.slug
-        ),
-    }));
-
-  const cities =
-    cityRows.map((city) => ({
-      id: city.id,
-
-      name:
-        getRomanianName(
-          city.city_translations,
-          city.slug
-        ),
-    }));
+        name:
+          getRomanianName(
+            specialty
+              .specialty_translations,
+            specialty.slug
+          ),
+      }))
+      .sort((first, second) =>
+        first.name.localeCompare(
+          second.name,
+          "ro"
+        )
+      );
 
   return (
     <main className="min-h-screen bg-[#F0EEE9] px-6 py-12">
       <div className="mx-auto flex min-h-[calc(100vh-6rem)] items-center justify-center">
         <RegisterForm
-          cities={cities}
           specialties={specialties}
         />
       </div>
