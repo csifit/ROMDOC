@@ -63,7 +63,7 @@ const navigationItems: NavigationItem[] = [
       "/admin/specialties",
     label: "Specialități",
     icon: "specialties",
-    available: false,
+    available: true,
   },
   {
     href:
