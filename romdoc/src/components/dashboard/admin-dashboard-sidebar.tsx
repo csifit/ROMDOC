@@ -22,6 +22,7 @@ type AdminDashboardSidebarProps = {
 
 type NavigationIcon =
   | "overview"
+  | "users"
   | "doctors"
   | "clinics"
   | "specialties"
@@ -39,9 +40,14 @@ type NavigationItem = {
 const navigationItems: NavigationItem[] = [
   {
     href: "/admin",
-    label:
-      "Prezentare generală",
+    label: "Prezentare generală",
     icon: "overview",
+    available: true,
+  },
+  {
+    href: "/admin/users",
+    label: "Utilizatori",
+    icon: "users",
     available: true,
   },
   {
@@ -81,8 +87,7 @@ const navigationItems: NavigationItem[] = [
   },
   {
     href: "/",
-    label:
-      "Pagina principală",
+    label: "Pagina principală",
     icon: "home",
     available: true,
   },
@@ -141,7 +146,30 @@ function Icon({
         </svg>
       );
 
-    case "doctors":
+    case "users":
+      return (
+        <svg {...commonProps}>
+          <path
+           strokeLinecap="round"
+           strokeLinejoin="round"
+           d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
+          />
+
+          <circle
+            cx="9"
+            cy="7"
+            r="4"
+          />
+
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"
+          />
+        </svg>
+      );
+      
+      case "doctors":
       return (
         <svg {...commonProps}>
           <circle
