@@ -32,7 +32,7 @@ type PlacePrediction = {
 
 type PlacePredictionSelectEvent =
   Event & {
-    placePrediction:
+    placePrediction?:
       PlacePrediction;
   };
 
@@ -61,28 +61,51 @@ type PlaceAutocompleteElementConstructor =
     PlaceAutocompleteElementInstance;
 
 type PlacesLibrary = {
-  PlaceAutocompleteElement:
+  PlaceAutocompleteElement?:
     PlaceAutocompleteElementConstructor;
 };
 
 type GoogleMapsRuntime = {
-  maps: {
-    importLibrary: (
-      libraryName: string
-    ) => Promise<unknown>;
+  importLibrary?: (
+    libraryName: string
+  ) => Promise<unknown>;
+
+  places?: {
+    PlaceAutocompleteElement?:
+      PlaceAutocompleteElementConstructor;
   };
 };
 
 type GoogleWindow =
   Window & {
-    google?: GoogleMapsRuntime;
+    google?: {
+      maps?: GoogleMapsRuntime;
+    };
   };
+
+function getPlaceAutocompleteConstructor(
+  placesLibrary:
+    PlacesLibrary
+) {
+  const googleWindow =
+    window as GoogleWindow;
+
+  return (
+    placesLibrary
+      .PlaceAutocompleteElement ??
+    googleWindow.google
+      ?.maps
+      ?.places
+      ?.PlaceAutocompleteElement ??
+    null
+  );
+}
 
 export default function GooglePlaceAutocomplete({
   onAddressSelected,
   disabled = false,
 }: GooglePlaceAutocompleteProps) {
-  const containerRef =
+  const mountRef =
     useRef<HTMLDivElement | null>(
       null
     );
@@ -99,10 +122,13 @@ export default function GooglePlaceAutocomplete({
   const [
     isResolvingAddress,
     setIsResolvingAddress,
-  ] = useState(false);
+  ] =
+    useState(false);
 
   const [error, setError] =
-    useState<string | null>(null);
+    useState<string | null>(
+      null
+    );
 
   const [
     selectedAddress,
@@ -126,7 +152,8 @@ export default function GooglePlaceAutocomplete({
     );
 
   useEffect(() => {
-    let isActive = true;
+    let isActive =
+      true;
 
     let autocomplete:
       | PlaceAutocompleteElementInstance
@@ -145,7 +172,7 @@ export default function GooglePlaceAutocomplete({
 
         if (
           !isActive ||
-          !containerRef.current
+          !mountRef.current
         ) {
           return;
         }
@@ -154,12 +181,13 @@ export default function GooglePlaceAutocomplete({
           window as GoogleWindow;
 
         const importLibrary =
-          googleWindow.google?.maps
-            .importLibrary;
+          googleWindow.google
+            ?.maps
+            ?.importLibrary;
 
         if (!importLibrary) {
           throw new Error(
-            "Biblioteca Google Maps nu este disponibilă."
+            "Funcția Google Maps importLibrary nu este disponibilă."
           );
         }
 
@@ -168,9 +196,18 @@ export default function GooglePlaceAutocomplete({
             "places"
           )) as PlacesLibrary;
 
-        const {
-          PlaceAutocompleteElement,
-        } = placesLibrary;
+        const PlaceAutocompleteElement =
+          getPlaceAutocompleteConstructor(
+            placesLibrary
+          );
+
+        if (
+          !PlaceAutocompleteElement
+        ) {
+          throw new Error(
+            "Google Places nu a furnizat componenta PlaceAutocompleteElement."
+          );
+        }
 
         autocomplete =
           new PlaceAutocompleteElement({
@@ -193,6 +230,10 @@ export default function GooglePlaceAutocomplete({
             "disabled",
             ""
           );
+        } else {
+          autocomplete.removeAttribute(
+            "disabled"
+          );
         }
 
         handleSelection =
@@ -210,9 +251,18 @@ export default function GooglePlaceAutocomplete({
                 event as
                   PlacePredictionSelectEvent;
 
-              const place =
+              const placePrediction =
                 placeEvent
-                  .placePrediction
+                  .placePrediction;
+
+              if (!placePrediction) {
+                throw new Error(
+                  "Google nu a returnat sugestia selectată."
+                );
+              }
+
+              const place =
+                placePrediction
                   .toPlace();
 
               const placeId =
@@ -304,15 +354,21 @@ export default function GooglePlaceAutocomplete({
           handleSelection
         );
 
-        containerRef.current
-          .replaceChildren(
-            autocomplete
-          );
+        /*
+         * This mount element is intentionally empty in JSX.
+         * React never renders children inside it, so Google may safely
+         * append and remove its custom element.
+         */
+        mountRef.current.appendChild(
+          autocomplete
+        );
 
         autocompleteRef.current =
           autocomplete;
 
-        setIsLoading(false);
+        if (isActive) {
+          setIsLoading(false);
+        }
       } catch (
         initializationError
       ) {
@@ -339,7 +395,8 @@ export default function GooglePlaceAutocomplete({
     void initialize();
 
     return () => {
-      isActive = false;
+      isActive =
+        false;
 
       if (
         autocomplete &&
@@ -352,11 +409,23 @@ export default function GooglePlaceAutocomplete({
           );
       }
 
+      /*
+       * Remove only the Google element we inserted.
+       * Do not call replaceChildren(), because React owns the
+       * surrounding component tree.
+       */
+      const mountElement =
+        mountRef.current;
+
       if (
-        containerRef.current
+        autocomplete &&
+        mountElement &&
+        autocomplete.parentNode ===
+        mountElement
       ) {
-        containerRef.current
-          .replaceChildren();
+        mountElement.removeChild(
+          autocomplete
+        );
       }
 
       autocompleteRef.current =
@@ -378,15 +447,21 @@ export default function GooglePlaceAutocomplete({
           Selectează o adresă din lista Google
         </span>
 
-        <div
-          ref={containerRef}
-          className="mt-2 min-h-12 w-full rounded-xl border border-gray-300 bg-white p-1"
-        >
+        <div className="mt-2 rounded-xl border border-gray-300 bg-white p-1">
           {isLoading && (
             <p className="px-3 py-2 text-sm text-gray-500">
               Se încarcă Google Places...
             </p>
           )}
+
+          <div
+            ref={mountRef}
+            className={
+              isLoading
+                ? "hidden"
+                : "block min-h-11 w-full"
+            }
+          />
         </div>
       </label>
 

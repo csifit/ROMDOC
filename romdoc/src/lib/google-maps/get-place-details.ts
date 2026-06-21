@@ -29,6 +29,25 @@ type GooglePlaceResponse = {
   googleMapsUri?: string;
 };
 
+type GoogleApiErrorResponse = {
+  error?: {
+    code?: number;
+    message?: string;
+    status?: string;
+
+    details?: Array<{
+      "@type"?: string;
+      reason?: string;
+      domain?: string;
+
+      metadata?: Record<
+        string,
+        string
+      >;
+    }>;
+  };
+};
+
 function getComponent(
   components:
     | GoogleAddressComponent[]
@@ -48,6 +67,7 @@ function getCityName(
 ) {
   const preferredTypes = [
     "locality",
+    "postal_town",
     "administrative_area_level_2",
     "sublocality_level_1",
     "administrative_area_level_1",
@@ -101,16 +121,87 @@ function buildAddressLine1(
   );
 }
 
+function getGoogleErrorMessage(
+  errorResponse:
+    GoogleApiErrorResponse | null,
+  responseStatus: number
+) {
+  const googleMessage =
+    errorResponse?.error?.message
+      ?.trim();
+
+  if (googleMessage) {
+    return googleMessage;
+  }
+
+  switch (responseStatus) {
+    case 400:
+      return "Google a respins cererea deoarece datele trimise nu sunt valide.";
+
+    case 401:
+      return "Cheia Google Maps nu a fost acceptată.";
+
+    case 403:
+      return "Cheia Google Maps nu are permisiunea de a utiliza Places API (New).";
+
+    case 404:
+      return "Adresa selectată nu mai este disponibilă în Google Places.";
+
+    case 429:
+      return "Limita de solicitări Google Places a fost depășită.";
+
+    default:
+      return "Google nu a putut verifica adresa selectată.";
+  }
+}
+
+async function parseGoogleError(
+  response: Response
+): Promise<{
+  parsed:
+    | GoogleApiErrorResponse
+    | null;
+
+  rawText: string;
+}> {
+  const rawText =
+    await response.text();
+
+  if (!rawText) {
+    return {
+      parsed: null,
+      rawText: "",
+    };
+  }
+
+  try {
+    return {
+      parsed:
+        JSON.parse(
+          rawText
+        ) as GoogleApiErrorResponse,
+
+      rawText,
+    };
+  } catch {
+    return {
+      parsed: null,
+      rawText,
+    };
+  }
+}
+
 export async function getGooglePlaceDetails(
   placeId: string
 ): Promise<GoogleClinicAddress> {
   const apiKey =
     process.env
-      .GOOGLE_MAPS_SERVER_KEY;
+      .GOOGLE_MAPS_SERVER_KEY
+      ?.trim();
 
   if (!apiKey) {
     throw new Error(
-      "GOOGLE_MAPS_SERVER_KEY is not configured."
+      "GOOGLE_MAPS_SERVER_KEY nu este configurată în mediul serverului."
     );
   }
 
@@ -119,7 +210,7 @@ export async function getGooglePlaceDetails(
 
   if (!normalizedPlaceId) {
     throw new Error(
-      "Google Place ID is required."
+      "Google Place ID este obligatoriu."
     );
   }
 
@@ -140,45 +231,119 @@ export async function getGooglePlaceDetails(
     "RO"
   );
 
-  const response =
-    await fetch(endpoint, {
-      method: "GET",
+  let response: Response;
 
-      headers: {
-        "X-Goog-Api-Key":
-          apiKey,
+  try {
+    response =
+      await fetch(endpoint, {
+        method: "GET",
 
-        "X-Goog-FieldMask": [
-          "id",
-          "displayName",
-          "formattedAddress",
-          "addressComponents",
-          "location",
-          "googleMapsUri",
-        ].join(","),
-      },
+        headers: {
+          Accept:
+            "application/json",
 
-      cache: "no-store",
-    });
+          "X-Goog-Api-Key":
+            apiKey,
 
-  if (!response.ok) {
-    const responseText =
-      await response.text();
+          "X-Goog-FieldMask": [
+            "id",
+            "displayName",
+            "formattedAddress",
+            "addressComponents",
+            "location",
+            "googleMapsUri",
+          ].join(","),
+        },
 
+        cache: "no-store",
+      });
+  } catch (networkError) {
     console.error(
-      "Google Place Details failed:",
-      response.status,
-      responseText
+      "Google Place Details network request failed:",
+      networkError
     );
 
     throw new Error(
-      "Google could not verify the selected address."
+      "Serverul RomDoc nu s-a putut conecta la Google Places."
     );
   }
 
-  const place =
-    (await response.json()) as
-      GooglePlaceResponse;
+  if (!response.ok) {
+    const {
+      parsed,
+      rawText,
+    } =
+      await parseGoogleError(
+        response
+      );
+
+    const googleMessage =
+      getGoogleErrorMessage(
+        parsed,
+        response.status
+      );
+
+    console.error(
+      "Google Place Details failed:",
+      {
+        httpStatus:
+          response.status,
+
+        httpStatusText:
+          response.statusText,
+
+        googleStatus:
+          parsed?.error?.status ??
+          null,
+
+        googleCode:
+          parsed?.error?.code ??
+          null,
+
+        googleMessage:
+          parsed?.error?.message ??
+          null,
+
+        googleDetails:
+          parsed?.error?.details ??
+          null,
+
+        rawResponse:
+          rawText,
+      }
+    );
+
+    if (
+      process.env.NODE_ENV ===
+      "development"
+    ) {
+      throw new Error(
+        `Google Places (${response.status}): ${googleMessage}`
+      );
+    }
+
+    throw new Error(
+      "Google nu a putut verifica adresa selectată."
+    );
+  }
+
+  let place:
+    GooglePlaceResponse;
+
+  try {
+    place =
+      (await response.json()) as
+        GooglePlaceResponse;
+  } catch (parseError) {
+    console.error(
+      "Google Place Details returned invalid JSON:",
+      parseError
+    );
+
+    throw new Error(
+      "Google Places a returnat un răspuns invalid."
+    );
+  }
 
   const components =
     place.addressComponents;
@@ -196,7 +361,7 @@ export async function getGooglePlaceDetails(
 
   if (countryCode !== "RO") {
     throw new Error(
-      "The selected address must be located in Romania."
+      "Adresa selectată trebuie să fie în România."
     );
   }
 
@@ -204,8 +369,22 @@ export async function getGooglePlaceDetails(
     getCityName(components);
 
   if (!cityName) {
+    console.error(
+      "Google address has no recognizable city:",
+      {
+        placeId:
+          normalizedPlaceId,
+
+        formattedAddress:
+          place.formattedAddress,
+
+        addressComponents:
+          components,
+      }
+    );
+
     throw new Error(
-      "The city could not be identified from the selected address."
+      "Orașul nu a putut fi identificat din adresa selectată."
     );
   }
 
@@ -222,7 +401,7 @@ export async function getGooglePlaceDetails(
       "number"
   ) {
     throw new Error(
-      "The selected address does not contain valid coordinates."
+      "Adresa selectată nu conține coordonate valide."
     );
   }
 
@@ -231,7 +410,7 @@ export async function getGooglePlaceDetails(
 
   if (!formattedAddress) {
     throw new Error(
-      "The selected address is incomplete."
+      "Adresa selectată este incompletă."
     );
   }
 
@@ -258,7 +437,9 @@ export async function getGooglePlaceDetails(
       normalizedPlaceId,
 
     displayName:
-      place.displayName?.text?.trim() ??
+      place.displayName
+        ?.text
+        ?.trim() ??
       null,
 
     formattedAddress,
@@ -266,13 +447,15 @@ export async function getGooglePlaceDetails(
     addressLine1:
       buildAddressLine1(
         components
-      ) || formattedAddress,
+      ) ||
+      formattedAddress,
 
     cityName:
       cityName.trim(),
 
     countyName:
-      county?.longText?.trim() ??
+      county?.longText
+        ?.trim() ??
       null,
 
     postalCode,
@@ -284,7 +467,8 @@ export async function getGooglePlaceDetails(
     longitude,
 
     googleMapsUri:
-      place.googleMapsUri?.trim() ??
+      place.googleMapsUri
+        ?.trim() ??
       null,
   };
 }
