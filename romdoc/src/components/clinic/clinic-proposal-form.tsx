@@ -8,6 +8,7 @@ import {
   useTransition,
 } from "react";
 import GooglePlaceAutocomplete from "@/components/clinic/google-place-autocomplete";
+import Button from "@/components/ui/button";
 import type {
   GoogleClinicAddress,
 } from "@/lib/locations/google-address";
@@ -341,7 +342,7 @@ export default function ClinicProposalForm() {
     <div className="space-y-8">
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
         <div>
-          <p className="text-sm font-semibold text-[#9A4F35]">
+          <p className="text-sm font-semibold text-[#036661]">
             Clinici
           </p>
 
@@ -379,7 +380,7 @@ export default function ClinicProposalForm() {
                 )
               }
               placeholder="Exemplu: Clinica Medicală Centrală"
-              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20"
+              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
             />
           </label>
 
@@ -410,7 +411,7 @@ export default function ClinicProposalForm() {
                 )
               }
               placeholder="Etaj, cabinet, corp de clădire"
-              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20"
+              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
             />
           </label>
 
@@ -434,7 +435,7 @@ export default function ClinicProposalForm() {
                     event.target.value
                   )
                 }
-                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20"
+                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
               />
             </label>
 
@@ -457,7 +458,7 @@ export default function ClinicProposalForm() {
                     event.target.value
                   )
                 }
-                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20"
+                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
               />
             </label>
           </div>
@@ -482,7 +483,7 @@ export default function ClinicProposalForm() {
                 )
               }
               placeholder="https://..."
-              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20"
+              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
             />
           </label>
 
@@ -506,7 +507,7 @@ export default function ClinicProposalForm() {
                 )
               }
               placeholder="O scurtă descriere a clinicii"
-              className="mt-2 w-full resize-y rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20"
+              className="mt-2 w-full resize-y rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
             />
           </label>
 
@@ -528,18 +529,14 @@ export default function ClinicProposalForm() {
             </div>
           )}
 
-          <button
+          <Button
             type="submit"
-            disabled={
-              isSubmitting ||
-              !selectedAddress
-            }
-            className="rounded-xl bg-[#D97757] px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            isLoading={isSubmitting}
+            loadingText="Se trimite..."
+            disabled={!selectedAddress}
           >
-            {isSubmitting
-              ? "Se trimite..."
-              : "Trimite clinica spre aprobare"}
-          </button>
+            Trimite clinica spre aprobare
+          </Button>
         </form>
       </section>
 
@@ -592,7 +589,7 @@ export default function ClinicProposalForm() {
                       }
                       target="_blank"
                       rel="noreferrer"
-                      className="mt-3 inline-block text-sm font-semibold text-[#9A4F35] hover:underline"
+                      className="romdoc-link mt-3 inline-block text-sm hover:underline"
                     >
                       Vezi pe Google Maps
                     </a>

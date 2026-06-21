@@ -9,6 +9,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import Button from "@/components/ui/button";
 
 type RegistrationType =
   | "patient"
@@ -513,7 +514,7 @@ export default function RegisterForm({
             după confirmarea e-mailului și
             plata abonamentului RomDoc de{" "}
             <strong>
-              50 lei/lună + TVA
+              60 lei/lună + TVA
             </strong>
             .
           </>
@@ -549,7 +550,7 @@ export default function RegisterForm({
                   event.target.value
                 )
               }
-              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20"
+              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
             />
           </label>
 
@@ -571,7 +572,7 @@ export default function RegisterForm({
                   event.target.value
                 )
               }
-              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20"
+              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
             />
           </label>
         </div>
@@ -592,7 +593,7 @@ export default function RegisterForm({
                 event.target.value
               )
             }
-            className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20"
+            className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
           />
         </label>
 
@@ -616,7 +617,7 @@ export default function RegisterForm({
                   )
                 }
                 placeholder="+40 700 000 000"
-                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20"
+                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
               />
             </label>
 
@@ -675,7 +676,7 @@ export default function RegisterForm({
                   )
                 }
                 placeholder="Număr de parafă sau identificator profesional"
-                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20"
+                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
               />
             </label>
 
@@ -699,7 +700,7 @@ export default function RegisterForm({
                   )
                 }
                 placeholder="Alte informații relevante"
-                className="mt-2 w-full resize-y rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20"
+                className="mt-2 w-full resize-y rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
               />
             </label>
           </>
@@ -723,7 +724,7 @@ export default function RegisterForm({
                   event.target.value
                 )
               }
-              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20"
+              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
             />
           </label>
 
@@ -746,7 +747,7 @@ export default function RegisterForm({
                   event.target.value
                 )
               }
-              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20"
+              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
             />
           </label>
         </div>
@@ -787,17 +788,16 @@ export default function RegisterForm({
           </div>
         )}
 
-        <button
+        <Button
           type="submit"
-          disabled={isPending}
-          className="w-full rounded-xl bg-[#D97757] px-5 py-3.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          fullWidth
+          isLoading={isPending}
+          loadingText="Se creează contul..."
         >
-          {isPending
-            ? "Se creează contul..."
-            : isDoctor
-              ? "Continuă ca medic"
-              : "Creează cont de pacient"}
-        </button>
+          {isDoctor
+            ? "Continuă ca medic"
+            : "Creează cont de pacient"}
+        </Button>
       </form>
 
       <p className="mt-6 text-center text-sm text-gray-600">
@@ -805,7 +805,7 @@ export default function RegisterForm({
 
         <Link
           href={loginPath}
-          className="font-semibold text-[#9A4F35] underline-offset-4 hover:underline"
+          className="romdoc-link underline-offset-4 hover:underline"
         >
           Autentificare
         </Link>

@@ -5,25 +5,193 @@
   --background-card: #ffffff;
   --background-form: #ffffff;
   --background-dashboard: #f9fafb;
+
   --text-primary: #111827;
   --text-secondary: #4b5563;
+
+  --romdoc-primary: #036661;
+  --romdoc-primary-hover: #ff2800;
+  --romdoc-danger: #dc2626;
+  --romdoc-danger-hover: #b91c1c;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --color-romdoc-primary: var(--romdoc-primary);
+  --color-romdoc-primary-hover: var(--romdoc-primary-hover);
+  --color-romdoc-danger: var(--romdoc-danger);
+  --color-romdoc-danger-hover: var(--romdoc-danger-hover);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background-color: var(--background-directory);
 }
 
 body {
-  background-color: #F0EEE9;
-  color: #111827;
+  min-height: 100vh;
+  background-color: var(--background-directory);
+  color: var(--text-primary);
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  outline-color: var(--romdoc-primary);
+}
+
+::selection {
+  background-color: rgba(3, 102, 97, 0.2);
+  color: var(--text-primary);
+}
+
+@layer components {
+  .romdoc-button {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.75rem;
+    padding: 0.7rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+    text-align: center;
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease,
+      box-shadow 150ms ease,
+      opacity 150ms ease,
+      transform 150ms ease;
+  }
+
+  .romdoc-button:focus-visible {
+    outline: 3px solid rgba(3, 102, 97, 0.25);
+    outline-offset: 2px;
+  }
+
+  .romdoc-button:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  .romdoc-button:disabled,
+  .romdoc-button[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.55;
+    transform: none;
+  }
+
+  .romdoc-button-primary {
+    border: 1px solid var(--romdoc-primary);
+    background-color: var(--romdoc-primary);
+    color: #ffffff;
+  }
+
+  .romdoc-button-primary:hover:not(:disabled) {
+    border-color: var(--romdoc-primary-hover);
+    background-color: var(--romdoc-primary-hover);
+  }
+
+  .romdoc-button-secondary {
+    border: 1px solid var(--romdoc-primary);
+    background-color: #ffffff;
+    color: var(--romdoc-primary);
+  }
+
+  .romdoc-button-secondary:hover:not(:disabled) {
+    border-color: var(--romdoc-primary-hover);
+    background-color: var(--romdoc-primary-hover);
+    color: #ffffff;
+  }
+
+  .romdoc-button-muted {
+    border: 1px solid #d1d5db;
+    background-color: #ffffff;
+    color: #374151;
+  }
+
+  .romdoc-button-muted:hover:not(:disabled) {
+    border-color: #9ca3af;
+    background-color: #f9fafb;
+    color: #111827;
+  }
+
+  .romdoc-button-danger {
+    border: 1px solid var(--romdoc-danger);
+    background-color: var(--romdoc-danger);
+    color: #ffffff;
+  }
+
+  .romdoc-button-danger:hover:not(:disabled) {
+    border-color: var(--romdoc-danger-hover);
+    background-color: var(--romdoc-danger-hover);
+  }
+
+  .romdoc-button-danger-outline {
+    border: 1px solid var(--romdoc-danger);
+    background-color: #ffffff;
+    color: var(--romdoc-danger);
+  }
+
+  .romdoc-button-danger-outline:hover:not(:disabled) {
+    border-color: var(--romdoc-danger);
+    background-color: var(--romdoc-danger);
+    color: #ffffff;
+  }
+
+  .romdoc-button-sm {
+    min-height: 2.25rem;
+    border-radius: 0.625rem;
+    padding: 0.45rem 0.9rem;
+    font-size: 0.8125rem;
+  }
+
+  .romdoc-button-lg {
+    min-height: 3rem;
+    border-radius: 0.875rem;
+    padding: 0.85rem 1.5rem;
+    font-size: 0.9375rem;
+  }
+
+  .romdoc-button-full {
+    width: 100%;
+  }
+
+  .romdoc-button-icon {
+    min-height: 2.5rem;
+    width: 2.5rem;
+    padding: 0;
+  }
+
+  .romdoc-button-loading {
+    cursor: wait;
+  }
+
+  .romdoc-link {
+    color: var(--romdoc-primary);
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 150ms ease;
+  }
+
+  .romdoc-link:hover {
+    color: var(--romdoc-primary-hover);
+  }
+
+  .romdoc-focus-ring:focus-visible {
+    outline: 3px solid rgba(3, 102, 97, 0.25);
+    outline-offset: 2px;
+  }
 }

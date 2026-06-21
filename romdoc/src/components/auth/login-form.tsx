@@ -8,6 +8,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import Button from "@/components/ui/button";
 
 type LoginFormProps = {
   initialMessage?: string | null;
@@ -199,7 +200,7 @@ export default function LoginForm({
               )
             }
             placeholder="nume@example.com"
-            className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-not-allowed disabled:opacity-60"
           />
         </label>
 
@@ -220,7 +221,7 @@ export default function LoginForm({
               )
             }
             placeholder="Parola contului"
-            className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-not-allowed disabled:opacity-60"
           />
         </label>
 
@@ -242,15 +243,14 @@ export default function LoginForm({
           </div>
         )}
 
-        <button
+        <Button
           type="submit"
-          disabled={isPending}
-          className="w-full rounded-xl bg-[#D97757] px-5 py-3.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          fullWidth
+          isLoading={isPending}
+          loadingText="Se autentifică..."
         >
-          {isPending
-            ? "Se autentifică..."
-            : "Autentificare"}
-        </button>
+          Autentificare
+        </Button>
       </form>
 
       <div className="mt-6 text-center text-sm text-gray-600">
@@ -258,7 +258,7 @@ export default function LoginForm({
 
         <Link
           href="/register"
-          className="font-semibold text-[#9A4F35] underline-offset-4 hover:underline"
+          className="romdoc-link underline-offset-4 hover:underline"
         >
           Creează cont
         </Link>
