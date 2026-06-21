@@ -1,5 +1,7 @@
 "use client";
 
+import Button from "@/components/ui/button";
+
 import {
   type FormEvent,
   useState,
@@ -278,23 +280,24 @@ function EditableServiceRow({
             Activ
           </label>
 
-          <button
+          <Button
             type="button"
             onClick={handleSave}
             disabled={isPending}
-            className="rounded-xl bg-[#D97757] px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-60"
+            size="sm"
           >
             Salvează
-          </button>
+          </Button>
 
-          <button
+          <Button
             type="button"
             onClick={handleDelete}
             disabled={isPending}
-            className="rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-60"
+            variant="danger-outline"
+            size="sm"
           >
             Șterge
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -490,15 +493,14 @@ export default function DoctorServicesManager({
             </select>
           </label>
 
-          <button
+          <Button
             type="submit"
             disabled={isPending}
-            className="rounded-xl bg-[#D97757] px-5 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isPending
               ? "Se adaugă..."
               : "Adaugă serviciul"}
-          </button>
+          </Button>
         </form>
 
         {message && (

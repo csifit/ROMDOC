@@ -1,5 +1,7 @@
 "use client";
 
+import Button from "@/components/ui/button";
+
 import {
   useCallback,
   useEffect,
@@ -419,7 +421,7 @@ export default function ReviewsManagement() {
                     {review.status ===
                       "published" && (
                       <>
-                        <button
+                        <Button
                           type="button"
                           disabled={
                             isChanging
@@ -430,12 +432,13 @@ export default function ReviewsManagement() {
                               "hide"
                             )
                           }
-                          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900"
+            variant="secondary"
+            size="sm"
                         >
                           Ascunde
-                        </button>
+                        </Button>
 
-                        <button
+                        <Button
                           type="button"
                           disabled={
                             isChanging
@@ -446,16 +449,17 @@ export default function ReviewsManagement() {
                               "remove"
                             )
                           }
-                          className="rounded-xl border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-800"
+            variant="danger-outline"
+            size="sm"
                         >
                           Elimină
-                        </button>
+                        </Button>
                       </>
                     )}
 
                     {review.status !==
                       "published" && (
-                      <button
+                      <Button
                         type="button"
                         disabled={
                           isChanging
@@ -466,10 +470,10 @@ export default function ReviewsManagement() {
                             "restore"
                           )
                         }
-                        className="rounded-xl bg-[#036661] px-4 py-2 text-sm font-semibold text-white hover:bg-[#ff2800]"
+            size="sm"
                       >
                         Republică
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </article>

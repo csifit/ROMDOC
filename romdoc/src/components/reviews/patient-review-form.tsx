@@ -1,5 +1,7 @@
 "use client";
 
+import Button from "@/components/ui/button";
+
 import {
   type FormEvent,
   useState,
@@ -187,18 +189,18 @@ export default function PatientReviewForm({
         </div>
       )}
 
-      <button
+      <Button
         type="submit"
         disabled={
           isSubmitting ||
           rating === 0
         }
-        className="mt-5 rounded-xl bg-[#036661] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#ff2800] disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-5"
       >
         {isSubmitting
           ? "Se publică..."
           : "Publică recenzia"}
-      </button>
+      </Button>
     </form>
   );
 }

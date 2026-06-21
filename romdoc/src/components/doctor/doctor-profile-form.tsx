@@ -1,5 +1,7 @@
 "use client";
 
+import Button from "@/components/ui/button";
+
 import {
   type FormEvent,
   useState,
@@ -313,15 +315,14 @@ export default function DoctorProfileForm({
       )}
 
       <div className="mt-6 flex justify-end">
-        <button
+        <Button
           type="submit"
           disabled={isPending}
-          className="rounded-xl bg-[#D97757] px-5 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isPending
             ? "Se salvează..."
             : "Salvează profilul"}
-        </button>
+        </Button>
       </div>
     </form>
   );

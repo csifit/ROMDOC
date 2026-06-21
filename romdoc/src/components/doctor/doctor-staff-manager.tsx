@@ -1,5 +1,7 @@
 "use client";
 
+import Button from "@/components/ui/button";
+
 import {
   type FormEvent,
   useCallback,
@@ -497,17 +499,16 @@ export default function DoctorStaffManager() {
               </label>
             </div>
 
-            <button
+            <Button
               type="submit"
               disabled={
                 isSubmitting
               }
-              className="rounded-xl bg-[#D97757] px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting
                 ? "Se trimite invitația..."
                 : "Invită membru al personalului"}
-            </button>
+            </Button>
           </form>
         )}
 
@@ -610,7 +611,7 @@ export default function DoctorStaffManager() {
                     <div className="mt-5 flex flex-wrap gap-3">
                       {assignment.status !==
                         "active" && (
-                        <button
+                        <Button
                           type="button"
                           disabled={
                             isChanging
@@ -621,15 +622,15 @@ export default function DoctorStaffManager() {
                               "activate"
                             )
                           }
-                          className="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            size="sm"
                         >
                           Activează accesul
-                        </button>
+                        </Button>
                       )}
 
                       {assignment.status ===
                         "active" && (
-                        <button
+                        <Button
                           type="button"
                           disabled={
                             isChanging
@@ -640,13 +641,14 @@ export default function DoctorStaffManager() {
                               "suspend"
                             )
                           }
-                          className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900 disabled:opacity-60"
+            variant="secondary"
+            size="sm"
                         >
                           Suspendă
-                        </button>
+                        </Button>
                       )}
 
-                      <button
+                      <Button
                         type="button"
                         disabled={
                           isChanging
@@ -657,10 +659,11 @@ export default function DoctorStaffManager() {
                             "revoke"
                           )
                         }
-                        className="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-800 disabled:opacity-60"
+            variant="danger-outline"
+            size="sm"
                       >
                         Revocă
-                      </button>
+                      </Button>
                     </div>
                   </article>
                 );

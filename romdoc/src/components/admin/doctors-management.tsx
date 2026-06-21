@@ -1,5 +1,7 @@
 "use client";
 
+import Button from "@/components/ui/button";
+
 import {
   useCallback,
   useEffect,
@@ -956,7 +958,7 @@ export default function DoctorsManagement() {
                         </p>
                       </div>
 
-                      <button
+                      <Button
                         type="button"
                         onClick={() =>
                           setExpandedDoctorId(
@@ -965,12 +967,13 @@ export default function DoctorsManagement() {
                               : doctor.id
                           )
                         }
-                        className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold hover:bg-gray-50"
+            variant="secondary"
+            size="sm"
                       >
                         {expanded
                           ? "Închide"
                           : "Detalii"}
-                      </button>
+                      </Button>
                     </div>
 
                     {expanded && (
@@ -1140,7 +1143,7 @@ export default function DoctorsManagement() {
 
                           {doctor.status !==
                             "active" && (
-                            <button
+                            <Button
                               type="button"
                               disabled={
                                 changing
@@ -1151,15 +1154,15 @@ export default function DoctorsManagement() {
                                   "active"
                                 )
                               }
-                              className="rounded-xl bg-[#036661] px-4 py-2 text-sm font-semibold text-white hover:bg-[#ff2800] disabled:opacity-60"
+            size="sm"
                             >
                               Activează
-                            </button>
+                            </Button>
                           )}
 
                           {doctor.status ===
                             "active" && (
-                            <button
+                            <Button
                               type="button"
                               disabled={
                                 changing
@@ -1170,15 +1173,16 @@ export default function DoctorsManagement() {
                                   "suspended"
                                 )
                               }
-                              className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100"
+            variant="secondary"
+            size="sm"
                             >
                               Suspendă
-                            </button>
+                            </Button>
                           )}
 
                           {doctor.verification_status !==
                             "verified" ? (
-                            <button
+                            <Button
                               type="button"
                               disabled={
                                 changing
@@ -1188,12 +1192,12 @@ export default function DoctorsManagement() {
                                   doctor
                                 )
                               }
-                              className="rounded-xl bg-[#036661] px-4 py-2 text-sm font-semibold text-white hover:bg-[#ff2800] disabled:opacity-60"
+            size="sm"
                             >
                               Verifică profesional
-                            </button>
+                            </Button>
                           ) : (
-                            <button
+                            <Button
                               type="button"
                               disabled={
                                 changing
@@ -1203,10 +1207,11 @@ export default function DoctorsManagement() {
                                   doctor
                                 )
                               }
-                              className="rounded-xl border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-800 hover:bg-red-100"
+            variant="danger-outline"
+            size="sm"
                             >
                               Elimină verificarea
-                            </button>
+                            </Button>
                           )}
                         </div>
                       </div>

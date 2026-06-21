@@ -1,5 +1,7 @@
 "use client";
 
+import Button from "@/components/ui/button";
+
 import {
   useCallback,
   useEffect,
@@ -778,7 +780,7 @@ export default function ClinicManagementActions() {
                   {clinic.status ===
                     "pending" && (
                     <div className="mt-6 flex flex-wrap gap-3 border-t border-gray-200 pt-5">
-                      <button
+                      <Button
                         type="button"
                         disabled={
                           isUpdating
@@ -789,14 +791,14 @@ export default function ClinicManagementActions() {
                             "approve"
                           )
                         }
-                        className="rounded-xl bg-green-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-60"
+            size="sm"
                       >
                         {isUpdating
                           ? "Se actualizează..."
                           : "Aprobă clinica"}
-                      </button>
+                      </Button>
 
-                      <button
+                      <Button
                         type="button"
                         disabled={
                           isUpdating
@@ -807,10 +809,11 @@ export default function ClinicManagementActions() {
                             "reject"
                           )
                         }
-                        className="rounded-xl border border-red-300 bg-red-50 px-5 py-2.5 text-sm font-semibold text-red-800 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+            variant="danger-outline"
+            size="sm"
                       >
                         Respinge
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </article>

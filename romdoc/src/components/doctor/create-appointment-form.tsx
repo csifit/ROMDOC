@@ -1,5 +1,7 @@
 "use client";
 
+import Button from "@/components/ui/button";
+
 import {
   FormEvent,
   useState,
@@ -508,17 +510,16 @@ export default function CreateAppointmentForm({
             )}
 
             <div className="flex flex-wrap gap-3">
-              <button
+              <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="rounded-xl bg-[#D97757] px-5 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSubmitting
                   ? "Se creează..."
                   : "Creează programarea"}
-              </button>
+              </Button>
 
-              <button
+              <Button
                 type="button"
                 disabled={isSubmitting}
                 onClick={() => {
@@ -527,10 +528,10 @@ export default function CreateAppointmentForm({
                   setWarningMessage("");
                   setSuccessMessage("");
                 }}
-                className="rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-medium text-gray-800 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            variant="secondary"
               >
                 Golește formularul
-              </button>
+              </Button>
             </div>
           </form>
         </div>

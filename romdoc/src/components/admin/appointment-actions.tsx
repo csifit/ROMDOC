@@ -1,10 +1,10 @@
 "use client";
 
-import {
-  FormEvent,
-  useState,
-} from "react";
+import Button from "@/components/ui/button";
+
+import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 type AppointmentActionsProps = {
   appointmentId: string;
@@ -14,18 +14,6 @@ type AppointmentActionsProps = {
   scheduledDate: string | null;
   scheduledTime: string | null;
   currentReason: string | null;
-};
-
-type AppointmentUpdateStatus =
-  | "confirmed"
-  | "rescheduled"
-  | "completed"
-  | "cancelled";
-
-type AppointmentUpdateResponse = {
-  success?: boolean;
-  error?: string;
-  emailSent?: boolean | null;
 };
 
 export default function AppointmentActions({
@@ -38,171 +26,85 @@ export default function AppointmentActions({
   currentReason,
 }: AppointmentActionsProps) {
   const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
 
-  const [date, setDate] = useState(
-    scheduledDate ?? requestedDate
-  );
-
+  const [date, setDate] = useState(scheduledDate ?? requestedDate);
   const [time, setTime] = useState(
-    scheduledTime?.slice(0, 5) ??
-      requestedTime?.slice(0, 5) ??
-      ""
+    scheduledTime?.slice(0, 5) ?? requestedTime?.slice(0, 5) ?? ""
   );
+  const [reason, setReason] = useState(currentReason ?? "");
+  const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const [reason, setReason] = useState(
-    currentReason ?? ""
-  );
-
-  const [isSaving, setIsSaving] =
-    useState(false);
-
-  const [message, setMessage] =
-    useState("");
-
-  const [warningMessage, setWarningMessage] =
-    useState("");
-
-  const [errorMessage, setErrorMessage] =
-    useState("");
-
-  const today = new Date()
-    .toISOString()
-    .split("T")[0];
+  const today = new Date().toISOString().split("T")[0];
 
   async function updateAppointment(
-    status: AppointmentUpdateStatus
+    status: "confirmed" | "rescheduled" | "completed" | "cancelled"
   ) {
     setMessage("");
-    setWarningMessage("");
     setErrorMessage("");
 
     if (
-      (status === "confirmed" ||
-        status === "rescheduled") &&
+      (status === "confirmed" || status === "rescheduled") &&
       (!date || !time)
     ) {
-      setErrorMessage(
-        "Selectează data și ora programării."
-      );
-
+      setErrorMessage("Selectează data și ora programării.");
       return;
     }
 
-    if (
-      status === "rescheduled" &&
-      reason.trim().length < 3
-    ) {
-      setErrorMessage(
-        "Adaugă motivul reprogramării."
-      );
-
+    if (status === "rescheduled" && reason.trim().length < 3) {
+      setErrorMessage("Adaugă motivul reprogramării.");
       return;
     }
 
     setIsSaving(true);
 
-    try {
-      const response = await fetch(
-        "/api/appointments",
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            appointmentId,
-            status,
-            scheduledDate:
-              status === "confirmed" ||
-              status === "rescheduled"
-                ? date
-                : null,
-            scheduledTime:
-              status === "confirmed" ||
-              status === "rescheduled"
-                ? time
-                : null,
-            rescheduleReason:
-              status === "rescheduled"
-                ? reason.trim()
-                : null,
-          }),
-        }
-      );
+    const updateData = {
+      status,
+      scheduled_date:
+        status === "confirmed" || status === "rescheduled" ? date : null,
+      scheduled_time:
+        status === "confirmed" || status === "rescheduled" ? time : null,
+      reschedule_reason:
+        status === "rescheduled" ? reason.trim() : null,
+    };
 
-      const result =
-        (await response.json()) as AppointmentUpdateResponse;
+    const { error } = await supabase
+      .from("appointments")
+      .update(updateData)
+      .eq("id", appointmentId);
 
-      if (!response.ok) {
-        setErrorMessage(
-          result.error ??
-            "Programarea nu a putut fi actualizată."
-        );
+    setIsSaving(false);
 
-        return;
-      }
-
-      const successMessages: Record<
-        AppointmentUpdateStatus,
-        string
-      > = {
-        confirmed:
-          "Programarea a fost confirmată.",
-        rescheduled:
-          "Programarea a fost reprogramată.",
-        completed:
-          "Programarea a fost marcată ca finalizată.",
-        cancelled:
-          "Programarea a fost anulată.",
-      };
-
-      setMessage(successMessages[status]);
-
-      if (
-        status !== "completed" &&
-        result.emailSent === false
-      ) {
-        setWarningMessage(
-          "Modificarea a fost salvată, dar e-mailul către pacient nu a putut fi trimis."
-        );
-      }
-
-      router.refresh();
-    } catch (error) {
-      console.error(
-        "Appointment update request failed:",
-        error
-      );
-
+    if (error) {
+      console.error("Appointment update failed:", error);
       setErrorMessage(
-        "Nu s-a putut comunica cu serverul. Încearcă din nou."
+        "Programarea nu a putut fi actualizată. Încearcă din nou."
       );
-    } finally {
-      setIsSaving(false);
+      return;
     }
+
+    const successMessages = {
+      confirmed: "Programarea a fost confirmată.",
+      rescheduled: "Programarea a fost reprogramată.",
+      completed: "Programarea a fost marcată ca finalizată.",
+      cancelled: "Programarea a fost anulată.",
+    };
+
+    setMessage(successMessages[status]);
+    router.refresh();
   }
 
-  function handleSubmit(
-    event: FormEvent<HTMLFormElement>
-  ) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const originalDate =
-      scheduledDate ?? requestedDate;
-
-    const originalTime =
-      scheduledTime?.slice(0, 5) ??
-      requestedTime?.slice(0, 5) ??
-      "";
-
-    const appointmentSlotChanged =
-      date !== originalDate ||
-      time !== originalTime;
+    const requestedSlotChanged =
+      date !== requestedDate ||
+      time !== (requestedTime?.slice(0, 5) ?? "");
 
     updateAppointment(
-      appointmentSlotChanged
-        ? "rescheduled"
-        : "confirmed"
+      requestedSlotChanged ? "rescheduled" : "confirmed"
     );
   }
 
@@ -212,10 +114,7 @@ export default function AppointmentActions({
         Gestionare programare
       </h3>
 
-      <form
-        onSubmit={handleSubmit}
-        className="mt-4"
-      >
+      <form onSubmit={handleSubmit} className="mt-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label
@@ -230,12 +129,9 @@ export default function AppointmentActions({
               type="date"
               min={today}
               value={date}
-              onChange={(event) =>
-                setDate(event.target.value)
-              }
+              onChange={(event) => setDate(event.target.value)}
               required
-              disabled={isSaving}
-              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500"
             />
           </div>
 
@@ -251,12 +147,9 @@ export default function AppointmentActions({
               id={`scheduled-time-${appointmentId}`}
               type="time"
               value={time}
-              onChange={(event) =>
-                setTime(event.target.value)
-              }
+              onChange={(event) => setTime(event.target.value)}
               required
-              disabled={isSaving}
-              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500"
             />
           </div>
         </div>
@@ -273,12 +166,9 @@ export default function AppointmentActions({
             id={`reschedule-reason-${appointmentId}`}
             rows={3}
             value={reason}
-            onChange={(event) =>
-              setReason(event.target.value)
-            }
-            disabled={isSaving}
+            onChange={(event) => setReason(event.target.value)}
             placeholder="Completează acest câmp dacă modifici data sau ora solicitată."
-            className="mt-2 w-full resize-y rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500 disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-2 w-full resize-y rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500"
           />
         </div>
 
@@ -288,15 +178,6 @@ export default function AppointmentActions({
             className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
           >
             {errorMessage}
-          </div>
-        )}
-
-        {warningMessage && (
-          <div
-            role="alert"
-            className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800"
-          >
-            {warningMessage}
           </div>
         )}
 
@@ -310,39 +191,34 @@ export default function AppointmentActions({
         )}
 
         <div className="mt-5 flex flex-wrap gap-3">
-          <button
+          <Button
             type="submit"
             disabled={isSaving}
-            className="rounded-xl bg-[#D97757] px-5 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSaving
               ? "Se salvează..."
               : currentStatus === "pending"
                 ? "Confirmă programarea"
                 : "Salvează data și ora"}
-          </button>
+          </Button>
 
-          <button
+          <Button
             type="button"
             disabled={isSaving}
-            onClick={() =>
-              updateAppointment("completed")
-            }
-            className="rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-medium text-gray-800 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={() => updateAppointment("completed")}
+            variant="secondary"
           >
             Marchează finalizată
-          </button>
+          </Button>
 
-          <button
+          <Button
             type="button"
             disabled={isSaving}
-            onClick={() =>
-              updateAppointment("cancelled")
-            }
-            className="rounded-xl border border-red-300 bg-white px-5 py-3 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={() => updateAppointment("cancelled")}
+            variant="danger-outline"
           >
             Anulează
-          </button>
+          </Button>
         </div>
       </form>
     </div>

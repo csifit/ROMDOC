@@ -1,5 +1,7 @@
 "use client";
 
+import Button from "@/components/ui/button";
+
 import { useMemo, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -366,17 +368,19 @@ export default function AppointmentCalendar({
               </h2>
             </div>
 
-            <button
+            <Button
               type="button"
               onClick={() =>
                 setSelectedAppointmentId(
                   null
                 )
               }
-              className="w-fit rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+            variant="secondary"
+            size="sm"
+            className="w-fit"
             >
               Închide
-            </button>
+            </Button>
           </div>
 
           <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

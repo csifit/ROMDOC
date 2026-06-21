@@ -1,5 +1,7 @@
 "use client";
 
+import Button from "@/components/ui/button";
+
 import { useRouter } from "next/navigation";
 import {
   useState,
@@ -225,17 +227,17 @@ export default function DoctorManagementActions({
             </option>
           </select>
 
-          <button
+          <Button
             type="button"
             onClick={handleStatusUpdate}
             disabled={
               isPending ||
               status === currentStatus
             }
-            className="rounded-xl bg-[#D97757] px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            size="sm"
           >
             Salvează starea
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -271,26 +273,28 @@ export default function DoctorManagementActions({
         </label>
 
         <div className="mt-3 flex flex-wrap gap-3">
-          <button
+          <Button
             type="button"
             onClick={handleAssignOwner}
             disabled={isPending}
-            className="rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-800 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+            variant="secondary"
+            size="sm"
           >
             {currentProfileId
               ? "Actualizează asocierea"
               : "Asociază profilul"}
-          </button>
+          </Button>
 
           {currentProfileId && (
-            <button
+            <Button
               type="button"
               onClick={handleRemoveOwner}
               disabled={isPending}
-              className="rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+            variant="danger-outline"
+            size="sm"
             >
               Elimină asocierea
-            </button>
+            </Button>
           )}
         </div>
       </div>

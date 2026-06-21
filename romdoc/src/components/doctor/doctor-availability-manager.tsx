@@ -1,5 +1,7 @@
 "use client";
 
+import Button from "@/components/ui/button";
+
 import {
   type FormEvent,
   useState,
@@ -444,23 +446,24 @@ function AvailabilityRow({
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
-        <button
+        <Button
           type="button"
           onClick={saveAvailability}
           disabled={isPending}
-          className="rounded-xl bg-[#D97757] px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
+            size="sm"
         >
           Salvează intervalul
-        </button>
+        </Button>
 
-        <button
+        <Button
           type="button"
           onClick={deleteAvailability}
           disabled={isPending}
-          className="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
+            variant="danger-outline"
+            size="sm"
         >
           Șterge intervalul
-        </button>
+        </Button>
       </div>
 
       <div className="mt-6 rounded-xl bg-gray-50 p-4">
@@ -489,7 +492,7 @@ function AvailabilityRow({
                       : ""}
                   </span>
 
-                  <button
+                  <Button
                     type="button"
                     onClick={() =>
                       deleteBreak(
@@ -497,10 +500,10 @@ function AvailabilityRow({
                       )
                     }
                     disabled={isPending}
-                    className="text-sm font-medium text-red-700"
+            variant="danger-outline"
                   >
                     Șterge
-                  </button>
+                  </Button>
                 </div>
               )
             )}
@@ -550,13 +553,14 @@ function AvailabilityRow({
             className="rounded-xl border border-gray-300 px-3 py-2.5"
           />
 
-          <button
+          <Button
             type="submit"
             disabled={isPending}
-            className="rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium hover:bg-gray-100 disabled:opacity-60"
+            variant="secondary"
+            size="sm"
           >
             Adaugă pauza
-          </button>
+          </Button>
         </form>
       </div>
 
@@ -850,16 +854,15 @@ export default function DoctorAvailabilityManager({
             )}
           </select>
 
-          <button
+          <Button
             type="submit"
             disabled={
               isPending ||
               clinics.length === 0
             }
-            className="rounded-xl bg-[#D97757] px-4 py-3 text-sm font-medium text-white disabled:opacity-60"
           >
             Adaugă
-          </button>
+          </Button>
         </form>
       </section>
 
@@ -969,13 +972,12 @@ export default function DoctorAvailabilityManager({
             className="rounded-xl border border-gray-300 px-3 py-3 disabled:bg-gray-100"
           />
 
-          <button
+          <Button
             type="submit"
             disabled={isPending}
-            className="rounded-xl bg-[#D97757] px-4 py-3 text-sm font-medium text-white disabled:opacity-60"
           >
             Adaugă
-          </button>
+          </Button>
 
           <input
             type="text"
@@ -1029,16 +1031,17 @@ export default function DoctorAvailabilityManager({
                 </p>
               </div>
 
-              <button
+              <Button
                 type="button"
                 onClick={() =>
                   deleteDayOff(item.id)
                 }
                 disabled={isPending}
-                className="w-fit text-sm font-medium text-red-700"
+            variant="danger-outline"
+            className="w-fit"
               >
                 Șterge
-              </button>
+              </Button>
             </div>
           ))}
 

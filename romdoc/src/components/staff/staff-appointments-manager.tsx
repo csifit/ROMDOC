@@ -1,5 +1,7 @@
 "use client";
 
+import Button from "@/components/ui/button";
+
 import {
   useCallback,
   useEffect,
@@ -619,7 +621,7 @@ export default function StaffAppointmentsManager() {
                   )}
 
                   <div className="mt-6 flex flex-wrap gap-3">
-                    <button
+                    <Button
                       type="button"
                       disabled={
                         isSaving
@@ -630,12 +632,12 @@ export default function StaffAppointmentsManager() {
                           "confirm"
                         )
                       }
-                      className="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            size="sm"
                     >
                       Confirmă
-                    </button>
+                    </Button>
 
-                    <button
+                    <Button
                       type="button"
                       disabled={
                         isSaving
@@ -646,12 +648,12 @@ export default function StaffAppointmentsManager() {
                           "reschedule"
                         )
                       }
-                      className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            size="sm"
                     >
                       Reprogramează
-                    </button>
+                    </Button>
 
-                    <button
+                    <Button
                       type="button"
                       disabled={
                         isSaving
@@ -662,12 +664,13 @@ export default function StaffAppointmentsManager() {
                           "complete"
                         )
                       }
-                      className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 disabled:opacity-60"
+            variant="secondary"
+            size="sm"
                     >
                       Finalizează
-                    </button>
+                    </Button>
 
-                    <button
+                    <Button
                       type="button"
                       disabled={
                         isSaving
@@ -678,10 +681,11 @@ export default function StaffAppointmentsManager() {
                           "cancel"
                         )
                       }
-                      className="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-800 disabled:opacity-60"
+            variant="danger-outline"
+            size="sm"
                     >
                       Anulează
-                    </button>
+                    </Button>
                   </div>
                 </article>
               );

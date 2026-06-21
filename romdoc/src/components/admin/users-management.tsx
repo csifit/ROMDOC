@@ -1,5 +1,7 @@
 "use client";
 
+import Button from "@/components/ui/button";
+
 import {
   useCallback,
   useEffect,
@@ -11,56 +13,29 @@ type ManagedUser = {
   id: string;
   email: string | null;
   phone: string | null;
-
   first_name:
     | string
     | null;
-
   last_name:
     | string
     | null;
-
   role: string;
   account_status: string;
   email_verified: boolean;
-
   email_confirmed_at:
     | string
     | null;
-
   last_sign_in_at:
     | string
     | null;
-
   created_at: string;
-
   blocked_at:
     | string
     | null;
-
   blocked_reason:
     | string
     | null;
-
   is_current_admin: boolean;
-
-  subscription_status:
-    | string
-    | null;
-
-  subscription_doctor_id:
-    | string
-    | null;
-
-  stripe_subscription_id:
-    | string
-    | null;
-
-  subscription_period_end:
-    | string
-    | null;
-
-  can_activate_doctor: boolean;
 };
 
 type ApiResponse = {
@@ -93,8 +68,7 @@ function getFullName(
     .join(" ")
     .trim();
 
-  return name ||
-    "Nume indisponibil";
+  return name || "Nume indisponibil";
 }
 
 function getRoleLabel(
@@ -139,69 +113,6 @@ function getRoleClasses(
 
     case "patient":
       return "bg-teal-100 text-teal-800";
-
-    default:
-      return "bg-gray-200 text-gray-700";
-  }
-}
-
-function getSubscriptionLabel(
-  status:
-    | string
-    | null
-) {
-  switch (status) {
-    case "active":
-      return "Abonament activ";
-
-    case "trialing":
-      return "Perioadă de probă";
-
-    case "past_due":
-      return "Plată restantă";
-
-    case "unpaid":
-      return "Neplătit";
-
-    case "canceled":
-      return "Anulat";
-
-    case "incomplete":
-      return "Plată incompletă";
-
-    case "incomplete_expired":
-      return "Plată expirată";
-
-    case "paused":
-      return "Suspendat";
-
-    case "pending":
-      return "În așteptare";
-
-    default:
-      return "Fără abonament";
-  }
-}
-
-function getSubscriptionClasses(
-  status:
-    | string
-    | null
-) {
-  switch (status) {
-    case "active":
-    case "trialing":
-      return "bg-green-100 text-green-800";
-
-    case "past_due":
-    case "incomplete":
-    case "pending":
-      return "bg-amber-100 text-amber-900";
-
-    case "unpaid":
-    case "canceled":
-    case "incomplete_expired":
-      return "bg-red-100 text-red-800";
 
     default:
       return "bg-gray-200 text-gray-700";
@@ -266,14 +177,10 @@ export default function UsersManagement() {
     );
 
   const [error, setError] =
-    useState<string | null>(
-      null
-    );
+    useState<string | null>(null);
 
   const [success, setSuccess] =
-    useState<string | null>(
-      null
-    );
+    useState<string | null>(null);
 
   const loadUsers =
     useCallback(async () => {
@@ -306,8 +213,7 @@ export default function UsersManagement() {
         );
       } catch (loadError) {
         setError(
-          loadError instanceof
-            Error
+          loadError instanceof Error
             ? loadError.message
             : "Utilizatorii nu au putut fi încărcați."
         );
@@ -330,17 +236,14 @@ export default function UsersManagement() {
       return users.filter(
         (user) => {
           if (
-            roleFilter !==
-              "all" &&
-            user.role !==
-              roleFilter
+            roleFilter !== "all" &&
+            user.role !== roleFilter
           ) {
             return false;
           }
 
           if (
-            statusFilter !==
-              "all" &&
+            statusFilter !== "all" &&
             user.account_status !==
               statusFilter
           ) {
@@ -360,9 +263,6 @@ export default function UsersManagement() {
             getRoleLabel(
               user.role
             ),
-            getSubscriptionLabel(
-              user.subscription_status
-            ),
           ]
             .filter(Boolean)
             .some((value) =>
@@ -380,79 +280,6 @@ export default function UsersManagement() {
       roleFilter,
       statusFilter,
     ]);
-
-  async function activateDoctor(
-    user: ManagedUser
-  ) {
-    const confirmed =
-      window.confirm(
-        `Activezi contul ${user.email ?? getFullName(user)} ca medic? Această acțiune acordă acces la platforma medicilor.`
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
-    setError(null);
-    setSuccess(null);
-
-    setChangingUserId(
-      user.id
-    );
-
-    try {
-      const response =
-        await fetch(
-          "/api/admin/users",
-          {
-            method: "PATCH",
-
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-
-            body:
-              JSON.stringify({
-                userId:
-                  user.id,
-
-                action:
-                  "activate_doctor",
-              }),
-          }
-        );
-
-      const result =
-        (await response.json()) as
-          ApiResponse;
-
-      if (!response.ok) {
-        throw new Error(
-          result.error ??
-            "Candidatul nu a putut fi activat ca medic."
-        );
-      }
-
-      setSuccess(
-        result.message ??
-          "Candidatul a fost activat ca medic."
-      );
-
-      await loadUsers();
-    } catch (activationError) {
-      setError(
-        activationError instanceof
-          Error
-          ? activationError.message
-          : "Candidatul nu a putut fi activat ca medic."
-      );
-    } finally {
-      setChangingUserId(
-        null
-      );
-    }
-  }
 
   async function changeUserStatus(
     user: ManagedUser
@@ -494,7 +321,6 @@ export default function UsersManagement() {
 
     setError(null);
     setSuccess(null);
-
     setChangingUserId(
       user.id
     );
@@ -515,9 +341,7 @@ export default function UsersManagement() {
               JSON.stringify({
                 userId:
                   user.id,
-
                 action,
-
                 reason,
               }),
           }
@@ -542,8 +366,7 @@ export default function UsersManagement() {
       await loadUsers();
     } catch (actionError) {
       setError(
-        actionError instanceof
-          Error
+        actionError instanceof Error
           ? actionError.message
           : "Statutul utilizatorului nu a putut fi actualizat."
       );
@@ -568,16 +391,9 @@ export default function UsersManagement() {
         "blocked"
     ).length;
 
-  const applicantCount =
-    users.filter(
-      (user) =>
-        user.role ===
-        "doctor_applicant"
-    ).length;
-
   return (
     <div className="space-y-6">
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
           <p className="text-sm font-semibold text-gray-500">
             Total utilizatori
@@ -595,16 +411,6 @@ export default function UsersManagement() {
 
           <p className="mt-3 text-3xl font-bold text-green-700">
             {activeCount}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold text-gray-500">
-            Candidați medici
-          </p>
-
-          <p className="mt-3 text-3xl font-bold text-cyan-700">
-            {applicantCount}
           </p>
         </div>
 
@@ -757,11 +563,7 @@ export default function UsersManagement() {
                   </th>
 
                   <th className="px-5 py-4 font-semibold">
-                    Abonament
-                  </th>
-
-                  <th className="px-5 py-4 font-semibold">
-                    Statut cont
+                    Statut
                   </th>
 
                   <th className="px-5 py-4 font-semibold">
@@ -773,7 +575,7 @@ export default function UsersManagement() {
                   </th>
 
                   <th className="px-5 py-4 text-right font-semibold">
-                    Acțiuni
+                    Acțiune
                   </th>
                 </tr>
               </thead>
@@ -783,15 +585,11 @@ export default function UsersManagement() {
                   (user) => {
                     const isChanging =
                       changingUserId ===
-                      user.id;
+                        user.id;
 
                     const isAdmin =
                       user.role ===
                       "admin";
-
-                    const isApplicant =
-                      user.role ===
-                      "doctor_applicant";
 
                     return (
                       <tr
@@ -817,9 +615,7 @@ export default function UsersManagement() {
 
                           {user.phone && (
                             <p className="mt-1 text-xs text-gray-500">
-                              {
-                                user.phone
-                              }
+                              {user.phone}
                             </p>
                           )}
 
@@ -861,27 +657,6 @@ export default function UsersManagement() {
 
                         <td className="px-5 py-4">
                           <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getSubscriptionClasses(
-                              user.subscription_status
-                            )}`}
-                          >
-                            {getSubscriptionLabel(
-                              user.subscription_status
-                            )}
-                          </span>
-
-                          {user.subscription_period_end && (
-                            <p className="mt-2 whitespace-nowrap text-xs text-gray-500">
-                              Până la{" "}
-                              {formatDateTime(
-                                user.subscription_period_end
-                              )}
-                            </p>
-                          )}
-                        </td>
-
-                        <td className="px-5 py-4">
-                          <span
                             className={`rounded-full px-3 py-1 text-xs font-semibold ${
                               user.account_status ===
                               "blocked"
@@ -916,89 +691,37 @@ export default function UsersManagement() {
                           )}
                         </td>
 
-                        <td className="px-5 py-4">
+                        <td className="px-5 py-4 text-right">
                           {isAdmin ? (
-                            <div className="text-right">
-                              <span className="text-xs font-semibold text-gray-400">
-                                Protejat
-                              </span>
-                            </div>
+                            <span className="text-xs font-semibold text-gray-400">
+                              Protejat
+                            </span>
                           ) : (
-                            <div className="flex min-w-40 flex-col items-end gap-2">
-                              {isApplicant &&
+                            <Button
+                              type="button"
+                              disabled={
+                                isChanging
+                              }
+                              onClick={() =>
+                                changeUserStatus(
+                                  user
+                                )
+                              }
+                              variant={
                                 user.account_status ===
-                                  "active" && (
-                                  <>
-                                    <button
-                                      type="button"
-                                      disabled={
-                                        isChanging ||
-                                        !user.can_activate_doctor
-                                      }
-                                      onClick={() =>
-                                        activateDoctor(
-                                          user
-                                        )
-                                      }
-                                      title={
-                                        user.can_activate_doctor
-                                          ? "Acordă rolul de medic"
-                                          : !user.email_verified
-                                            ? "E-mailul candidatului nu este verificat"
-                                            : user.subscription_status !==
-                                                  "active" &&
-                                                user.subscription_status !==
-                                                  "trialing"
-                                              ? "Candidatul nu are un abonament activ"
-                                              : "Candidatul nu poate fi activat"
-                                      }
-                                      className="rounded-xl bg-[#036661] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#ff2800] disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600"
-                                    >
-                                      {isChanging
-                                        ? "Se activează..."
-                                        : "Activează medic"}
-                                    </button>
-
-                                    {!user.can_activate_doctor && (
-                                      <p className="max-w-44 text-right text-[11px] leading-4 text-gray-500">
-                                        {!user.email_verified
-                                          ? "E-mail neverificat"
-                                          : user.subscription_status !==
-                                                "active" &&
-                                              user.subscription_status !==
-                                                "trialing"
-                                            ? "Necesită abonament activ"
-                                            : "Activarea nu este disponibilă"}
-                                      </p>
-                                    )}
-                                  </>
-                                )}
-
-                              <button
-                                type="button"
-                                disabled={
-                                  isChanging
-                                }
-                                onClick={() =>
-                                  changeUserStatus(
-                                    user
-                                  )
-                                }
-                                className={`rounded-xl px-4 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                                  user.account_status ===
-                                  "blocked"
-                                    ? "bg-[#036661] text-white hover:bg-[#ff2800]"
-                                    : "border border-red-300 bg-red-50 text-red-800 hover:bg-red-100"
-                                }`}
-                              >
-                                {isChanging
-                                  ? "Se actualizează..."
-                                  : user.account_status ===
-                                      "blocked"
-                                    ? "Deblochează"
-                                    : "Blochează"}
-                              </button>
-                            </div>
+                                "blocked"
+                                  ? "primary"
+                                  : "danger-outline"
+                              }
+                              size="sm"
+                            >
+                              {isChanging
+                                ? "Se actualizează..."
+                                : user.account_status ===
+                                    "blocked"
+                                  ? "Deblochează"
+                                  : "Blochează"}
+                            </Button>
                           )}
                         </td>
                       </tr>
