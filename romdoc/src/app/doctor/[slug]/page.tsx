@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation";
 import AuthenticatedAppointmentRequest from "@/components/appointments/authenticated-appointment-request";
 import PublicDoctorServices from "@/components/doctor/public-doctor-services";
+import PublicDoctorReviews, {
+  type PublicDoctorReview,
+} from "@/components/reviews/public-doctor-reviews";
+import RatingStars from "@/components/reviews/rating-stars";
 import { createClient } from "@/lib/supabase/server";
 
 type Props = {
@@ -28,9 +32,7 @@ type CityTranslation = {
 
 type CityRelation = {
   slug: string;
-  city_translations:
-    | CityTranslation[]
-    | null;
+  city_translations: CityTranslation[] | null;
 };
 
 type ClinicRelation = {
@@ -39,24 +41,15 @@ type ClinicRelation = {
   phone: string | null;
   website: string | null;
   street_address: string | null;
-
-  clinic_translations:
-    | ClinicTranslation[]
-    | null;
-
-  cities:
-    | CityRelation
-    | CityRelation[]
-    | null;
+  formatted_address: string | null;
+  google_maps_uri: string | null;
+  clinic_translations: ClinicTranslation[] | null;
+  cities: CityRelation | CityRelation[] | null;
 };
 
 type DoctorClinicRelation = {
   clinic_id: string;
-
-  clinics:
-    | ClinicRelation
-    | ClinicRelation[]
-    | null;
+  clinics: ClinicRelation | ClinicRelation[] | null;
 };
 
 type ClinicOption = {
@@ -65,26 +58,41 @@ type ClinicOption = {
   address: string;
 };
 
-function formatDoctorName(
-  slug: string
-) {
+type ReviewRelation = {
+  id: string;
+  patient_name: string;
+  rating: number;
+  review_text: string | null;
+  created_at: string;
+  status: string;
+  approved: boolean;
+};
+
+type DoctorRecord = {
+  id: string;
+  slug: string;
+  phone: string | null;
+  email: string | null;
+  years_experience: number | null;
+  consultation_price: number | string | null;
+  average_rating: number | string | null;
+  review_count: number | null;
+  doctor_translations: DoctorTranslation[] | null;
+  doctor_clinics: DoctorClinicRelation[] | null;
+  reviews: ReviewRelation[] | null;
+};
+
+function formatDoctorName(slug: string) {
   return slug
     .split("-")
-    .map((part: string) => {
-      return (
-        part.charAt(0).toUpperCase() +
-        part.slice(1)
-      );
+    .map((part) => {
+      return part.charAt(0).toUpperCase() + part.slice(1);
     })
     .join(" ");
 }
 
 function getFirstRelation<T>(
-  relation:
-    | T
-    | T[]
-    | null
-    | undefined
+  relation: T | T[] | null | undefined
 ): T | null {
   if (!relation) {
     return null;
@@ -97,24 +105,80 @@ function getFirstRelation<T>(
   return relation;
 }
 
-function formatConsultationPrice(
-  value: number | string
+function getRomanianClinicTranslation(
+  clinic: ClinicRelation
 ) {
-  const numericValue =
-    Number(value);
+  return (
+    clinic.clinic_translations?.find(
+      (translation) => translation.locale === "ro"
+    ) ??
+    clinic.clinic_translations?.[0] ??
+    null
+  );
+}
 
-  if (
-    Number.isNaN(numericValue)
-  ) {
-    return String(value);
+function getRomanianCityName(
+  clinic: ClinicRelation
+) {
+  const city = getFirstRelation(clinic.cities);
+
+  return (
+    city?.city_translations?.find(
+      (translation) => translation.locale === "ro"
+    )?.name ??
+    city?.city_translations?.[0]?.name ??
+    null
+  );
+}
+
+function getClinicAddress(
+  clinic: ClinicRelation
+) {
+  if (clinic.formatted_address?.trim()) {
+    return clinic.formatted_address;
   }
 
+  return [
+    clinic.street_address,
+    getRomanianCityName(clinic),
+  ]
+    .filter(
+      (value): value is string =>
+        typeof value === "string" &&
+        value.trim().length > 0
+    )
+    .join(", ");
+}
+
+function normalizeNumber(
+  value: number | string | null
+) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return null;
+  }
+
+  const parsedValue =
+    typeof value === "number"
+      ? value
+      : Number(value);
+
+  return Number.isFinite(parsedValue)
+    ? parsedValue
+    : null;
+}
+
+function formatPrice(
+  value: number
+) {
   return new Intl.NumberFormat(
     "ro-RO",
     {
       maximumFractionDigits: 2,
     }
-  ).format(numericValue);
+  ).format(value);
 }
 
 export default async function DoctorPage({
@@ -126,7 +190,7 @@ export default async function DoctorPage({
     await createClient();
 
   const {
-    data: doctor,
+    data,
     error,
   } = await supabase
     .from("doctors")
@@ -152,6 +216,8 @@ export default async function DoctorPage({
           phone,
           website,
           street_address,
+          formatted_address,
+          google_maps_uri,
           clinic_translations (
             locale,
             name,
@@ -165,6 +231,15 @@ export default async function DoctorPage({
             )
           )
         )
+      ),
+      reviews (
+        id,
+        patient_name,
+        rating,
+        review_text,
+        created_at,
+        status,
+        approved
       )
     `)
     .eq("slug", slug)
@@ -178,35 +253,26 @@ export default async function DoctorPage({
     );
   }
 
-  if (!doctor) {
+  if (!data) {
     notFound();
   }
 
-  const doctorTranslations =
-    doctor.doctor_translations as
-      | DoctorTranslation[]
-      | null;
+  const doctor =
+    data as unknown as DoctorRecord;
 
   const translation =
-    doctorTranslations?.find(
-      (
-        item: DoctorTranslation
-      ) => item.locale === "ro"
+    doctor.doctor_translations?.find(
+      (item) => item.locale === "ro"
     ) ??
-    doctorTranslations?.[0] ??
+    doctor.doctor_translations?.[0] ??
     null;
 
   const clinicRelations =
-    (doctor.doctor_clinics as unknown as
-      | DoctorClinicRelation[]
-      | null) ?? [];
+    doctor.doctor_clinics ?? [];
 
   const clinicOptions: ClinicOption[] =
     clinicRelations.flatMap(
-      (
-        relation:
-          DoctorClinicRelation
-      ) => {
+      (relation) => {
         const clinic =
           getFirstRelation(
             relation.clinics
@@ -217,56 +283,84 @@ export default async function DoctorPage({
         }
 
         const clinicTranslation =
-          clinic.clinic_translations?.find(
-            (
-              item:
-                ClinicTranslation
-            ) => item.locale === "ro"
-          ) ??
-          clinic.clinic_translations?.[0] ??
-          null;
-
-        const city =
-          getFirstRelation(
-            clinic.cities
+          getRomanianClinicTranslation(
+            clinic
           );
-
-        const cityTranslation =
-          city?.city_translations?.find(
-            (
-              item:
-                CityTranslation
-            ) => item.locale === "ro"
-          ) ??
-          city?.city_translations?.[0] ??
-          null;
-
-        const address = [
-          clinic.street_address,
-          cityTranslation?.name,
-        ]
-          .filter(
-            (
-              value
-            ): value is string =>
-              typeof value ===
-                "string" &&
-              value.trim().length > 0
-          )
-          .join(", ");
 
         return [
           {
             id: clinic.id,
-
             name:
               clinicTranslation?.name ??
               "Clinică medicală",
-
-            address,
+            address:
+              getClinicAddress(
+                clinic
+              ),
           },
         ];
       }
+    );
+
+  const publishedReviews: PublicDoctorReview[] =
+    (doctor.reviews ?? [])
+      .filter(
+        (review) =>
+          review.status === "published" &&
+          review.approved === true
+      )
+      .sort(
+        (first, second) =>
+          new Date(
+            second.created_at
+          ).getTime() -
+          new Date(
+            first.created_at
+          ).getTime()
+      )
+      .map((review) => ({
+        id: review.id,
+        patient_name:
+          review.patient_name,
+        rating: review.rating,
+        review_text:
+          review.review_text,
+        created_at:
+          review.created_at,
+      }));
+
+  const publicReviewCount =
+    publishedReviews.length;
+
+  const publicAverageRating =
+    publicReviewCount > 0
+      ? publishedReviews.reduce(
+          (total, review) =>
+            total + review.rating,
+          0
+        ) / publicReviewCount
+      : 0;
+
+  const storedAverageRating =
+    normalizeNumber(
+      doctor.average_rating
+    ) ?? 0;
+
+  const displayedAverageRating =
+    publicReviewCount > 0
+      ? Math.round(
+          publicAverageRating * 10
+        ) / 10
+      : storedAverageRating;
+
+  const displayedReviewCount =
+    publicReviewCount > 0
+      ? publicReviewCount
+      : doctor.review_count ?? 0;
+
+  const consultationPrice =
+    normalizeNumber(
+      doctor.consultation_price
     );
 
   const doctorName =
@@ -276,10 +370,14 @@ export default async function DoctorPage({
 
   return (
     <main className="min-h-screen bg-[#F0EEE9] py-12">
-      <div className="mx-auto max-w-4xl px-6">
-        <article className="rounded-2xl bg-white p-8 shadow-sm">
+      <div className="mx-auto max-w-5xl px-4 sm:px-6">
+        <article className="rounded-2xl bg-white p-6 shadow-sm sm:p-8">
           <header>
-            <h1 className="text-4xl font-bold text-gray-900">
+            <p className="text-sm font-semibold text-[#036661]">
+              Profil medical
+            </p>
+
+            <h1 className="mt-2 text-4xl font-bold text-gray-900">
               {doctorName}
             </h1>
 
@@ -288,16 +386,31 @@ export default async function DoctorPage({
                 "Medic"}
             </p>
 
-            <div className="mt-6 flex flex-wrap gap-6 text-sm text-gray-600">
-              <span>
-                ⭐{" "}
-                {doctor.average_rating ??
-                  0}{" "}
-                (
-                {doctor.review_count ??
-                  0}{" "}
-                recenzii)
-              </span>
+            <div className="mt-6 flex flex-wrap items-center gap-x-7 gap-y-4 text-sm text-gray-600">
+              <div className="flex flex-wrap items-center gap-3">
+                <RatingStars
+                  rating={Math.round(
+                    displayedAverageRating
+                  )}
+                  size="small"
+                  label={`Evaluare ${displayedAverageRating.toFixed(
+                    1
+                  )} din 5`}
+                />
+
+                <span className="font-semibold text-gray-900">
+                  {displayedAverageRating.toFixed(
+                    1
+                  )}
+                </span>
+
+                <span>
+                  {displayedReviewCount}{" "}
+                  {displayedReviewCount === 1
+                    ? "recenzie"
+                    : "recenzii"}
+                </span>
+              </div>
 
               {doctor.years_experience !==
                 null && (
@@ -309,42 +422,17 @@ export default async function DoctorPage({
                 </span>
               )}
 
-              {doctor.consultation_price !==
+              {consultationPrice !==
                 null && (
                 <span>
-                  {formatConsultationPrice(
-                    doctor.consultation_price
+                  De la{" "}
+                  {formatPrice(
+                    consultationPrice
                   )}{" "}
-                  RON consultație
+                  RON
                 </span>
               )}
             </div>
-
-            {(doctor.phone ||
-              doctor.email) && (
-              <div className="mt-6 flex flex-wrap gap-4 text-sm">
-                {doctor.phone && (
-                  <a
-                    href={`tel:${doctor.phone.replace(
-                      /\s+/g,
-                      ""
-                    )}`}
-                    className="font-medium text-gray-800 underline-offset-4 hover:underline"
-                  >
-                    {doctor.phone}
-                  </a>
-                )}
-
-                {doctor.email && (
-                  <a
-                    href={`mailto:${doctor.email}`}
-                    className="font-medium text-gray-800 underline-offset-4 hover:underline"
-                  >
-                    {doctor.email}
-                  </a>
-                )}
-              </div>
-            )}
           </header>
 
           <section className="mt-10">
@@ -358,12 +446,61 @@ export default async function DoctorPage({
             </p>
           </section>
 
-          <div className="mt-10">
-            <PublicDoctorServices
-              doctorId={doctor.id}
-              locale="ro"
-            />
-          </div>
+          {(doctor.phone ||
+            doctor.email) && (
+            <section className="mt-10">
+              <h2 className="text-2xl font-semibold text-gray-900">
+                Date de contact
+              </h2>
+
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                {doctor.phone && (
+                  <div className="rounded-xl border border-gray-200 p-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Telefon
+                    </p>
+
+                    <a
+                      href={`tel:${doctor.phone.replace(
+                        /\s+/g,
+                        ""
+                      )}`}
+                      className="mt-2 block font-medium text-gray-900 underline-offset-4 hover:underline"
+                    >
+                      {doctor.phone}
+                    </a>
+                  </div>
+                )}
+
+                {doctor.email && (
+                  <div className="rounded-xl border border-gray-200 p-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      E-mail
+                    </p>
+
+                    <a
+                      href={`mailto:${doctor.email}`}
+                      className="mt-2 block break-all font-medium text-gray-900 underline-offset-4 hover:underline"
+                    >
+                      {doctor.email}
+                    </a>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
+          <section className="mt-10">
+            <h2 className="text-2xl font-semibold text-gray-900">
+              Servicii și tarife
+            </h2>
+
+            <div className="mt-5">
+              <PublicDoctorServices
+                doctorId={doctor.id}
+              />
+            </div>
+          </section>
 
           <section className="mt-10">
             <h2 className="text-2xl font-semibold text-gray-900">
@@ -374,10 +511,7 @@ export default async function DoctorPage({
             0 ? (
               <div className="mt-5 space-y-4">
                 {clinicRelations.map(
-                  (
-                    relation:
-                      DoctorClinicRelation
-                  ) => {
+                  (relation) => {
                     const clinic =
                       getFirstRelation(
                         relation.clinics
@@ -388,51 +522,14 @@ export default async function DoctorPage({
                     }
 
                     const clinicTranslation =
-                      clinic.clinic_translations?.find(
-                        (
-                          item:
-                            ClinicTranslation
-                        ) =>
-                          item.locale ===
-                          "ro"
-                      ) ??
-                      clinic
-                        .clinic_translations?.[0] ??
-                      null;
-
-                    const city =
-                      getFirstRelation(
-                        clinic.cities
+                      getRomanianClinicTranslation(
+                        clinic
                       );
 
-                    const cityTranslation =
-                      city?.city_translations?.find(
-                        (
-                          item:
-                            CityTranslation
-                        ) =>
-                          item.locale ===
-                          "ro"
-                      ) ??
-                      city
-                        ?.city_translations?.[0] ??
-                      null;
-
-                    const address = [
-                      clinic.street_address,
-                      cityTranslation?.name,
-                    ]
-                      .filter(
-                        (
-                          value
-                        ): value is string =>
-                          typeof value ===
-                            "string" &&
-                          value
-                            .trim()
-                            .length > 0
-                      )
-                      .join(", ");
+                    const address =
+                      getClinicAddress(
+                        clinic
+                      );
 
                     return (
                       <article
@@ -447,7 +544,7 @@ export default async function DoctorPage({
                         </h3>
 
                         {clinicTranslation?.description && (
-                          <p className="mt-2 text-gray-600">
+                          <p className="mt-2 whitespace-pre-line text-sm leading-6 text-gray-600">
                             {
                               clinicTranslation.description
                             }
@@ -480,30 +577,41 @@ export default async function DoctorPage({
                           </p>
                         )}
 
-                        {clinic.website && (
-                          <p className="mt-2">
+                        <div className="mt-4 flex flex-wrap gap-3">
+                          {clinic.website && (
                             <a
                               href={
                                 clinic.website
                               }
                               target="_blank"
                               rel="noreferrer"
-                              className="font-medium text-gray-800 underline-offset-4 hover:underline"
+                              className="inline-flex rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50"
                             >
-                              Vizitează site-ul
-                              clinicii
+                              Website clinică
                             </a>
-                          </p>
-                        )}
+                          )}
+
+                          {clinic.google_maps_uri && (
+                            <a
+                              href={
+                                clinic.google_maps_uri
+                              }
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50"
+                            >
+                              Deschide în Google Maps
+                            </a>
+                          )}
+                        </div>
                       </article>
                     );
                   }
                 )}
               </div>
             ) : (
-              <div className="mt-5 rounded-xl border border-gray-200 bg-white p-6 text-gray-600">
-                Locațiile acestui medic nu
-                sunt încă disponibile.
+              <div className="mt-5 rounded-xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
+                Locațiile acestui medic nu sunt încă disponibile.
               </div>
             )}
           </section>
@@ -517,6 +625,14 @@ export default async function DoctorPage({
             />
           </section>
         </article>
+
+        <div className="mt-8">
+          <PublicDoctorReviews
+            reviews={
+              publishedReviews
+            }
+          />
+        </div>
       </div>
     </main>
   );

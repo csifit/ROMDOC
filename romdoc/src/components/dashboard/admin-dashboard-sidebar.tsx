@@ -77,7 +77,7 @@ const navigationItems: NavigationItem[] = [
       "/admin/reviews",
     label: "Recenzii",
     icon: "reviews",
-    available: false,
+    available: true,
   },
   {
     href: "/",
