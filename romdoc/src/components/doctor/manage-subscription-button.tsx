@@ -35,7 +35,8 @@ export default function ManageSubscriptionButton() {
           );
 
         const result =
-          (await response.json()) as PortalResponse;
+          (await response.json()) as
+            PortalResponse;
 
         if (
           !response.ok ||
@@ -52,7 +53,8 @@ export default function ManageSubscriptionButton() {
         );
       } catch (portalError) {
         setError(
-          portalError instanceof Error
+          portalError instanceof
+            Error
             ? portalError.message
             : "Portalul nu a putut fi deschis."
         );
@@ -66,15 +68,23 @@ export default function ManageSubscriptionButton() {
         type="button"
         disabled={isPending}
         onClick={openPortal}
-        className="rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-800 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+        className="rounded-xl border border-[#036661] bg-white px-5 py-3 text-sm font-semibold text-[#036661] transition-colors hover:border-[#ff2800] hover:bg-[#ff2800] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isPending
-          ? "Se deschide..."
-          : "Administrează abonamentul"}
+          ? "Se deschide portalul..."
+          : "Administrează sau schimbă planul"}
       </button>
 
+      <p className="mt-2 max-w-md text-xs leading-5 text-gray-500">
+        Poți schimba planul lunar sau anual, metoda de plată și
+        setările de facturare în portalul securizat Stripe.
+      </p>
+
       {error && (
-        <p className="mt-3 text-sm text-red-700">
+        <p
+          role="alert"
+          className="mt-3 text-sm text-red-700"
+        >
           {error}
         </p>
       )}

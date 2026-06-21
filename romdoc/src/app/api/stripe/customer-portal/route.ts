@@ -5,6 +5,8 @@ import {
 import { getStripe } from "@/lib/stripe";
 import { createClient } from "@/lib/supabase/server";
 
+export const runtime = "nodejs";
+
 function getOrigin(
   request: NextRequest
 ) {
@@ -17,7 +19,7 @@ function getOrigin(
 
 export async function POST(
   request: NextRequest
-) {
+): Promise<Response> {
   try {
     const supabase =
       await createClient();
@@ -44,14 +46,80 @@ export async function POST(
     }
 
     const {
-      data: subscription,
-      error: subscriptionError,
+      data: profile,
+      error: profileError,
     } = await supabase
-      .from("doctor_subscriptions")
-      .select(
-        "stripe_customer_id"
+      .from("profiles")
+      .select(`
+        role,
+        account_status
+      `)
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (
+      profileError ||
+      !profile
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Profilul nu a putut fi verificat.",
+        },
+        {
+          status: 403,
+        }
+      );
+    }
+
+    if (
+      profile.account_status !==
+      "active"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Contul nu este activ.",
+        },
+        {
+          status: 403,
+        }
+      );
+    }
+
+    if (
+      profile.role !==
+        "doctor" &&
+      profile.role !==
+        "doctor_applicant"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Portalul de facturare este disponibil numai pentru conturile medicale.",
+        },
+        {
+          status: 403,
+        }
+      );
+    }
+
+    const {
+      data: subscription,
+      error:
+        subscriptionError,
+    } = await supabase
+      .from(
+        "doctor_subscriptions"
       )
-      .eq("profile_id", user.id)
+      .select(`
+        stripe_customer_id,
+        stripe_subscription_id
+      `)
+      .eq(
+        "profile_id",
+        user.id
+      )
       .maybeSingle();
 
     if (
@@ -74,7 +142,8 @@ export async function POST(
       getStripe();
 
     const portalSession =
-      await stripe.billingPortal
+      await stripe
+        .billingPortal
         .sessions.create({
           customer:
             subscription

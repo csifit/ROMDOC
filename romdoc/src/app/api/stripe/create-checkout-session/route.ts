@@ -6,6 +6,16 @@ import { getStripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
+export const runtime = "nodejs";
+
+type BillingInterval =
+  | "monthly"
+  | "yearly";
+
+type CheckoutRequestBody = {
+  billingInterval?: unknown;
+};
+
 function getOrigin(
   request: NextRequest
 ) {
@@ -22,21 +32,136 @@ function getOrigin(
   return request.nextUrl.origin;
 }
 
+function normalizeBillingInterval(
+  value: unknown
+): BillingInterval | null {
+  if (
+    value === "monthly" ||
+    value === "yearly"
+  ) {
+    return value;
+  }
+
+  return null;
+}
+
+function getStripePriceId(
+  billingInterval: BillingInterval
+) {
+  if (
+    billingInterval ===
+    "yearly"
+  ) {
+    return process.env
+      .STRIPE_DOCTOR_YEARLY_PRICE_ID;
+  }
+
+  return process.env
+    .STRIPE_DOCTOR_PRICE_ID;
+}
+
 export async function POST(
   request: NextRequest
-) {
+): Promise<Response> {
   try {
-    const stripe =
-      getStripe();
+    let body: CheckoutRequestBody;
+
+    try {
+      body =
+        (await request.json()) as
+          CheckoutRequestBody;
+    } catch {
+      return NextResponse.json(
+        {
+          error:
+            "Cererea nu conține date JSON valide.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    const billingInterval =
+      normalizeBillingInterval(
+        body.billingInterval
+      );
+
+    if (!billingInterval) {
+      return NextResponse.json(
+        {
+          error:
+            "Planul de abonament selectat nu este valid.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
 
     const stripePriceId =
-      process.env.STRIPE_DOCTOR_PRICE_ID;
+      getStripePriceId(
+        billingInterval
+      );
 
     if (!stripePriceId) {
       return NextResponse.json(
         {
           error:
-            "Prețul abonamentului Stripe nu este configurat.",
+            billingInterval ===
+            "yearly"
+              ? "Prețul anual Stripe nu este configurat."
+              : "Prețul lunar Stripe nu este configurat.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    const stripe =
+      getStripe();
+
+    /*
+     * Server-side verification prevents a browser from submitting
+     * an arbitrary Stripe Price ID.
+     */
+    const stripePrice =
+      await stripe.prices.retrieve(
+        stripePriceId
+      );
+
+    if (
+      !stripePrice.active ||
+      stripePrice.type !==
+        "recurring"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Prețul Stripe selectat nu este un abonament recurent activ.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    const expectedStripeInterval =
+      billingInterval ===
+      "yearly"
+        ? "year"
+        : "month";
+
+    if (
+      stripePrice.recurring
+        ?.interval !==
+      expectedStripeInterval
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Perioada prețului Stripe nu corespunde planului selectat.",
         },
         {
           status: 500,
@@ -104,7 +229,8 @@ export async function POST(
         id,
         role,
         first_name,
-        last_name
+        last_name,
+        account_status
       `)
       .eq("id", user.id)
       .maybeSingle();
@@ -125,6 +251,21 @@ export async function POST(
     }
 
     if (
+      profile.account_status ===
+      "blocked"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Contul este blocat.",
+        },
+        {
+          status: 403,
+        }
+      );
+    }
+
+    if (
       profile.role !==
       "doctor_applicant"
     ) {
@@ -135,7 +276,7 @@ export async function POST(
         return NextResponse.json(
           {
             error:
-              "Contul este deja activat ca medic.",
+              "Contul este deja activat ca medic. Folosește portalul de facturare pentru schimbarea planului.",
           },
           {
             status: 409,
@@ -163,7 +304,10 @@ export async function POST(
         id,
         status
       `)
-      .eq("profile_id", user.id)
+      .eq(
+        "profile_id",
+        user.id
+      )
       .maybeSingle();
 
     if (
@@ -186,13 +330,19 @@ export async function POST(
       error:
         existingSubscriptionError,
     } = await supabase
-      .from("doctor_subscriptions")
+      .from(
+        "doctor_subscriptions"
+      )
       .select(`
         stripe_customer_id,
         stripe_subscription_id,
-        status
+        status,
+        billing_interval
       `)
-      .eq("profile_id", user.id)
+      .eq(
+        "profile_id",
+        user.id
+      )
       .maybeSingle();
 
     if (
@@ -226,7 +376,7 @@ export async function POST(
       return NextResponse.json(
         {
           error:
-            "Ai deja un abonament activ.",
+            "Ai deja un abonament activ. Folosește portalul de facturare pentru schimbarea planului.",
         },
         {
           status: 409,
@@ -250,11 +400,11 @@ export async function POST(
 
       const customer =
         await stripe.customers.create({
-          email:
-            user.email,
+          email: user.email,
 
           name:
-            fullName || undefined,
+            fullName ||
+            undefined,
 
           metadata: {
             romdoc_profile_id:
@@ -267,52 +417,61 @@ export async function POST(
 
       stripeCustomerId =
         customer.id;
+    }
 
-      const {
-        error: subscriptionUpsertError,
-      } = await admin
-        .from("doctor_subscriptions")
-        .upsert(
-          {
-            profile_id:
-              user.id,
+    const {
+      error:
+        subscriptionUpsertError,
+    } = await admin
+      .from(
+        "doctor_subscriptions"
+      )
+      .upsert(
+        {
+          profile_id:
+            user.id,
 
-            doctor_application_id:
-              application.id,
+          doctor_application_id:
+            application.id,
 
-            stripe_customer_id:
-              stripeCustomerId,
+          stripe_customer_id:
+            stripeCustomerId,
 
-            stripe_price_id:
-              stripePriceId,
+          stripe_price_id:
+            stripePriceId,
 
-            status:
-              "pending",
-          },
-          {
-            onConflict:
-              "profile_id",
-          }
-        );
+          billing_interval:
+            billingInterval,
 
-      if (
+          status:
+            "pending",
+
+          updated_at:
+            new Date().toISOString(),
+        },
+        {
+          onConflict:
+            "profile_id",
+        }
+      );
+
+    if (
+      subscriptionUpsertError
+    ) {
+      console.error(
+        "Subscription persistence failed:",
         subscriptionUpsertError
-      ) {
-        console.error(
-          "Subscription customer persistence failed:",
-          subscriptionUpsertError
-        );
+      );
 
-        return NextResponse.json(
-          {
-            error:
-              "Datele abonamentului nu au putut fi salvate.",
-          },
-          {
-            status: 500,
-          }
-        );
-      }
+      return NextResponse.json(
+        {
+          error:
+            "Datele abonamentului nu au putut fi salvate.",
+        },
+        {
+          status: 500,
+        }
+      );
     }
 
     const origin =
@@ -371,6 +530,9 @@ export async function POST(
 
           romdoc_doctor_application_id:
             application.id,
+
+          romdoc_billing_interval:
+            billingInterval,
         },
 
         subscription_data: {
@@ -380,6 +542,9 @@ export async function POST(
 
             romdoc_doctor_application_id:
               application.id,
+
+            romdoc_billing_interval:
+              billingInterval,
           },
         },
       });
@@ -397,13 +562,21 @@ export async function POST(
     }
 
     await admin
-      .from("doctor_applications")
+      .from(
+        "doctor_applications"
+      )
       .update({
         status:
           "payment_processing",
       })
-      .eq("id", application.id)
-      .eq("profile_id", user.id);
+      .eq(
+        "id",
+        application.id
+      )
+      .eq(
+        "profile_id",
+        user.id
+      );
 
     return NextResponse.json({
       url:

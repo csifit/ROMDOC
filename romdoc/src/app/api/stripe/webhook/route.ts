@@ -6,13 +6,16 @@ import Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export const runtime =
-  "nodejs";
+export const runtime = "nodejs";
 
 type SubscriptionPeriod = {
   current_period_start?: number;
   current_period_end?: number;
 };
+
+type BillingInterval =
+  | "monthly"
+  | "yearly";
 
 function timestampToIso(
   timestamp:
@@ -30,8 +33,7 @@ function timestampToIso(
 }
 
 function getSubscriptionPeriod(
-  subscription:
-    Stripe.Subscription
+  subscription: Stripe.Subscription
 ) {
   const subscriptionWithPeriod =
     subscription as
@@ -48,28 +50,53 @@ function getSubscriptionPeriod(
     start:
       subscriptionWithPeriod
         .current_period_start ??
-      firstItem
-        ?.current_period_start ??
+      firstItem?.current_period_start ??
       null,
 
     end:
       subscriptionWithPeriod
         .current_period_end ??
-      firstItem
-        ?.current_period_end ??
+      firstItem?.current_period_end ??
       null,
   };
 }
 
-function slugify(
-  value: string
+function getBillingIntervalFromSubscription(
+  subscription: Stripe.Subscription
+): BillingInterval {
+  const metadataInterval =
+    subscription.metadata
+      .romdoc_billing_interval;
+
+  if (
+    metadataInterval === "monthly" ||
+    metadataInterval === "yearly"
+  ) {
+    return metadataInterval;
+  }
+
+  const stripeInterval =
+    subscription.items.data[0]
+      ?.price.recurring?.interval;
+
+  return stripeInterval === "year"
+    ? "yearly"
+    : "monthly";
+}
+
+function getSubscriptionPriceId(
+  subscription: Stripe.Subscription
 ) {
+  return (
+    subscription.items.data[0]
+      ?.price.id ?? null
+  );
+}
+
+function slugify(value: string) {
   return value
     .normalize("NFD")
-    .replace(
-      /[\u0300-\u036f]/g,
-      ""
-    )
+    .replace(/[^\u0000-\u007E]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
@@ -78,23 +105,16 @@ function slugify(
 async function createUniqueDoctorSlug(
   baseName: string
 ) {
-  const admin =
-    createAdminClient();
+  const admin = createAdminClient();
 
   const baseSlug =
-    slugify(baseName) ||
-    "medic";
+    slugify(baseName) || "medic";
 
-  let candidate =
-    baseSlug;
-
+  let candidate = baseSlug;
   let suffix = 2;
 
   while (true) {
-    const {
-      data,
-      error,
-    } = await admin
+    const { data, error } = await admin
       .from("doctors")
       .select("id")
       .eq("slug", candidate)
@@ -110,9 +130,7 @@ async function createUniqueDoctorSlug(
       return candidate;
     }
 
-    candidate =
-      `${baseSlug}-${suffix}`;
-
+    candidate = `${baseSlug}-${suffix}`;
     suffix += 1;
   }
 }
@@ -136,14 +154,10 @@ async function getSubscription(
 }
 
 async function activateDoctorFromSubscription(
-  subscription:
-    Stripe.Subscription
+  subscription: Stripe.Subscription
 ) {
   if (
-    ![
-      "active",
-      "trialing",
-    ].includes(
+    !["active", "trialing"].includes(
       subscription.status
     )
   ) {
@@ -158,17 +172,13 @@ async function activateDoctorFromSubscription(
     subscription.metadata
       .romdoc_doctor_application_id;
 
-  if (
-    !profileId ||
-    !applicationId
-  ) {
+  if (!profileId || !applicationId) {
     throw new Error(
       "Stripe subscription is missing RomDoc metadata."
     );
   }
 
-  const admin =
-    createAdminClient();
+  const admin = createAdminClient();
 
   const {
     data: profile,
@@ -184,10 +194,7 @@ async function activateDoctorFromSubscription(
     .eq("id", profileId)
     .maybeSingle();
 
-  if (
-    profileError ||
-    !profile
-  ) {
+  if (profileError || !profile) {
     throw new Error(
       `Doctor profile lookup failed: ${
         profileError?.message ??
@@ -244,9 +251,7 @@ async function activateDoctorFromSubscription(
     );
   }
 
-  let doctorId:
-    | string
-    | null = null;
+  let doctorId: string | null = null;
 
   const {
     data: existingDoctor,
@@ -264,8 +269,7 @@ async function activateDoctorFromSubscription(
   }
 
   if (existingDoctor) {
-    doctorId =
-      existingDoctor.id;
+    doctorId = existingDoctor.id;
 
     const {
       error: doctorUpdateError,
@@ -274,16 +278,14 @@ async function activateDoctorFromSubscription(
       .update({
         city_id:
           application.city_id,
-
         phone:
           application.phone,
-
         email:
           authUserResult.user.email ??
           null,
-
-        status:
-          "active",
+        status: "active",
+        updated_at:
+          new Date().toISOString(),
       })
       .eq("id", doctorId);
 
@@ -311,35 +313,24 @@ async function activateDoctorFromSubscription(
             )}`
       );
 
-    doctorId =
-      crypto.randomUUID();
+    doctorId = crypto.randomUUID();
 
     const {
       error: doctorInsertError,
     } = await admin
       .from("doctors")
       .insert({
-        id:
-          doctorId,
-
-        profile_id:
-          profileId,
-
+        id: doctorId,
+        profile_id: profileId,
         city_id:
           application.city_id,
-
-        slug:
-          doctorSlug,
-
+        slug: doctorSlug,
         phone:
           application.phone,
-
         email:
           authUserResult.user.email ??
           null,
-
-        status:
-          "active",
+        status: "active",
       });
 
     if (doctorInsertError) {
@@ -349,24 +340,16 @@ async function activateDoctorFromSubscription(
     }
 
     const {
-      error:
-        translationInsertError,
+      error: translationInsertError,
     } = await admin
       .from("doctor_translations")
       .insert({
-        doctor_id:
-          doctorId,
-
-        locale:
-          "ro",
-
-        title:
-          "Medic",
+        doctor_id: doctorId,
+        locale: "ro",
+        title: "Medic",
       });
 
-    if (
-      translationInsertError
-    ) {
+    if (translationInsertError) {
       throw new Error(
         `Doctor translation creation failed: ${translationInsertError.message}`
       );
@@ -378,15 +361,12 @@ async function activateDoctorFromSubscription(
     application.specialty_id
   ) {
     const {
-      error:
-        specialtyInsertError,
+      error: specialtyInsertError,
     } = await admin
       .from("doctor_specialties")
       .upsert(
         {
-          doctor_id:
-            doctorId,
-
+          doctor_id: doctorId,
           specialty_id:
             application.specialty_id,
         },
@@ -396,9 +376,7 @@ async function activateDoctorFromSubscription(
         }
       );
 
-    if (
-      specialtyInsertError
-    ) {
+    if (specialtyInsertError) {
       throw new Error(
         `Doctor specialty creation failed: ${specialtyInsertError.message}`
       );
@@ -417,9 +395,14 @@ async function activateDoctorFromSubscription(
       : subscription.customer.id;
 
   const priceId =
-    subscription.items.data[0]
-      ?.price.id ??
-    null;
+    getSubscriptionPriceId(
+      subscription
+    );
+
+  const billingInterval =
+    getBillingIntervalFromSubscription(
+      subscription
+    );
 
   const {
     error: subscriptionUpsertError,
@@ -427,59 +410,45 @@ async function activateDoctorFromSubscription(
     .from("doctor_subscriptions")
     .upsert(
       {
-        profile_id:
-          profileId,
-
+        profile_id: profileId,
         doctor_application_id:
           applicationId,
-
-        doctor_id:
-          doctorId,
-
+        doctor_id: doctorId,
         stripe_customer_id:
           customerId,
-
         stripe_subscription_id:
           subscription.id,
-
-        stripe_price_id:
-          priceId,
-
+        stripe_price_id: priceId,
+        billing_interval:
+          billingInterval,
         status:
           subscription.status,
-
         current_period_start:
           timestampToIso(
             period.start
           ),
-
         current_period_end:
           timestampToIso(
             period.end
           ),
-
         cancel_at_period_end:
           subscription
             .cancel_at_period_end,
-
         canceled_at:
           timestampToIso(
-            subscription
-              .canceled_at
+            subscription.canceled_at
           ),
-
         last_payment_at:
+          new Date().toISOString(),
+        updated_at:
           new Date().toISOString(),
       },
       {
-        onConflict:
-          "profile_id",
+        onConflict: "profile_id",
       }
     );
 
-  if (
-    subscriptionUpsertError
-  ) {
+  if (subscriptionUpsertError) {
     throw new Error(
       `Subscription activation persistence failed: ${subscriptionUpsertError.message}`
     );
@@ -490,33 +459,30 @@ async function activateDoctorFromSubscription(
   } = await admin
     .from("profiles")
     .update({
-      role:
-        "doctor",
+      role: "doctor",
+      updated_at:
+        new Date().toISOString(),
     })
     .eq("id", profileId);
 
-  if (
-    profileUpdateError
-  ) {
+  if (profileUpdateError) {
     throw new Error(
       `Doctor role activation failed: ${profileUpdateError.message}`
     );
   }
 
   const {
-    error:
-      applicationUpdateError,
+    error: applicationUpdateError,
   } = await admin
     .from("doctor_applications")
     .update({
-      status:
-        "paid",
+      status: "paid",
+      updated_at:
+        new Date().toISOString(),
     })
     .eq("id", applicationId);
 
-  if (
-    applicationUpdateError
-  ) {
+  if (applicationUpdateError) {
     throw new Error(
       `Doctor application activation failed: ${applicationUpdateError.message}`
     );
@@ -524,11 +490,9 @@ async function activateDoctorFromSubscription(
 }
 
 async function updateSubscriptionRecord(
-  subscription:
-    Stripe.Subscription
+  subscription: Stripe.Subscription
 ) {
-  const admin =
-    createAdminClient();
+  const admin = createAdminClient();
 
   const profileId =
     subscription.metadata
@@ -543,32 +507,41 @@ async function updateSubscriptionRecord(
       subscription
     );
 
-  const {
-    error,
-  } = await admin
+  const priceId =
+    getSubscriptionPriceId(
+      subscription
+    );
+
+  const billingInterval =
+    getBillingIntervalFromSubscription(
+      subscription
+    );
+
+  const { error } = await admin
     .from("doctor_subscriptions")
     .update({
+      stripe_price_id: priceId,
+      billing_interval:
+        billingInterval,
       status:
         subscription.status,
-
       current_period_start:
         timestampToIso(
           period.start
         ),
-
       current_period_end:
         timestampToIso(
           period.end
         ),
-
       cancel_at_period_end:
         subscription
           .cancel_at_period_end,
-
       canceled_at:
         timestampToIso(
           subscription.canceled_at
         ),
+      updated_at:
+        new Date().toISOString(),
     })
     .eq("profile_id", profileId);
 
@@ -579,10 +552,7 @@ async function updateSubscriptionRecord(
   }
 
   if (
-    [
-      "active",
-      "trialing",
-    ].includes(
+    ["active", "trialing"].includes(
       subscription.status
     )
   ) {
@@ -594,9 +564,8 @@ async function updateSubscriptionRecord(
 
 export async function POST(
   request: NextRequest
-) {
-  const stripe =
-    getStripe();
+): Promise<Response> {
+  const stripe = getStripe();
 
   const webhookSecret =
     process.env
@@ -634,8 +603,7 @@ export async function POST(
   const rawBody =
     await request.text();
 
-  let event:
-    Stripe.Event;
+  let event: Stripe.Event;
 
   try {
     event =
@@ -661,15 +629,12 @@ export async function POST(
     );
   }
 
-  const admin =
-    createAdminClient();
+  const admin = createAdminClient();
 
   const {
     data: processedEvent,
   } = await admin
-    .from(
-      "stripe_webhook_events"
-    )
+    .from("stripe_webhook_events")
     .select("stripe_event_id")
     .eq(
       "stripe_event_id",
@@ -785,21 +750,15 @@ export async function POST(
     const {
       error: eventLogError,
     } = await admin
-      .from(
-        "stripe_webhook_events"
-      )
+      .from("stripe_webhook_events")
       .insert({
-        stripe_event_id:
-          event.id,
-
-        event_type:
-          event.type,
+        stripe_event_id: event.id,
+        event_type: event.type,
       });
 
     if (
       eventLogError &&
-      eventLogError.code !==
-        "23505"
+      eventLogError.code !== "23505"
     ) {
       throw new Error(
         `Webhook event logging failed: ${eventLogError.message}`

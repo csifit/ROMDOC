@@ -22,11 +22,16 @@ type DoctorApplication = {
 
 type DoctorSubscription = {
   status: string;
+  billing_interval:
+    | "monthly"
+    | "yearly";
+  stripe_price_id:
+    | string
+    | null;
   current_period_end:
     | string
     | null;
-  cancel_at_period_end:
-    boolean;
+  cancel_at_period_end: boolean;
 };
 
 function getStatusContent(
@@ -36,54 +41,47 @@ function getStatusContent(
     | null
 ) {
   if (
-    subscriptionStatus ===
-      "active" ||
-    subscriptionStatus ===
-      "trialing"
+    subscriptionStatus === "active" ||
+    subscriptionStatus === "trialing"
   ) {
     return {
       title:
         "Abonamentul este activ",
-
       description:
         "Contul tău de medic este activ și ai acces la serviciile platformei.",
-
-      badge:
-        "Activ",
+      badge: "Activ",
+      badgeClasses:
+        "bg-green-100 text-green-800",
     };
   }
 
   if (
-    subscriptionStatus ===
-    "past_due"
+    subscriptionStatus === "past_due"
   ) {
     return {
       title:
         "Plata abonamentului necesită atenție",
-
       description:
         "Actualizează metoda de plată în portalul de facturare.",
-
       badge:
         "Plată restantă",
+      badgeClasses:
+        "bg-amber-100 text-amber-900",
     };
   }
 
   if (
-    subscriptionStatus ===
-      "canceled" ||
-    subscriptionStatus ===
-      "unpaid"
+    subscriptionStatus === "canceled" ||
+    subscriptionStatus === "unpaid"
   ) {
     return {
       title:
         "Abonamentul nu este activ",
-
       description:
         "Abonamentul trebuie reactivat pentru acces complet la serviciile de medic.",
-
-      badge:
-        "Inactiv",
+      badge: "Inactiv",
+      badgeClasses:
+        "bg-red-100 text-red-800",
     };
   }
 
@@ -92,12 +90,12 @@ function getStatusContent(
       return {
         title:
           "Plata este în curs de procesare",
-
         description:
           "Așteptăm confirmarea securizată de la Stripe. Pagina se va actualiza după procesarea webhookului.",
-
         badge:
           "În procesare",
+        badgeClasses:
+          "bg-blue-100 text-blue-800",
       };
 
     case "paid":
@@ -105,48 +103,45 @@ function getStatusContent(
       return {
         title:
           "Contul de medic este activ",
-
         description:
           "Plata a fost confirmată și contul a fost activat.",
-
-        badge:
-          "Activ",
+        badge: "Activ",
+        badgeClasses:
+          "bg-green-100 text-green-800",
       };
 
     case "rejected":
       return {
         title:
           "Cererea nu poate continua",
-
         description:
           "Contactează echipa RomDoc pentru informații suplimentare.",
-
-        badge:
-          "Respinsă",
+        badge: "Respinsă",
+        badgeClasses:
+          "bg-red-100 text-red-800",
       };
 
     case "cancelled":
       return {
         title:
           "Cererea a fost anulată",
-
         description:
           "Poți contacta echipa RomDoc pentru reactivarea procesului.",
-
-        badge:
-          "Anulată",
+        badge: "Anulată",
+        badgeClasses:
+          "bg-gray-200 text-gray-700",
       };
 
     default:
       return {
         title:
           "Activează abonamentul RomDoc",
-
         description:
           "Adresa de e-mail a fost confirmată. Următorul pas este activarea abonamentului de medic.",
-
         badge:
           "Plată necesară",
+        badgeClasses:
+          "bg-amber-100 text-amber-900",
       };
   }
 }
@@ -162,6 +157,39 @@ function formatDate(
       year: "numeric",
     }
   ).format(new Date(value));
+}
+
+function getSubscriptionStatusLabel(
+  status: string
+) {
+  switch (status) {
+    case "active":
+      return "Activ";
+
+    case "trialing":
+      return "Perioadă de probă";
+
+    case "past_due":
+      return "Plată restantă";
+
+    case "canceled":
+      return "Anulat";
+
+    case "unpaid":
+      return "Neplătit";
+
+    case "incomplete":
+      return "Plată incompletă";
+
+    case "incomplete_expired":
+      return "Plată expirată";
+
+    case "paused":
+      return "Suspendat";
+
+    default:
+      return status;
+  }
 }
 
 export default async function DoctorApplicationPage({
@@ -197,7 +225,8 @@ export default async function DoctorApplicationPage({
     .select(`
       role,
       first_name,
-      last_name
+      last_name,
+      account_status
     `)
     .eq("id", user.id)
     .maybeSingle();
@@ -207,6 +236,17 @@ export default async function DoctorApplicationPage({
     !profile
   ) {
     redirect("/login");
+  }
+
+  if (
+    profile.account_status ===
+    "blocked"
+  ) {
+    await supabase.auth.signOut();
+
+    redirect(
+      "/login?error=account-blocked"
+    );
   }
 
   const {
@@ -238,6 +278,8 @@ export default async function DoctorApplicationPage({
     .from("doctor_subscriptions")
     .select(`
       status,
+      billing_interval,
+      stripe_price_id,
       current_period_end,
       cancel_at_period_end
     `)
@@ -262,8 +304,7 @@ export default async function DoctorApplicationPage({
       | null;
 
   if (
-    profile.role ===
-      "doctor" &&
+    profile.role === "doctor" &&
     !typedApplication
   ) {
     redirect(
@@ -284,7 +325,6 @@ export default async function DoctorApplicationPage({
     getStatusContent(
       typedApplication?.status ??
         "pending_payment",
-
       typedSubscription?.status ??
         null
     );
@@ -298,13 +338,10 @@ export default async function DoctorApplicationPage({
     .trim();
 
   const hasActiveSubscription =
-    typedSubscription &&
-    [
-      "active",
-      "trialing",
-    ].includes(
-      typedSubscription.status
-    );
+    typedSubscription?.status ===
+      "active" ||
+    typedSubscription?.status ===
+      "trialing";
 
   return (
     <main className="min-h-screen bg-[#F0EEE9] px-6 py-12">
@@ -312,69 +349,148 @@ export default async function DoctorApplicationPage({
         {parameters.checkout ===
           "success" && (
           <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-            Plata a fost transmisă către
-            Stripe. Activarea finală este
-            realizată automat după confirmarea
-            webhookului securizat.
+            Plata a fost transmisă către Stripe. Activarea finală este realizată automat după confirmarea webhookului securizat.
           </div>
         )}
 
         {parameters.checkout ===
           "cancelled" && (
           <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-            Plata a fost anulată. Nu ai fost
-            taxat și poți relua procesul.
+            Plata a fost anulată. Poți selecta din nou planul dorit când ești pregătit.
           </div>
         )}
 
-        <section className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-gray-500">
-                Cont medic
+              <p className="text-sm font-semibold text-[#036661]">
+                Cont medic RomDoc
               </p>
 
               <h1 className="mt-2 text-3xl font-bold text-gray-900">
                 {statusContent.title}
               </h1>
+
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-600">
+                {statusContent.description}
+              </p>
             </div>
 
-            <span className="rounded-full bg-[#F0EEE9] px-4 py-2 text-sm font-semibold text-[#9A4F35]">
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${statusContent.badgeClasses}`}
+            >
               {statusContent.badge}
             </span>
           </div>
 
-          <p className="mt-5 leading-7 text-gray-600">
-            {applicantName
-              ? `${applicantName}, `
-              : ""}
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Candidat
+              </p>
 
-            {statusContent.description}
-          </p>
+              <p className="mt-2 font-semibold text-gray-900">
+                {applicantName ||
+                  "Nume indisponibil"}
+              </p>
 
-          {!hasActiveSubscription &&
-            typedApplication?.status !==
-              "rejected" &&
-            typedApplication?.status !==
-              "cancelled" && (
-              <div className="mt-8 rounded-2xl border border-gray-200 bg-gray-50 p-6">
-                <p className="text-sm font-medium text-gray-500">
-                  Abonament unic
+              <p className="mt-1 text-sm text-gray-600">
+                {user.email}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Cerere trimisă
+              </p>
+
+              <p className="mt-2 font-semibold text-gray-900">
+                {typedApplication
+                  ? formatDate(
+                      typedApplication.created_at
+                    )
+                  : "—"}
+              </p>
+
+              <p className="mt-1 text-sm text-gray-600">
+                Status cerere: {typedApplication?.status ?? "—"}
+              </p>
+            </div>
+          </div>
+
+          {typedSubscription && (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Plan curent
                 </p>
 
-                <p className="mt-2 text-3xl font-bold text-gray-900">
-                  50 lei
-
-                  <span className="text-base font-medium text-gray-500">
-                    {" "}
-                    / lună + TVA
-                  </span>
+                <p className="mt-2 font-semibold text-gray-900">
+                  {typedSubscription.billing_interval ===
+                  "yearly"
+                    ? "Abonament anual"
+                    : "Abonament lunar"}
                 </p>
 
-                <p className="mt-3 text-sm leading-6 text-gray-600">
-                  Include toate serviciile
-                  disponibile pentru medici pe
-                  platforma RomDoc.
+                <p className="mt-1 text-sm text-gray-600">
+                  {typedSubscription.billing_interval ===
+                  "yearly"
+                    ? "Facturare o dată pe an"
+                    : "Facturare în fiecare lună"}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Status abonament
+                </p>
+
+                <p className="mt-2 font-semibold text-gray-900">
+                  {getSubscriptionStatusLabel(
+                    typedSubscription.status
+                  )}
+                </p>
+
+                <p className="mt-1 text-sm text-gray-600">
+                  {typedSubscription.current_period_end
+                    ? `Perioada curentă se încheie la ${formatDate(
+                        typedSubscription.current_period_end
+                      )}.`
+                    : "Data următoarei facturări nu este disponibilă."}
+                </p>
+
+                {typedSubscription.cancel_at_period_end && (
+                  <p className="mt-2 text-sm font-medium text-amber-800">
+                    Abonamentul este programat pentru anulare la sfârșitul perioadei curente.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-8 border-t border-gray-200 pt-8">
+            {hasActiveSubscription ? (
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">
+                  Administrarea abonamentului
+                </h2>
+
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
+                  În portalul Stripe poți schimba planul lunar sau anual, metoda de plată și informațiile de facturare.
+                </p>
+
+                <div className="mt-5">
+                  <ManageSubscriptionButton />
+                </div>
+              </div>
+            ) : (
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">
+                  Alege planul de abonament
+                </h2>
+
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
+                  Selectează facturarea lunară sau anuală. Accesul la platforma medicilor este activat după confirmarea plății Stripe.
                 </p>
 
                 <div className="mt-6">
@@ -382,70 +498,18 @@ export default async function DoctorApplicationPage({
                 </div>
               </div>
             )}
+          </div>
 
-          {hasActiveSubscription && (
-            <div className="mt-8 rounded-2xl border border-green-200 bg-green-50 p-6">
-              <h2 className="font-semibold text-green-950">
-                Abonament activ
-              </h2>
-
-              {typedSubscription
-                .current_period_end && (
-                <p className="mt-2 text-sm text-green-900">
-                  Perioada curentă este valabilă
-                  până la{" "}
-                  {formatDate(
-                    typedSubscription
-                      .current_period_end
-                  )}
-                  .
-                </p>
-              )}
-
-              {typedSubscription
-                .cancel_at_period_end && (
-                <p className="mt-2 text-sm font-medium text-amber-800">
-                  Abonamentul este programat
-                  pentru anulare la finalul
-                  perioadei curente.
-                </p>
-              )}
-
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Link
-                  href="/doctor-dashboard/appointments"
-                  className="rounded-xl bg-[#D97757] px-5 py-3 text-sm font-semibold text-white"
-                >
-                  Deschide panoul medicului
-                </Link>
-
-                <ManageSubscriptionButton />
-              </div>
+          {profile.role === "doctor" && (
+            <div className="mt-8 border-t border-gray-200 pt-6">
+              <Link
+                href="/doctor-dashboard/appointments"
+                className="inline-flex rounded-xl bg-[#036661] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#ff2800]"
+              >
+                Deschide panoul medicului
+              </Link>
             </div>
           )}
-
-          <div className="mt-8 border-t border-gray-200 pt-6">
-            <h2 className="font-semibold text-gray-900">
-              Verificarea profesională
-            </h2>
-
-            <p className="mt-2 text-sm leading-6 text-gray-600">
-              Verificarea profesională este
-              separată de abonament. După
-              verificare, profilul va primi
-              insigna „Medic verificat de
-              RomDoc”.
-            </p>
-          </div>
-
-          <div className="mt-8">
-            <Link
-              href="/"
-              className="text-sm font-semibold text-[#9A4F35] underline-offset-4 hover:underline"
-            >
-              Înapoi la pagina principală
-            </Link>
-          </div>
         </section>
       </div>
     </main>
