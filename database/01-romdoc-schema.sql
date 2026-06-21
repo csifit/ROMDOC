@@ -218,21 +218,26 @@ create table public.doctors (
   phone text,
   email text,
 
-  status text not null default 'pending'
-    check (
-      status in (
-        'pending',
-        'active',
-        'suspended',
-        'rejected'
-      )
-    ),
+verification_status text not null default 'not_submitted'
+  check (
+    verification_status in (
+      'not_submitted',
+      'pending',
+      'verified',
+      'rejected',
+      'expired'
+    )
+  ),
 
-  average_rating numeric(3,2) not null default 0,
-  review_count integer not null default 0,
+professional_registration_number text,
 
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+verified_at timestamptz,
+
+verified_by_profile_id uuid
+  references public.profiles(id)
+  on delete set null,
+
+verification_expires_at timestamptz,
 );
 
 comment on column public.doctors.profile_id is
@@ -2208,6 +2213,14 @@ create table if not exists public.doctor_subscriptions (
       )
     ),
 
+  billing_interval text not null default 'monthly'
+  check (
+    billing_interval in (
+      'monthly',
+      'yearly'
+    )
+  ),
+  
   current_period_start timestamptz,
   current_period_end timestamptz,
 

@@ -1,81 +1,75 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import {
+  NextRequest,
+  NextResponse,
+} from "next/server";
+import type {
+  User,
+} from "@supabase/supabase-js";
+import {
+  createAdminClient,
+} from "@/lib/supabase/admin";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
-type DoctorStatus =
-  | "pending"
-  | "active"
-  | "suspended"
-  | "rejected";
+export const runtime = "nodejs";
 
-type DoctorAdminAction =
-  | "update_status"
-  | "assign_owner"
-  | "remove_owner";
+type AdminAuthorizationResult =
+  | {
+      profileId: string;
+      response: null;
+    }
+  | {
+      profileId: null;
+      response: NextResponse;
+    };
 
-type DoctorAdminRequestBody = {
-  doctorId?: string;
-  action?: DoctorAdminAction;
-  status?: DoctorStatus;
-  profileId?: string;
+type DoctorActionBody = {
+  doctorId?: unknown;
+  action?: unknown;
+  status?: unknown;
+  verificationStatus?: unknown;
+  registrationNumber?: unknown;
+  verificationExpiresAt?: unknown;
 };
 
-const allowedStatuses: DoctorStatus[] = [
-  "pending",
-  "active",
-  "suspended",
-  "rejected",
-];
+type AuthUserMap = Map<
+  string,
+  {
+    email: string | null;
+    emailConfirmed: boolean;
+  }
+>;
 
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
-  );
+function normalizeString(
+  value: unknown,
+  maximumLength = 500
+): string {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value
+    .trim()
+    .slice(0, maximumLength);
 }
 
-export async function PATCH(request: Request) {
-  try {
-    const body =
-      (await request.json()) as DoctorAdminRequestBody;
+async function requireAdmin(): Promise<AdminAuthorizationResult> {
+  const supabase =
+    await createClient();
 
-    const doctorId =
-      body.doctorId?.trim();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-    if (
-      !doctorId ||
-      !isUuid(doctorId)
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Identificatorul medicului nu este valid.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    if (!body.action) {
-      return NextResponse.json(
-        {
-          error:
-            "Acțiunea administrativă lipsește.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    const supabase = await createClient();
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json(
+  if (
+    userError ||
+    !user
+  ) {
+    return {
+      profileId: null,
+      response: NextResponse.json(
         {
           error:
             "Trebuie să fii autentificat.",
@@ -83,340 +77,752 @@ export async function PATCH(request: Request) {
         {
           status: 401,
         }
-      );
-    }
+      ),
+    };
+  }
 
-    const {
-      data: adminProfile,
-      error: adminProfileError,
-    } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("id", user.id)
-      .maybeSingle();
+  const {
+    data: profile,
+    error: profileError,
+  } = await supabase
+    .from("profiles")
+    .select(`
+      role,
+      account_status
+    `)
+    .eq("id", user.id)
+    .maybeSingle();
 
-    if (adminProfileError) {
-      console.error(
-        "Admin doctor action profile lookup failed:",
-        adminProfileError
-      );
-
-      return NextResponse.json(
+  if (
+    profileError ||
+    profile?.role !== "admin" ||
+    profile.account_status !==
+      "active"
+  ) {
+    return {
+      profileId: null,
+      response: NextResponse.json(
         {
           error:
-            "Rolul administratorului nu a putut fi verificat.",
-        },
-        {
-          status: 500,
-        }
-      );
-    }
-
-    if (
-      !adminProfile ||
-      adminProfile.role !== "admin"
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Nu ai permisiunea de a modifica medicii.",
+            "Nu ai permisiunea de a administra medicii.",
         },
         {
           status: 403,
         }
-      );
-    }
+      ),
+    };
+  }
 
+  return {
+    profileId: user.id,
+    response: null,
+  };
+}
+
+async function listAllAuthUsers(): Promise<AuthUserMap> {
+  const admin =
+    createAdminClient();
+
+  const authUsers: User[] = [];
+
+  let page = 1;
+  const perPage = 1000;
+
+  while (true) {
     const {
-      data: doctor,
-      error: doctorError,
-    } = await supabase
-      .from("doctors")
-      .select(
-        "id, profile_id, status"
-      )
-      .eq("id", doctorId)
-      .maybeSingle();
+      data,
+      error,
+    } =
+      await admin.auth.admin.listUsers({
+        page,
+        perPage,
+      });
 
-    if (doctorError) {
-      console.error(
-        "Admin doctor lookup failed:",
-        doctorError
-      );
-
-      return NextResponse.json(
-        {
-          error:
-            "Medicul nu a putut fi verificat.",
-        },
-        {
-          status: 500,
-        }
-      );
+    if (error) {
+      throw error;
     }
 
-    if (!doctor) {
-      return NextResponse.json(
-        {
-          error:
-            "Medicul nu a fost găsit.",
-        },
-        {
-          status: 404,
-        }
-      );
-    }
+    authUsers.push(
+      ...data.users
+    );
 
     if (
-      body.action === "update_status"
+      data.users.length <
+      perPage
     ) {
-      if (
-        !body.status ||
-        !allowedStatuses.includes(
-          body.status
-        )
-      ) {
-        return NextResponse.json(
-          {
-            error:
-              "Starea medicului nu este validă.",
-          },
-          {
-            status: 400,
-          }
-        );
-      }
-
-      const { error: updateError } =
-        await supabase
-          .from("doctors")
-          .update({
-            status: body.status,
-          })
-          .eq("id", doctorId);
-
-      if (updateError) {
-        console.error(
-          "Admin doctor status update failed:",
-          updateError
-        );
-
-        return NextResponse.json(
-          {
-            error:
-              "Starea medicului nu a putut fi actualizată.",
-          },
-          {
-            status: 500,
-          }
-        );
-      }
-
-      return NextResponse.json({
-        success: true,
-      });
+      break;
     }
 
-    if (
-      body.action === "remove_owner"
-    ) {
-      const { error: removeError } =
-        await supabase
-          .from("doctors")
-          .update({
-            profile_id: null,
-          })
-          .eq("id", doctorId);
+    page += 1;
+  }
 
-      if (removeError) {
-        console.error(
-          "Admin doctor owner removal failed:",
-          removeError
-        );
-
-        return NextResponse.json(
-          {
-            error:
-              "Asocierea contului nu a putut fi eliminată.",
-          },
-          {
-            status: 500,
-          }
-        );
-      }
-
-      return NextResponse.json({
-        success: true,
-      });
-    }
-
-    if (
-      body.action === "assign_owner"
-    ) {
-      const profileId =
-        body.profileId?.trim();
-
-      if (
-        !profileId ||
-        !isUuid(profileId)
-      ) {
-        return NextResponse.json(
-          {
-            error:
-              "UUID-ul profilului nu este valid.",
-          },
-          {
-            status: 400,
-          }
-        );
-      }
-
-      const {
-        data: targetProfile,
-        error: targetProfileError,
-      } = await supabase
-        .from("profiles")
-        .select(
-          "id, role, first_name, last_name"
-        )
-        .eq("id", profileId)
-        .maybeSingle();
-
-      if (targetProfileError) {
-        console.error(
-          "Admin target profile lookup failed:",
-          targetProfileError
-        );
-
-        return NextResponse.json(
-          {
-            error:
-              "Profilul selectat nu a putut fi verificat.",
-          },
-          {
-            status: 500,
-          }
-        );
-      }
-
-      if (!targetProfile) {
-        return NextResponse.json(
-          {
-            error:
-              "Profilul selectat nu există.",
-          },
-          {
-            status: 404,
-          }
-        );
-      }
-
-      if (
-        targetProfile.role !== "doctor"
-      ) {
-        return NextResponse.json(
-          {
-            error:
-              "Profilul selectat nu are rolul doctor.",
-          },
-          {
-            status: 400,
-          }
-        );
-      }
-
-      const {
-        data: existingOwnership,
-        error: ownershipError,
-      } = await supabase
-        .from("doctors")
-        .select("id, slug")
-        .eq("profile_id", profileId)
-        .neq("id", doctorId)
-        .maybeSingle();
-
-      if (ownershipError) {
-        console.error(
-          "Admin doctor ownership check failed:",
-          ownershipError
-        );
-
-        return NextResponse.json(
-          {
-            error:
-              "Asocierea existentă nu a putut fi verificată.",
-          },
-          {
-            status: 500,
-          }
-        );
-      }
-
-      if (existingOwnership) {
-        return NextResponse.json(
-          {
-            error:
-              "Acest profil este deja asociat unui alt medic.",
-          },
-          {
-            status: 409,
-          }
-        );
-      }
-
-      const { error: assignError } =
-        await supabase
-          .from("doctors")
-          .update({
-            profile_id: profileId,
-          })
-          .eq("id", doctorId);
-
-      if (assignError) {
-        console.error(
-          "Admin doctor owner assignment failed:",
-          assignError
-        );
-
-        return NextResponse.json(
-          {
-            error:
-              "Profilul nu a putut fi asociat medicului.",
-          },
-          {
-            status: 500,
-          }
-        );
-      }
-
-      return NextResponse.json({
-        success: true,
-      });
-    }
-
-    return NextResponse.json(
+  return new Map(
+    authUsers.map((user) => [
+      user.id,
       {
-        error:
-          "Acțiunea solicitată nu este acceptată.",
+        email:
+          user.email ?? null,
+        emailConfirmed:
+          Boolean(
+            user.email_confirmed_at
+          ),
       },
-      {
-        status: 400,
-      }
-    );
-  } catch (error) {
+    ])
+  );
+}
+
+export async function GET(): Promise<Response> {
+  const authorization =
+    await requireAdmin();
+
+  if (authorization.response) {
+    return authorization.response;
+  }
+
+  const admin =
+    createAdminClient();
+
+  const [
+    doctorsResult,
+    subscriptionsResult,
+    clinicLinksResult,
+    staffResult,
+  ] = await Promise.all([
+    admin
+      .from("doctors")
+      .select(`
+        id,
+        profile_id,
+        slug,
+        photo_url,
+        phone,
+        email,
+        years_experience,
+        consultation_price,
+        status,
+        average_rating,
+        review_count,
+        verification_status,
+        professional_registration_number,
+        verified_at,
+        verified_by_profile_id,
+        verification_expires_at,
+        created_at,
+        updated_at,
+        profile:profiles!doctors_profile_id_fkey (
+          id,
+          first_name,
+          last_name,
+          role,
+          account_status
+        ),
+        doctor_translations (
+          locale,
+          title,
+          biography
+        ),
+        doctor_specialties (
+          specialties (
+            id,
+            slug,
+            specialty_translations (
+              locale,
+              name
+            )
+          )
+        )
+      `)
+      .order(
+        "created_at",
+        {
+          ascending: false,
+        }
+      ),
+
+    admin
+      .from("doctor_subscriptions")
+      .select(`
+        id,
+        profile_id,
+        doctor_id,
+        stripe_customer_id,
+        stripe_subscription_id,
+        stripe_price_id,
+        status,
+        billing_interval,
+        current_period_start,
+        current_period_end,
+        cancel_at_period_end,
+        canceled_at,
+        last_payment_at,
+        created_at,
+        updated_at
+      `),
+
+    admin
+      .from("doctor_clinics")
+      .select(`
+        doctor_id,
+        clinic_id
+      `),
+
+    admin
+      .from("doctor_staff")
+      .select(`
+        doctor_id,
+        status
+      `),
+  ]);
+
+  if (doctorsResult.error) {
     console.error(
-      "Admin doctor API failed:",
-      error
+      "Admin doctors query failed:",
+      doctorsResult.error
     );
 
     return NextResponse.json(
       {
         error:
-          "A apărut o eroare neașteptată.",
+          "Medicii nu au putut fi încărcați.",
       },
       {
         status: 500,
       }
     );
   }
+
+  if (subscriptionsResult.error) {
+    console.error(
+      "Admin subscriptions query failed:",
+      subscriptionsResult.error
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          "Abonamentele medicilor nu au putut fi încărcate.",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+
+  if (clinicLinksResult.error) {
+    console.error(
+      "Admin doctor clinic counts query failed:",
+      clinicLinksResult.error
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          "Asocierile clinicilor nu au putut fi încărcate.",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+
+  if (staffResult.error) {
+    console.error(
+      "Admin doctor staff counts query failed:",
+      staffResult.error
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          "Personalul medicilor nu a putut fi încărcat.",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+
+  let authUserMap: AuthUserMap;
+
+  try {
+    authUserMap =
+      await listAllAuthUsers();
+  } catch (authError) {
+    console.error(
+      "Admin doctor auth users query failed:",
+      authError
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          "Datele de autentificare ale medicilor nu au putut fi încărcate.",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+
+  const subscriptionByDoctorId =
+    new Map(
+      (
+        subscriptionsResult.data ??
+        []
+      )
+        .filter(
+          (subscription) =>
+            Boolean(
+              subscription.doctor_id
+            )
+        )
+        .map((subscription) => [
+          subscription.doctor_id as string,
+          subscription,
+        ])
+    );
+
+  const subscriptionByProfileId =
+    new Map(
+      (
+        subscriptionsResult.data ??
+        []
+      ).map((subscription) => [
+        subscription.profile_id,
+        subscription,
+      ])
+    );
+
+  const clinicCountByDoctorId =
+    new Map<string, number>();
+
+  for (
+    const link of
+      clinicLinksResult.data ??
+      []
+  ) {
+    clinicCountByDoctorId.set(
+      link.doctor_id,
+      (
+        clinicCountByDoctorId.get(
+          link.doctor_id
+        ) ?? 0
+      ) + 1
+    );
+  }
+
+  const activeStaffCountByDoctorId =
+    new Map<string, number>();
+
+  for (
+    const assignment of
+      staffResult.data ??
+      []
+  ) {
+    if (
+      assignment.status !==
+      "active"
+    ) {
+      continue;
+    }
+
+    activeStaffCountByDoctorId.set(
+      assignment.doctor_id,
+      (
+        activeStaffCountByDoctorId.get(
+          assignment.doctor_id
+        ) ?? 0
+      ) + 1
+    );
+  }
+
+  const doctors =
+    (
+      doctorsResult.data ??
+      []
+    ).map((doctor) => {
+      const profile =
+        Array.isArray(
+          doctor.profile
+        )
+          ? doctor.profile[0] ??
+            null
+          : doctor.profile;
+
+      const authUser =
+        doctor.profile_id
+          ? authUserMap.get(
+              doctor.profile_id
+            )
+          : null;
+
+      const subscription =
+        subscriptionByDoctorId.get(
+          doctor.id
+        ) ??
+        (
+          doctor.profile_id
+            ? subscriptionByProfileId.get(
+                doctor.profile_id
+              )
+            : null
+        ) ??
+        null;
+
+      return {
+        ...doctor,
+
+        profile,
+
+        auth_email:
+          authUser?.email ??
+          doctor.email ??
+          null,
+
+        email_verified:
+          authUser?.emailConfirmed ??
+          false,
+
+        subscription,
+
+        clinic_count:
+          clinicCountByDoctorId.get(
+            doctor.id
+          ) ?? 0,
+
+        active_staff_count:
+          activeStaffCountByDoctorId.get(
+            doctor.id
+          ) ?? 0,
+      };
+    });
+
+  return NextResponse.json({
+    doctors,
+  });
+}
+
+export async function PATCH(
+  request: NextRequest
+): Promise<Response> {
+  const authorization =
+    await requireAdmin();
+
+  if (authorization.response) {
+    return authorization.response;
+  }
+
+  let body: DoctorActionBody;
+
+  try {
+    body =
+      (await request.json()) as
+        DoctorActionBody;
+  } catch {
+    return NextResponse.json(
+      {
+        error:
+          "Cererea nu conține date JSON valide.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  const doctorId =
+    normalizeString(
+      body.doctorId,
+      100
+    );
+
+  const action =
+    normalizeString(
+      body.action,
+      50
+    );
+
+  if (!doctorId) {
+    return NextResponse.json(
+      {
+        error:
+          "Medicul lipsește.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  if (
+    action !== "set_status" &&
+    action !==
+      "set_verification"
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Acțiunea solicitată nu este validă.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  const admin =
+    createAdminClient();
+
+  const {
+    data: doctor,
+    error: doctorError,
+  } = await admin
+    .from("doctors")
+    .select(`
+      id,
+      profile_id,
+      status,
+      verification_status
+    `)
+    .eq("id", doctorId)
+    .maybeSingle();
+
+  if (
+    doctorError ||
+    !doctor
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Medicul nu a fost găsit.",
+      },
+      {
+        status: 404,
+      }
+    );
+  }
+
+  const now =
+    new Date().toISOString();
+
+  if (action === "set_status") {
+    const status =
+      normalizeString(
+        body.status,
+        50
+      );
+
+    const allowedStatuses = [
+      "pending",
+      "active",
+      "suspended",
+      "rejected",
+    ];
+
+    if (
+      !allowedStatuses.includes(
+        status
+      )
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Statutul medicului nu este valid.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    const {
+      data: updatedDoctor,
+      error: updateError,
+    } = await admin
+      .from("doctors")
+      .update({
+        status,
+        updated_at: now,
+      })
+      .eq("id", doctorId)
+      .select("id")
+      .maybeSingle();
+
+    if (
+      updateError ||
+      !updatedDoctor
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Statutul medicului nu a putut fi actualizat.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    return NextResponse.json({
+      message:
+        status === "active"
+          ? "Medicul a fost activat."
+          : status ===
+              "suspended"
+            ? "Medicul a fost suspendat."
+            : status ===
+                "rejected"
+              ? "Medicul a fost respins."
+              : "Medicul a fost trecut în așteptare.",
+    });
+  }
+
+  const verificationStatus =
+    normalizeString(
+      body.verificationStatus,
+      50
+    );
+
+  const registrationNumber =
+    normalizeString(
+      body.registrationNumber,
+      200
+    );
+
+  const verificationExpiresAt =
+    normalizeString(
+      body.verificationExpiresAt,
+      100
+    );
+
+  const allowedVerificationStatuses = [
+    "not_submitted",
+    "pending",
+    "verified",
+    "rejected",
+    "expired",
+  ];
+
+  if (
+    !allowedVerificationStatuses.includes(
+      verificationStatus
+    )
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Statutul verificării profesionale nu este valid.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  if (
+    verificationStatus ===
+      "verified" &&
+    registrationNumber.length < 2
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Introdu numărul de înregistrare profesională.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  let parsedExpiry:
+    | string
+    | null = null;
+
+  if (verificationExpiresAt) {
+    const expiryDate =
+      new Date(
+        verificationExpiresAt
+      );
+
+    if (
+      Number.isNaN(
+        expiryDate.getTime()
+      )
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Data expirării verificării nu este validă.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    parsedExpiry =
+      expiryDate.toISOString();
+  }
+
+  const isVerified =
+    verificationStatus ===
+    "verified";
+
+  const {
+    data: updatedDoctor,
+    error: verificationError,
+  } = await admin
+    .from("doctors")
+    .update({
+      verification_status:
+        verificationStatus,
+
+      professional_registration_number:
+        registrationNumber ||
+        null,
+
+      verified_at:
+        isVerified
+          ? now
+          : null,
+
+      verified_by_profile_id:
+        isVerified
+          ? authorization.profileId
+          : null,
+
+      verification_expires_at:
+        isVerified
+          ? parsedExpiry
+          : null,
+
+      updated_at:
+        now,
+    })
+    .eq("id", doctorId)
+    .select("id")
+    .maybeSingle();
+
+  if (
+    verificationError ||
+    !updatedDoctor
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Verificarea profesională nu a putut fi actualizată.",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+
+  return NextResponse.json({
+    message:
+      isVerified
+        ? "Medicul a fost verificat profesional."
+        : "Statutul verificării profesionale a fost actualizat.",
+  });
 }
