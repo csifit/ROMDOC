@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
+
 import AuthenticatedAppointmentRequest from "@/components/appointments/authenticated-appointment-request";
 import PublicDoctorServices from "@/components/doctor/public-doctor-services";
+import VerifiedDoctorBadge from "@/components/public/verified-doctor-badge";
 import PublicDoctorReviews, {
   type PublicDoctorReview,
 } from "@/components/reviews/public-doctor-reviews";
@@ -77,6 +79,7 @@ type DoctorRecord = {
   consultation_price: number | string | null;
   average_rating: number | string | null;
   review_count: number | null;
+  verification_status: string | null;
   doctor_translations: DoctorTranslation[] | null;
   doctor_clinics: DoctorClinicRelation[] | null;
   reviews: ReviewRelation[] | null;
@@ -185,9 +188,7 @@ export default async function DoctorPage({
   params,
 }: Props) {
   const { slug } = await params;
-
-  const supabase =
-    await createClient();
+  const supabase = await createClient();
 
   const {
     data,
@@ -203,6 +204,7 @@ export default async function DoctorPage({
       consultation_price,
       average_rating,
       review_count,
+      verification_status,
       doctor_translations (
         locale,
         title,
@@ -368,6 +370,9 @@ export default async function DoctorPage({
       doctor.slug
     );
 
+  const isVerified =
+    doctor.verification_status === "verified";
+
   return (
     <main className="min-h-screen bg-[#F0EEE9] py-12">
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
@@ -377,14 +382,29 @@ export default async function DoctorPage({
               Profil medical
             </p>
 
-            <h1 className="mt-2 text-4xl font-bold text-gray-900">
-              {doctorName}
-            </h1>
+            <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h1 className="text-4xl font-bold text-gray-900">
+                  {doctorName}
+                </h1>
 
-            <p className="mt-3 text-lg text-gray-700">
-              {translation?.title ??
-                "Medic"}
-            </p>
+                <p className="mt-3 text-lg text-gray-700">
+                  {translation?.title ?? "Medic"}
+                </p>
+              </div>
+
+              {isVerified && (
+                <VerifiedDoctorBadge />
+              )}
+            </div>
+
+            {isVerified && (
+              <p className="mt-4 max-w-3xl text-sm leading-6 text-gray-600">
+                RomDoc a verificat informațiile profesionale și
+                documentele transmise de acest medic. Insigna nu
+                înseamnă că RomDoc a emis licența medicală.
+              </p>
+            )}
 
             <div className="mt-6 flex flex-wrap items-center gap-x-7 gap-y-4 text-sm text-gray-600">
               <div className="flex flex-wrap items-center gap-3">
@@ -399,9 +419,7 @@ export default async function DoctorPage({
                 />
 
                 <span className="font-semibold text-gray-900">
-                  {displayedAverageRating.toFixed(
-                    1
-                  )}
+                  {displayedAverageRating.toFixed(1)}
                 </span>
 
                 <span>
@@ -412,24 +430,15 @@ export default async function DoctorPage({
                 </span>
               </div>
 
-              {doctor.years_experience !==
-                null && (
+              {doctor.years_experience !== null && (
                 <span>
-                  {
-                    doctor.years_experience
-                  }{" "}
-                  ani experiență
+                  {doctor.years_experience} ani experiență
                 </span>
               )}
 
-              {consultationPrice !==
-                null && (
+              {consultationPrice !== null && (
                 <span>
-                  De la{" "}
-                  {formatPrice(
-                    consultationPrice
-                  )}{" "}
-                  RON
+                  De la {formatPrice(consultationPrice)} RON
                 </span>
               )}
             </div>
@@ -446,8 +455,7 @@ export default async function DoctorPage({
             </p>
           </section>
 
-          {(doctor.phone ||
-            doctor.email) && (
+          {(doctor.phone || doctor.email) && (
             <section className="mt-10">
               <h2 className="text-2xl font-semibold text-gray-900">
                 Date de contact
@@ -507,8 +515,7 @@ export default async function DoctorPage({
               Locații
             </h2>
 
-            {clinicOptions.length >
-            0 ? (
+            {clinicOptions.length > 0 ? (
               <div className="mt-5 space-y-4">
                 {clinicRelations.map(
                   (relation) => {
@@ -533,9 +540,7 @@ export default async function DoctorPage({
 
                     return (
                       <article
-                        key={
-                          relation.clinic_id
-                        }
+                        key={relation.clinic_id}
                         className="rounded-xl border border-gray-200 bg-white p-6"
                       >
                         <h3 className="text-xl font-semibold text-gray-900">
@@ -545,9 +550,7 @@ export default async function DoctorPage({
 
                         {clinicTranslation?.description && (
                           <p className="mt-2 whitespace-pre-line text-sm leading-6 text-gray-600">
-                            {
-                              clinicTranslation.description
-                            }
+                            {clinicTranslation.description}
                           </p>
                         )}
 
@@ -580,9 +583,7 @@ export default async function DoctorPage({
                         <div className="mt-4 flex flex-wrap gap-3">
                           {clinic.website && (
                             <a
-                              href={
-                                clinic.website
-                              }
+                              href={clinic.website}
                               target="_blank"
                               rel="noreferrer"
                               className="romdoc-button romdoc-button-secondary romdoc-button-sm"
@@ -593,9 +594,7 @@ export default async function DoctorPage({
 
                           {clinic.google_maps_uri && (
                             <a
-                              href={
-                                clinic.google_maps_uri
-                              }
+                              href={clinic.google_maps_uri}
                               target="_blank"
                               rel="noreferrer"
                               className="romdoc-button romdoc-button-secondary romdoc-button-sm"
@@ -628,9 +627,7 @@ export default async function DoctorPage({
 
         <div className="mt-8">
           <PublicDoctorReviews
-            reviews={
-              publishedReviews
-            }
+            reviews={publishedReviews}
           />
         </div>
       </div>

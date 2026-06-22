@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import VerifiedDoctorBadge from "@/components/public/verified-doctor-badge";
+
 export type HomepageDoctorCardData = {
   id: string;
   slug: string;
@@ -20,15 +22,10 @@ type HomepageDoctorCardProps = {
   doctor: HomepageDoctorCardData;
 };
 
-function formatPrice(
-  value: number
-) {
-  return new Intl.NumberFormat(
-    "ro-RO",
-    {
-      maximumFractionDigits: 2,
-    }
-  ).format(value);
+function formatPrice(value: number) {
+  return new Intl.NumberFormat("ro-RO", {
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
 function RatingIcon() {
@@ -43,30 +40,10 @@ function RatingIcon() {
   );
 }
 
-function VerifiedIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="m5 12 4 4L19 6"
-      />
-    </svg>
-  );
-}
-
 export default function HomepageDoctorCard({
   doctor,
 }: HomepageDoctorCardProps) {
-  const profileHref =
-    `/doctor/${doctor.slug}`;
+  const profileHref = `/doctor/${doctor.slug}`;
 
   return (
     <article className="flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-6">
@@ -91,10 +68,7 @@ export default function HomepageDoctorCard({
         </div>
 
         {doctor.isVerified && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-[#036661]/10 px-2.5 py-1 text-xs font-semibold text-[#036661]">
-            <VerifiedIcon />
-            Medic verificat
-          </span>
+          <VerifiedDoctorBadge compact />
         )}
       </div>
 
@@ -117,33 +91,21 @@ export default function HomepageDoctorCard({
       <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600">
         <span className="inline-flex items-center gap-1.5">
           <RatingIcon />
-
           <span className="font-semibold text-gray-900">
-            {doctor.averageRating.toFixed(
-              1
-            )}
+            {doctor.averageRating.toFixed(1)}
           </span>
-
-          <span>
-            ({doctor.reviewCount})
-          </span>
+          <span>({doctor.reviewCount})</span>
         </span>
 
-        {doctor.yearsExperience !==
-          null && (
+        {doctor.yearsExperience !== null && (
           <span>
             {doctor.yearsExperience} ani experiență
           </span>
         )}
 
-        {doctor.consultationPrice !==
-          null && (
+        {doctor.consultationPrice !== null && (
           <span>
-            De la{" "}
-            {formatPrice(
-              doctor.consultationPrice
-            )}{" "}
-            RON
+            De la {formatPrice(doctor.consultationPrice)} RON
           </span>
         )}
       </div>

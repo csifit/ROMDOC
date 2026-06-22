@@ -1,8 +1,8 @@
 import Link from "next/link";
-import {
-  notFound,
-} from "next/navigation";
+import { notFound } from "next/navigation";
+
 import PublicLayout from "@/components/public/public-layout";
+import VerifiedDoctorBadge from "@/components/public/verified-doctor-badge";
 import { createClient } from "@/lib/supabase/server";
 
 type Props = {
@@ -10,7 +10,6 @@ type Props = {
     specialty: string;
     city: string;
   }>;
-
   searchParams: Promise<{
     verified?: string;
     online?: string;
@@ -27,242 +26,162 @@ type Translation = {
 type DoctorRow = {
   id: string;
   slug: string;
-  years_experience:
-    | number
-    | null;
-
-  consultation_price:
-    | number
-    | null;
-
-  average_rating:
-    | number
-    | null;
-
-  review_count:
-    | number
-    | null;
-
-  verification_status:
-    | string
-    | null;
-
-  doctor_translations:
-    | Translation[]
-    | null;
+  years_experience: number | null;
+  consultation_price: number | string | null;
+  average_rating: number | string | null;
+  review_count: number | null;
+  verification_status: string | null;
+  doctor_translations: Translation[] | null;
 };
 
-function formatDoctorName(
-  slug: string
-) {
+function formatDoctorName(slug: string) {
   return slug
     .split("-")
     .map(
       (part: string) =>
-        part
-          .charAt(0)
-          .toUpperCase() +
-        part.slice(1)
+        part.charAt(0).toUpperCase() + part.slice(1)
     )
     .join(" ");
+}
+
+function formatPrice(value: number | string | null) {
+  if (value === null) {
+    return "—";
+  }
+
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed)) {
+    return "—";
+  }
+
+  return new Intl.NumberFormat("ro-RO", {
+    maximumFractionDigits: 2,
+  }).format(parsed);
 }
 
 export default async function SpecialtyCityPage({
   params,
   searchParams,
 }: Props) {
-  const {
-    specialty,
-    city,
-  } = await params;
+  const { specialty, city } = await params;
+  const filters = await searchParams;
 
-  const filters =
-    await searchParams;
+  const verifiedOnly = filters.verified === "true";
+  const onlineOnly = filters.online === "true";
 
-  const verifiedOnly =
-    filters.verified ===
-    "true";
+  const supabase = await createClient();
 
-  const onlineOnly =
-    filters.online ===
-    "true";
+  const [specialtyResult, cityResult] = await Promise.all([
+    supabase
+      .from("specialties")
+      .select(`
+        id,
+        slug,
+        specialty_translations (
+          locale,
+          name
+        )
+      `)
+      .eq("slug", specialty)
+      .single(),
 
-  const supabase =
-    await createClient();
+    supabase
+      .from("cities")
+      .select(`
+        id,
+        slug,
+        city_translations (
+          locale,
+          name
+        )
+      `)
+      .eq("slug", city)
+      .single(),
+  ]);
 
-  const [
-    specialtyResult,
-    cityResult,
-  ] =
-    await Promise.all([
-      supabase
-        .from("specialties")
-        .select(`
-          id,
-          slug,
-          specialty_translations (
-            locale,
-            name
-          )
-        `)
-        .eq("slug", specialty)
-        .single(),
+  const specialtyData = specialtyResult.data;
+  const cityData = cityResult.data;
 
-      supabase
-        .from("cities")
-        .select(`
-          id,
-          slug,
-          city_translations (
-            locale,
-            name
-          )
-        `)
-        .eq("slug", city)
-        .single(),
-    ]);
-
-  const specialtyData =
-    specialtyResult.data;
-
-  const cityData =
-    cityResult.data;
-
-  if (
-    !specialtyData ||
-    !cityData
-  ) {
+  if (!specialtyData || !cityData) {
     notFound();
   }
 
   const specialtyTranslation =
-    specialtyData
-      .specialty_translations
-      ?.find(
-        (
-          translation:
-            Translation
-        ) =>
-          translation.locale ===
-          "ro"
-      );
+    specialtyData.specialty_translations?.find(
+      (translation: Translation) =>
+        translation.locale === "ro"
+    );
 
   const cityTranslation =
-    cityData
-      .city_translations
-      ?.find(
-        (
-          translation:
-            Translation
-        ) =>
-          translation.locale ===
-          "ro"
-      );
-
-  const {
-    data:
-      doctorSpecialties,
-  } = await supabase
-    .from(
-      "doctor_specialties"
-    )
-    .select("doctor_id")
-    .eq(
-      "specialty_id",
-      specialtyData.id
+    cityData.city_translations?.find(
+      (translation: Translation) =>
+        translation.locale === "ro"
     );
+
+  const { data: doctorSpecialties } = await supabase
+    .from("doctor_specialties")
+    .select("doctor_id")
+    .eq("specialty_id", specialtyData.id);
 
   let doctorIds =
     doctorSpecialties?.map(
-      (item: {
-        doctor_id: string;
-      }) => item.doctor_id
+      (item: { doctor_id: string }) =>
+        item.doctor_id
     ) ?? [];
 
-  if (
-    onlineOnly &&
-    doctorIds.length > 0
-  ) {
-    const {
-      data:
-        availabilityRows,
-    } = await supabase
+  if (onlineOnly && doctorIds.length > 0) {
+    const { data: availabilityRows } = await supabase
       .from("availability")
       .select("doctor_id")
-      .in(
-        "doctor_id",
-        doctorIds
-      );
+      .in("doctor_id", doctorIds);
 
-    const availableDoctorIds =
-      new Set(
-        (
-          availabilityRows ??
-          []
-        ).map(
-          (row: {
-            doctor_id: string;
-          }) => row.doctor_id
-        )
-      );
+    const availableDoctorIds = new Set(
+      (availabilityRows ?? []).map(
+        (row: { doctor_id: string }) =>
+          row.doctor_id
+      )
+    );
 
-    doctorIds =
-      doctorIds.filter(
-        (doctorId) =>
-          availableDoctorIds.has(
-            doctorId
-          )
-      );
+    doctorIds = doctorIds.filter((doctorId) =>
+      availableDoctorIds.has(doctorId)
+    );
   }
 
-  let doctors:
-    DoctorRow[] = [];
+  let doctors: DoctorRow[] = [];
 
-  if (
-    doctorIds.length > 0
-  ) {
-    let doctorQuery =
-      supabase
-        .from("doctors")
-        .select(`
-          id,
-          slug,
-          years_experience,
-          consultation_price,
-          average_rating,
-          review_count,
-          verification_status,
-          doctor_translations (
-            locale,
-            title,
-            biography
-          )
-        `)
-        .eq(
-          "city_id",
-          cityData.id
+  if (doctorIds.length > 0) {
+    let doctorQuery = supabase
+      .from("doctors")
+      .select(`
+        id,
+        slug,
+        years_experience,
+        consultation_price,
+        average_rating,
+        review_count,
+        verification_status,
+        doctor_translations (
+          locale,
+          title,
+          biography
         )
-        .eq(
-          "status",
-          "active"
-        )
-        .in("id", doctorIds);
+      `)
+      .eq("city_id", cityData.id)
+      .eq("status", "active")
+      .in("id", doctorIds);
 
     if (verifiedOnly) {
-      doctorQuery =
-        doctorQuery.eq(
-          "verification_status",
-          "verified"
-        );
+      doctorQuery = doctorQuery.eq(
+        "verification_status",
+        "verified"
+      );
     }
 
     const {
-      data:
-        doctorRows,
-      error:
-        doctorsError,
-    } =
-      await doctorQuery;
+      data: doctorRows,
+      error: doctorsError,
+    } = await doctorQuery;
 
     if (doctorsError) {
       console.error(
@@ -270,173 +189,131 @@ export default async function SpecialtyCityPage({
         doctorsError
       );
     } else {
-      doctors =
-        (doctorRows ??
-          []) as DoctorRow[];
+      doctors = (doctorRows ?? []) as DoctorRow[];
     }
   }
 
+  const clearFiltersHref =
+    `/medici/${specialty}/${city}`;
+
   return (
     <PublicLayout>
-      <main className="bg-[#F0EEE9] px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-5xl">
-          <div className="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
-            <p className="text-sm font-semibold uppercase tracking-wide text-[#036661]">
+      <main className="min-h-screen bg-[#F0EEE9] py-12">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <header className="rounded-2xl bg-white p-6 shadow-sm sm:p-8">
+            <p className="text-sm font-semibold text-[#036661]">
               Director medical
             </p>
 
             <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              {
-                specialtyTranslation
-                  ?.name
-              }{" "}
-              în{" "}
-              {
-                cityTranslation
-                  ?.name
-              }
+              {specialtyTranslation?.name} în{" "}
+              {cityTranslation?.name}
             </h1>
 
-            <p className="mt-4 text-gray-600">
+            <p className="mt-4 max-w-3xl leading-7 text-gray-600">
               Găsește medici pentru{" "}
-              {specialtyTranslation
-                ?.name
-                ?.toLowerCase()}{" "}
-              în{" "}
-              {
-                cityTranslation
-                  ?.name
-              }{" "}
-              și trimite o cerere de programare online.
+              {specialtyTranslation?.name?.toLowerCase()} în{" "}
+              {cityTranslation?.name} și trimite o cerere de
+              programare online.
             </p>
 
-            {(verifiedOnly ||
-              onlineOnly) && (
-              <div className="mt-5 flex flex-wrap gap-2">
+            {(verifiedOnly || onlineOnly) && (
+              <div className="mt-5 flex flex-wrap items-center gap-3">
                 {verifiedOnly && (
-                  <span className="rounded-full bg-[#036661]/10 px-3 py-1.5 text-xs font-semibold text-[#036661]">
-                    Doar medici verificați
-                  </span>
+                  <VerifiedDoctorBadge compact />
                 )}
 
                 {onlineOnly && (
-                  <span className="rounded-full bg-[#036661]/10 px-3 py-1.5 text-xs font-semibold text-[#036661]">
+                  <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
                     Programări online disponibile
                   </span>
                 )}
 
                 <Link
-                  href={`/medici/${specialty}/${city}`}
-                  className="romdoc-link text-sm"
+                  href={clearFiltersHref}
+                  className="romdoc-focus-ring rounded-md text-sm font-semibold text-[#036661] underline-offset-4 hover:underline"
                 >
                   Elimină filtrele
                 </Link>
               </div>
             )}
-          </div>
+          </header>
 
-          <section className="mt-8 space-y-4">
-            {doctors.length >
-            0 ? (
-              doctors.map(
-                (doctor) => {
-                  const doctorTranslation =
-                    doctor
-                      .doctor_translations
-                      ?.find(
-                        (
-                          translation:
-                            Translation
-                        ) =>
-                          translation.locale ===
-                          "ro"
-                      );
+          <section className="mt-8 grid gap-5">
+            {doctors.length > 0 ? (
+              doctors.map((doctor) => {
+                const doctorTranslation =
+                  doctor.doctor_translations?.find(
+                    (translation: Translation) =>
+                      translation.locale === "ro"
+                  ) ??
+                  doctor.doctor_translations?.[0] ??
+                  null;
 
-                  return (
-                    <article
-                      key={
-                        doctor.id
-                      }
-                      className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
-                    >
-                      <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h2 className="text-2xl font-semibold">
-                              <Link
-                                href={`/doctor/${doctor.slug}`}
-                                className="romdoc-link"
-                              >
-                                {formatDoctorName(
-                                  doctor.slug
-                                )}
-                              </Link>
-                            </h2>
+                return (
+                  <article
+                    key={doctor.id}
+                    className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+                  >
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900">
+                          {formatDoctorName(doctor.slug)}
+                        </h2>
 
-                            {doctor.verification_status ===
-                              "verified" && (
-                              <span className="rounded-full bg-[#036661]/10 px-2.5 py-1 text-xs font-semibold text-[#036661]">
-                                Medic verificat
-                              </span>
-                            )}
-                          </div>
-
-                          <p className="mt-2 text-gray-700">
-                            {
-                              doctorTranslation
-                                ?.title
-                            }
-                          </p>
-
-                          <p className="mt-3 max-w-3xl text-gray-600">
-                            {
-                              doctorTranslation
-                                ?.biography
-                            }
-                          </p>
-
-                          <div className="mt-4 flex flex-wrap gap-4 text-sm text-gray-600">
-                            <span>
-                              {Number(
-                                doctor.average_rating ??
-                                  0
-                              ).toFixed(
-                                1
-                              )}{" "}
-                              (
-                              {doctor.review_count ??
-                                0}{" "}
-                              recenzii)
-                            </span>
-
-                            <span>
-                              {doctor.years_experience ??
-                                0}{" "}
-                              ani experiență
-                            </span>
-
-                            <span>
-                              {doctor.consultation_price ??
-                                "—"}{" "}
-                              RON consultație
-                            </span>
-                          </div>
-                        </div>
-
-                        <Link
-                          href={`/doctor/${doctor.slug}`}
-                          className="romdoc-button romdoc-button-primary romdoc-button-sm shrink-0"
-                        >
-                          Vezi profilul
-                        </Link>
+                        <p className="mt-2 text-gray-700">
+                          {doctorTranslation?.title ?? "Medic"}
+                        </p>
                       </div>
-                    </article>
-                  );
-                }
-              )
+
+                      {doctor.verification_status === "verified" && (
+                        <VerifiedDoctorBadge compact />
+                      )}
+                    </div>
+
+                    {doctorTranslation?.biography && (
+                      <p className="mt-5 line-clamp-3 leading-7 text-gray-600">
+                        {doctorTranslation.biography}
+                      </p>
+                    )}
+
+                    <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-gray-600">
+                      <span>
+                        {Number(
+                          doctor.average_rating ?? 0
+                        ).toFixed(1)}{" "}
+                        ({doctor.review_count ?? 0} recenzii)
+                      </span>
+
+                      {doctor.years_experience !== null && (
+                        <span>
+                          {doctor.years_experience} ani experiență
+                        </span>
+                      )}
+
+                      <span>
+                        {formatPrice(
+                          doctor.consultation_price
+                        )}{" "}
+                        RON consultație
+                      </span>
+                    </div>
+
+                    <div className="mt-6">
+                      <Link
+                        href={`/doctor/${doctor.slug}`}
+                        className="romdoc-button romdoc-button-primary"
+                      >
+                        Vezi profilul
+                      </Link>
+                    </div>
+                  </article>
+                );
+              })
             ) : (
-              <div className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-700 shadow-sm">
-                Nu există încă medici pentru această combinație de filtre.
+              <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center text-gray-600">
+                Nu există încă medici pentru această combinație de
+                filtre.
               </div>
             )}
           </section>
