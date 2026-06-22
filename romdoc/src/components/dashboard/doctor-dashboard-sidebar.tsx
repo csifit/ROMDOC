@@ -25,6 +25,7 @@ type NavigationIcon =
   | "services"
   | "clinics"
   | "staff"
+  | "verification"
   | "profile"
   | "home";
 
@@ -70,6 +71,12 @@ const navigationItems: NavigationItem[] = [
       "/doctor-dashboard/staff",
     label: "Personal",
     icon: "staff",
+  },
+  {
+    href:
+      "/doctor-dashboard/verification",
+    label: "Verificare profesională",
+    icon: "verification",
   },
   {
     href: "/",
@@ -294,6 +301,31 @@ function ClinicIcon() {
   );
 }
 
+function VerificationIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-5 w-5 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 3 19 6v5c0 4.5-2.8 7.8-7 10-4.2-2.2-7-5.5-7-10V6l7-3Z"
+      />
+
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m9 12 2 2 4-4"
+      />
+    </svg>
+  );
+}
+
 function StaffIcon() {
   return (
     <svg
@@ -426,6 +458,9 @@ function NavigationItemIcon({
 
     case "staff":
       return <StaffIcon />;
+
+    case "verification":
+      return <VerificationIcon />;
 
     case "profile":
       return <ProfileIcon />;
