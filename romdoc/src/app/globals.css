@@ -195,3 +195,150 @@ textarea {
     outline-offset: 2px;
   }
 }
+
+@layer components {
+  .romdoc-map-marker {
+    display: inline-flex;
+    max-width: 12rem;
+    align-items: center;
+    gap: 0.45rem;
+    border: 2px solid #ffffff;
+    border-radius: 9999px;
+    background: #036661;
+    padding: 0.42rem 0.72rem;
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1rem;
+    box-shadow:
+      0 10px 24px rgba(17, 24, 39, 0.22),
+      0 2px 6px rgba(17, 24, 39, 0.16);
+    cursor: pointer;
+    transform-origin: center bottom;
+    transition:
+      background-color 150ms ease,
+      transform 150ms ease,
+      box-shadow 150ms ease;
+  }
+
+  .romdoc-map-marker:hover,
+  .romdoc-map-marker:focus-visible {
+    background: #ff2800;
+    transform: translateY(-2px) scale(1.02);
+    box-shadow:
+      0 14px 28px rgba(17, 24, 39, 0.26),
+      0 3px 8px rgba(17, 24, 39, 0.18);
+  }
+
+  .romdoc-map-marker:focus-visible {
+    outline: 3px solid rgba(3, 102, 97, 0.3);
+    outline-offset: 3px;
+  }
+
+  .romdoc-map-marker-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    flex: 0 0 auto;
+    border-radius: 9999px;
+    background: #ffffff;
+  }
+
+  .romdoc-map-marker-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .romdoc-map-popup {
+    width: min(18rem, 72vw);
+    padding: 0.25rem;
+    color: #111827;
+  }
+
+  .romdoc-map-popup-city {
+    margin: 0;
+    color: #036661;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .romdoc-map-popup-title {
+    margin: 0.35rem 0 0;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.35;
+  }
+
+  .romdoc-map-popup-address {
+    margin: 0.5rem 0 0;
+    color: #4b5563;
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+
+  .romdoc-map-popup-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+  }
+
+  .romdoc-map-popup-stats span {
+    border-radius: 9999px;
+    background: #f3f4f6;
+    padding: 0.3rem 0.55rem;
+    color: #374151;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+
+  .romdoc-map-popup-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.9rem;
+  }
+
+  .romdoc-map-popup-primary,
+  .romdoc-map-popup-secondary {
+    display: inline-flex;
+    min-height: 2.1rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.6rem;
+    padding: 0.45rem 0.7rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease;
+  }
+
+  .romdoc-map-popup-primary {
+    border: 1px solid #036661;
+    background: #036661;
+    color: #ffffff;
+  }
+
+  .romdoc-map-popup-primary:hover {
+    border-color: #ff2800;
+    background: #ff2800;
+  }
+
+  .romdoc-map-popup-secondary {
+    border: 1px solid #036661;
+    background: #ffffff;
+    color: #036661;
+  }
+
+  .romdoc-map-popup-secondary:hover {
+    border-color: #ff2800;
+    background: #ff2800;
+    color: #ffffff;
+  }
+}
+
