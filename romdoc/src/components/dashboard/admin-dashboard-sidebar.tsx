@@ -24,6 +24,7 @@ type NavigationIcon =
   | "overview"
   | "users"
   | "doctors"
+  | "verifications"
   | "clinics"
   | "specialties"
   | "cities"
@@ -55,6 +56,12 @@ const navigationItems: NavigationItem[] = [
       "/admin/doctors",
     label: "Medici",
     icon: "doctors",
+    available: true,
+  },
+  {
+    href: "/admin/verifications",
+    label: "Verificări profesionale",
+    icon: "verifications",
     available: true,
   },
   {
@@ -186,6 +193,23 @@ function Icon({
           <path
             strokeLinecap="round"
             d="M18 5v4M16 7h4"
+          />
+        </svg>
+      );
+
+    case "verifications":
+      return (
+        <svg {...commonProps}>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M12 3 19 6v5c0 4.6-2.7 8-7 10-4.3-2-7-5.4-7-10V6l7-3Z"
+          />
+
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="m9 12 2 2 4-4"
           />
         </svg>
       );
