@@ -37,6 +37,30 @@ type AdminNote = {
     | null;
 };
 
+
+type AuditEvent = {
+  id: string;
+  event_type:
+    | "draft_created"
+    | "submitted"
+    | "review_started"
+    | "approved"
+    | "rejected"
+    | "expired_manual"
+    | "expired_automatic"
+    | "withdrawn";
+  from_status: string | null;
+  to_status: string;
+  source: "application" | "admin" | "system";
+  created_at: string;
+  actor:
+    | {
+        first_name: string | null;
+        last_name: string | null;
+      }
+    | null;
+};
+
 type Submission = {
   id: string;
   status: VerificationStatus;
@@ -61,6 +85,7 @@ type Submission = {
     | null;
   documents: VerificationDocument[];
   admin_notes: AdminNote[];
+  audit_events: AuditEvent[];
 };
 
 type ApiResponse = {
@@ -100,6 +125,40 @@ const documentTypeLabels: Record<string, string> = {
   practice_authorization: "Autorizație de practică",
   other: "Alt document",
 };
+
+
+const auditEventLabels: Record<AuditEvent["event_type"], string> = {
+  draft_created: "Ciornă creată",
+  submitted: "Cerere trimisă",
+  review_started: "Analiză începută",
+  approved: "Verificare aprobată",
+  rejected: "Cerere respinsă",
+  expired_manual: "Verificare expirată manual",
+  expired_automatic: "Verificare expirată automat",
+  withdrawn: "Cerere retrasă",
+};
+
+function getAuditActorName(event: AuditEvent) {
+  if (event.source === "system") {
+    return "Sistem RomDoc";
+  }
+
+  const name = [
+    event.actor?.first_name,
+    event.actor?.last_name,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  if (name) {
+    return name;
+  }
+
+  return event.source === "admin"
+    ? "Administrator"
+    : "Medic";
+}
 
 function formatDate(value: string | null) {
   if (!value) {
@@ -564,6 +623,54 @@ export default function DoctorVerificationsManagement() {
                   </p>
                 </section>
               )}
+
+
+              <section>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Istoric de audit
+                </h3>
+
+                <p className="mt-1 text-sm text-gray-600">
+                  Acest istoric este generat de baza de date și nu poate fi
+                  modificat din interfața de administrare.
+                </p>
+
+                {selectedSubmission.audit_events.length === 0 ? (
+                  <p className="mt-3 rounded-xl border border-dashed border-gray-300 p-4 text-sm text-gray-600">
+                    Nu există încă evenimente de audit pentru această cerere.
+                  </p>
+                ) : (
+                  <ol className="mt-4 space-y-4 border-l-2 border-gray-200 pl-5">
+                    {selectedSubmission.audit_events.map((event) => (
+                      <li
+                        key={event.id}
+                        className="relative"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="absolute -left-[27px] top-1.5 h-3 w-3 rounded-full border-2 border-white bg-[#036661] shadow"
+                        />
+
+                        <p className="text-sm font-semibold text-gray-900">
+                          {auditEventLabels[event.event_type]}
+                        </p>
+
+                        <p className="mt-1 text-xs text-gray-500">
+                          {getAuditActorName(event)} ·{" "}
+                          {formatDate(event.created_at)}
+                        </p>
+
+                        {event.from_status &&
+                          event.from_status !== event.to_status && (
+                            <p className="mt-1 text-xs text-gray-500">
+                              {event.from_status} → {event.to_status}
+                            </p>
+                          )}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </section>
 
               <section>
                 <h3 className="text-lg font-semibold text-gray-900">

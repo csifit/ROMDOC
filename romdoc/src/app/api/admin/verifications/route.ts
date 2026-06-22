@@ -211,6 +211,18 @@ export async function GET(request: NextRequest): Promise<Response> {
           first_name,
           last_name
         )
+      ),
+      audit_events:doctor_verification_audit_events (
+        id,
+        event_type,
+        from_status,
+        to_status,
+        source,
+        created_at,
+        actor:profiles!doctor_verification_audit_events_actor_profile_id_fkey (
+          first_name,
+          last_name
+        )
       )
     `)
     .neq("status", "draft")
@@ -261,6 +273,12 @@ export async function GET(request: NextRequest): Promise<Response> {
         )
       : [];
 
+    const auditEvents = Array.isArray(submission.audit_events)
+      ? [...submission.audit_events].sort((a, b) =>
+          String(a.created_at).localeCompare(String(b.created_at))
+        )
+      : [];
+
     return {
       ...submission,
       doctor: doctor
@@ -278,6 +296,7 @@ export async function GET(request: NextRequest): Promise<Response> {
         : null,
       documents,
       admin_notes: notes,
+      audit_events: auditEvents,
     };
   });
 
