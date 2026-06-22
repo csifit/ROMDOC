@@ -1,4 +1,5 @@
 import Link from "next/link";
+import HomepageDoctorFilters from "@/components/public/homepage-doctor-filters";
 import PublicClinicMap from "@/components/public/public-clinic-map";
 import PublicLayout from "@/components/public/public-layout";
 import { createClient } from "@/lib/supabase/server";
@@ -86,7 +87,7 @@ export default async function Home() {
           "ro"
         )
         .order("name")
-        .limit(12),
+        .limit(100),
 
       supabase
         .from(
@@ -105,7 +106,7 @@ export default async function Home() {
           "ro"
         )
         .order("name")
-        .limit(12),
+        .limit(100),
     ]);
 
   if (citiesResult.error) {
@@ -132,6 +133,52 @@ export default async function Home() {
     (specialtiesResult.data ??
       []) as SpecialtyTranslationRow[];
 
+  const cityOptions =
+    cities.flatMap(
+      (city) => {
+        const relation =
+          getSingleRelation(
+            city.cities
+          );
+
+        if (!relation?.slug) {
+          return [];
+        }
+
+        return [
+          {
+            slug:
+              relation.slug,
+            name:
+              city.name,
+          },
+        ];
+      }
+    );
+
+  const specialtyOptions =
+    specialties.flatMap(
+      (specialty) => {
+        const relation =
+          getSingleRelation(
+            specialty.specialties
+          );
+
+        if (!relation?.slug) {
+          return [];
+        }
+
+        return [
+          {
+            slug:
+              relation.slug,
+            name:
+              specialty.name,
+          },
+        ];
+      }
+    );
+
   return (
     <PublicLayout>
       <main className="bg-[#F0EEE9]">
@@ -142,40 +189,27 @@ export default async function Home() {
           className="scroll-mt-24 px-4 py-14 sm:px-6 lg:px-8"
         >
           <div className="mx-auto max-w-7xl rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8 lg:p-10">
-            <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#036661]">
-                  RomDoc
-                </p>
-
-                <h1 className="mt-3 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-                  Găsește medicul potrivit în România
-                </h1>
-
-                <p className="mt-4 max-w-3xl text-base leading-7 text-gray-600 sm:text-lg">
-                  Explorează clinicile aprobate pe hartă, apoi caută medici
-                  după specialitate, oraș și statutul de verificare.
-                </p>
-              </div>
-
-              <Link
-                href="/medici"
-                className="romdoc-button romdoc-button-primary romdoc-button-lg"
-              >
-                Deschide directorul medical
-              </Link>
-            </div>
-
-            <div className="mt-8 rounded-2xl border border-dashed border-[#036661]/30 bg-[#036661]/5 p-5">
-              <p className="font-semibold text-gray-900">
-                Filtrele avansate urmează în Step 59D
+            <div className="max-w-4xl">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#036661]">
+                RomDoc
               </p>
 
-              <p className="mt-2 text-sm leading-6 text-gray-600">
-                Aici vom adăuga specialitatea, orașul, medicii verificați și
-                disponibilitatea programărilor online.
+              <h1 className="mt-3 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+                Găsește medicul potrivit în România
+              </h1>
+
+              <p className="mt-4 max-w-3xl text-base leading-7 text-gray-600 sm:text-lg">
+                Explorează clinicile aprobate pe hartă, apoi caută medici
+                după specialitate, oraș și atribute importante.
               </p>
             </div>
+
+            <HomepageDoctorFilters
+              specialties={
+                specialtyOptions
+              }
+              cities={cityOptions}
+            />
           </div>
         </section>
 
@@ -193,30 +227,19 @@ export default async function Home() {
             </h2>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {cities.map(
-                (city) => {
-                  const relation =
-                    getSingleRelation(
-                      city.cities
-                    );
-
-                  return (
+              {cityOptions
+                .slice(0, 12)
+                .map(
+                  (city) => (
                     <Link
-                      key={city.name}
-                      href={
-                        relation?.slug
-                          ? `/medici?city=${encodeURIComponent(
-                              relation.slug
-                            )}`
-                          : "/medici"
-                      }
+                      key={city.slug}
+                      href="/medici"
                       className="romdoc-focus-ring rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-800 transition hover:border-[#036661] hover:text-[#036661]"
                     >
                       {city.name}
                     </Link>
-                  );
-                }
-              )}
+                  )
+                )}
             </div>
           </div>
         </section>
@@ -235,44 +258,46 @@ export default async function Home() {
             </h2>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {specialties.map(
-                (specialty) => {
-                  const relation =
-                    getSingleRelation(
-                      specialty.specialties
-                    );
+              {specialties
+                .slice(0, 12)
+                .map(
+                  (specialty) => {
+                    const relation =
+                      getSingleRelation(
+                        specialty.specialties
+                      );
 
-                  return (
-                    <Link
-                      key={
-                        specialty.name
-                      }
-                      href={
-                        relation?.slug
-                          ? `/medici/${encodeURIComponent(
-                              relation.slug
-                            )}`
-                          : "/medici"
-                      }
-                      className="romdoc-focus-ring rounded-2xl border border-gray-200 bg-gray-50 p-5 transition hover:border-[#036661] hover:bg-white"
-                    >
-                      <h3 className="font-semibold text-gray-900">
-                        {
+                    return (
+                      <Link
+                        key={
                           specialty.name
                         }
-                      </h3>
-
-                      {specialty.meta_description && (
-                        <p className="mt-2 text-sm leading-6 text-gray-600">
+                        href={
+                          relation?.slug
+                            ? `/medici/${encodeURIComponent(
+                                relation.slug
+                              )}`
+                            : "/medici"
+                        }
+                        className="romdoc-focus-ring rounded-2xl border border-gray-200 bg-gray-50 p-5 transition hover:border-[#036661] hover:bg-white"
+                      >
+                        <h3 className="font-semibold text-gray-900">
                           {
-                            specialty.meta_description
+                            specialty.name
                           }
-                        </p>
-                      )}
-                    </Link>
-                  );
-                }
-              )}
+                        </h3>
+
+                        {specialty.meta_description && (
+                          <p className="mt-2 text-sm leading-6 text-gray-600">
+                            {
+                              specialty.meta_description
+                            }
+                          </p>
+                        )}
+                      </Link>
+                    );
+                  }
+                )}
             </div>
           </div>
         </section>
