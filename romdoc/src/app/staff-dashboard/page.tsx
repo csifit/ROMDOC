@@ -103,7 +103,7 @@ export default async function StaffDashboardPage() {
 
           <Link
             href="/"
-            className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50"
+            className="romdoc-button romdoc-button-secondary romdoc-button-sm"
           >
             Pagina principală
           </Link>

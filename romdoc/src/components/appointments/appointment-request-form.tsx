@@ -8,6 +8,7 @@ import {
   useTransition,
 } from "react";
 import AvailableSlotSelector from "@/components/appointments/available-slot-selector";
+import Button from "@/components/ui/button";
 
 type ClinicOption = {
   id: string;
@@ -332,7 +333,7 @@ export default function AppointmentRequestForm({
               setMessage(null);
               setError(null);
             }}
-            className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:bg-gray-100 disabled:opacity-70"
+            className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:bg-gray-100 disabled:opacity-70"
           >
             <option value="">
               Selectează clinica
@@ -370,7 +371,7 @@ export default function AppointmentRequestForm({
                   event.target.value
                 )
               }
-              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:opacity-60"
+              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:opacity-60"
             />
           </label>
 
@@ -392,7 +393,7 @@ export default function AppointmentRequestForm({
                 )
               }
               placeholder="+40 700 000 000"
-              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:opacity-60"
+              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:opacity-60"
             />
           </label>
         </div>
@@ -436,7 +437,7 @@ export default function AppointmentRequestForm({
               setMessage(null);
               setError(null);
             }}
-            className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:opacity-60"
+            className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:opacity-60"
           />
         </label>
 
@@ -483,7 +484,7 @@ export default function AppointmentRequestForm({
               )
             }
             placeholder="Descrie pe scurt motivul consultației."
-            className="mt-2 w-full resize-y rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:opacity-60"
+            className="mt-2 w-full resize-y rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:opacity-60"
           />
 
           <span className="mt-1 block text-right text-xs text-gray-500">
@@ -509,20 +510,20 @@ export default function AppointmentRequestForm({
           </div>
         )}
 
-        <button
+        <Button
           type="submit"
+          fullWidth
+          size="lg"
+          isLoading={isPending}
+          loadingText="Se trimite cererea..."
           disabled={
-            isPending ||
             !clinicId ||
             !requestedDate ||
             !requestedTime
           }
-          className="w-full rounded-xl bg-[#D97757] px-5 py-3.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isPending
-            ? "Se trimite cererea..."
-            : "Trimite cererea de programare"}
-        </button>
+          Trimite cererea de programare
+        </Button>
       </form>
     </div>
   );

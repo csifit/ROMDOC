@@ -571,7 +571,7 @@ export default function DoctorDashboardSidebar({
             onClick={
               closeMobileMenu
             }
-            className="text-2xl font-bold tracking-tight text-gray-900"
+            className="romdoc-focus-ring rounded-md text-2xl font-bold tracking-tight text-gray-900"
           >
             RomDoc
           </Link>
@@ -585,7 +585,7 @@ export default function DoctorDashboardSidebar({
                 !currentValue
             )
           }
-          className="hidden rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 lg:inline-flex"
+          className="romdoc-focus-ring hidden rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 lg:inline-flex"
           aria-label={
             isSidebarCollapsed
               ? "Extinde meniul"
@@ -613,7 +613,7 @@ export default function DoctorDashboardSidebar({
               : "gap-3"
           }`}
         >
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#D97757] text-sm font-bold text-white">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#036661] text-sm font-bold text-white">
             {initials}
           </div>
 
@@ -627,7 +627,7 @@ export default function DoctorDashboardSidebar({
                 {userEmail}
               </p>
 
-              <span className="mt-1 inline-flex rounded-full bg-[#F0EEE9] px-2 py-0.5 text-xs font-semibold text-[#9A4F35]">
+              <span className="mt-1 inline-flex rounded-full bg-[#036661]/10 px-2 py-0.5 text-xs font-semibold text-[#036661]">
                 {roleLabel}
               </span>
             </div>
@@ -664,13 +664,13 @@ export default function DoctorDashboardSidebar({
                     ? "page"
                     : undefined
                 }
-                className={`flex min-h-11 items-center rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                className={`romdoc-focus-ring flex min-h-11 items-center rounded-xl px-3 py-2.5 text-sm font-medium transition ${
                   isSidebarCollapsed
                     ? "justify-center"
                     : "gap-3"
                 } ${
                   isActive
-                    ? "bg-[#F0EEE9] text-[#9A4F35]"
+                    ? "bg-[#036661]/10 text-[#036661]"
                     : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 }`}
               >
@@ -703,7 +703,7 @@ export default function DoctorDashboardSidebar({
               ? "Deconectare"
               : undefined
           }
-          className={`flex min-h-11 w-full items-center rounded-xl px-3 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 ${
+          className={`romdoc-focus-ring flex min-h-11 w-full items-center rounded-xl px-3 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 ${
             isSidebarCollapsed
               ? "justify-center"
               : "gap-3"
@@ -728,7 +728,7 @@ export default function DoctorDashboardSidebar({
       <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between border-b border-gray-200 bg-white px-4 lg:hidden">
         <Link
           href="/"
-          className="text-xl font-bold text-gray-900"
+          className="romdoc-focus-ring rounded-md text-xl font-bold text-gray-900"
         >
           RomDoc
         </Link>
@@ -740,7 +740,7 @@ export default function DoctorDashboardSidebar({
               true
             )
           }
-          className="rounded-lg p-2 text-gray-700 hover:bg-gray-100"
+          className="romdoc-focus-ring rounded-lg p-2 text-gray-700 transition hover:bg-gray-100"
           aria-label="Deschide meniul"
         >
           <MenuIcon />
@@ -771,7 +771,7 @@ export default function DoctorDashboardSidebar({
                 onClick={
                   closeMobileMenu
                 }
-                className="rounded-lg p-2 text-gray-600 hover:bg-gray-100"
+                className="romdoc-focus-ring rounded-lg p-2 text-gray-600 transition hover:bg-gray-100"
                 aria-label="Închide meniul"
               >
                 <CloseIcon />

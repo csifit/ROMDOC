@@ -124,7 +124,7 @@ export default async function SpecialtyCityPage({ params }: Props) {
                 <h2 className="text-2xl font-semibold">
                   <Link
                     href={`/doctor/${doctor.slug}`}
-                    className="hover:underline"
+                    className="romdoc-link"
                   >
                    {formatDoctorName(doctor.slug)} 
                   </Link>
@@ -146,6 +146,15 @@ export default async function SpecialtyCityPage({ params }: Props) {
                   <span>{doctor.years_experience} ani experiență</span>
 
                   <span>{doctor.consultation_price} RON consultație</span>
+                </div>
+
+                <div className="mt-6">
+                  <Link
+                    href={`/doctor/${doctor.slug}`}
+                    className="romdoc-button romdoc-button-primary romdoc-button-sm"
+                  >
+                    Vezi profilul medicului
+                  </Link>
                 </div>
               </article>
             );

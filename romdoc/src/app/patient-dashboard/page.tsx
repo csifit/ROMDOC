@@ -469,7 +469,7 @@ export default async function PatientDashboardPage() {
 
               <Link
                 href="/medici"
-                className="mt-5 inline-flex rounded-xl bg-[#036661] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#ff2800]"
+                className="romdoc-button romdoc-button-primary mt-5"
               >
                 Caută medici
               </Link>
@@ -639,7 +639,7 @@ export default async function PatientDashboardPage() {
                         {doctor && (
                           <Link
                             href={`/doctor/${doctor.slug}`}
-                            className="inline-flex rounded-xl bg-[#036661] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#ff2800]"
+                            className="romdoc-button romdoc-button-primary romdoc-button-sm"
                           >
                             Vezi profilul medicului
                           </Link>
@@ -648,7 +648,7 @@ export default async function PatientDashboardPage() {
                         {doctor && (
                           <Link
                             href={`/doctor/${doctor.slug}`}
-                            className="inline-flex rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 transition hover:bg-gray-50"
+                            className="romdoc-button romdoc-button-secondary romdoc-button-sm"
                           >
                             Programează din nou
                           </Link>

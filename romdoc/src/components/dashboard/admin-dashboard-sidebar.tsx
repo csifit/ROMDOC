@@ -490,7 +490,7 @@ export default function AdminDashboardSidebar({
                 false
               )
             }
-            className="text-2xl font-bold tracking-tight text-gray-900"
+            className="romdoc-focus-ring rounded-md text-2xl font-bold tracking-tight text-gray-900"
           >
             RomDoc Admin
           </Link>
@@ -514,7 +514,7 @@ export default function AdminDashboardSidebar({
               ? "Extinde meniul"
               : "Restrânge meniul"
           }
-          className="hidden rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900 lg:inline-flex"
+          className="romdoc-focus-ring hidden rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 lg:inline-flex"
         >
           <CollapseIcon
             collapsed={
@@ -532,7 +532,7 @@ export default function AdminDashboardSidebar({
               : "gap-3"
           }`}
         >
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-purple-100 text-sm font-bold text-purple-800">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#036661] text-sm font-bold text-white">
             {getInitials(
               userName
             )}
@@ -548,7 +548,7 @@ export default function AdminDashboardSidebar({
                 {userEmail}
               </p>
 
-              <span className="mt-1 inline-flex rounded-full bg-purple-100 px-2.5 py-1 text-xs font-semibold text-purple-800">
+              <span className="mt-1 inline-flex rounded-full bg-[#036661]/10 px-2.5 py-1 text-xs font-semibold text-[#036661]">
                 {roleLabel}
               </span>
             </div>
@@ -625,13 +625,13 @@ export default function AdminDashboardSidebar({
                     ? "page"
                     : undefined
                 }
-                className={`flex min-h-11 items-center rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                className={`romdoc-focus-ring flex min-h-11 items-center rounded-xl px-3 py-2.5 text-sm font-medium transition ${
                   isCollapsed
                     ? "justify-center"
                     : "gap-3"
                 } ${
                   active
-                    ? "bg-[#F0EEE9] text-[#9A4F35]"
+                    ? "bg-[#036661]/10 text-[#036661]"
                     : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 }`}
               >
@@ -666,7 +666,7 @@ export default function AdminDashboardSidebar({
               ? "Deconectare"
               : undefined
           }
-          className={`flex min-h-11 w-full items-center rounded-xl px-3 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 ${
+          className={`romdoc-focus-ring flex min-h-11 w-full items-center rounded-xl px-3 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 ${
             isCollapsed
               ? "justify-center"
               : "gap-3"
@@ -691,7 +691,7 @@ export default function AdminDashboardSidebar({
       <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between border-b border-gray-200 bg-white px-4 lg:hidden">
         <Link
           href="/admin"
-          className="text-xl font-bold text-gray-900"
+          className="romdoc-focus-ring rounded-md text-xl font-bold text-gray-900"
         >
           RomDoc Admin
         </Link>
@@ -704,7 +704,7 @@ export default function AdminDashboardSidebar({
             )
           }
           aria-label="Deschide meniul"
-          className="rounded-lg p-2 text-gray-700 hover:bg-gray-100"
+          className="romdoc-focus-ring rounded-lg p-2 text-gray-700 transition hover:bg-gray-100"
         >
           <MenuIcon />
         </button>
@@ -738,7 +738,7 @@ export default function AdminDashboardSidebar({
                 )
               }
               aria-label="Închide meniul"
-              className="absolute right-3 top-3 z-10 rounded-lg p-2 text-gray-600 hover:bg-gray-100"
+              className="romdoc-focus-ring absolute right-3 top-3 z-10 rounded-lg p-2 text-gray-600 transition hover:bg-gray-100"
             >
               <CloseIcon />
             </button>

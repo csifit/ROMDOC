@@ -214,8 +214,8 @@ export default function AvailableSlotSelector({
                 }
                 className={`rounded-xl border px-3 py-2.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
                   isSelected
-                    ? "border-[#D97757] bg-[#D97757] text-white"
-                    : "border-gray-300 bg-white text-gray-800 hover:border-[#D97757] hover:bg-[#F0EEE9]"
+                    ? "border-[#036661] bg-[#036661] text-white"
+                    : "border-gray-300 bg-white text-gray-800 hover:border-[#036661] hover:bg-[#F0EEE9] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[#036661]/25"
                 }`}
               >
                 {slot.time}

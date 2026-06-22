@@ -585,7 +585,7 @@ export default async function DoctorPage({
                               }
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50"
+                              className="romdoc-button romdoc-button-secondary romdoc-button-sm"
                             >
                               Website clinică
                             </a>
@@ -598,7 +598,7 @@ export default async function DoctorPage({
                               }
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50"
+                              className="romdoc-button romdoc-button-secondary romdoc-button-sm"
                             >
                               Deschide în Google Maps
                             </a>

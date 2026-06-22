@@ -53,14 +53,14 @@ export default async function AuthenticatedAppointmentRequest({
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
             href={loginPath}
-            className="rounded-xl bg-[#D97757] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+            className="romdoc-button romdoc-button-primary"
           >
             Autentificare
           </Link>
 
           <Link
             href="/register"
-            className="rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-800 transition hover:bg-gray-50"
+            className="romdoc-button romdoc-button-secondary"
           >
             Creează cont
           </Link>
