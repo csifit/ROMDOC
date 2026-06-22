@@ -1,6 +1,8 @@
 import Link from "next/link";
 import HomepageDoctorFilters from "@/components/public/homepage-doctor-filters";
 import HomepageDoctorResults from "@/components/public/homepage-doctor-results";
+import HomepageDoctorCta from "@/components/public/homepage-doctor-cta";
+import HomepageTrustSection from "@/components/public/homepage-trust-section";
 import PublicClinicMap from "@/components/public/public-clinic-map";
 import PublicLayout from "@/components/public/public-layout";
 import {
@@ -816,6 +818,10 @@ export default async function Home() {
             </div>
           </div>
         </section>
+
+        <HomepageTrustSection />
+
+        <HomepageDoctorCta />
       </main>
     </PublicLayout>
   );
