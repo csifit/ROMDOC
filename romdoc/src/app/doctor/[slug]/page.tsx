@@ -40,6 +40,7 @@ type CityRelation = {
 type ClinicRelation = {
   id: string;
   slug: string;
+  photo_url: string | null;
   phone: string | null;
   website: string | null;
   street_address: string | null;
@@ -73,6 +74,7 @@ type ReviewRelation = {
 type DoctorRecord = {
   id: string;
   slug: string;
+  photo_url: string | null;
   phone: string | null;
   email: string | null;
   years_experience: number | null;
@@ -198,6 +200,7 @@ export default async function DoctorPage({
     .select(`
       id,
       slug,
+      photo_url,
       phone,
       email,
       years_experience,
@@ -382,15 +385,31 @@ export default async function DoctorPage({
               Profil medical
             </p>
 
-            <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h1 className="text-4xl font-bold text-gray-900">
-                  {doctorName}
-                </h1>
+            <div className="mt-4 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+                <div className="h-32 w-32 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-[#F0EEE9]">
+                  {doctor.photo_url ? (
+                    <img
+                      src={doctor.photo_url}
+                      alt={`Fotografie de profil pentru ${doctorName}`}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-4xl font-bold text-[#036661]">
+                      {doctorName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
 
-                <p className="mt-3 text-lg text-gray-700">
-                  {translation?.title ?? "Medic"}
-                </p>
+                <div>
+                  <h1 className="text-4xl font-bold text-gray-900">
+                    {doctorName}
+                  </h1>
+
+                  <p className="mt-3 text-lg text-gray-700">
+                    {translation?.title ?? "Medic"}
+                  </p>
+                </div>
               </div>
 
               {isVerified && (

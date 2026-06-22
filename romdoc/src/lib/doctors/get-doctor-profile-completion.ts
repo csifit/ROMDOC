@@ -4,6 +4,7 @@ export type DoctorOnboardingItemKey =
   | "identity"
   | "contact"
   | "publicProfile"
+  | "photo"
   | "specialty"
   | "service"
   | "clinic"
@@ -44,6 +45,7 @@ type DoctorRecord = {
   email: string | null;
   years_experience: number | null;
   consultation_price: number | string | null;
+  photo_url: string | null;
   verification_status: string | null;
   doctor_translations: DoctorTranslation[] | null;
 };
@@ -77,6 +79,7 @@ export async function getDoctorProfileCompletion(
       email,
       years_experience,
       consultation_price,
+      photo_url,
       verification_status,
       doctor_translations (
         locale,
@@ -233,6 +236,15 @@ export async function getDoctorProfileCompletion(
       href: "/doctor-dashboard/profile",
       actionLabel: "Editează profilul",
       completed: publicProfileComplete,
+    },
+    {
+      key: "photo",
+      title: "Fotografie profesională",
+      description:
+        "Publică o fotografie clară pentru profilul afișat pacienților.",
+      href: "/doctor-dashboard/profile",
+      actionLabel: "Adaugă fotografia",
+      completed: hasMeaningfulText(doctor.photo_url, 10),
     },
     {
       key: "specialty",

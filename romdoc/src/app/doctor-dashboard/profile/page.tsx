@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import DoctorPhotoManager from "@/components/doctor/doctor-photo-manager";
 import DoctorProfileForm from "@/components/doctor/doctor-profile-form";
 import DoctorServicesManager, {
   type DoctorServiceItem,
@@ -123,6 +124,7 @@ export default async function DoctorProfilePage() {
       id,
       slug,
       status,
+      photo_url,
       phone,
       email,
       years_experience,
@@ -307,6 +309,11 @@ export default async function DoctorProfilePage() {
         )}
 
         <div className="mt-10 space-y-8">
+          <DoctorPhotoManager
+            initialPhotoUrl={doctor.photo_url ?? null}
+            doctorName={displayName || doctor.slug}
+          />
+
           <DoctorProfileForm
             initialPhone={doctor.phone ?? ""}
             initialEmail={doctor.email ?? ""}
