@@ -1,81 +1,225 @@
+import PublicLayout from "@/components/public/public-layout";
 import { createClient } from "@/lib/supabase/server";
 
+type CityTranslationRow = {
+  name: string;
+  cities:
+    | {
+        slug:
+          | string
+          | null;
+      }
+    | Array<{
+        slug:
+          | string
+          | null;
+      }>
+    | null;
+};
+
+type SpecialtyTranslationRow = {
+  name: string;
+  meta_description:
+    | string
+    | null;
+
+  specialties:
+    | {
+        slug:
+          | string
+          | null;
+
+        icon:
+          | string
+          | null;
+      }
+    | Array<{
+        slug:
+          | string
+          | null;
+
+        icon:
+          | string
+          | null;
+      }>
+    | null;
+};
+
 export default async function Home() {
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
 
-  const { data: cities } = await supabase
-    .from("city_translations")
-    .select(`
-      name,
-      locale,
-      cities (
-        slug
+  const [
+    citiesResult,
+    specialtiesResult,
+  ] = await Promise.all([
+    supabase
+      .from(
+        "city_translations"
       )
-    `)
-    .eq("locale", "ro")
-    .order("name");
+      .select(`
+        name,
+        cities (
+          slug
+        )
+      `)
+      .eq("locale", "ro")
+      .order("name")
+      .limit(12),
 
-  const { data: specialties } = await supabase
-    .from("specialty_translations")
-    .select(`
-      name,
-      locale,
-      meta_description,
-      specialties (
-        slug,
-        icon
+    supabase
+      .from(
+        "specialty_translations"
       )
-    `)
-    .eq("locale", "ro")
-    .order("name");
+      .select(`
+        name,
+        meta_description,
+        specialties (
+          slug,
+          icon
+        )
+      `)
+      .eq("locale", "ro")
+      .order("name")
+      .limit(12),
+  ]);
+
+  if (citiesResult.error) {
+    console.error(
+      "Homepage cities lookup failed:",
+      citiesResult.error
+    );
+  }
+
+  if (
+    specialtiesResult.error
+  ) {
+    console.error(
+      "Homepage specialties lookup failed:",
+      specialtiesResult.error
+    );
+  }
+
+  const cities =
+    (citiesResult.data ??
+      []) as CityTranslationRow[];
+
+  const specialties =
+    (specialtiesResult.data ??
+      []) as SpecialtyTranslationRow[];
 
   return (
-    <main className="min-h-screen bg-gray-50 px-6 py-12">
-      <section className="mx-auto max-w-5xl">
-        <h1 className="text-4xl font-bold tracking-tight text-gray-900">
-          Găsește medici în România
-        </h1>
+    <PublicLayout>
+      <main className="bg-[#F0EEE9]">
+        <section className="px-4 py-16 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl">
+            <div className="max-w-3xl">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#036661]">
+                RomDoc
+              </p>
 
-        <p className="mt-4 max-w-2xl text-lg text-gray-600">
-          RomDoc este o platformă medicală multilingvă pentru găsirea medicilor,
-          clinicilor și specialităților medicale.
-        </p>
+              <h1 className="mt-4 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
+                Găsește medicul potrivit în România
+              </h1>
 
-        <div className="mt-10 grid gap-8 md:grid-cols-2">
-          <section className="rounded-xl bg-white p-6 shadow-sm">
-            <h2 className="text-2xl font-semibold text-gray-900">
-              Orașe
-            </h2>
+              <p className="mt-5 text-lg leading-8 text-gray-600">
+                Descoperă medici, clinici și specialități medicale,
+                verifică disponibilitatea și solicită o programare online.
+              </p>
 
-            <ul className="mt-4 space-y-2">
-              {cities?.map((city) => (
-                <li key={city.name} className="text-gray-700">
-                  {city.name}
-                </li>
-              ))}
-            </ul>
-          </section>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <a
+                  href="/medici"
+                  className="romdoc-button romdoc-button-primary romdoc-button-lg"
+                >
+                  Găsește un medic
+                </a>
 
-          <section className="rounded-xl bg-white p-6 shadow-sm">
-            <h2 className="text-2xl font-semibold text-gray-900">
-              Specialități
-            </h2>
+                <a
+                  href="/register"
+                  className="romdoc-button romdoc-button-secondary romdoc-button-lg"
+                >
+                  Creează cont
+                </a>
+              </div>
+            </div>
+          </div>
+        </section>
 
-            <ul className="mt-4 space-y-4">
-              {specialties?.map((specialty) => (
-                <li key={specialty.name}>
-                  <div className="font-medium text-gray-800">
-                    {specialty.name}
+        <section
+          id="orase"
+          className="scroll-mt-24 px-4 pb-12 sm:px-6 lg:px-8"
+        >
+          <div className="mx-auto max-w-7xl rounded-3xl bg-white p-6 shadow-sm sm:p-8">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-[#036661]">
+                Locații
+              </p>
+
+              <h2 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
+                Orașe populare
+              </h2>
+            </div>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {cities.map(
+                (city) => (
+                  <div
+                    key={city.name}
+                    className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-800"
+                  >
+                    {city.name}
                   </div>
-                  <p className="text-sm text-gray-500">
-                    {specialty.meta_description}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </section>
-        </div>
-      </section>
-    </main>
+                )
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="specialitati"
+          className="scroll-mt-24 px-4 pb-16 sm:px-6 lg:px-8"
+        >
+          <div className="mx-auto max-w-7xl rounded-3xl bg-white p-6 shadow-sm sm:p-8">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-[#036661]">
+                Domenii medicale
+              </p>
+
+              <h2 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
+                Specialități
+              </h2>
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {specialties.map(
+                (specialty) => (
+                  <article
+                    key={
+                      specialty.name
+                    }
+                    className="rounded-2xl border border-gray-200 bg-gray-50 p-5"
+                  >
+                    <h3 className="font-semibold text-gray-900">
+                      {
+                        specialty.name
+                      }
+                    </h3>
+
+                    {specialty.meta_description && (
+                      <p className="mt-2 text-sm leading-6 text-gray-600">
+                        {
+                          specialty.meta_description
+                        }
+                      </p>
+                    )}
+                  </article>
+                )
+              )}
+            </div>
+          </div>
+        </section>
+      </main>
+    </PublicLayout>
   );
 }
