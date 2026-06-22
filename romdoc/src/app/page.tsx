@@ -1,7 +1,11 @@
 import Link from "next/link";
 import HomepageDoctorFilters from "@/components/public/homepage-doctor-filters";
+import HomepageDoctorResults from "@/components/public/homepage-doctor-results";
 import PublicClinicMap from "@/components/public/public-clinic-map";
 import PublicLayout from "@/components/public/public-layout";
+import {
+  type HomepageDoctorCardData,
+} from "@/components/public/homepage-doctor-card";
 import { createClient } from "@/lib/supabase/server";
 
 type CityTranslationRow = {
@@ -50,6 +54,118 @@ type SpecialtyTranslationRow = {
     | null;
 };
 
+type Translation = {
+  locale: string;
+  name?: string;
+  title?: string;
+};
+
+type DoctorCandidate = {
+  id: string;
+  slug: string;
+  years_experience:
+    | number
+    | null;
+
+  consultation_price:
+    | number
+    | string
+    | null;
+
+  average_rating:
+    | number
+    | string
+    | null;
+
+  review_count:
+    | number
+    | null;
+
+  verification_status:
+    | string
+    | null;
+
+  doctor_translations:
+    | Translation[]
+    | null;
+};
+
+type DoctorClinicRow = {
+  doctor_id: string;
+
+  clinics:
+    | {
+        id: string;
+        status: string;
+        city_id:
+          | string
+          | null;
+
+        clinic_translations:
+          | Translation[]
+          | null;
+
+        cities:
+          | {
+              city_translations:
+                | Translation[]
+                | null;
+            }
+          | Array<{
+              city_translations:
+                | Translation[]
+                | null;
+            }>
+          | null;
+      }
+    | Array<{
+        id: string;
+        status: string;
+        city_id:
+          | string
+          | null;
+
+        clinic_translations:
+          | Translation[]
+          | null;
+
+        cities:
+          | {
+              city_translations:
+                | Translation[]
+                | null;
+            }
+          | Array<{
+              city_translations:
+                | Translation[]
+                | null;
+            }>
+          | null;
+      }>
+    | null;
+};
+
+type DoctorSpecialtyRow = {
+  doctor_id: string;
+
+  specialties:
+    | {
+        specialty_translations:
+          | Translation[]
+          | null;
+      }
+    | Array<{
+        specialty_translations:
+          | Translation[]
+          | null;
+      }>
+    | null;
+};
+
+type AvailabilityRow = {
+  doctor_id: string;
+};
+
 function getSingleRelation<T>(
   relation:
     | T
@@ -63,6 +179,76 @@ function getSingleRelation<T>(
   return relation;
 }
 
+function getRomanianName(
+  translations:
+    | Translation[]
+    | null
+    | undefined
+) {
+  return (
+    translations?.find(
+      (translation) =>
+        translation.locale ===
+        "ro"
+    )?.name ??
+    translations?.[0]?.name ??
+    null
+  );
+}
+
+function getRomanianTitle(
+  translations:
+    | Translation[]
+    | null
+    | undefined
+) {
+  return (
+    translations?.find(
+      (translation) =>
+        translation.locale ===
+        "ro"
+    )?.title ??
+    translations?.[0]?.title ??
+    "Medic"
+  );
+}
+
+function formatDoctorName(
+  slug: string
+) {
+  return slug
+    .split("-")
+    .map(
+      (part) =>
+        part.charAt(0).toUpperCase() +
+        part.slice(1)
+    )
+    .join(" ");
+}
+
+function normalizeNumber(
+  value:
+    | number
+    | string
+    | null
+) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return null;
+  }
+
+  const parsed =
+    typeof value === "number"
+      ? value
+      : Number(value);
+
+  return Number.isFinite(parsed)
+    ? parsed
+    : null;
+}
+
 export default async function Home() {
   const supabase =
     await createClient();
@@ -70,6 +256,7 @@ export default async function Home() {
   const [
     citiesResult,
     specialtiesResult,
+    doctorCandidatesResult,
   ] =
     await Promise.all([
       supabase
@@ -107,6 +294,34 @@ export default async function Home() {
         )
         .order("name")
         .limit(100),
+
+      supabase
+        .from("doctors")
+        .select(`
+          id,
+          slug,
+          years_experience,
+          consultation_price,
+          average_rating,
+          review_count,
+          verification_status,
+          doctor_translations (
+            locale,
+            title
+          )
+        `)
+        .eq(
+          "status",
+          "active"
+        )
+        .order(
+          "average_rating",
+          {
+            ascending: false,
+            nullsFirst: false,
+          }
+        )
+        .limit(18),
     ]);
 
   if (citiesResult.error) {
@@ -125,6 +340,15 @@ export default async function Home() {
     );
   }
 
+  if (
+    doctorCandidatesResult.error
+  ) {
+    console.error(
+      "Homepage doctor candidates lookup failed:",
+      doctorCandidatesResult.error
+    );
+  }
+
   const cities =
     (citiesResult.data ??
       []) as CityTranslationRow[];
@@ -132,6 +356,10 @@ export default async function Home() {
   const specialties =
     (specialtiesResult.data ??
       []) as SpecialtyTranslationRow[];
+
+  const doctorCandidates =
+    (doctorCandidatesResult.data ??
+      []) as DoctorCandidate[];
 
   const cityOptions =
     cities.flatMap(
@@ -179,6 +407,289 @@ export default async function Home() {
       }
     );
 
+  let homepageDoctors:
+    HomepageDoctorCardData[] = [];
+
+  if (
+    doctorCandidates.length > 0
+  ) {
+    const doctorIds =
+      doctorCandidates.map(
+        (doctor) =>
+          doctor.id
+      );
+
+    const [
+      clinicsResult,
+      doctorSpecialtiesResult,
+      availabilityResult,
+    ] =
+      await Promise.all([
+        supabase
+          .from(
+            "doctor_clinics"
+          )
+          .select(`
+            doctor_id,
+            clinics (
+              id,
+              status,
+              city_id,
+              clinic_translations (
+                locale,
+                name
+              ),
+              cities (
+                city_translations (
+                  locale,
+                  name
+                )
+              )
+            )
+          `)
+          .in(
+            "doctor_id",
+            doctorIds
+          ),
+
+        supabase
+          .from(
+            "doctor_specialties"
+          )
+          .select(`
+            doctor_id,
+            specialties (
+              specialty_translations (
+                locale,
+                name
+              )
+            )
+          `)
+          .in(
+            "doctor_id",
+            doctorIds
+          ),
+
+        supabase
+          .from(
+            "availability"
+          )
+          .select(
+            "doctor_id"
+          )
+          .in(
+            "doctor_id",
+            doctorIds
+          ),
+      ]);
+
+    if (clinicsResult.error) {
+      console.error(
+        "Homepage doctor clinics lookup failed:",
+        clinicsResult.error
+      );
+    }
+
+    if (
+      doctorSpecialtiesResult.error
+    ) {
+      console.error(
+        "Homepage doctor specialties lookup failed:",
+        doctorSpecialtiesResult.error
+      );
+    }
+
+    if (
+      availabilityResult.error
+    ) {
+      console.error(
+        "Homepage doctor availability lookup failed:",
+        availabilityResult.error
+      );
+    }
+
+    const clinicRows =
+      (clinicsResult.data ??
+        []) as DoctorClinicRow[];
+
+    const specialtyRows =
+      (doctorSpecialtiesResult.data ??
+        []) as DoctorSpecialtyRow[];
+
+    const availabilityRows =
+      (availabilityResult.data ??
+        []) as AvailabilityRow[];
+
+    const onlineDoctorIds =
+      new Set(
+        availabilityRows.map(
+          (row) =>
+            row.doctor_id
+        )
+      );
+
+    homepageDoctors =
+      doctorCandidates
+        .flatMap(
+          (
+            doctor
+          ): HomepageDoctorCardData[] => {
+            const clinicRow =
+              clinicRows.find(
+                (row) => {
+                  if (
+                    row.doctor_id !==
+                    doctor.id
+                  ) {
+                    return false;
+                  }
+
+                  const clinic =
+                    getSingleRelation(
+                      row.clinics
+                    );
+
+                  return (
+                    clinic?.status ===
+                    "approved"
+                  );
+                }
+              );
+
+            const clinic =
+              clinicRow
+                ? getSingleRelation(
+                    clinicRow.clinics
+                  )
+                : null;
+
+            if (!clinic) {
+              return [];
+            }
+
+            const city =
+              getSingleRelation(
+                clinic.cities
+              );
+
+            const clinicName =
+              getRomanianName(
+                clinic
+                  .clinic_translations
+              );
+
+            const cityName =
+              getRomanianName(
+                city
+                  ?.city_translations
+              );
+
+            if (
+              !clinicName ||
+              !cityName
+            ) {
+              return [];
+            }
+
+            const specialtyRow =
+              specialtyRows.find(
+                (row) =>
+                  row.doctor_id ===
+                  doctor.id
+              );
+
+            const specialty =
+              specialtyRow
+                ? getSingleRelation(
+                    specialtyRow.specialties
+                  )
+                : null;
+
+            const specialtyName =
+              getRomanianName(
+                specialty
+                  ?.specialty_translations
+              );
+
+            if (
+              !specialtyName
+            ) {
+              return [];
+            }
+
+            return [
+              {
+                id:
+                  doctor.id,
+
+                slug:
+                  doctor.slug,
+
+                name:
+                  formatDoctorName(
+                    doctor.slug
+                  ),
+
+                title:
+                  getRomanianTitle(
+                    doctor
+                      .doctor_translations
+                  ),
+
+                specialtyName,
+
+                cityName,
+
+                clinicName,
+
+                averageRating:
+                  normalizeNumber(
+                    doctor.average_rating
+                  ) ?? 0,
+
+                reviewCount:
+                  doctor.review_count ??
+                  0,
+
+                consultationPrice:
+                  normalizeNumber(
+                    doctor.consultation_price
+                  ),
+
+                yearsExperience:
+                  doctor.years_experience,
+
+                isVerified:
+                  doctor.verification_status ===
+                  "verified",
+
+                hasOnlineAvailability:
+                  onlineDoctorIds.has(
+                    doctor.id
+                  ),
+              },
+            ];
+          }
+        )
+        .sort(
+          (
+            first,
+            second
+          ) =>
+            Number(
+              second.isVerified
+            ) -
+              Number(
+                first.isVerified
+              ) ||
+            second.averageRating -
+              first.averageRating ||
+            second.reviewCount -
+              first.reviewCount
+        )
+        .slice(0, 6);
+  }
+
   return (
     <PublicLayout>
       <main className="bg-[#F0EEE9]">
@@ -212,6 +723,10 @@ export default async function Home() {
             />
           </div>
         </section>
+
+        <HomepageDoctorResults
+          doctors={homepageDoctors}
+        />
 
         <section
           id="orase"
