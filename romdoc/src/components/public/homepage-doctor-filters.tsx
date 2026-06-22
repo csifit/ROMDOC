@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useMemo,
   useState,
   useTransition,
@@ -24,6 +25,14 @@ type HomepageDoctorFiltersProps = {
 };
 
 type RadiusOption = 10 | 50;
+
+type HomepageMapSearchDetail = {
+  latitude: number;
+  longitude: number;
+  formattedAddress: string;
+  countryCode: string;
+  radius: RadiusOption;
+} | null;
 
 export default function HomepageDoctorFilters({
   specialties,
@@ -65,6 +74,36 @@ export default function HomepageDoctorFilters({
     onlineOnly,
     setOnlineOnly,
   ] = useState(false);
+
+
+  useEffect(() => {
+    const detail: HomepageMapSearchDetail =
+      selectedLocation
+        ? {
+            latitude:
+              selectedLocation.latitude,
+            longitude:
+              selectedLocation.longitude,
+            formattedAddress:
+              selectedLocation.formattedAddress,
+            countryCode:
+              selectedLocation.countryCode,
+            radius,
+          }
+        : null;
+
+    window.dispatchEvent(
+      new CustomEvent<HomepageMapSearchDetail>(
+        "romdoc:homepage-map-search-change",
+        {
+          detail,
+        }
+      )
+    );
+  }, [
+    selectedLocation,
+    radius,
+  ]);
 
   const canSearch =
     specialtySlug.length > 0 &&

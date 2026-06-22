@@ -370,10 +370,6 @@ export default function GlobalGooglePlaceAutocomplete({
           Adresă sau localitate
         </span>
 
-        <p className="mt-1 text-xs leading-5 text-gray-500">
-          Caută oriunde în lume și selectează o sugestie Google.
-        </p>
-
         <div className="mt-2">
           <div
             ref={containerRef}

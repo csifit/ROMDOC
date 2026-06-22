@@ -15,17 +15,11 @@ type PublicClinicMapItem = {
   slug: string;
   name: string;
   cityName: string;
-  citySlug:
-    | string
-    | null;
-
+  citySlug: string | null;
   formattedAddress: string;
   latitude: number;
   longitude: number;
-  googleMapsUri:
-    | string
-    | null;
-
+  googleMapsUri: string | null;
   doctorCount: number;
   specialtyCount: number;
 };
@@ -35,34 +29,35 @@ type PublicClinicMapResponse = {
   error?: string;
 };
 
+type RadiusOption = 10 | 50;
+
+type HomepageMapSearchDetail = {
+  latitude: number;
+  longitude: number;
+  formattedAddress: string;
+  countryCode: string;
+  radius: RadiusOption;
+} | null;
+
 type LatLngLiteral = {
   lat: number;
   lng: number;
 };
 
-type MapInstance = {
+type MapLike = {
   fitBounds: (
     bounds: unknown,
-    padding?: number | {
-      top: number;
-      right: number;
-      bottom: number;
-      left: number;
-    }
+    padding?: number | Record<string, number>
   ) => void;
-
   setCenter: (
     center: LatLngLiteral
   ) => void;
-
   setZoom: (
     zoom: number
   ) => void;
-
   getZoom: () =>
     | number
     | undefined;
-
   addListener: (
     eventName: string,
     handler: () => void
@@ -71,94 +66,65 @@ type MapInstance = {
   };
 };
 
-type MapConstructor = new (
-  element: HTMLElement,
-  options: {
-    center: LatLngLiteral;
-    zoom: number;
-    mapId?: string;
-    mapTypeControl?: boolean;
-    streetViewControl?: boolean;
-    fullscreenControl?: boolean;
-    clickableIcons?: boolean;
-    gestureHandling?: string;
-  }
-) => MapInstance;
+type MarkerLike = {
+  map: MapLike | null;
+  addListener: (
+    eventName: string,
+    handler: () => void
+  ) => {
+    remove: () => void;
+  };
+};
 
-type LatLngBoundsInstance = {
-  extend: (
-    position: LatLngLiteral
+type CircleLike = {
+  setMap: (
+    map: MapLike | null
   ) => void;
 };
 
-type LatLngBoundsConstructor =
-  new () => LatLngBoundsInstance;
-
-type InfoWindowInstance = {
-  open: (
-    options: {
-      map: MapInstance;
-      anchor: AdvancedMarkerInstance;
-    }
-  ) => void;
-
+type InfoWindowLike = {
+  open: (options: {
+    map: MapLike;
+    anchor: MarkerLike;
+  }) => void;
   close: () => void;
 };
 
-type InfoWindowConstructor =
-  new (
-    options?: {
-      content?: HTMLElement;
-      ariaLabel?: string;
-    }
-  ) => InfoWindowInstance;
-
 type MapsLibrary = {
-  Map: MapConstructor;
-  LatLngBounds:
-    LatLngBoundsConstructor;
-  InfoWindow:
-    InfoWindowConstructor;
+  Map: new (
+    element: HTMLElement,
+    options: Record<string, unknown>
+  ) => MapLike;
+  InfoWindow: new (
+    options?: Record<string, unknown>
+  ) => InfoWindowLike;
+  Circle: new (
+    options: Record<string, unknown>
+  ) => CircleLike;
 };
 
-type AdvancedMarkerInstance = {
-  map:
-    | MapInstance
-    | null;
-
-  addListener: (
-    eventName: string,
-    handler: () => void
-  ) => {
-    remove: () => void;
+type CoreLibrary = {
+  LatLngBounds: new () => {
+    extend: (
+      position: LatLngLiteral
+    ) => void;
   };
 };
 
-type AdvancedMarkerConstructor =
-  new (
-    options: {
-      map: MapInstance;
-      position: LatLngLiteral;
-      title: string;
-      content?: HTMLElement;
-    }
-  ) => AdvancedMarkerInstance;
-
 type MarkerLibrary = {
-  AdvancedMarkerElement:
-    AdvancedMarkerConstructor;
-};
-
-type GoogleMapsRuntime = {
-  importLibrary?: (
-    libraryName: string
-  ) => Promise<unknown>;
+  AdvancedMarkerElement: new (
+    options: Record<string, unknown>
+  ) => MarkerLike;
 };
 
 type GoogleWindow =
   Window & {
     google?: {
-      maps?: GoogleMapsRuntime;
+      maps?: {
+        importLibrary?: (
+          libraryName: string
+        ) => Promise<unknown>;
+      };
     };
   };
 
@@ -169,7 +135,18 @@ const ROMANIA_CENTER: LatLngLiteral = {
 
 const ROMANIA_ZOOM = 7;
 
-function createMarkerContent(
+function escapeHtml(
+  value: string
+) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function createClinicMarkerContent(
   clinic: PublicClinicMapItem
 ) {
   const marker =
@@ -178,19 +155,35 @@ function createMarkerContent(
     );
 
   marker.type = "button";
+  marker.className =
+    "romdoc-map-marker";
+
   marker.setAttribute(
     "aria-label",
     `Deschide detaliile pentru ${clinic.name}`
   );
-
-  marker.className =
-    "romdoc-map-marker";
 
   marker.innerHTML = `
     <span class="romdoc-map-marker-dot"></span>
     <span class="romdoc-map-marker-label">${escapeHtml(
       clinic.name
     )}</span>
+  `;
+
+  return marker;
+}
+
+function createSearchMarkerContent() {
+  const marker =
+    document.createElement(
+      "div"
+    );
+
+  marker.className =
+    "flex h-9 w-9 items-center justify-center rounded-full border-4 border-white bg-[#ff2800] text-white shadow-xl";
+
+  marker.innerHTML = `
+    <span class="block h-3 w-3 rounded-full bg-white"></span>
   `;
 
   return marker;
@@ -243,16 +236,13 @@ function createInfoWindowContent(
       )}</span>
     </div>
     <div class="romdoc-map-popup-actions">
-      <a
-        href="${doctorsHref}"
-        class="romdoc-map-popup-primary"
-      >
+      <a href="${doctorsHref}" class="romdoc-map-popup-primary">
         Vezi medicii
       </a>
       ${
         clinic.googleMapsUri
           ? `<a
-              href="${escapeAttribute(
+              href="${escapeHtml(
                 clinic.googleMapsUri
               )}"
               target="_blank"
@@ -269,21 +259,51 @@ function createInfoWindowContent(
   return container;
 }
 
-function escapeHtml(
-  value: string
+function distanceKilometres(
+  first: LatLngLiteral,
+  second: LatLngLiteral
 ) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
+  const earthRadius = 6371;
+  const toRadians = (
+    degrees: number
+  ) =>
+    (degrees * Math.PI) /
+    180;
 
-function escapeAttribute(
-  value: string
-) {
-  return escapeHtml(value);
+  const latitudeDelta =
+    toRadians(
+      second.lat - first.lat
+    );
+
+  const longitudeDelta =
+    toRadians(
+      second.lng - first.lng
+    );
+
+  const firstLatitude =
+    toRadians(first.lat);
+
+  const secondLatitude =
+    toRadians(second.lat);
+
+  const a =
+    Math.sin(
+      latitudeDelta / 2
+    ) ** 2 +
+    Math.cos(firstLatitude) *
+      Math.cos(secondLatitude) *
+      Math.sin(
+        longitudeDelta / 2
+      ) ** 2;
+
+  return (
+    2 *
+    earthRadius *
+    Math.atan2(
+      Math.sqrt(a),
+      Math.sqrt(1 - a)
+    )
+  );
 }
 
 function scrollToFilters() {
@@ -303,34 +323,371 @@ export default function PublicClinicMap() {
       null
     );
 
-  const [isLoading, setIsLoading] =
-    useState(true);
+  const mapRef =
+    useRef<MapLike | null>(
+      null
+    );
 
-  const [error, setError] =
+  const mapsLibraryRef =
+    useRef<MapsLibrary | null>(
+      null
+    );
+
+  const coreLibraryRef =
+    useRef<CoreLibrary | null>(
+      null
+    );
+
+  const markerLibraryRef =
+    useRef<MarkerLibrary | null>(
+      null
+    );
+
+  const clinicsRef =
+    useRef<
+      PublicClinicMapItem[]
+    >([]);
+
+  const clinicMarkersRef =
+    useRef<MarkerLike[]>([]);
+
+  const markerListenersRef =
+    useRef<
+      Array<{
+        remove: () => void;
+      }>
+    >([]);
+
+  const searchMarkerRef =
+    useRef<MarkerLike | null>(
+      null
+    );
+
+  const radiusCircleRef =
+    useRef<CircleLike | null>(
+      null
+    );
+
+  const infoWindowRef =
+    useRef<InfoWindowLike | null>(
+      null
+    );
+
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(true);
+
+  const [
+    error,
+    setError,
+  ] =
     useState<string | null>(
       null
     );
 
-  const [clinicCount, setClinicCount] =
-    useState(0);
+  const [
+    visibleClinicCount,
+    setVisibleClinicCount,
+  ] = useState(0);
+
+  const [
+    activeSearch,
+    setActiveSearch,
+  ] =
+    useState<HomepageMapSearchDetail>(
+      null
+    );
+
+  function clearRenderedSearch() {
+    searchMarkerRef.current &&
+      (searchMarkerRef.current.map =
+        null);
+
+    searchMarkerRef.current =
+      null;
+
+    radiusCircleRef.current?.setMap(
+      null
+    );
+
+    radiusCircleRef.current =
+      null;
+  }
+
+  function clearClinicMarkers() {
+    for (
+      const listener of
+        markerListenersRef.current
+    ) {
+      listener.remove();
+    }
+
+    for (
+      const marker of
+        clinicMarkersRef.current
+    ) {
+      marker.map = null;
+    }
+
+    markerListenersRef.current =
+      [];
+
+    clinicMarkersRef.current =
+      [];
+
+    infoWindowRef.current?.close();
+  }
+
+  function renderMap(
+    search:
+      HomepageMapSearchDetail
+  ) {
+    const map =
+      mapRef.current;
+
+    const mapsLibrary =
+      mapsLibraryRef.current;
+
+    const coreLibrary =
+      coreLibraryRef.current;
+
+    const markerLibrary =
+      markerLibraryRef.current;
+
+    if (
+      !map ||
+      !mapsLibrary ||
+      !coreLibrary ||
+      !markerLibrary
+    ) {
+      return;
+    }
+
+    clearClinicMarkers();
+    clearRenderedSearch();
+
+    const searchCenter =
+      search
+        ? {
+            lat:
+              search.latitude,
+            lng:
+              search.longitude,
+          }
+        : null;
+
+    const visibleClinics =
+      searchCenter && search
+        ? clinicsRef.current.filter(
+            (clinic) =>
+              distanceKilometres(
+                searchCenter,
+                {
+                  lat:
+                    clinic.latitude,
+                  lng:
+                    clinic.longitude,
+                }
+              ) <= search.radius
+          )
+        : clinicsRef.current;
+
+    setVisibleClinicCount(
+      visibleClinics.length
+    );
+
+    const bounds =
+      new coreLibrary
+        .LatLngBounds();
+
+    for (
+      const clinic of
+        visibleClinics
+    ) {
+      const position = {
+        lat:
+          clinic.latitude,
+        lng:
+          clinic.longitude,
+      };
+
+      bounds.extend(position);
+
+      const marker =
+        new markerLibrary
+          .AdvancedMarkerElement({
+            map,
+            position,
+            title:
+              clinic.name,
+            content:
+              createClinicMarkerContent(
+                clinic
+              ),
+          });
+
+      const listener =
+        marker.addListener(
+          "click",
+          () => {
+            infoWindowRef.current
+              ?.close();
+
+            const infoWindow =
+              new mapsLibrary
+                .InfoWindow({
+                  content:
+                    createInfoWindowContent(
+                      clinic
+                    ),
+                  ariaLabel:
+                    clinic.name,
+                });
+
+            infoWindow.open({
+              map,
+              anchor:
+                marker,
+            });
+
+            infoWindowRef.current =
+              infoWindow;
+          }
+        );
+
+      clinicMarkersRef.current.push(
+        marker
+      );
+
+      markerListenersRef.current.push(
+        listener
+      );
+    }
+
+    if (searchCenter && search) {
+      searchMarkerRef.current =
+        new markerLibrary
+          .AdvancedMarkerElement({
+            map,
+            position:
+              searchCenter,
+            title:
+              search.formattedAddress,
+            content:
+              createSearchMarkerContent(),
+            zIndex:
+              9999,
+          });
+
+      radiusCircleRef.current =
+        new mapsLibrary.Circle({
+          map,
+          center:
+            searchCenter,
+          radius:
+            search.radius *
+            1000,
+          clickable:
+            false,
+          fillColor:
+            "#036661",
+          fillOpacity:
+            0.08,
+          strokeColor:
+            "#036661",
+          strokeOpacity:
+            0.75,
+          strokeWeight:
+            2,
+        });
+
+      map.setCenter(
+        searchCenter
+      );
+
+      map.setZoom(
+        search.radius === 10
+          ? 11
+          : 9
+      );
+
+      return;
+    }
+
+    if (
+      visibleClinics.length >
+      0
+    ) {
+      map.fitBounds(
+        bounds,
+        {
+          top: 72,
+          right: 48,
+          bottom: 72,
+          left: 48,
+        }
+      );
+
+      const idleListener =
+        map.addListener(
+          "idle",
+          () => {
+            if (
+              (
+                map.getZoom() ??
+                0
+              ) > 15
+            ) {
+              map.setZoom(15);
+            }
+
+            idleListener.remove();
+          }
+        );
+    } else {
+      map.setCenter(
+        ROMANIA_CENTER
+      );
+
+      map.setZoom(
+        ROMANIA_ZOOM
+      );
+    }
+  }
+
+  useEffect(() => {
+    function handleSearchChange(
+      event: Event
+    ) {
+      const customEvent =
+        event as
+          CustomEvent<HomepageMapSearchDetail>;
+
+      setActiveSearch(
+        customEvent.detail
+      );
+
+      renderMap(
+        customEvent.detail
+      );
+    }
+
+    window.addEventListener(
+      "romdoc:homepage-map-search-change",
+      handleSearchChange
+    );
+
+    return () => {
+      window.removeEventListener(
+        "romdoc:homepage-map-search-change",
+        handleSearchChange
+      );
+    };
+  }, []);
 
   useEffect(() => {
     let isActive = true;
-
-    let map:
-      | MapInstance
-      | null = null;
-
-    let infoWindow:
-      | InfoWindowInstance
-      | null = null;
-
-    const markerListeners: Array<{
-      remove: () => void;
-    }> = [];
-
-    const markers:
-      AdvancedMarkerInstance[] = [];
 
     async function initializeMap() {
       try {
@@ -341,7 +698,6 @@ export default function PublicClinicMap() {
           await fetch(
             "/api/public/clinics/map",
             {
-              method: "GET",
               headers: {
                 Accept:
                   "application/json",
@@ -360,17 +716,6 @@ export default function PublicClinicMap() {
               "Clinicile nu au putut fi încărcate."
           );
         }
-
-        const clinics =
-          result.clinics ?? [];
-
-        if (!isActive) {
-          return;
-        }
-
-        setClinicCount(
-          clinics.length
-        );
 
         await loadGoogleMaps();
 
@@ -397,16 +742,22 @@ export default function PublicClinicMap() {
 
         const [
           mapsLibrary,
+          coreLibrary,
           markerLibrary,
-        ] = await Promise.all([
-          importLibrary(
-            "maps"
-          ) as Promise<MapsLibrary>,
+        ] =
+          await Promise.all([
+            importLibrary(
+              "maps"
+            ) as Promise<MapsLibrary>,
 
-          importLibrary(
-            "marker"
-          ) as Promise<MarkerLibrary>,
-        ]);
+            importLibrary(
+              "core"
+            ) as Promise<CoreLibrary>,
+
+            importLibrary(
+              "marker"
+            ) as Promise<MarkerLibrary>,
+          ]);
 
         if (
           !isActive ||
@@ -417,146 +768,55 @@ export default function PublicClinicMap() {
 
         const mapId =
           process.env
-            .NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID?.trim() ||
+            .NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID
+            ?.trim() ||
           "DEMO_MAP_ID";
 
-        map =
+        const map =
           new mapsLibrary.Map(
             mapContainerRef.current,
             {
               center:
                 ROMANIA_CENTER,
-
               zoom:
                 ROMANIA_ZOOM,
-
               mapId,
-
               mapTypeControl:
                 false,
-
               streetViewControl:
                 false,
-
               fullscreenControl:
                 true,
-
               clickableIcons:
                 false,
-
               gestureHandling:
                 "cooperative",
             }
           );
 
-        infoWindow =
-          new mapsLibrary.InfoWindow();
+        clinicsRef.current =
+          result.clinics ??
+          [];
 
-        if (
-          clinics.length === 0
-        ) {
-          setIsLoading(false);
-          return;
-        }
+        mapRef.current =
+          map;
 
-        const bounds =
+        mapsLibraryRef.current =
+          mapsLibrary;
+
+        coreLibraryRef.current =
+          coreLibrary;
+
+        markerLibraryRef.current =
+          markerLibrary;
+
+        infoWindowRef.current =
           new mapsLibrary
-            .LatLngBounds();
+            .InfoWindow();
 
-        for (
-          const clinic of clinics
-        ) {
-          const position = {
-            lat:
-              clinic.latitude,
-
-            lng:
-              clinic.longitude,
-          };
-
-          bounds.extend(
-            position
-          );
-
-          const marker =
-            new markerLibrary
-              .AdvancedMarkerElement({
-                map,
-                position,
-                title:
-                  clinic.name,
-                content:
-                  createMarkerContent(
-                    clinic
-                  ),
-              });
-
-          const listener =
-            marker.addListener(
-              "click",
-              () => {
-                if (
-                  !map ||
-                  !infoWindow
-                ) {
-                  return;
-                }
-
-                infoWindow.close();
-
-                infoWindow =
-                  new mapsLibrary
-                    .InfoWindow({
-                      content:
-                        createInfoWindowContent(
-                          clinic
-                        ),
-
-                      ariaLabel:
-                        clinic.name,
-                    });
-
-                infoWindow.open({
-                  map,
-                  anchor:
-                    marker,
-                });
-              }
-            );
-
-          markers.push(marker);
-          markerListeners.push(
-            listener
-          );
-        }
-
-        map.fitBounds(
-          bounds,
-          {
-            top: 72,
-            right: 48,
-            bottom: 72,
-            left: 48,
-          }
+        renderMap(
+          activeSearch
         );
-
-        const idleListener =
-          map.addListener(
-            "idle",
-            () => {
-              if (
-                map &&
-                (
-                  map.getZoom() ??
-                  0
-                ) > 15
-              ) {
-                map.setZoom(15);
-              }
-
-              idleListener.remove();
-            }
-          );
 
         if (isActive) {
           setIsLoading(false);
@@ -589,21 +849,22 @@ export default function PublicClinicMap() {
     return () => {
       isActive = false;
 
-      for (
-        const listener of
-          markerListeners
-      ) {
-        listener.remove();
-      }
+      clearClinicMarkers();
+      clearRenderedSearch();
 
-      for (
-        const marker of
-          markers
-      ) {
-        marker.map = null;
-      }
+      infoWindowRef.current?.close();
 
-      infoWindow?.close();
+      mapRef.current =
+        null;
+
+      mapsLibraryRef.current =
+        null;
+
+      coreLibraryRef.current =
+        null;
+
+      markerLibraryRef.current =
+        null;
     };
   }, []);
 
@@ -655,29 +916,28 @@ export default function PublicClinicMap() {
         )}
 
       {!isLoading &&
-        !error &&
-        clinicCount === 0 && (
-          <div className="pointer-events-none absolute inset-x-0 top-6 flex justify-center px-4">
-            <div className="pointer-events-auto max-w-lg rounded-2xl border border-gray-200 bg-white/95 p-5 text-center shadow-lg backdrop-blur">
+        !error && (
+          <div className="pointer-events-none absolute left-4 top-4 max-w-[calc(100%-2rem)] sm:left-6 sm:top-6">
+            <div className="rounded-2xl border border-white/70 bg-white/95 px-4 py-3 text-sm shadow-lg backdrop-blur">
               <p className="font-semibold text-gray-900">
-                Clinicile aprobate vor apărea aici
+                {activeSearch
+                  ? `${visibleClinicCount} ${
+                      visibleClinicCount === 1
+                        ? "clinică aprobată"
+                        : "clinici aprobate"
+                    } în raza de ${activeSearch.radius} km`
+                  : visibleClinicCount === 1
+                    ? "1 clinică aprobată"
+                    : `${visibleClinicCount} clinici aprobate`}
               </p>
 
-              <p className="mt-1 text-sm text-gray-600">
-                Poți căuta deja medicii disponibili în director.
-              </p>
-            </div>
-          </div>
-        )}
-
-      {!isLoading &&
-        !error &&
-        clinicCount > 0 && (
-          <div className="pointer-events-none absolute left-4 top-4 sm:left-6 sm:top-6">
-            <div className="rounded-full border border-white/70 bg-white/95 px-4 py-2 text-sm font-semibold text-gray-900 shadow-lg backdrop-blur">
-              {clinicCount === 1
-                ? "1 clinică aprobată"
-                : `${clinicCount} clinici aprobate`}
+              {activeSearch && (
+                <p className="mt-1 truncate text-xs text-gray-600">
+                  {activeSearch.formattedAddress}
+                  {" · "}
+                  {activeSearch.countryCode}
+                </p>
+              )}
             </div>
           </div>
         )}
