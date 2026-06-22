@@ -15,21 +15,21 @@ export default function HomepageDoctorCta() {
             </h2>
 
             <p className="mt-4 max-w-2xl text-base leading-7 text-gray-600">
-              Creează-ți profilul RomDoc, publică serviciile și clinicile
-              aprobate, configurează disponibilitatea și primește cereri de
-              programare online.
+              Creează-ți profilul RomDoc, publică serviciile și
+              clinicile aprobate, configurează disponibilitatea și
+              primește cereri de programare online.
             </p>
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <Link
-                href="/register"
+                href="/register?role=doctor"
                 className="romdoc-button romdoc-button-primary romdoc-button-lg"
               >
                 Creează cont de medic
               </Link>
 
               <Link
-                href="/doctor-application"
+                href="/pentru-medici/cum-functioneaza"
                 className="romdoc-button romdoc-button-secondary romdoc-button-lg"
               >
                 Cum funcționează RomDoc
@@ -45,7 +45,8 @@ export default function HomepageDoctorCta() {
             <ul className="mt-5 space-y-4 text-sm leading-6 text-gray-700">
               <li className="flex gap-3">
                 <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#036661]" />
-                Profilul public, biografia și informațiile profesionale
+                Profilul public, biografia și informațiile
+                profesionale
               </li>
 
               <li className="flex gap-3">

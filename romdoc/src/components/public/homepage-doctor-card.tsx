@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import PublicDoctorPhoto from "@/components/public/public-doctor-photo";
 import VerifiedDoctorBadge from "@/components/public/verified-doctor-badge";
 
 export type HomepageDoctorCardData = {
@@ -7,6 +8,7 @@ export type HomepageDoctorCardData = {
   slug: string;
   name: string;
   title: string;
+  photoUrl: string | null;
   specialtyName: string;
   cityName: string;
   clinicName: string;
@@ -47,29 +49,39 @@ export default function HomepageDoctorCard({
 
   return (
     <article className="flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-[#036661]">
-            {doctor.specialtyName}
-          </p>
+      <div className="flex items-start gap-4">
+        <PublicDoctorPhoto
+          photoUrl={doctor.photoUrl}
+          doctorName={doctor.name}
+          size="small"
+        />
 
-          <h3 className="mt-1 text-xl font-bold tracking-tight text-gray-900">
-            <Link
-              href={profileHref}
-              className="romdoc-focus-ring rounded-sm transition hover:text-[#036661]"
-            >
-              {doctor.name}
-            </Link>
-          </h3>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-[#036661]">
+                {doctor.specialtyName}
+              </p>
 
-          <p className="mt-1 text-sm text-gray-600">
-            {doctor.title}
-          </p>
+              <h3 className="mt-1 text-xl font-bold tracking-tight text-gray-900">
+                <Link
+                  href={profileHref}
+                  className="romdoc-focus-ring rounded-sm transition hover:text-[#036661]"
+                >
+                  {doctor.name}
+                </Link>
+              </h3>
+
+              <p className="mt-1 text-sm text-gray-600">
+                {doctor.title}
+              </p>
+            </div>
+
+            {doctor.isVerified && (
+              <VerifiedDoctorBadge compact />
+            )}
+          </div>
         </div>
-
-        {doctor.isVerified && (
-          <VerifiedDoctorBadge compact />
-        )}
       </div>
 
       <div className="mt-5 space-y-2 text-sm text-gray-600">

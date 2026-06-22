@@ -7,55 +7,34 @@ import {
   useState,
 } from "react";
 
+import PublicDoctorPhoto from "@/components/public/public-doctor-photo";
+import VerifiedDoctorBadge from "@/components/public/verified-doctor-badge";
+
 type PublicNearbyDoctor = {
   id: string;
   slug: string;
   name: string;
   title: string;
-
+  photoUrl: string | null;
   specialty: {
     slug: string;
     name: string;
   };
-
   clinic: {
     id: string;
-    slug:
-      | string
-      | null;
-
+    slug: string | null;
     name: string;
     cityName: string;
-    citySlug:
-      | string
-      | null;
-
-    countryCode:
-      | string
-      | null;
-
-    formattedAddress:
-      | string
-      | null;
-
-    googleMapsUri:
-      | string
-      | null;
-
+    citySlug: string | null;
+    countryCode: string | null;
+    formattedAddress: string | null;
+    googleMapsUri: string | null;
     distanceKilometres: number;
   };
-
   averageRating: number;
   reviewCount: number;
-
-  yearsExperience:
-    | number
-    | null;
-
-  consultationPrice:
-    | number
-    | null;
-
+  yearsExperience: number | null;
+  consultationPrice: number | null;
   isVerified: boolean;
   hasOnlineAvailability: boolean;
 };
@@ -83,23 +62,15 @@ type NearbyDoctorResultsProps = {
   longitude: number;
   radius: 10 | 50;
   locationLabel: string;
-  countryCode:
-    | string
-    | null;
-
+  countryCode: string | null;
   verifiedOnly: boolean;
   onlineOnly: boolean;
 };
 
-function formatPrice(
-  value: number
-) {
-  return new Intl.NumberFormat(
-    "ro-RO",
-    {
-      maximumFractionDigits: 2,
-    }
-  ).format(value);
+function formatPrice(value: number) {
+  return new Intl.NumberFormat("ro-RO", {
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
 function RatingIcon() {
@@ -114,25 +85,6 @@ function RatingIcon() {
   );
 }
 
-function VerifiedIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="m5 12 4 4L19 6"
-      />
-    </svg>
-  );
-}
-
 export default function NearbyDoctorResults({
   specialty,
   latitude,
@@ -143,97 +95,66 @@ export default function NearbyDoctorResults({
   verifiedOnly,
   onlineOnly,
 }: NearbyDoctorResultsProps) {
-  const [
-    doctors,
-    setDoctors,
-  ] = useState<
+  const [doctors, setDoctors] = useState<
     PublicNearbyDoctor[]
   >([]);
 
-  const [
-    meta,
-    setMeta,
-  ] =
-    useState<NearbyDoctorMeta | null>(
-      null
-    );
+  const [meta, setMeta] =
+    useState<NearbyDoctorMeta | null>(null);
 
-  const [
-    isLoading,
-    setIsLoading,
-  ] = useState(true);
+  const [isLoading, setIsLoading] =
+    useState(true);
 
-  const [
-    error,
-    setError,
-  ] =
-    useState<string | null>(
-      null
-    );
+  const [error, setError] =
+    useState<string | null>(null);
 
-  const requestUrl =
-    useMemo(() => {
-      const params =
-        new URLSearchParams({
-          specialty,
-          lat:
-            latitude.toString(),
-          lng:
-            longitude.toString(),
-          radius:
-            radius.toString(),
-        });
-
-      if (verifiedOnly) {
-        params.set(
-          "verified",
-          "true"
-        );
-      }
-
-      if (onlineOnly) {
-        params.set(
-          "online",
-          "true"
-        );
-      }
-
-      return `/api/public/doctors/nearby?${params.toString()}`;
-    }, [
+  const requestUrl = useMemo(() => {
+    const params = new URLSearchParams({
       specialty,
-      latitude,
-      longitude,
-      radius,
-      verifiedOnly,
-      onlineOnly,
-    ]);
+      lat: latitude.toString(),
+      lng: longitude.toString(),
+      radius: radius.toString(),
+    });
+
+    if (verifiedOnly) {
+      params.set("verified", "true");
+    }
+
+    if (onlineOnly) {
+      params.set("online", "true");
+    }
+
+    return `/api/public/doctors/nearby?${params.toString()}`;
+  }, [
+    specialty,
+    latitude,
+    longitude,
+    radius,
+    verifiedOnly,
+    onlineOnly,
+  ]);
 
   useEffect(() => {
-    const controller =
-      new AbortController();
+    const controller = new AbortController();
 
     async function loadDoctors() {
       try {
         setIsLoading(true);
         setError(null);
 
-        const response =
-          await fetch(
-            requestUrl,
-            {
-              method: "GET",
-              headers: {
-                Accept:
-                  "application/json",
-              },
-              signal:
-                controller.signal,
-            }
-          );
+        const response = await fetch(
+          requestUrl,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+            },
+            signal: controller.signal,
+          }
+        );
 
         const result =
-          (await response.json()) as
-            NearbyDoctorApiResponse;
+          (await response.json()) as NearbyDoctorApiResponse;
 
         if (!response.ok) {
           throw new Error(
@@ -242,23 +163,12 @@ export default function NearbyDoctorResults({
           );
         }
 
-        setDoctors(
-          result.doctors ??
-            []
-        );
-
-        setMeta(
-          result.meta ??
-            null
-        );
-      } catch (
-        loadError
-      ) {
+        setDoctors(result.doctors ?? []);
+        setMeta(result.meta ?? null);
+      } catch (loadError) {
         if (
-          loadError instanceof
-            DOMException &&
-          loadError.name ===
-            "AbortError"
+          loadError instanceof DOMException &&
+          loadError.name === "AbortError"
         ) {
           return;
         }
@@ -269,16 +179,12 @@ export default function NearbyDoctorResults({
         );
 
         setError(
-          loadError instanceof
-            Error
+          loadError instanceof Error
             ? loadError.message
             : "Medicii nu au putut fi încărcați."
         );
       } finally {
-        if (
-          !controller.signal
-            .aborted
-        ) {
+        if (!controller.signal.aborted) {
           setIsLoading(false);
         }
       }
@@ -306,18 +212,16 @@ export default function NearbyDoctorResults({
           Rezultate pentru specialitatea{" "}
           <span className="font-semibold text-gray-900">
             {specialty}
-          </span>
-          {" "}la maximum{" "}
+          </span>{" "}
+          la maximum{" "}
           <span className="font-semibold text-gray-900">
             {radius} km
-          </span>
-          {" "}de{" "}
+          </span>{" "}
+          de{" "}
           <span className="font-semibold text-gray-900">
             {locationLabel}
           </span>
-          {countryCode
-            ? ` (${countryCode})`
-            : ""}.
+          {countryCode ? ` (${countryCode})` : ""}.
         </p>
 
         <div className="mt-5 flex flex-wrap gap-2">
@@ -361,25 +265,24 @@ export default function NearbyDoctorResults({
         </section>
       )}
 
-      {!isLoading &&
-        error && (
-          <section className="rounded-3xl border border-red-200 bg-white p-8 text-center shadow-sm">
-            <h2 className="text-xl font-semibold text-gray-900">
-              Căutarea nu a putut fi finalizată
-            </h2>
+      {!isLoading && error && (
+        <section className="rounded-3xl border border-red-200 bg-white p-8 text-center shadow-sm">
+          <h2 className="text-xl font-semibold text-gray-900">
+            Căutarea nu a putut fi finalizată
+          </h2>
 
-            <p className="mt-3 text-sm leading-6 text-red-700">
-              {error}
-            </p>
+          <p className="mt-3 text-sm leading-6 text-red-700">
+            {error}
+          </p>
 
-            <Link
-              href="/#doctor-filters"
-              className="romdoc-button romdoc-button-primary mt-6"
-            >
-              Încearcă din nou
-            </Link>
-          </section>
-        )}
+          <Link
+            href="/#doctor-filters"
+            className="romdoc-button romdoc-button-primary mt-6"
+          >
+            Încearcă din nou
+          </Link>
+        </section>
+      )}
 
       {!isLoading &&
         !error &&
@@ -390,7 +293,8 @@ export default function NearbyDoctorResults({
             </h2>
 
             <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-gray-600">
-              Încearcă o rază de 50 km, elimină filtrele opționale sau alege o altă locație.
+              Încearcă o rază de 50 km, elimină filtrele
+              opționale sau alege o altă locație.
             </p>
 
             <Link
@@ -431,17 +335,23 @@ export default function NearbyDoctorResults({
             </div>
 
             <div className="grid gap-5">
-              {doctors.map(
-                (doctor) => {
-                  const profileHref =
-                    `/doctor/${doctor.slug}`;
+              {doctors.map((doctor) => {
+                const profileHref =
+                  `/doctor/${doctor.slug}`;
 
-                  return (
-                    <article
-                      key={doctor.id}
-                      className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md sm:p-6"
-                    >
-                      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                return (
+                  <article
+                    key={doctor.id}
+                    className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md sm:p-6"
+                  >
+                    <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="flex min-w-0 flex-1 items-start gap-4">
+                        <PublicDoctorPhoto
+                          photoUrl={doctor.photoUrl}
+                          doctorName={doctor.name}
+                          size="medium"
+                        />
+
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <h3 className="text-2xl font-bold tracking-tight text-gray-900">
@@ -454,10 +364,7 @@ export default function NearbyDoctorResults({
                             </h3>
 
                             {doctor.isVerified && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-[#036661]/10 px-2.5 py-1 text-xs font-semibold text-[#036661]">
-                                <VerifiedIcon />
-                                Medic verificat
-                              </span>
+                              <VerifiedDoctorBadge compact />
                             )}
                           </div>
 
@@ -531,7 +438,8 @@ export default function NearbyDoctorResults({
                             {doctor.yearsExperience !==
                               null && (
                               <span>
-                                {doctor.yearsExperience} ani experiență
+                                {doctor.yearsExperience} ani
+                                experiență
                               </span>
                             )}
 
@@ -553,38 +461,40 @@ export default function NearbyDoctorResults({
                             )}
                           </div>
                         </div>
-
-                        <div className="grid shrink-0 gap-3 sm:grid-cols-2 lg:w-56 lg:grid-cols-1">
-                          <Link
-                            href={profileHref}
-                            className="romdoc-button romdoc-button-secondary romdoc-button-full"
-                          >
-                            Vezi profilul
-                          </Link>
-
-                          <Link
-                            href={`${profileHref}#programare`}
-                            className="romdoc-button romdoc-button-primary romdoc-button-full"
-                          >
-                            Programează-te
-                          </Link>
-
-                          {doctor.clinic.googleMapsUri && (
-                            <a
-                              href={doctor.clinic.googleMapsUri}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="romdoc-button romdoc-button-muted romdoc-button-full"
-                            >
-                              Vezi pe hartă
-                            </a>
-                          )}
-                        </div>
                       </div>
-                    </article>
-                  );
-                }
-              )}
+
+                      <div className="grid shrink-0 gap-3 sm:grid-cols-2 lg:w-56 lg:grid-cols-1">
+                        <Link
+                          href={profileHref}
+                          className="romdoc-button romdoc-button-secondary romdoc-button-full"
+                        >
+                          Vezi profilul
+                        </Link>
+
+                        <Link
+                          href={`${profileHref}#programare`}
+                          className="romdoc-button romdoc-button-primary romdoc-button-full"
+                        >
+                          Programează-te
+                        </Link>
+
+                        {doctor.clinic.googleMapsUri && (
+                          <a
+                            href={
+                              doctor.clinic.googleMapsUri
+                            }
+                            target="_blank"
+                            rel="noreferrer"
+                            className="romdoc-button romdoc-button-muted romdoc-button-full"
+                          >
+                            Vezi pe hartă
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </section>
         )}

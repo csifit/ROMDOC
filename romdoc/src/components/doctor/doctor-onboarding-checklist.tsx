@@ -75,14 +75,15 @@ export default function DoctorOnboardingChecklist({
               </p>
 
               <h2 className="mt-2 text-2xl font-bold text-gray-900">
-                {completion.isComplete
-                  ? "Profilul de bază este complet"
-                  : "Finalizează profilul pentru pacienți"}
+                {completion.isReadyForPatients
+                  ? "Profilul este pregătit pentru pacienți"
+                  : completion.isComplete
+                    ? "Profilul este complet, dar nu este încă pregătit"
+                    : "Finalizează profilul pentru pacienți"}
               </h2>
 
               <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-600">
-                Progresul este calculat din informațiile salvate în
-                profil, servicii, clinici și disponibilitate.
+                {completion.readinessMessage}
               </p>
             </div>
 
@@ -145,6 +146,42 @@ export default function DoctorOnboardingChecklist({
             configurarea, însă vizibilitatea publică poate fi limitată.
           </div>
         )}
+      </section>
+
+      <section
+        className={`rounded-2xl border p-5 shadow-sm ${
+          completion.isReadyForPatients
+            ? "border-emerald-200 bg-emerald-50"
+            : "border-amber-200 bg-amber-50"
+        }`}
+      >
+        <div className="flex items-start gap-4">
+          <span
+            className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+              completion.isReadyForPatients
+                ? "bg-emerald-600 text-white"
+                : "bg-amber-100 text-amber-800"
+            }`}
+          >
+            {completion.isReadyForPatients ? (
+              <CheckIcon />
+            ) : (
+              <PendingIcon />
+            )}
+          </span>
+
+          <div>
+            <h2 className="font-semibold text-gray-900">
+              {completion.isReadyForPatients
+                ? "Pregătit pentru programări"
+                : "Configurare în curs"}
+            </h2>
+
+            <p className="mt-1 text-sm leading-6 text-gray-700">
+              {completion.readinessMessage}
+            </p>
+          </div>
+        </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">

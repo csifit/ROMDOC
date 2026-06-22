@@ -28,6 +28,8 @@ export type DoctorProfileCompletion = {
   totalItems: number;
   percentage: number;
   isComplete: boolean;
+  isReadyForPatients: boolean;
+  readinessMessage: string;
   items: DoctorOnboardingItem[];
 };
 
@@ -294,6 +296,19 @@ export async function getDoctorProfileCompletion(
     (completedItems / totalItems) * 100
   );
 
+  const isReadyForPatients =
+    completedItems === totalItems &&
+    doctor.status === "active" &&
+    availabilityComplete &&
+    clinicComplete &&
+    serviceComplete;
+
+  const readinessMessage = isReadyForPatients
+    ? "Profilul este pregătit pentru programările online."
+    : doctor.status !== "active"
+      ? "Profilul trebuie să fie activ pentru a fi pregătit pentru pacienți."
+      : "Finalizează pașii rămași pentru a activa experiența completă de programare.";
+
   return {
     doctorId: doctor.id,
     doctorSlug: doctor.slug,
@@ -304,6 +319,8 @@ export async function getDoctorProfileCompletion(
     totalItems,
     percentage,
     isComplete: completedItems === totalItems,
+    isReadyForPatients,
+    readinessMessage,
     items,
   };
 }

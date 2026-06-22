@@ -40,3 +40,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+STEP-61D-PATCH-INSTRUCTIONS.md

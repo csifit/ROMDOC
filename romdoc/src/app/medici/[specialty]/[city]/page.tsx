@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import PublicLayout from "@/components/public/public-layout";
+import PublicDoctorPhoto from "@/components/public/public-doctor-photo";
 import VerifiedDoctorBadge from "@/components/public/verified-doctor-badge";
 import { createClient } from "@/lib/supabase/server";
 
@@ -26,6 +27,7 @@ type Translation = {
 type DoctorRow = {
   id: string;
   slug: string;
+  photo_url: string | null;
   years_experience: number | null;
   consultation_price: number | string | null;
   average_rating: number | string | null;
@@ -156,6 +158,7 @@ export default async function SpecialtyCityPage({
       .select(`
         id,
         slug,
+        photo_url,
         years_experience,
         consultation_price,
         average_rating,
@@ -255,15 +258,23 @@ export default async function SpecialtyCityPage({
                     key={doctor.id}
                     className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
                   >
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <h2 className="text-2xl font-bold text-gray-900">
-                          {formatDoctorName(doctor.slug)}
-                        </h2>
+                    <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex items-start gap-4">
+                        <PublicDoctorPhoto
+                          photoUrl={doctor.photo_url}
+                          doctorName={formatDoctorName(doctor.slug)}
+                          size="medium"
+                        />
 
-                        <p className="mt-2 text-gray-700">
-                          {doctorTranslation?.title ?? "Medic"}
-                        </p>
+                        <div>
+                          <h2 className="text-2xl font-bold text-gray-900">
+                            {formatDoctorName(doctor.slug)}
+                          </h2>
+
+                          <p className="mt-2 text-gray-700">
+                            {doctorTranslation?.title ?? "Medic"}
+                          </p>
+                        </div>
                       </div>
 
                       {doctor.verification_status === "verified" && (
