@@ -9,6 +9,10 @@ import {
   useRouter,
 } from "next/navigation";
 import Button from "@/components/ui/button";
+import GlobalGooglePlaceAutocomplete from "@/components/public/global-google-place-autocomplete";
+import type {
+  GoogleClinicAddress,
+} from "@/lib/locations/google-address";
 
 type FilterOption = {
   slug: string;
@@ -17,12 +21,12 @@ type FilterOption = {
 
 type HomepageDoctorFiltersProps = {
   specialties: FilterOption[];
-  cities: FilterOption[];
 };
+
+type RadiusOption = 10 | 50;
 
 export default function HomepageDoctorFilters({
   specialties,
-  cities,
 }: HomepageDoctorFiltersProps) {
   const router =
     useRouter();
@@ -38,9 +42,19 @@ export default function HomepageDoctorFilters({
   ] = useState("");
 
   const [
-    citySlug,
-    setCitySlug,
-  ] = useState("");
+    selectedLocation,
+    setSelectedLocation,
+  ] =
+    useState<GoogleClinicAddress | null>(
+      null
+    );
+
+  const [
+    radius,
+    setRadius,
+  ] = useState<RadiusOption>(
+    10
+  );
 
   const [
     verifiedOnly,
@@ -54,7 +68,7 @@ export default function HomepageDoctorFilters({
 
   const canSearch =
     specialtySlug.length > 0 &&
-    citySlug.length > 0;
+    selectedLocation !== null;
 
   const selectedSpecialty =
     useMemo(
@@ -70,28 +84,49 @@ export default function HomepageDoctorFilters({
       ]
     );
 
-  const selectedCity =
-    useMemo(
-      () =>
-        cities.find(
-          (city) =>
-            city.slug === citySlug
-        ) ?? null,
-      [cities, citySlug]
-    );
-
   function handleSubmit(
     event:
       React.FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
-    if (!canSearch) {
+    if (
+      !canSearch ||
+      !selectedLocation
+    ) {
       return;
     }
 
     const searchParams =
-      new URLSearchParams();
+      new URLSearchParams({
+        specialty:
+          specialtySlug,
+
+        lat:
+          selectedLocation
+            .latitude
+            .toString(),
+
+        lng:
+          selectedLocation
+            .longitude
+            .toString(),
+
+        radius:
+          radius.toString(),
+
+        placeId:
+          selectedLocation
+            .placeId,
+
+        location:
+          selectedLocation
+            .formattedAddress,
+
+        country:
+          selectedLocation
+            .countryCode,
+      });
 
     if (verifiedOnly) {
       searchParams.set(
@@ -107,18 +142,10 @@ export default function HomepageDoctorFilters({
       );
     }
 
-    const query =
-      searchParams.toString();
-
-    const target =
-      `/medici/${encodeURIComponent(
-        specialtySlug
-      )}/${encodeURIComponent(
-        citySlug
-      )}${query ? `?${query}` : ""}`;
-
     startTransition(() => {
-      router.push(target);
+      router.push(
+        `/medici/cautare?${searchParams.toString()}`
+      );
     });
   }
 
@@ -163,37 +190,61 @@ export default function HomepageDoctorFilters({
           </select>
         </label>
 
-        <label className="block">
-          <span className="text-sm font-semibold text-gray-800">
-            Oraș
-          </span>
-
-          <select
-            value={citySlug}
-            onChange={(event) =>
-              setCitySlug(
-                event.target.value
-              )
-            }
-            className="mt-2 min-h-12 w-full rounded-xl border border-gray-300 bg-white px-4 text-sm text-gray-900 shadow-sm transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
-          >
-            <option value="">
-              Alege orașul
-            </option>
-
-            {cities.map(
-              (city) => (
-                <option
-                  key={city.slug}
-                  value={city.slug}
-                >
-                  {city.name}
-                </option>
-              )
-            )}
-          </select>
-        </label>
+        <GlobalGooglePlaceAutocomplete
+          onPlaceSelected={
+            setSelectedLocation
+          }
+          onClear={() =>
+            setSelectedLocation(
+              null
+            )
+          }
+          disabled={isPending}
+        />
       </div>
+
+      <fieldset className="mt-5">
+        <legend className="text-sm font-semibold text-gray-800">
+          Raza de căutare
+        </legend>
+
+        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+          {(
+            [10, 50] as const
+          ).map(
+            (option) => (
+              <label
+                key={option}
+                className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition ${
+                  radius === option
+                    ? "border-[#036661] bg-[#036661]/5"
+                    : "border-gray-200 bg-gray-50 hover:border-[#036661]/40 hover:bg-white"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="radius"
+                  value={option}
+                  checked={
+                    radius ===
+                    option
+                  }
+                  onChange={() =>
+                    setRadius(
+                      option
+                    )
+                  }
+                  className="h-4 w-4 border-gray-300 text-[#036661] focus:ring-[#036661]"
+                />
+
+                <span className="text-sm font-semibold text-gray-900">
+                  {option} km
+                </span>
+              </label>
+            )
+          )}
+        </div>
+      </fieldset>
 
       <div className="mt-5 grid gap-3 md:grid-cols-2">
         <label className="flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 transition hover:border-[#036661]/40 hover:bg-white">
@@ -246,9 +297,9 @@ export default function HomepageDoctorFilters({
       <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-gray-600">
           {selectedSpecialty &&
-          selectedCity
-            ? `${selectedSpecialty.name} în ${selectedCity.name}`
-            : "Selectează specialitatea și orașul pentru a continua."}
+          selectedLocation
+            ? `${selectedSpecialty.name} la maximum ${radius} km de ${selectedLocation.formattedAddress}`
+            : "Selectează specialitatea și o locație Google pentru a continua."}
         </p>
 
         <Button

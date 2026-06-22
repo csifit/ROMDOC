@@ -721,7 +721,6 @@ export default async function Home() {
               specialties={
                 specialtyOptions
               }
-              cities={cityOptions}
             />
           </div>
         </section>
