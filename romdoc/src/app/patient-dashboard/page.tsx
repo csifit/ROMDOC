@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import PatientAppointmentLifecycle from "@/components/patient/patient-appointment-lifecycle";
+import PatientFolderShortcut from "@/components/patient/patient-folder-shortcut";
 import PatientReviewForm from "@/components/reviews/patient-review-form";
 import RatingStars from "@/components/reviews/rating-stars";
 import { createClient } from "@/lib/supabase/server";
@@ -462,6 +463,8 @@ export default async function PatientDashboardPage() {
             și publică o recenzie după finalizarea consultației.
           </p>
         </header>
+
+        <PatientFolderShortcut />
 
         <section className="mt-8">
           {appointments.length === 0 ? (
