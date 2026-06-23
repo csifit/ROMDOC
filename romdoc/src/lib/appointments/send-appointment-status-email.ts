@@ -3,7 +3,9 @@ import { Resend } from "resend";
 export type PatientNotificationStatus =
   | "confirmed"
   | "rescheduled"
-  | "cancelled";
+  | "cancelled"
+  | "completed"
+  | "no_show";
 
 type SendAppointmentStatusEmailInput = {
   status: PatientNotificationStatus;
@@ -16,9 +18,12 @@ type SendAppointmentStatusEmailInput = {
   rescheduleReason: string | null;
 };
 
-type SendAppointmentStatusEmailResult = {
+export type SendAppointmentStatusEmailResult = {
   sent: boolean;
-  error?: unknown;
+  skipped: boolean;
+  providerMessageId: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
 };
 
 function escapeHtml(value: string) {
@@ -30,10 +35,8 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#039;");
 }
 
-function formatAppointmentDate(date: string | null) {
-  if (!date) {
-    return "Data nu este disponibilă";
-  }
+function formatDate(date: string | null) {
+  if (!date) return "Data nu este disponibilă";
 
   return new Intl.DateTimeFormat("ro-RO", {
     day: "2-digit",
@@ -42,265 +45,163 @@ function formatAppointmentDate(date: string | null) {
   }).format(new Date(`${date}T12:00:00`));
 }
 
-function formatAppointmentTime(time: string | null) {
-  if (!time) {
-    return "Ora nu este disponibilă";
-  }
-
-  return time.slice(0, 5);
+function formatTime(time: string | null) {
+  return time ? time.slice(0, 5) : "Ora nu este disponibilă";
 }
 
-function getEmailContent(status: PatientNotificationStatus) {
+function getContent(status: PatientNotificationStatus) {
   switch (status) {
     case "confirmed":
       return {
-        subjectPrefix: "Programare confirmată",
+        subject: "Programare confirmată",
         heading: "Programarea ta a fost confirmată",
-        message:
-          "Medicul sau clinica a confirmat programarea ta.",
-        accentColor: "#166534",
-        boxColor: "#f0fdf4",
+        message: "Medicul sau clinica a confirmat programarea ta.",
       };
-
     case "rescheduled":
       return {
-        subjectPrefix: "Programare reprogramată",
+        subject: "Programare reprogramată",
         heading: "Programarea ta a fost reprogramată",
-        message:
-          "Data sau ora programării tale a fost modificată.",
-        accentColor: "#1d4ed8",
-        boxColor: "#eff6ff",
+        message: "Data sau ora programării tale a fost modificată.",
       };
-
     case "cancelled":
       return {
-        subjectPrefix: "Programare anulată",
+        subject: "Programare anulată",
         heading: "Programarea ta a fost anulată",
-        message:
-          "Programarea a fost anulată. Pentru o nouă programare, poți trimite o altă cerere prin RomDoc.",
-        accentColor: "#b91c1c",
-        boxColor: "#fef2f2",
+        message: "Programarea a fost anulată. Poți solicita o nouă programare prin RomDoc.",
+      };
+    case "completed":
+      return {
+        subject: "Consultație finalizată",
+        heading: "Consultația a fost marcată ca finalizată",
+        message: "Programarea ta a fost înregistrată ca finalizată în RomDoc.",
+      };
+    case "no_show":
+      return {
+        subject: "Neprezentare înregistrată",
+        heading: "Programarea a fost marcată ca neprezentare",
+        message: "Clinica a înregistrat faptul că pacientul nu s-a prezentat la programare.",
       };
   }
 }
 
-export async function sendAppointmentStatusEmail({
-  status,
-  patientName,
-  patientEmail,
-  doctorName,
-  clinicName,
-  scheduledDate,
-  scheduledTime,
-  rescheduleReason,
-}: SendAppointmentStatusEmailInput): Promise<SendAppointmentStatusEmailResult> {
-  const resendApiKey = process.env.RESEND_API_KEY;
-  const resendFromEmail = process.env.RESEND_FROM_EMAIL;
-
-  if (!resendApiKey || !resendFromEmail) {
-    console.error(
-      "Appointment status email was not sent because Resend environment variables are missing."
-    );
-
+function stringifyError(error: unknown) {
+  if (error instanceof Error) {
     return {
-      sent: false,
-      error: "Missing Resend environment variables.",
+      code: error.name || "EMAIL_ERROR",
+      message: error.message,
     };
   }
 
-  const resend = new Resend(resendApiKey);
-  const content = getEmailContent(status);
-
-  const safePatientName = escapeHtml(patientName);
-  const safeDoctorName = escapeHtml(doctorName);
-  const safeClinicName = escapeHtml(clinicName);
-
-  const safeRescheduleReason = rescheduleReason
-    ? escapeHtml(rescheduleReason)
-    : null;
-
-  const formattedDate = formatAppointmentDate(scheduledDate);
-  const formattedTime = formatAppointmentTime(scheduledTime);
-
-  const showScheduledSlot =
-    status === "confirmed" || status === "rescheduled";
-
-  const { error } = await resend.emails.send({
-    from: resendFromEmail,
-    to: patientEmail,
-    subject: `${content.subjectPrefix} – ${doctorName}`,
-    html: `
-      <!doctype html>
-      <html lang="ro">
-        <head>
-          <meta charset="utf-8" />
-          <meta name="viewport" content="width=device-width" />
-        </head>
-
-        <body
-          style="
-            margin: 0;
-            padding: 0;
-            background-color: #f0eee9;
-            color: #111827;
-            font-family: Arial, Helvetica, sans-serif;
-          "
-        >
-          <div
-            style="
-              max-width: 640px;
-              margin: 0 auto;
-              padding: 32px 16px;
-            "
-          >
-            <div
-              style="
-                background-color: #ffffff;
-                border-radius: 16px;
-                padding: 32px;
-              "
-            >
-              <p
-                style="
-                  margin: 0 0 12px;
-                  color: ${content.accentColor};
-                  font-size: 14px;
-                  font-weight: 700;
-                  text-transform: uppercase;
-                  letter-spacing: 0.05em;
-                "
-              >
-                RomDoc
-              </p>
-
-              <h1
-                style="
-                  margin: 0;
-                  font-size: 28px;
-                  line-height: 1.3;
-                  color: #111827;
-                "
-              >
-                ${content.heading}
-              </h1>
-
-              <p
-                style="
-                  margin-top: 20px;
-                  line-height: 1.7;
-                "
-              >
-                Bună, ${safePatientName}.
-              </p>
-
-              <p style="line-height: 1.7;">
-                ${content.message}
-              </p>
-
-              <div
-                style="
-                  margin-top: 24px;
-                  padding: 20px;
-                  border-radius: 12px;
-                  background-color: ${content.boxColor};
-                "
-              >
-                <p style="margin: 0 0 10px;">
-                  <strong>Medic:</strong>
-                  ${safeDoctorName}
-                </p>
-
-                <p style="margin: 0${
-                  showScheduledSlot ? " 0 10px" : ""
-                };">
-                  <strong>Clinică:</strong>
-                  ${safeClinicName}
-                </p>
-
-                ${
-                  showScheduledSlot
-                    ? `
-                      <p style="margin: 0 0 10px;">
-                        <strong>Data programării:</strong>
-                        ${formattedDate}
-                      </p>
-
-                      <p style="margin: 0;">
-                        <strong>Ora programării:</strong>
-                        ${formattedTime}
-                      </p>
-                    `
-                    : ""
-                }
-              </div>
-
-              ${
-                status === "rescheduled" && safeRescheduleReason
-                  ? `
-                    <div
-                      style="
-                        margin-top: 24px;
-                        padding: 20px;
-                        border-left: 4px solid ${content.accentColor};
-                        background-color: #f9fafb;
-                      "
-                    >
-                      <p style="margin: 0 0 8px;">
-                        <strong>Motivul reprogramării:</strong>
-                      </p>
-
-                      <p
-                        style="
-                          margin: 0;
-                          line-height: 1.7;
-                          white-space: pre-wrap;
-                        "
-                      >${safeRescheduleReason}</p>
-                    </div>
-                  `
-                  : ""
-              }
-
-              <p
-                style="
-                  margin-top: 28px;
-                  line-height: 1.7;
-                  color: #4b5563;
-                "
-              >
-                Pentru întrebări legate de programare, contactează
-                direct clinica.
-              </p>
-
-              <p
-                style="
-                  margin-top: 28px;
-                  font-size: 13px;
-                  color: #6b7280;
-                "
-              >
-                RomDoc — găsește medicul potrivit.
-              </p>
-            </div>
-          </div>
-        </body>
-      </html>
-    `,
-  });
-
-  if (error) {
-    console.error(
-      `Appointment ${status} email failed:`,
-      error
-    );
+  if (
+    typeof error === "object" &&
+    error !== null
+  ) {
+    const candidate = error as {
+      name?: unknown;
+      message?: unknown;
+    };
 
     return {
-      sent: false,
-      error,
+      code:
+        typeof candidate.name === "string"
+          ? candidate.name
+          : "EMAIL_ERROR",
+      message:
+        typeof candidate.message === "string"
+          ? candidate.message
+          : JSON.stringify(error),
     };
   }
 
   return {
-    sent: true,
+    code: "EMAIL_ERROR",
+    message: String(error),
   };
+}
+
+export async function sendAppointmentStatusEmail(
+  input: SendAppointmentStatusEmailInput
+): Promise<SendAppointmentStatusEmailResult> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM_EMAIL;
+
+  if (!apiKey || !from) {
+    return {
+      sent: false,
+      skipped: true,
+      providerMessageId: null,
+      errorCode: "MISSING_CONFIGURATION",
+      errorMessage:
+        "RESEND_API_KEY or RESEND_FROM_EMAIL is missing.",
+    };
+  }
+
+  const content = getContent(input.status);
+  const resend = new Resend(apiKey);
+
+  try {
+    const result = await resend.emails.send({
+      from,
+      to: input.patientEmail,
+      subject: `${content.subject} – ${input.doctorName}`,
+      html: `
+        <!doctype html>
+        <html lang="ro">
+          <body style="margin:0;background:#f0eee9;font-family:Arial,sans-serif;color:#111827">
+            <div style="max-width:640px;margin:0 auto;padding:32px 16px">
+              <div style="background:#fff;border-radius:16px;padding:32px">
+                <p style="margin:0 0 12px;color:#036661;font-weight:700">RomDoc</p>
+                <h1 style="margin:0;font-size:28px">${escapeHtml(content.heading)}</h1>
+                <p style="margin-top:20px;line-height:1.7">Bună, ${escapeHtml(input.patientName)}.</p>
+                <p style="line-height:1.7">${escapeHtml(content.message)}</p>
+                <div style="margin-top:24px;padding:20px;border-radius:12px;background:#f9fafb">
+                  <p><strong>Medic:</strong> ${escapeHtml(input.doctorName)}</p>
+                  <p><strong>Clinică:</strong> ${escapeHtml(input.clinicName)}</p>
+                  <p><strong>Data:</strong> ${formatDate(input.scheduledDate)}</p>
+                  <p><strong>Ora:</strong> ${formatTime(input.scheduledTime)}</p>
+                </div>
+                ${
+                  input.status === "rescheduled" &&
+                  input.rescheduleReason
+                    ? `<p style="margin-top:20px"><strong>Motiv:</strong> ${escapeHtml(input.rescheduleReason)}</p>`
+                    : ""
+                }
+                <p style="margin-top:28px;color:#6b7280;font-size:13px">RomDoc — găsește medicul potrivit.</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `,
+    });
+
+    if (result.error) {
+      const normalized = stringifyError(result.error);
+
+      return {
+        sent: false,
+        skipped: false,
+        providerMessageId: null,
+        errorCode: normalized.code,
+        errorMessage: normalized.message,
+      };
+    }
+
+    return {
+      sent: true,
+      skipped: false,
+      providerMessageId: result.data?.id ?? null,
+      errorCode: null,
+      errorMessage: null,
+    };
+  } catch (error) {
+    const normalized = stringifyError(error);
+
+    return {
+      sent: false,
+      skipped: false,
+      providerMessageId: null,
+      errorCode: normalized.code,
+      errorMessage: normalized.message,
+    };
+  }
 }

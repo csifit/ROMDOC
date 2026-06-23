@@ -4,6 +4,9 @@ import {
 } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { sendAppointmentStatusEmail } from "@/lib/appointments/send-appointment-status-email";
+import { logAppointmentNotificationDelivery } from "@/lib/appointments/log-appointment-notification-delivery";
 
 type RouteContext = {
   params: Promise<{
@@ -264,6 +267,42 @@ export async function PATCH(
     );
   }
 
+  const admin = createAdminClient();
+
+  const {
+    data: appointment,
+    error: appointmentLookupError,
+  } = await admin
+    .from("appointments")
+    .select(`
+      id,
+      patient_name,
+      patient_email,
+      scheduled_date,
+      scheduled_time,
+      requested_date,
+      requested_time,
+      doctors (
+        slug
+      ),
+      clinics (
+        slug,
+        clinic_translations (
+          locale,
+          name
+        )
+      )
+    `)
+    .eq("id", appointmentId)
+    .maybeSingle();
+
+  if (appointmentLookupError || !appointment) {
+    return NextResponse.json(
+      { error: "Programarea nu a fost găsită." },
+      { status: 404 }
+    );
+  }
+
   const {
     data,
     error,
@@ -287,9 +326,67 @@ export async function PATCH(
     );
   }
 
+  const doctorRelation = Array.isArray(
+    appointment.doctors
+  )
+    ? appointment.doctors[0]
+    : appointment.doctors;
+
+  const clinicRelation = Array.isArray(
+    appointment.clinics
+  )
+    ? appointment.clinics[0]
+    : appointment.clinics;
+
+  const clinicName =
+    clinicRelation?.clinic_translations?.find(
+      (translation: { locale: string; name: string }) =>
+        translation.locale === "ro"
+    )?.name ??
+    clinicRelation?.clinic_translations?.[0]?.name ??
+    clinicRelation?.slug ??
+    "Clinică";
+
+  const doctorName =
+    doctorRelation?.slug
+      ?.split("-")
+      .map(
+        (part: string) =>
+          part.charAt(0).toUpperCase() +
+          part.slice(1)
+      )
+      .join(" ") ?? "Medic";
+
+  const emailResult =
+    await sendAppointmentStatusEmail({
+      status: "cancelled",
+      patientName: appointment.patient_name,
+      patientEmail: appointment.patient_email,
+      doctorName,
+      clinicName,
+      scheduledDate:
+        appointment.scheduled_date ??
+        appointment.requested_date,
+      scheduledTime:
+        appointment.scheduled_time ??
+        appointment.requested_time,
+      rescheduleReason: null,
+    });
+
+  await logAppointmentNotificationDelivery({
+    appointmentId,
+    notificationType: "cancelled",
+    recipientEmail: appointment.patient_email,
+    triggeredByProfileId: (
+      await authorization.supabase.auth.getUser()
+    ).data.user?.id ?? null,
+    result: emailResult,
+  });
+
   return NextResponse.json({
     success: true,
     appointment:
       Array.isArray(data) ? data[0] ?? null : data,
+    emailSent: emailResult.sent,
   });
 }

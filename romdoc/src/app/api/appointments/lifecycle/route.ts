@@ -10,6 +10,9 @@ import { createClient } from "@/lib/supabase/server";
 import {
   sendAppointmentStatusEmail,
 } from "@/lib/appointments/send-appointment-status-email";
+import {
+  logAppointmentNotificationDelivery,
+} from "@/lib/appointments/log-appointment-notification-delivery";
 
 export const runtime = "nodejs";
 
@@ -614,7 +617,9 @@ export async function PATCH(
   if (
     action === "confirm" ||
     action === "reschedule" ||
-    action === "cancel"
+    action === "cancel" ||
+    action === "complete" ||
+    action === "no_show"
   ) {
     const appointment =
       appointmentData as unknown as
@@ -656,7 +661,11 @@ export async function PATCH(
             ? "confirmed"
             : action === "reschedule"
               ? "rescheduled"
-              : "cancelled",
+              : action === "cancel"
+                ? "cancelled"
+                : action === "complete"
+                  ? "completed"
+                  : "no_show",
         patientName:
           appointment.patient_name,
         patientEmail:
@@ -678,6 +687,24 @@ export async function PATCH(
       });
 
     emailSent = emailResult.sent;
+
+    await logAppointmentNotificationDelivery({
+      appointmentId,
+      notificationType:
+        action === "confirm"
+          ? "confirmed"
+          : action === "reschedule"
+            ? "rescheduled"
+            : action === "cancel"
+              ? "cancelled"
+              : action === "complete"
+                ? "completed"
+                : "no_show",
+      recipientEmail:
+        appointment.patient_email,
+      triggeredByProfileId: user.id,
+      result: emailResult,
+    });
 
     if (!emailResult.sent) {
       console.error(
