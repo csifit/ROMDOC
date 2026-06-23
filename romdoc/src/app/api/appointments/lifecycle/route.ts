@@ -175,6 +175,128 @@ function transitionErrorResponse(
   }
 
   if (
+    code === "23P01" ||
+    normalized.includes(
+      "appointment_slot_conflict"
+    ) ||
+    normalized.includes(
+      "appointments_no_doctor_overlap"
+    )
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Intervalul selectat nu mai este disponibil. Alege o altă dată sau oră.",
+      },
+      { status: 409 }
+    );
+  }
+
+  if (
+    normalized.includes(
+      "appointment_outside_working_hours"
+    )
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Intervalul selectat este în afara programului de lucru al medicului.",
+      },
+      { status: 409 }
+    );
+  }
+
+  if (
+    normalized.includes(
+      "appointment_overlaps_break"
+    )
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Intervalul selectat se suprapune cu o pauză din program.",
+      },
+      { status: 409 }
+    );
+  }
+
+  if (
+    normalized.includes(
+      "doctor_unavailable_for_period"
+    )
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Medicul este indisponibil în intervalul selectat.",
+      },
+      { status: 409 }
+    );
+  }
+
+  if (
+    normalized.includes(
+      "doctor_clinic_not_available"
+    ) ||
+    normalized.includes(
+      "appointment_clinic_required"
+    )
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Clinica nu este disponibilă pentru această programare.",
+      },
+      { status: 409 }
+    );
+  }
+
+  if (
+    normalized.includes(
+      "appointment_duration_mismatch"
+    ) ||
+    normalized.includes(
+      "invalid_appointment_duration"
+    )
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Durata programării nu corespunde intervalelor configurate de medic.",
+      },
+      { status: 409 }
+    );
+  }
+
+  if (
+    normalized.includes(
+      "appointment_date_is_in_the_past"
+    )
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Nu poți selecta o dată din trecut.",
+      },
+      { status: 400 }
+    );
+  }
+
+  if (
+    normalized.includes(
+      "appointment_date_exceeds_advance_limit"
+    )
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Programările pot fi stabilite cu maximum 180 de zile în avans.",
+      },
+      { status: 400 }
+    );
+  }
+
+  if (
     normalized.includes(
       "invalid_appointment_transition"
     )
