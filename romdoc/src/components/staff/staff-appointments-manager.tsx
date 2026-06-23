@@ -1,12 +1,12 @@
 "use client";
 
-import Button from "@/components/ui/button";
-
 import {
   useCallback,
   useEffect,
   useState,
 } from "react";
+
+import Button from "@/components/ui/button";
 
 type Translation = {
   locale: string;
@@ -28,7 +28,6 @@ type ClinicRelation = {
   formatted_address:
     | string
     | null;
-
   clinic_translations:
     | Translation[]
     | null;
@@ -38,49 +37,23 @@ type Appointment = {
   id: string;
   doctor_id: string;
   clinic_id: string;
-
   patient_name: string;
   patient_email: string;
   patient_phone: string;
-
   requested_date: string;
-  requested_time:
-    | string
-    | null;
-
-  scheduled_date:
-    | string
-    | null;
-
-  scheduled_time:
-    | string
-    | null;
-
-  duration_minutes:
-    | number
-    | null;
-
+  requested_time: string | null;
+  scheduled_date: string | null;
+  scheduled_time: string | null;
+  duration_minutes: number | null;
   status: string;
-
-  notes:
-    | string
-    | null;
-
-  reschedule_reason:
-    | string
-    | null;
-
-  source:
-    | string
-    | null;
-
+  notes: string | null;
+  reschedule_reason: string | null;
+  source: string | null;
   created_at: string;
-
   doctors:
     | DoctorRelation
     | DoctorRelation[]
     | null;
-
   clinics:
     | ClinicRelation
     | ClinicRelation[]
@@ -90,8 +63,16 @@ type Appointment = {
 type StaffAppointmentsResponse = {
   appointments?: Appointment[];
   message?: string;
+  emailSent?: boolean | null;
   error?: string;
 };
+
+type LifecycleAction =
+  | "confirm"
+  | "reschedule"
+  | "complete"
+  | "cancel"
+  | "no_show";
 
 function getFirstRelation<T>(
   relation:
@@ -104,11 +85,9 @@ function getFirstRelation<T>(
     return null;
   }
 
-  if (Array.isArray(relation)) {
-    return relation[0] ?? null;
-  }
-
-  return relation;
+  return Array.isArray(relation)
+    ? relation[0] ?? null
+    : relation;
 }
 
 function getClinicName(
@@ -160,19 +139,16 @@ function getStatusLabel(
   switch (status) {
     case "pending":
       return "În așteptare";
-
     case "confirmed":
       return "Confirmată";
-
     case "rescheduled":
       return "Reprogramată";
-
     case "completed":
       return "Finalizată";
-
+    case "no_show":
+      return "Neprezentare";
     case "cancelled":
       return "Anulată";
-
     default:
       return status;
   }
@@ -184,24 +160,20 @@ function getStatusClasses(
   switch (status) {
     case "confirmed":
       return "bg-green-100 text-green-800";
-
     case "rescheduled":
       return "bg-blue-100 text-blue-800";
-
     case "completed":
       return "bg-gray-200 text-gray-800";
-
+    case "no_show":
+      return "bg-orange-100 text-orange-900";
     case "cancelled":
       return "bg-red-100 text-red-800";
-
     default:
       return "bg-amber-100 text-amber-900";
   }
 }
 
-function formatDate(
-  value: string
-) {
+function formatDate(value: string) {
   return new Intl.DateTimeFormat(
     "ro-RO",
     {
@@ -210,16 +182,12 @@ function formatDate(
       year: "numeric",
     }
   ).format(
-    new Date(
-      `${value}T12:00:00`
-    )
+    new Date(`${value}T12:00:00`)
   );
 }
 
 function formatTime(
-  value:
-    | string
-    | null
+  value: string | null
 ) {
   return value
     ? value.slice(0, 5)
@@ -230,9 +198,7 @@ export default function StaffAppointmentsManager() {
   const [
     appointments,
     setAppointments,
-  ] = useState<
-    Appointment[]
-  >([]);
+  ] = useState<Appointment[]>([]);
 
   const [isLoading, setIsLoading] =
     useState(true);
@@ -240,9 +206,7 @@ export default function StaffAppointmentsManager() {
   const [
     savingAppointmentId,
     setSavingAppointmentId,
-  ] = useState<string | null>(
-    null
-  );
+  ] = useState<string | null>(null);
 
   const [error, setError] =
     useState<string | null>(null);
@@ -277,8 +241,7 @@ export default function StaffAppointmentsManager() {
         }
 
         setAppointments(
-          result.appointments ??
-            []
+          result.appointments ?? []
         );
       } catch (loadError) {
         setError(
@@ -297,14 +260,23 @@ export default function StaffAppointmentsManager() {
 
   async function updateAppointment(
     appointment: Appointment,
-    action:
-      | "confirm"
-      | "reschedule"
-      | "complete"
-      | "cancel"
+    action: LifecycleAction
   ) {
     setError(null);
     setSuccess(null);
+
+    const terminal = [
+      "cancelled",
+      "completed",
+      "no_show",
+    ].includes(appointment.status);
+
+    if (terminal) {
+      setError(
+        "Programarea este deja într-o stare finală."
+      );
+      return;
+    }
 
     let scheduledDate =
       appointment.scheduled_date ??
@@ -366,6 +338,32 @@ export default function StaffAppointmentsManager() {
         enteredReason.trim();
     }
 
+    if (
+      action === "cancel" ||
+      action === "complete" ||
+      action === "no_show"
+    ) {
+      const promptText =
+        action === "cancel"
+          ? "Motivul anulării — opțional:"
+          : action === "complete"
+            ? "Notă operațională — opțional:"
+            : "Notă despre neprezentare — opțional:";
+
+      const enteredReason =
+        window.prompt(
+          promptText,
+          ""
+        );
+
+      if (enteredReason === null) {
+        return;
+      }
+
+      reason =
+        enteredReason.trim();
+    }
+
     setSavingAppointmentId(
       appointment.id
     );
@@ -373,28 +371,29 @@ export default function StaffAppointmentsManager() {
     try {
       const response =
         await fetch(
-          "/api/staff/appointments",
+          "/api/appointments/lifecycle",
           {
             method: "PATCH",
-
             headers: {
               "Content-Type":
                 "application/json",
             },
-
-            body:
-              JSON.stringify({
-                appointmentId:
-                  appointment.id,
-
-                action,
-
-                scheduledDate,
-
-                scheduledTime,
-
-                reason,
-              }),
+            body: JSON.stringify({
+              appointmentId:
+                appointment.id,
+              action,
+              scheduledDate:
+                action === "confirm" ||
+                action === "reschedule"
+                  ? scheduledDate
+                  : null,
+              scheduledTime:
+                action === "confirm" ||
+                action === "reschedule"
+                  ? scheduledTime
+                  : null,
+              reason: reason || null,
+            }),
           }
         );
 
@@ -410,8 +409,10 @@ export default function StaffAppointmentsManager() {
       }
 
       setSuccess(
-        result.message ??
-          "Programarea a fost actualizată."
+        result.emailSent === false
+          ? `${result.message ?? "Programarea a fost actualizată."} E-mailul pacientului nu a putut fi trimis.`
+          : result.message ??
+              "Programarea a fost actualizată."
       );
 
       await loadAppointments();
@@ -441,7 +442,7 @@ export default function StaffAppointmentsManager() {
   return (
     <div className="space-y-6">
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-        <p className="text-sm font-semibold text-[#9A4F35]">
+        <p className="text-sm font-semibold text-[#036661]">
           Personal
         </p>
 
@@ -450,9 +451,8 @@ export default function StaffAppointmentsManager() {
         </h1>
 
         <p className="mt-3 text-sm leading-6 text-gray-600">
-          Ai acces numai la programările
-          medicului și clinicii pentru care ai
-          fost autorizat.
+          Ai acces numai la programările medicului și clinicii
+          pentru care ai fost autorizat.
         </p>
       </section>
 
@@ -476,8 +476,7 @@ export default function StaffAppointmentsManager() {
 
       {appointments.length === 0 ? (
         <section className="rounded-2xl border border-gray-200 bg-white p-8 text-sm text-gray-600 shadow-sm">
-          Nu există programări disponibile
-          pentru atribuirea ta.
+          Nu există programări disponibile pentru atribuirea ta.
         </section>
       ) : (
         <div className="space-y-5">
@@ -488,30 +487,30 @@ export default function StaffAppointmentsManager() {
                 appointment.id;
 
               const date =
-                appointment
-                  .scheduled_date ??
-                appointment
-                  .requested_date;
+                appointment.scheduled_date ??
+                appointment.requested_date;
 
               const time =
-                appointment
-                  .scheduled_time ??
-                appointment
-                  .requested_time;
+                appointment.scheduled_time ??
+                appointment.requested_time;
+
+              const terminal = [
+                "cancelled",
+                "completed",
+                "no_show",
+              ].includes(
+                appointment.status
+              );
 
               return (
                 <article
-                  key={
-                    appointment.id
-                  }
+                  key={appointment.id}
                   className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                       <h2 className="text-lg font-bold text-gray-900">
-                        {
-                          appointment.patient_name
-                        }
+                        {appointment.patient_name}
                       </h2>
 
                       <p className="mt-1 text-sm text-gray-600">
@@ -543,11 +542,8 @@ export default function StaffAppointmentsManager() {
                       <dt className="font-medium text-gray-500">
                         Data
                       </dt>
-
                       <dd className="mt-1 text-gray-900">
-                        {formatDate(
-                          date
-                        )}
+                        {formatDate(date)}
                       </dd>
                     </div>
 
@@ -555,11 +551,8 @@ export default function StaffAppointmentsManager() {
                       <dt className="font-medium text-gray-500">
                         Ora
                       </dt>
-
                       <dd className="mt-1 text-gray-900">
-                        {formatTime(
-                          time
-                        )}
+                        {formatTime(time)}
                       </dd>
                     </div>
 
@@ -567,11 +560,8 @@ export default function StaffAppointmentsManager() {
                       <dt className="font-medium text-gray-500">
                         Telefon
                       </dt>
-
                       <dd className="mt-1 text-gray-900">
-                        {
-                          appointment.patient_phone
-                        }
+                        {appointment.patient_phone}
                       </dd>
                     </div>
 
@@ -579,11 +569,8 @@ export default function StaffAppointmentsManager() {
                       <dt className="font-medium text-gray-500">
                         E-mail
                       </dt>
-
                       <dd className="mt-1 break-all text-gray-900">
-                        {
-                          appointment.patient_email
-                        }
+                        {appointment.patient_email}
                       </dd>
                     </div>
 
@@ -591,7 +578,6 @@ export default function StaffAppointmentsManager() {
                       <dt className="font-medium text-gray-500">
                         Durată
                       </dt>
-
                       <dd className="mt-1 text-gray-900">
                         {appointment.duration_minutes
                           ? `${appointment.duration_minutes} minute`
@@ -603,10 +589,8 @@ export default function StaffAppointmentsManager() {
                       <dt className="font-medium text-gray-500">
                         Sursă
                       </dt>
-
                       <dd className="mt-1 text-gray-900">
-                        {appointment.source ??
-                          "—"}
+                        {appointment.source ?? "—"}
                       </dd>
                     </div>
                   </dl>
@@ -620,73 +604,86 @@ export default function StaffAppointmentsManager() {
                     </div>
                   )}
 
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    <Button
-                      type="button"
-                      disabled={
-                        isSaving
-                      }
-                      onClick={() =>
-                        updateAppointment(
-                          appointment,
-                          "confirm"
-                        )
-                      }
-            size="sm"
-                    >
-                      Confirmă
-                    </Button>
+                  {terminal ? (
+                    <div className="mt-6 rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
+                      Programarea este închisă și nu mai poate fi modificată.
+                    </div>
+                  ) : (
+                    <div className="mt-6 flex flex-wrap gap-3">
+                      <Button
+                        type="button"
+                        disabled={isSaving}
+                        onClick={() =>
+                          void updateAppointment(
+                            appointment,
+                            "confirm"
+                          )
+                        }
+                        size="sm"
+                      >
+                        Confirmă
+                      </Button>
 
-                    <Button
-                      type="button"
-                      disabled={
-                        isSaving
-                      }
-                      onClick={() =>
-                        updateAppointment(
-                          appointment,
-                          "reschedule"
-                        )
-                      }
-            size="sm"
-                    >
-                      Reprogramează
-                    </Button>
+                      <Button
+                        type="button"
+                        disabled={isSaving}
+                        onClick={() =>
+                          void updateAppointment(
+                            appointment,
+                            "reschedule"
+                          )
+                        }
+                        size="sm"
+                      >
+                        Reprogramează
+                      </Button>
 
-                    <Button
-                      type="button"
-                      disabled={
-                        isSaving
-                      }
-                      onClick={() =>
-                        updateAppointment(
-                          appointment,
-                          "complete"
-                        )
-                      }
-            variant="secondary"
-            size="sm"
-                    >
-                      Finalizează
-                    </Button>
+                      <Button
+                        type="button"
+                        disabled={isSaving}
+                        onClick={() =>
+                          void updateAppointment(
+                            appointment,
+                            "complete"
+                          )
+                        }
+                        variant="secondary"
+                        size="sm"
+                      >
+                        Finalizează
+                      </Button>
 
-                    <Button
-                      type="button"
-                      disabled={
-                        isSaving
-                      }
-                      onClick={() =>
-                        updateAppointment(
-                          appointment,
-                          "cancel"
-                        )
-                      }
-            variant="danger-outline"
-            size="sm"
-                    >
-                      Anulează
-                    </Button>
-                  </div>
+                      <Button
+                        type="button"
+                        disabled={isSaving}
+                        onClick={() =>
+                          void updateAppointment(
+                            appointment,
+                            "no_show"
+                          )
+                        }
+                        variant="secondary"
+                        size="sm"
+                      >
+                        Neprezentare
+                      </Button>
+
+                      <Button
+                        type="button"
+                        disabled={isSaving}
+                        onClick={() =>
+                          void updateAppointment(
+                            appointment,
+                            "cancel"
+                          )
+                        }
+                        variant="danger-outline"
+                        size="sm"
+                      >
+                        Anulează
+                      </Button>
+                    </div>
+                  )}
                 </article>
               );
             }

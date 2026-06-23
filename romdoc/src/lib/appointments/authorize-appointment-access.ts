@@ -1,4 +1,6 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type {
+  SupabaseClient,
+} from "@supabase/supabase-js";
 
 export type RomDocRole =
   | "patient"
@@ -20,7 +22,11 @@ type AppointmentAccessSuccess = {
 
 type AppointmentAccessFailure = {
   authorized: false;
-  status: 401 | 403 | 404 | 500;
+  status:
+    | 401
+    | 403
+    | 404
+    | 500;
   error: string;
 };
 
@@ -28,25 +34,6 @@ export type AppointmentAccessResult =
   | AppointmentAccessSuccess
   | AppointmentAccessFailure;
 
-/**
- * Verifies whether the currently authenticated user may manage
- * a specific RomDoc appointment.
- *
- * Permission rules:
- *
- * admin:
- * - May manage any appointment.
- *
- * doctor:
- * - May manage only appointments whose doctor_id belongs to the
- *   doctor record connected through doctors.profile_id.
- *
- * staff:
- * - Denied temporarily until clinic staff ownership tables are added.
- *
- * patient:
- * - May not manage appointments.
- */
 export async function authorizeAppointmentAccess(
   supabase: SupabaseClient,
   appointmentId: string
@@ -60,69 +47,79 @@ export async function authorizeAppointmentAccess(
     return {
       authorized: false,
       status: 401,
-      error: "Trebuie să fii autentificat.",
+      error:
+        "Trebuie să fii autentificat.",
     };
   }
 
-  const { data: profile, error: profileError } = await supabase
+  const {
+    data: profile,
+    error: profileError,
+  } = await supabase
     .from("profiles")
-    .select("id, role")
+    .select(
+      "id, role, account_status"
+    )
     .eq("id", user.id)
     .maybeSingle();
 
   if (profileError) {
-    console.error(
-      "Appointment authorization profile lookup failed:",
-      profileError
-    );
-
     return {
       authorized: false,
       status: 500,
-      error: "Rolul utilizatorului nu a putut fi verificat.",
+      error:
+        "Rolul utilizatorului nu a putut fi verificat.",
     };
   }
-
-  if (!profile) {
-    return {
-      authorized: false,
-      status: 403,
-      error: "Profilul utilizatorului nu este configurat.",
-    };
-  }
-
-  const role = profile.role as RomDocRole;
 
   if (
-    role !== "patient" &&
-    role !== "doctor" &&
-    role !== "staff" &&
-    role !== "admin"
+    !profile ||
+    profile.account_status !== "active"
   ) {
     return {
       authorized: false,
       status: 403,
-      error: "Rolul utilizatorului nu este valid.",
+      error:
+        "Profilul utilizatorului nu este activ.",
     };
   }
 
-  const { data: appointment, error: appointmentError } =
-    await supabase
-      .from("appointments")
-      .select("id, doctor_id, clinic_id, status")
-      .eq("id", appointmentId)
-      .maybeSingle();
+  const role =
+    profile.role as RomDocRole;
+
+  if (
+    ![
+      "patient",
+      "doctor",
+      "staff",
+      "admin",
+    ].includes(role)
+  ) {
+    return {
+      authorized: false,
+      status: 403,
+      error:
+        "Rolul utilizatorului nu este valid.",
+    };
+  }
+
+  const {
+    data: appointment,
+    error: appointmentError,
+  } = await supabase
+    .from("appointments")
+    .select(
+      "id, doctor_id, clinic_id, status"
+    )
+    .eq("id", appointmentId)
+    .maybeSingle();
 
   if (appointmentError) {
-    console.error(
-      "Appointment authorization appointment lookup failed:",
-      appointmentError
-    );
-
     return {
       authorized: false,
       status: 500,
-      error: "Programarea nu a putut fi verificată.",
+      error:
+        "Programarea nu a putut fi verificată.",
     };
   }
 
@@ -130,7 +127,8 @@ export async function authorizeAppointmentAccess(
     return {
       authorized: false,
       status: 404,
-      error: "Programarea nu a fost găsită.",
+      error:
+        "Programarea nu a fost găsită.",
     };
   }
 
@@ -144,26 +142,16 @@ export async function authorizeAppointmentAccess(
   }
 
   if (role === "doctor") {
-    const { data: doctor, error: doctorError } = await supabase
+    const {
+      data: doctor,
+      error: doctorError,
+    } = await supabase
       .from("doctors")
       .select("id")
       .eq("profile_id", user.id)
       .maybeSingle();
 
-    if (doctorError) {
-      console.error(
-        "Appointment authorization doctor lookup failed:",
-        doctorError
-      );
-
-      return {
-        authorized: false,
-        status: 500,
-        error: "Contul medicului nu a putut fi verificat.",
-      };
-    }
-
-    if (!doctor) {
+    if (doctorError || !doctor) {
       return {
         authorized: false,
         status: 403,
@@ -172,7 +160,10 @@ export async function authorizeAppointmentAccess(
       };
     }
 
-    if (doctor.id !== appointment.doctor_id) {
+    if (
+      doctor.id !==
+      appointment.doctor_id
+    ) {
       return {
         authorized: false,
         status: 403,
@@ -190,11 +181,47 @@ export async function authorizeAppointmentAccess(
   }
 
   if (role === "staff") {
+    if (!appointment.clinic_id) {
+      return {
+        authorized: false,
+        status: 403,
+        error:
+          "Programarea nu este asociată unei clinici.",
+      };
+    }
+
+    const {
+      data: isAssigned,
+      error: assignmentError,
+    } = await supabase.rpc(
+      "is_staff_for_doctor_clinic",
+      {
+        requested_staff_profile_id:
+          user.id,
+        requested_doctor_id:
+          appointment.doctor_id,
+        requested_clinic_id:
+          appointment.clinic_id,
+      }
+    );
+
+    if (
+      assignmentError ||
+      !isAssigned
+    ) {
+      return {
+        authorized: false,
+        status: 403,
+        error:
+          "Nu ai acces la această programare.",
+      };
+    }
+
     return {
-      authorized: false,
-      status: 403,
-      error:
-        "Accesul personalului clinicii va fi activat după configurarea asocierilor cu clinicile.",
+      authorized: true,
+      userId: user.id,
+      role,
+      appointment,
     };
   }
 
