@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import PatientAppointmentLifecycle from "@/components/patient/patient-appointment-lifecycle";
 import PatientReviewForm from "@/components/reviews/patient-review-form";
 import RatingStars from "@/components/reviews/rating-stars";
 import { createClient } from "@/lib/supabase/server";
@@ -230,6 +231,9 @@ function getStatusLabel(
     case "rescheduled":
       return "Reprogramată";
 
+    case "no_show":
+      return "Neprezentare";
+
     case "completed":
       return "Finalizată";
 
@@ -254,6 +258,9 @@ function getStatusClasses(
     case "completed":
       return "bg-gray-200 text-gray-800";
 
+    case "no_show":
+      return "bg-orange-100 text-orange-900";
+    
     case "cancelled":
       return "bg-red-100 text-red-800";
 
@@ -654,6 +661,13 @@ export default async function PatientDashboardPage() {
                           </Link>
                         )}
                       </div>
+
+                      <PatientAppointmentLifecycle
+                       appointmentId={appointment.id}
+                       status={appointment.status}
+                       appointmentDate={appointmentDate}
+                       appointmentTime={appointmentTime}
+                      />
 
                       {appointment.status ===
                         "completed" &&

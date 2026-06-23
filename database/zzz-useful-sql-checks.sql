@@ -73,3 +73,14 @@ from public.transition_own_appointment(
 -- These become terminal appointments.
 
 -- =====================================================
+-- Possible Patient cancellation responses include:
+
+-- 401 — not authenticated
+-- 403 — not an active patient or does not own appointment
+-- 404 — appointment not found
+-- 409 — appointment already started
+-- 409 — appointment is already terminal
+-- 400 — invalid reason
+-- =====================================================
+
+-- =====================================================
