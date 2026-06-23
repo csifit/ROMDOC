@@ -413,6 +413,25 @@ export async function POST(
     );
   }
 
+  await admin
+    .from(
+      "patient_medical_document_events"
+    )
+    .insert({
+      document_id:
+        document.id,
+      patient_profile_id:
+        authorization.user.id,
+      appointment_id: null,
+      event_type:
+        "downloaded",
+      actor_profile_id:
+        authorization.user.id,
+      actor_role:
+        "patient",
+      metadata: {},
+    });
+
   return NextResponse.json(
     {
       signedUrl:

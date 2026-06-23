@@ -1,5 +1,7 @@
 "use client";
 
+import PatientDocumentSharing from "@/components/patient/patient-document-sharing";
+
 import {
   useCallback,
   useEffect,
@@ -519,6 +521,10 @@ export default function PatientMedicalFolder() {
                         </p>
                       </div>
                     )}
+
+                  <PatientDocumentSharing
+                    documentId={document.id}
+                  />
 
                   {document.canDownload && (
                     <button

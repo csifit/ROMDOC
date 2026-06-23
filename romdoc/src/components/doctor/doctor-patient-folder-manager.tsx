@@ -26,6 +26,7 @@ type ApiResponse = {
   documents?: MedicalDocument[];
   document?: MedicalDocument;
   success?: boolean;
+  signedUrl?: string;
   error?: string;
 };
 
@@ -60,6 +61,10 @@ export default function DoctorPatientFolderManager({
     useState(true);
   const [isSaving, setIsSaving] =
     useState(false);
+  const [
+    downloadingDocumentId,
+    setDownloadingDocumentId,
+  ] = useState<string | null>(null);
   const [error, setError] =
     useState("");
   const [message, setMessage] =
@@ -105,8 +110,7 @@ export default function DoctorPatientFolderManager({
           );
 
         const result =
-          await response.json() as
-            ApiResponse;
+          (await response.json()) as ApiResponse;
 
         if (!response.ok) {
           throw new Error(
@@ -241,6 +245,59 @@ export default function DoctorPatientFolderManager({
       );
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function downloadDocument(
+    documentId: string
+  ) {
+    setDownloadingDocumentId(
+      documentId
+    );
+    setError("");
+
+    try {
+      const response =
+        await fetch(
+          "/api/doctor/patient-folder/download",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              documentId,
+            }),
+          }
+        );
+
+      const result =
+        (await response.json()) as ApiResponse;
+
+      if (
+        !response.ok ||
+        !result.signedUrl
+      ) {
+        throw new Error(
+          result.error ??
+            "Documentul nu a putut fi descărcat."
+        );
+      }
+
+      window.location.assign(
+        result.signedUrl
+      );
+    } catch (downloadError) {
+      setError(
+        downloadError instanceof Error
+          ? downloadError.message
+          : "Documentul nu a putut fi descărcat."
+      );
+    } finally {
+      setDownloadingDocumentId(
+        null
+      );
     }
   }
 
@@ -521,9 +578,30 @@ export default function DoctorPatientFolderManager({
 
                   {document.content_format ===
                     "file" && (
-                    <p className="mt-3 text-xs text-gray-500">
-                      {document.original_file_name}
-                    </p>
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-xs text-gray-500">
+                        {document.original_file_name}
+                      </p>
+
+                      <button
+                        type="button"
+                        disabled={
+                          downloadingDocumentId ===
+                          document.id
+                        }
+                        onClick={() =>
+                          void downloadDocument(
+                            document.id
+                          )
+                        }
+                        className="romdoc-button romdoc-button-secondary romdoc-button-sm"
+                      >
+                        {downloadingDocumentId ===
+                        document.id
+                          ? "Se pregătește..."
+                          : "Descarcă"}
+                      </button>
+                    </div>
                   )}
                 </article>
               )

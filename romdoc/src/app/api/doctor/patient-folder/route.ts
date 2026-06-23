@@ -255,9 +255,39 @@ export async function GET(
     createAdminClient();
 
   const {
-    data,
-    error,
+    data: activeShares,
+    error: shareError,
   } = await admin
+    .from(
+      "patient_medical_document_shares"
+    )
+    .select("document_id")
+    .eq(
+      "doctor_id",
+      result.authorization.doctorId
+    )
+    .is("revoked_at", null)
+    .or(
+      `expires_at.is.null,expires_at.gt.${new Date().toISOString()}`
+    );
+
+  if (shareError) {
+    return NextResponse.json(
+      {
+        error:
+          "Partajările nu au putut fi verificate.",
+      },
+      { status: 500 }
+    );
+  }
+
+  const sharedDocumentIds =
+    (activeShares ?? []).map(
+      (share) =>
+        share.document_id
+    );
+
+  let documentQuery = admin
     .from("patient_medical_documents")
     .select(`
       id,
@@ -276,10 +306,32 @@ export async function GET(
       "patient_profile_id",
       appointment.patient_profile_id
     )
-    .is("deleted_at", null)
-    .order("created_at", {
+    .is("deleted_at", null);
+
+  if (sharedDocumentIds.length > 0) {
+    documentQuery =
+      documentQuery.or(
+        `uploaded_by_doctor_id.eq.${result.authorization.doctorId},id.in.(${sharedDocumentIds.join(
+          ","
+        )})`
+      );
+  } else {
+    documentQuery =
+      documentQuery.eq(
+        "uploaded_by_doctor_id",
+        result.authorization.doctorId
+      );
+  }
+
+  const {
+    data,
+    error,
+  } = await documentQuery.order(
+    "created_at",
+    {
       ascending: false,
-    });
+    }
+  );
 
   if (error) {
     return NextResponse.json(
