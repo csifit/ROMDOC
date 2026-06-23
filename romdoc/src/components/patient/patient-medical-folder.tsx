@@ -168,6 +168,13 @@ export default function PatientMedicalFolder() {
     string | null
   >(null);
 
+  const [
+    generatingPdfId,
+    setGeneratingPdfId,
+  ] = useState<
+    string | null
+  >(null);
+
   const [error, setError] =
     useState("");
 
@@ -311,6 +318,79 @@ export default function PatientMedicalFolder() {
       );
     } finally {
       setDownloadingId(
+        null
+      );
+    }
+  }
+
+  async function generatePdf(
+    documentId: string,
+    title: string
+  ) {
+    setGeneratingPdfId(
+      documentId
+    );
+    setError("");
+
+    try {
+      const response =
+        await fetch(
+          "/api/medical-folder/pdf",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              documentId,
+            }),
+          }
+        );
+
+      if (!response.ok) {
+        const payload =
+          (await response.json()) as FolderResponse;
+
+        throw new Error(
+          payload.error ??
+            "PDF-ul nu a putut fi generat."
+        );
+      }
+
+      const blob =
+        await response.blob();
+
+      const url =
+        URL.createObjectURL(
+          blob
+        );
+
+      const anchor =
+        document.createElement(
+          "a"
+        );
+
+      anchor.href = url;
+      anchor.download =
+        `${title}.pdf`;
+
+      document.body.appendChild(
+        anchor
+      );
+
+      anchor.click();
+      anchor.remove();
+
+      URL.revokeObjectURL(url);
+    } catch (pdfError) {
+      setError(
+        pdfError instanceof Error
+          ? pdfError.message
+          : "PDF-ul nu a putut fi generat."
+      );
+    } finally {
+      setGeneratingPdfId(
         null
       );
     }
@@ -521,6 +601,29 @@ export default function PatientMedicalFolder() {
                         </p>
                       </div>
                     )}
+
+                  {document.contentFormat ===
+                    "text" && (
+                    <button
+                      type="button"
+                      disabled={
+                        generatingPdfId ===
+                        document.id
+                      }
+                      onClick={() =>
+                        void generatePdf(
+                          document.id,
+                          document.title
+                        )
+                      }
+                      className="romdoc-button romdoc-button-primary mt-5"
+                    >
+                      {generatingPdfId ===
+                      document.id
+                        ? "Se generează..."
+                        : "Descarcă nota ca PDF"}
+                    </button>
+                  )}
 
                   <PatientDocumentSharing
                     documentId={document.id}

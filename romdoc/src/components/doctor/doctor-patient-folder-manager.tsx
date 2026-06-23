@@ -65,6 +65,11 @@ export default function DoctorPatientFolderManager({
     downloadingDocumentId,
     setDownloadingDocumentId,
   ] = useState<string | null>(null);
+
+  const [
+    generatingPdfId,
+    setGeneratingPdfId,
+  ] = useState<string | null>(null);
   const [error, setError] =
     useState("");
   const [message, setMessage] =
@@ -245,6 +250,75 @@ export default function DoctorPatientFolderManager({
       );
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function generatePdf(
+    documentId: string,
+    title: string
+  ) {
+    setGeneratingPdfId(
+      documentId
+    );
+    setError("");
+
+    try {
+      const response =
+        await fetch(
+          "/api/medical-folder/pdf",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              documentId,
+            }),
+          }
+        );
+
+      if (!response.ok) {
+        const result =
+          (await response.json()) as ApiResponse;
+
+        throw new Error(
+          result.error ??
+            "PDF-ul nu a putut fi generat."
+        );
+      }
+
+      const blob =
+        await response.blob();
+
+      const url =
+        URL.createObjectURL(blob);
+
+      const anchor =
+        document.createElement("a");
+
+      anchor.href = url;
+      anchor.download =
+        `${title}.pdf`;
+
+      document.body.appendChild(
+        anchor
+      );
+
+      anchor.click();
+      anchor.remove();
+
+      URL.revokeObjectURL(url);
+    } catch (pdfError) {
+      setError(
+        pdfError instanceof Error
+          ? pdfError.message
+          : "PDF-ul nu a putut fi generat."
+      );
+    } finally {
+      setGeneratingPdfId(
+        null
+      );
     }
   }
 
@@ -575,6 +649,29 @@ export default function DoctorPatientFolderManager({
                         }
                       </p>
                     )}
+
+                  {document.content_format ===
+                    "text" && (
+                    <button
+                      type="button"
+                      disabled={
+                        generatingPdfId ===
+                        document.id
+                      }
+                      onClick={() =>
+                        void generatePdf(
+                          document.id,
+                          document.title
+                        )
+                      }
+                      className="romdoc-button romdoc-button-secondary romdoc-button-sm mt-3"
+                    >
+                      {generatingPdfId ===
+                      document.id
+                        ? "Se generează..."
+                        : "Descarcă PDF"}
+                    </button>
+                  )}
 
                   {document.content_format ===
                     "file" && (

@@ -738,6 +738,8 @@ export async function DELETE(
     )
     .select(`
       id,
+      patient_profile_id,
+      appointment_id,
       uploaded_by_profile_id,
       uploaded_by_doctor_id,
       content_format,
@@ -820,6 +822,58 @@ export async function DELETE(
         "Medical Storage removal failed after soft deletion:",
         removalError
       );
+
+      await admin
+        .from(
+          "patient_medical_documents"
+        )
+        .update({
+          storage_cleanup_attempted_at:
+            new Date().toISOString(),
+          storage_removal_error:
+            removalError.message.slice(
+              0,
+              2000
+            ),
+        })
+        .eq("id", document.id);
+    } else {
+      const removedAt =
+        new Date().toISOString();
+
+      await admin
+        .from(
+          "patient_medical_documents"
+        )
+        .update({
+          storage_removed_at:
+            removedAt,
+          storage_cleanup_attempted_at:
+            removedAt,
+          storage_removal_error:
+            null,
+        })
+        .eq("id", document.id);
+
+      await admin
+        .from(
+          "patient_medical_document_events"
+        )
+        .insert({
+          document_id:
+            document.id,
+          patient_profile_id:
+            document.patient_profile_id,
+          appointment_id:
+            document.appointment_id,
+          event_type:
+            "storage_removed",
+          actor_profile_id:
+            result.authorization.userId,
+          actor_role:
+            "doctor",
+          metadata: {},
+        });
     }
   }
 

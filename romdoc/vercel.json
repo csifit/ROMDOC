@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/verification-expiration",
       "schedule": "15 2 * * *"
+    },
+    {
+      "path": "/api/cron/medical-folder-cleanup",
+      "schedule": "45 2 * * *"
     }
   ]
 }
