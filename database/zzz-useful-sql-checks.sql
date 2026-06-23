@@ -84,3 +84,19 @@ from public.transition_own_appointment(
 -- =====================================================
 
 -- =====================================================
+-- 16. Verify RLS policies
+-- =====================================================
+
+select
+  schemaname,
+  tablename,
+  policyname,
+  cmd
+from pg_policies
+where tablename in (
+  'patient_medical_documents',
+  'objects'
+)
+order by schemaname, tablename, policyname;
+
+-- =====================================================
