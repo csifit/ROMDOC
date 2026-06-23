@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
+
 import AppointmentActions from "@/components/admin/appointment-actions";
 import CreateAppointmentForm from "@/components/doctor/create-appointment-form";
+import DoctorPatientFolderManager from "@/components/doctor/doctor-patient-folder-manager";
 import { createClient } from "@/lib/supabase/server";
 
 type ClinicTranslation = {
@@ -26,6 +28,7 @@ type ClinicOption = {
 
 type Appointment = {
   id: string;
+  patient_profile_id: string | null;
   patient_name: string;
   patient_email: string;
   patient_phone: string;
@@ -97,6 +100,9 @@ function getStatusLabel(status: string) {
     case "completed":
       return "Finalizată";
 
+    case "no_show":
+      return "Neprezentare";
+
     default:
       return "În așteptare";
   }
@@ -115,6 +121,9 @@ function getStatusClasses(status: string) {
 
     case "completed":
       return "bg-gray-200 text-gray-800";
+
+    case "no_show":
+      return "bg-orange-100 text-orange-900";
 
     default:
       return "bg-amber-100 text-amber-800";
@@ -140,21 +149,17 @@ function getSourceLabel(source: string) {
   }
 }
 
-function getClinicName(
-  clinic: ClinicRelation | null
-) {
+function getClinicName(clinic: ClinicRelation | null) {
   if (!clinic) {
     return "Clinică indisponibilă";
   }
 
-  const romanianTranslation =
-    clinic.clinic_translations?.find(
-      (translation: ClinicTranslation) =>
-        translation.locale === "ro"
-    );
+  const romanianTranslation = clinic.clinic_translations?.find(
+    (translation: ClinicTranslation) =>
+      translation.locale === "ro"
+  );
 
-  const fallbackTranslation =
-    clinic.clinic_translations?.[0];
+  const fallbackTranslation = clinic.clinic_translations?.[0];
 
   return (
     romanianTranslation?.name ??
@@ -178,9 +183,7 @@ export default async function DoctorAppointmentsPage() {
   const { data: profile, error: profileError } =
     await supabase
       .from("profiles")
-      .select(
-        "role, first_name, last_name"
-      )
+      .select("role, first_name, last_name")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -211,10 +214,7 @@ export default async function DoctorAppointmentsPage() {
 
   const displayName =
     profile.first_name || profile.last_name
-      ? [
-          profile.first_name,
-          profile.last_name,
-        ]
+      ? [profile.first_name, profile.last_name]
           .filter(Boolean)
           .join(" ")
       : doctor
@@ -313,8 +313,7 @@ export default async function DoctorAppointmentsPage() {
       .filter(
         (
           clinic: ClinicOption | null
-        ): clinic is ClinicOption =>
-          clinic !== null
+        ): clinic is ClinicOption => clinic !== null
       )
       .sort(
         (
@@ -334,6 +333,7 @@ export default async function DoctorAppointmentsPage() {
     .from("appointments")
     .select(`
       id,
+      patient_profile_id,
       patient_name,
       patient_email,
       patient_phone,
@@ -401,9 +401,7 @@ export default async function DoctorAppointmentsPage() {
           </div>
         )}
 
-        <CreateAppointmentForm
-          clinics={clinicOptions}
-        />
+        <CreateAppointmentForm clinics={clinicOptions} />
 
         <section className="mt-10">
           <div className="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
@@ -429,10 +427,9 @@ export default async function DoctorAppointmentsPage() {
             <div className="space-y-5">
               {appointments.map(
                 (appointment: Appointment) => {
-                  const clinic =
-                    getFirstRelation(
-                      appointment.clinics
-                    );
+                  const clinic = getFirstRelation(
+                    appointment.clinics
+                  );
 
                   return (
                     <article
@@ -479,9 +476,7 @@ export default async function DoctorAppointmentsPage() {
                           </p>
 
                           <p className="mt-1 text-gray-900">
-                            {getClinicName(
-                              clinic
-                            )}
+                            {getClinicName(clinic)}
                           </p>
                         </div>
 
@@ -574,36 +569,34 @@ export default async function DoctorAppointmentsPage() {
                           </p>
 
                           <p className="mt-2 whitespace-pre-wrap text-blue-900">
-                            {
-                              appointment.reschedule_reason
-                            }
+                            {appointment.reschedule_reason}
                           </p>
                         </div>
                       )}
 
                       <AppointmentActions
-                        appointmentId={
-                          appointment.id
-                        }
-                        currentStatus={
-                          appointment.status
-                        }
-                        requestedDate={
-                          appointment.requested_date
-                        }
-                        requestedTime={
-                          appointment.requested_time
-                        }
-                        scheduledDate={
-                          appointment.scheduled_date
-                        }
-                        scheduledTime={
-                          appointment.scheduled_time
-                        }
+                        appointmentId={appointment.id}
+                        currentStatus={appointment.status}
+                        requestedDate={appointment.requested_date}
+                        requestedTime={appointment.requested_time}
+                        scheduledDate={appointment.scheduled_date}
+                        scheduledTime={appointment.scheduled_time}
                         currentReason={
                           appointment.reschedule_reason
                         }
                       />
+
+                      {appointment.patient_profile_id ? (
+                        <DoctorPatientFolderManager
+                          appointmentId={appointment.id}
+                          appointmentStatus={appointment.status}
+                        />
+                      ) : (
+                        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                          Dosarul medical este disponibil numai pentru
+                          programările asociate unui cont de pacient.
+                        </div>
+                      )}
                     </article>
                   );
                 }
