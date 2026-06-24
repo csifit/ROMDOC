@@ -13,6 +13,7 @@ type SendAppointmentReminderEmailInput = {
   scheduledDate: string;
   scheduledTime: string;
   cancellationUrl: string;
+  idempotencyKey: string;
 };
 
 export type SendAppointmentReminderEmailResult = {
@@ -167,8 +168,9 @@ export async function sendAppointmentReminderEmail(
   const resend = new Resend(apiKey);
 
   try {
-    const result = await resend.emails.send({
-      from,
+    const result = await resend.emails.send(
+      {
+        from,
       to: input.patientEmail,
       subject: `${content.subject} – ${input.doctorName}`,
       html: `
@@ -240,8 +242,8 @@ export async function sendAppointmentReminderEmail(
           </body>
         </html>
       `,
-      text: [
-        "RomDoc",
+        text: [
+          "RomDoc",
         "",
         content.heading,
         "",
@@ -258,8 +260,13 @@ export async function sendAppointmentReminderEmail(
         `Vezi sau anulează programarea: ${cancellationUrl.toString()}`,
         "",
         "Trebuie să te autentifici în contul RomDoc înainte de anulare.",
-      ].join("\n"),
-    });
+        ].join("\n"),
+      },
+      {
+        idempotencyKey:
+          input.idempotencyKey,
+      }
+    );
 
     if (result.error) {
       const normalized = normalizeError(result.error);

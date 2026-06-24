@@ -8,6 +8,10 @@ import {
   sendAppointmentReminderEmail,
   type AppointmentReminderType,
 } from "@/lib/appointments/send-appointment-reminder-email";
+import {
+  logAppointmentNotificationDelivery,
+  reminderTypeToNotificationType,
+} from "@/lib/appointments/log-appointment-notification-delivery";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -210,6 +214,59 @@ export async function GET(
   };
 
   for (const reminder of claimed) {
+    const idempotencyKey =
+      `appointment-reminder/${reminder.id}`;
+
+    const {
+      data: alreadySent,
+      error: duplicateCheckError,
+    } = await admin.rpc(
+      "appointment_reminder_already_sent",
+      {
+        target_reminder_schedule_id:
+          reminder.id,
+      }
+    );
+
+    if (duplicateCheckError) {
+      console.error(
+        "Reminder duplicate check failed:",
+        duplicateCheckError
+      );
+
+      await admin.rpc(
+        "finalize_appointment_reminder",
+        {
+          reminder_id: reminder.id,
+          worker_id: workerId,
+          final_status: "failed",
+          error_code:
+            "DUPLICATE_CHECK_FAILED",
+          error_message:
+            duplicateCheckError.message,
+        }
+      );
+
+      summary.failed += 1;
+      continue;
+    }
+
+    if (alreadySent) {
+      await admin.rpc(
+        "finalize_appointment_reminder",
+        {
+          reminder_id: reminder.id,
+          worker_id: workerId,
+          final_status: "sent",
+          error_code: null,
+          error_message: null,
+        }
+      );
+
+      summary.sent += 1;
+      continue;
+    }
+
     const {
       data: appointmentData,
       error: appointmentError,
@@ -268,6 +325,30 @@ export async function GET(
         appointment.status
       )
     ) {
+      await logAppointmentNotificationDelivery({
+        appointmentId: appointment.id,
+        notificationType:
+          reminderTypeToNotificationType(
+            reminder.reminder_type
+          ),
+        recipientEmail:
+          appointment.patient_email,
+        triggeredByProfileId: null,
+        reminderScheduleId: reminder.id,
+        appointmentOccurrenceAt:
+          reminder.appointment_occurrence_at,
+        idempotencyKey,
+        result: {
+          sent: false,
+          skipped: true,
+          providerMessageId: null,
+          errorCode:
+            "APPOINTMENT_NOT_ELIGIBLE",
+          errorMessage:
+            `Appointment status is ${appointment.status}.`,
+        },
+      });
+
       await admin.rpc(
         "finalize_appointment_reminder",
         {
@@ -288,6 +369,31 @@ export async function GET(
       !appointment.scheduled_time ||
       !appointment.patient_email.trim()
     ) {
+      await logAppointmentNotificationDelivery({
+        appointmentId: appointment.id,
+        notificationType:
+          reminderTypeToNotificationType(
+            reminder.reminder_type
+          ),
+        recipientEmail:
+          appointment.patient_email ||
+          "missing@invalid.local",
+        triggeredByProfileId: null,
+        reminderScheduleId: reminder.id,
+        appointmentOccurrenceAt:
+          reminder.appointment_occurrence_at,
+        idempotencyKey,
+        result: {
+          sent: false,
+          skipped: true,
+          providerMessageId: null,
+          errorCode:
+            "MISSING_APPOINTMENT_DATA",
+          errorMessage:
+            "Scheduled date, time, or patient email is missing.",
+        },
+      });
+
       await admin.rpc(
         "finalize_appointment_reminder",
         {
@@ -315,7 +421,39 @@ export async function GET(
         scheduledTime: appointment.scheduled_time,
         cancellationUrl:
           `${request.nextUrl.origin}/patient-dashboard`,
+        idempotencyKey,
       });
+
+    const logResult =
+      await logAppointmentNotificationDelivery({
+        appointmentId: appointment.id,
+        notificationType:
+          reminderTypeToNotificationType(
+            reminder.reminder_type
+          ),
+        recipientEmail:
+          appointment.patient_email,
+        triggeredByProfileId: null,
+        reminderScheduleId: reminder.id,
+        appointmentOccurrenceAt:
+          reminder.appointment_occurrence_at,
+        idempotencyKey,
+        result: sendResult,
+      });
+
+    if (
+      sendResult.sent &&
+      !logResult.logged &&
+      !logResult.duplicate
+    ) {
+      console.error(
+        "Successful reminder email was sent but its delivery log failed:",
+        {
+          reminderId: reminder.id,
+          idempotencyKey,
+        }
+      );
+    }
 
     const finalStatus = sendResult.sent
       ? "sent"
