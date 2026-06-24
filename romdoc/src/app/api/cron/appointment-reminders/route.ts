@@ -56,6 +56,7 @@ type AppointmentRecord = {
   scheduled_time: string | null;
   doctor_id: string;
   clinic_id: string | null;
+  patient_profile_id: string | null;
   doctors: DoctorRelation | DoctorRelation[] | null;
   clinics: ClinicRelation | ClinicRelation[] | null;
 };
@@ -281,6 +282,7 @@ export async function GET(
         scheduled_time,
         doctor_id,
         clinic_id,
+        patient_profile_id,
         doctors (
           slug,
           profiles (
@@ -362,6 +364,126 @@ export async function GET(
 
       summary.cancelled += 1;
       continue;
+    }
+
+    if (
+      appointment.patient_profile_id
+    ) {
+      const {
+        data: preferenceData,
+        error: preferenceError,
+      } = await admin
+        .from(
+          "patient_reminder_preferences"
+        )
+        .select(`
+          email_reminders_enabled,
+          reminder_48_hours_enabled,
+          reminder_24_hours_enabled
+        `)
+        .eq(
+          "patient_profile_id",
+          appointment.patient_profile_id
+        )
+        .maybeSingle();
+
+      if (preferenceError) {
+        console.error(
+          "Patient reminder preference lookup failed:",
+          preferenceError
+        );
+
+        await admin.rpc(
+          "finalize_appointment_reminder",
+          {
+            reminder_id: reminder.id,
+            worker_id: workerId,
+            final_status: "failed",
+            error_code:
+              "PREFERENCE_LOOKUP_FAILED",
+            error_message:
+              preferenceError.message,
+          }
+        );
+
+        summary.failed += 1;
+        continue;
+      }
+
+      const emailEnabled =
+        preferenceData
+          ?.email_reminders_enabled ??
+        true;
+
+      const reminderTypeEnabled =
+        reminder.reminder_type ===
+        "48_hours"
+          ? preferenceData
+              ?.reminder_48_hours_enabled ??
+            true
+          : preferenceData
+              ?.reminder_24_hours_enabled ??
+            true;
+
+      if (
+        !emailEnabled ||
+        !reminderTypeEnabled
+      ) {
+        const preferenceCode =
+          !emailEnabled
+            ? "EMAIL_REMINDERS_DISABLED"
+            : reminder.reminder_type ===
+                "48_hours"
+              ? "REMINDER_48_HOURS_DISABLED"
+              : "REMINDER_24_HOURS_DISABLED";
+
+        const skippedResult = {
+          sent: false,
+          skipped: true,
+          providerMessageId: null,
+          errorCode: preferenceCode,
+          errorMessage:
+            "Patient reminder preference disabled this email.",
+        };
+
+        await logAppointmentNotificationDelivery({
+          appointmentId:
+            appointment.id,
+          notificationType:
+            reminderTypeToNotificationType(
+              reminder.reminder_type
+            ),
+          recipientEmail:
+            appointment.patient_email,
+          triggeredByProfileId:
+            appointment.patient_profile_id,
+          reminderScheduleId:
+            reminder.id,
+          appointmentOccurrenceAt:
+            reminder.appointment_occurrence_at,
+          idempotencyKey,
+          result: skippedResult,
+        });
+
+        await admin.rpc(
+          "finalize_appointment_reminder",
+          {
+            reminder_id:
+              reminder.id,
+            worker_id:
+              workerId,
+            final_status:
+              "skipped",
+            error_code:
+              preferenceCode,
+            error_message:
+              skippedResult.errorMessage,
+          }
+        );
+
+        summary.skipped += 1;
+        continue;
+      }
     }
 
     if (
