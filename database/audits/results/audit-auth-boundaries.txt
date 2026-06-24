@@ -1,0 +1,127 @@
+ node scripts/audit-auth-boundaries.cjs
+
+API route inventory
+-------------------
+- src/app/api/admin/cities/route.ts | GET,POST,PATCH | auth | role-check | no-rate-limit
+- src/app/api/admin/clinics/route.ts | GET,PATCH | auth | role-check | no-rate-limit
+- src/app/api/admin/doctors/route.ts | GET,PATCH | auth | role-check | no-rate-limit
+- src/app/api/admin/reviews/route.ts | GET,PATCH | auth | role-check | no-rate-limit
+- src/app/api/admin/specialties/route.ts | GET,POST,PATCH | auth | role-check | no-rate-limit
+- src/app/api/admin/users/route.ts | GET,PATCH | auth | role-check | no-rate-limit
+- src/app/api/admin/verifications/route.ts | GET,PATCH | auth | role-check | no-rate-limit
+- src/app/api/appointments/lifecycle/route.ts | PATCH | auth | no-role-check | no-rate-limit
+- src/app/api/appointments/route.ts | POST | auth | no-role-check | no-rate-limit
+- src/app/api/availability/slots/route.ts | GET | no-auth | no-role-check | no-rate-limit
+- src/app/api/cron/appointment-reminders/route.ts | GET | no-auth | no-role-check | no-rate-limit | cron
+- src/app/api/cron/medical-folder-cleanup/route.ts | GET | no-auth | no-role-check | no-rate-limit | cron
+- src/app/api/cron/verification-expiration/route.ts | GET | no-auth | no-role-check | no-rate-limit | cron
+- src/app/api/doctor/appointments/route.ts | POST | auth | role-check | no-rate-limit
+- src/app/api/doctor/availability/route.ts | POST,PATCH,DELETE | auth | role-check | no-rate-limit
+- src/app/api/doctor/clinics/route.ts | GET,POST | auth | role-check | no-rate-limit
+- src/app/api/doctor/patient-folder/download/route.ts | POST | auth | no-role-check | no-rate-limit
+- src/app/api/doctor/patient-folder/route.ts | GET,POST,DELETE | auth | role-check | rate-limit
+- src/app/api/doctor/photo/route.ts | POST,DELETE | auth | role-check | rate-limit
+- src/app/api/doctor/profile/route.ts | PATCH | auth | role-check | no-rate-limit
+- src/app/api/doctor/services/route.ts | POST,PATCH,DELETE | auth | role-check | no-rate-limit
+- src/app/api/doctor/specialties/route.ts | PATCH | auth | role-check | no-rate-limit
+- src/app/api/doctor/staff/route.ts | GET,POST,PATCH | auth | role-check | no-rate-limit
+- src/app/api/doctor/verification/documents/route.ts | POST,DELETE | auth | role-check | rate-limit
+- src/app/api/doctor/verification/route.ts | GET,PATCH | auth | role-check | no-rate-limit
+- src/app/api/google/places/details/route.ts | POST | no-auth | no-role-check | no-rate-limit
+- src/app/api/medical-folder/pdf/route.ts | POST | auth | role-check | no-rate-limit
+- src/app/api/patient/appointments/[appointmentId]/route.ts | GET,PATCH | auth | role-check | no-rate-limit
+- src/app/api/patient/folder/audit/route.ts | GET | auth | no-role-check | no-rate-limit
+- src/app/api/patient/folder/route.ts | GET,POST | auth | role-check | no-rate-limit
+- src/app/api/patient/folder/shares/route.ts | GET,POST,DELETE | auth | role-check | no-rate-limit
+- src/app/api/patient/reminder-preferences/route.ts | GET,PUT | auth | role-check | no-rate-limit
+- src/app/api/patient/reviews/route.ts | GET,POST | auth | role-check | no-rate-limit
+- src/app/api/public/clinics/map/route.ts | GET | no-auth | no-role-check | no-rate-limit
+- src/app/api/public/doctors/nearby/route.ts | GET | no-auth | no-role-check | no-rate-limit
+- src/app/api/staff/appointments/route.ts | GET | auth | role-check | no-rate-limit
+- src/app/api/stripe/create-checkout-session/route.ts | POST | auth | no-role-check | rate-limit
+- src/app/api/stripe/customer-portal/route.ts | POST | auth | no-role-check | no-rate-limit
+- src/app/api/stripe/webhook/route.ts | POST | no-auth | no-role-check | no-rate-limit | webhook
+
+High-risk findings
+------------------
+- src/app/api/google/places/details/route.ts — mutation route has no obvious authentication
+
+Review findings
+---------------
+- src/app/api/admin/cities/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/admin/cities/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/admin/clinics/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/admin/clinics/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/admin/doctors/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/admin/doctors/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/admin/reviews/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/admin/reviews/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/admin/specialties/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/admin/specialties/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/admin/users/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/admin/users/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/admin/verifications/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/admin/verifications/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/appointments/lifecycle/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/appointments/lifecycle/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/appointments/lifecycle/route.ts — admin client used without an obvious role check in the same file
+- src/app/api/appointments/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/appointments/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/doctor/appointments/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/doctor/appointments/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/doctor/availability/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/doctor/availability/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/doctor/clinics/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/doctor/clinics/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/doctor/patient-folder/download/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/doctor/patient-folder/download/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/doctor/patient-folder/download/route.ts — admin client used without an obvious role check in the same file
+- src/app/api/doctor/patient-folder/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/doctor/photo/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/doctor/profile/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/doctor/profile/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/doctor/services/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/doctor/services/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/doctor/specialties/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/doctor/specialties/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/doctor/staff/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/doctor/staff/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/doctor/verification/documents/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/doctor/verification/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/doctor/verification/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/google/places/details/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/medical-folder/pdf/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/medical-folder/pdf/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/patient/appointments/[appointmentId]/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/patient/appointments/[appointmentId]/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/patient/folder/audit/route.ts — admin client used without an obvious role check in the same file
+- src/app/api/patient/folder/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/patient/folder/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/patient/folder/shares/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/patient/folder/shares/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/patient/reminder-preferences/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/patient/reminder-preferences/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/patient/reviews/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/patient/reviews/route.ts — mutation route has no visible persistent rate limit
+- src/app/api/public/clinics/map/route.ts — admin client used without an obvious role check in the same file
+- src/app/api/public/doctors/nearby/route.ts — admin client used without an obvious role check in the same file
+- src/app/api/stripe/create-checkout-session/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/stripe/create-checkout-session/route.ts — admin client used without an obvious role check in the same file
+- src/app/api/stripe/customer-portal/route.ts — authenticated cookie-backed mutation has no explicit same-origin check
+- src/app/api/stripe/customer-portal/route.ts — mutation route has no visible persistent rate limit
+
+Missing security headers
+------------------------
+- Content-Security-Policy
+- X-Content-Type-Options
+- Referrer-Policy
+- Permissions-Policy
+- Strict-Transport-Security
+- frame-ancestors or X-Frame-Options
+
+Summary
+-------
+API routes scanned: 39
+High-risk findings: 1
+Review findings: 61
+Missing headers: 6

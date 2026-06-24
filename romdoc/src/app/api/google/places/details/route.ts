@@ -2,9 +2,15 @@ import {
   NextRequest,
   NextResponse,
 } from "next/server";
+
 import {
   getGooglePlaceDetails,
 } from "@/lib/google-maps/get-place-details";
+import {
+  consumeRateLimit,
+  getRequestIp,
+  rateLimitResponse,
+} from "@/lib/security/rate-limit";
 
 type RequestBody = {
   placeId?: unknown;
@@ -19,6 +25,12 @@ export const dynamic =
 const MAX_PLACE_ID_LENGTH =
   512;
 
+const GOOGLE_PLACES_LIMIT =
+  60;
+
+const GOOGLE_PLACES_WINDOW_SECONDS =
+  30 * 60;
+
 function jsonError(
   message: string,
   status: number
@@ -29,6 +41,10 @@ function jsonError(
     },
     {
       status,
+      headers: {
+        "Cache-Control":
+          "private, no-store",
+      },
     }
   );
 }
@@ -36,6 +52,26 @@ function jsonError(
 export async function POST(
   request: NextRequest
 ): Promise<Response> {
+  const requestIp =
+    getRequestIp(request);
+
+  const rateLimit =
+    await consumeRateLimit({
+      namespace:
+        "google-place-details",
+      identifier: requestIp,
+      limit:
+        GOOGLE_PLACES_LIMIT,
+      windowSeconds:
+        GOOGLE_PLACES_WINDOW_SECONDS,
+    });
+
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(
+      rateLimit
+    );
+  }
+
   try {
     let body: RequestBody;
 
@@ -93,6 +129,13 @@ export async function POST(
         headers: {
           "Cache-Control":
             "private, no-store",
+          "X-RateLimit-Remaining":
+            String(
+              Math.max(
+                rateLimit.remaining,
+                0
+              )
+            ),
         },
       }
     );
@@ -103,9 +146,7 @@ export async function POST(
     );
 
     return jsonError(
-      error instanceof Error
-        ? error.message
-        : "Adresa nu a putut fi verificată.",
+      "Adresa nu a putut fi verificată.",
       500
     );
   }

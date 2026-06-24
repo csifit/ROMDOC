@@ -1,5 +1,13 @@
-import { NextResponse } from "next/server";
+import {
+  NextRequest,
+  NextResponse,
+} from "next/server";
 import { Resend } from "resend";
+
+import {
+  consumeRateLimit,
+  rateLimitResponse,
+} from "@/lib/security/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 type AppointmentRequestBody = {
@@ -31,9 +39,10 @@ function isValidDate(value: string) {
     return false;
   }
 
-  const parsedDate = new Date(
-    `${value}T12:00:00`
-  );
+  const parsedDate =
+    new Date(
+      `${value}T12:00:00`
+    );
 
   return !Number.isNaN(
     parsedDate.getTime()
@@ -46,21 +55,28 @@ function isValidTime(value: string) {
   );
 }
 
-function getLocalDateString(date: Date) {
-  const year = date.getFullYear();
+function getLocalDateString(
+  date: Date
+) {
+  const year =
+    date.getFullYear();
 
-  const month = String(
-    date.getMonth() + 1
-  ).padStart(2, "0");
+  const month =
+    String(
+      date.getMonth() + 1
+    ).padStart(2, "0");
 
-  const day = String(
-    date.getDate()
-  ).padStart(2, "0");
+  const day =
+    String(
+      date.getDate()
+    ).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
 }
 
-function formatAppointmentDate(date: string) {
+function formatAppointmentDate(
+  date: string
+) {
   return new Intl.DateTimeFormat(
     "ro-RO",
     {
@@ -69,11 +85,15 @@ function formatAppointmentDate(date: string) {
       year: "numeric",
     }
   ).format(
-    new Date(`${date}T12:00:00`)
+    new Date(
+      `${date}T12:00:00`
+    )
   );
 }
 
-function escapeHtml(value: string) {
+function escapeHtml(
+  value: string
+) {
   return value
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -86,7 +106,8 @@ function getFriendlyAppointmentError(
   message: string | undefined
 ) {
   const normalizedMessage =
-    message?.toLowerCase() ?? "";
+    message?.toLowerCase() ??
+    "";
 
   if (
     normalizedMessage.includes(
@@ -153,12 +174,41 @@ function getFriendlyAppointmentError(
   return "Intervalul selectat nu mai este disponibil. Reîncarcă orele și încearcă din nou.";
 }
 
-export async function POST(
-  request: Request
+function jsonError(
+  message: string,
+  status: number
 ) {
+  return NextResponse.json(
+    {
+      error: message,
+    },
+    {
+      status,
+      headers: {
+        "Cache-Control":
+          "no-store",
+      },
+    }
+  );
+}
+
+export async function POST(
+  request: NextRequest
+): Promise<Response> {
   try {
-    const body =
-      (await request.json()) as AppointmentRequestBody;
+    let body:
+      AppointmentRequestBody;
+
+    try {
+      body =
+        (await request.json()) as
+          AppointmentRequestBody;
+    } catch {
+      return jsonError(
+        "Cererea nu conține date JSON valide.",
+        400
+      );
+    }
 
     const doctorId =
       body.doctorId?.trim();
@@ -185,10 +235,13 @@ export async function POST(
       body.requestedTime?.trim();
 
     const durationMinutes =
-      Number(body.durationMinutes);
+      Number(
+        body.durationMinutes
+      );
 
     const notes =
-      body.notes?.trim() || null;
+      body.notes?.trim() ||
+      null;
 
     if (
       !doctorId ||
@@ -200,86 +253,75 @@ export async function POST(
       !requestedDate ||
       !requestedTime
     ) {
-      return NextResponse.json(
-        {
-          error:
-            "Completează toate câmpurile obligatorii și selectează o oră disponibilă.",
-        },
-        {
-          status: 400,
-        }
+      return jsonError(
+        "Completează toate câmpurile obligatorii și selectează o oră disponibilă.",
+        400
       );
     }
 
     if (!isUuid(doctorId)) {
-      return NextResponse.json(
-        {
-          error:
-            "Medicul selectat nu este valid.",
-        },
-        {
-          status: 400,
-        }
+      return jsonError(
+        "Medicul selectat nu este valid.",
+        400
       );
     }
 
     if (!isUuid(clinicId)) {
-      return NextResponse.json(
-        {
-          error:
-            "Clinica selectată nu este validă.",
-        },
-        {
-          status: 400,
-        }
+      return jsonError(
+        "Clinica selectată nu este validă.",
+        400
       );
     }
 
-    if (patientName.length < 2) {
-      return NextResponse.json(
-        {
-          error:
-            "Introdu un nume valid.",
-        },
-        {
-          status: 400,
-        }
+    if (
+      patientName.length < 2 ||
+      patientName.length > 120
+    ) {
+      return jsonError(
+        "Introdu un nume valid.",
+        400
       );
     }
 
-    if (patientPhone.length < 7) {
-      return NextResponse.json(
-        {
-          error:
-            "Introdu un număr de telefon valid.",
-        },
-        {
-          status: 400,
-        }
+    if (
+      patientPhone.length < 7 ||
+      patientPhone.length > 40
+    ) {
+      return jsonError(
+        "Introdu un număr de telefon valid.",
+        400
       );
     }
 
-    if (!isValidDate(requestedDate)) {
-      return NextResponse.json(
-        {
-          error:
-            "Data programării nu este validă.",
-        },
-        {
-          status: 400,
-        }
+    if (
+      doctorName.length > 160 ||
+      clinicName.length > 200
+    ) {
+      return jsonError(
+        "Datele medicului sau clinicii nu sunt valide.",
+        400
       );
     }
 
-    if (!isValidTime(requestedTime)) {
-      return NextResponse.json(
-        {
-          error:
-            "Ora programării nu este validă.",
-        },
-        {
-          status: 400,
-        }
+    if (
+      !isValidDate(
+        requestedDate
+      )
+    ) {
+      return jsonError(
+        "Data programării nu este validă.",
+        400
+      );
+    }
+
+    if (
+      !isValidTime(
+        requestedTime
+      )
+    ) {
+      return jsonError(
+        "Ora programării nu este validă.",
+        400
       );
     }
 
@@ -290,14 +332,9 @@ export async function POST(
       durationMinutes < 5 ||
       durationMinutes > 480
     ) {
-      return NextResponse.json(
-        {
-          error:
-            "Durata programării nu este validă.",
-        },
-        {
-          status: 400,
-        }
+      return jsonError(
+        "Durata programării nu este validă.",
+        400
       );
     }
 
@@ -305,159 +342,176 @@ export async function POST(
       notes &&
       notes.length > 2000
     ) {
-      return NextResponse.json(
-        {
-          error:
-            "Mesajul pentru medic este prea lung.",
-        },
-        {
-          status: 400,
-        }
+      return jsonError(
+        "Mesajul pentru medic este prea lung.",
+        400
       );
     }
 
     const today =
-      getLocalDateString(new Date());
+      getLocalDateString(
+        new Date()
+      );
 
-    if (requestedDate < today) {
-      return NextResponse.json(
-        {
-          error:
-            "Nu poți solicita o programare pentru o dată din trecut.",
-        },
-        {
-          status: 400,
-        }
+    if (
+      requestedDate < today
+    ) {
+      return jsonError(
+        "Nu poți solicita o programare pentru o dată din trecut.",
+        400
       );
     }
 
-    const maximumDate = new Date();
+    const maximumDate =
+      new Date();
 
     maximumDate.setDate(
-      maximumDate.getDate() + 180
+      maximumDate.getDate() +
+        180
     );
 
     if (
       requestedDate >
-      getLocalDateString(maximumDate)
+      getLocalDateString(
+        maximumDate
+      )
     ) {
-      return NextResponse.json(
-        {
-          error:
-            "Programările pot fi solicitate cu maximum 180 de zile în avans.",
-        },
-        {
-          status: 400,
-        }
+      return jsonError(
+        "Programările pot fi solicitate cu maximum 180 de zile în avans.",
+        400
       );
     }
 
     const supabase =
       await createClient();
 
-    /*
-     * Appointment creation requires an authenticated
-     * patient account.
-     */
     const {
       data: { user },
       error: userError,
-    } = await supabase.auth.getUser();
+    } =
+      await supabase.auth.getUser();
 
-    if (userError || !user) {
-      return NextResponse.json(
-        {
-          error:
-            "Trebuie să fii autentificat pentru a solicita o programare.",
-        },
-        {
-          status: 401,
-        }
+    if (
+      userError ||
+      !user
+    ) {
+      return jsonError(
+        "Trebuie să fii autentificat pentru a solicita o programare.",
+        401
       );
     }
 
-    if (!user.email_confirmed_at) {
-      return NextResponse.json(
-        {
-          error:
-            "Confirmă adresa de e-mail înainte de a solicita o programare.",
-        },
-        {
-          status: 403,
-        }
+    if (
+      !user.email_confirmed_at
+    ) {
+      return jsonError(
+        "Confirmă adresa de e-mail înainte de a solicita o programare.",
+        403
       );
     }
 
     if (!user.email) {
-      return NextResponse.json(
-        {
-          error:
-            "Contul autentificat nu are o adresă de e-mail validă.",
-        },
-        {
-          status: 400,
-        }
+      return jsonError(
+        "Contul autentificat nu are o adresă de e-mail validă.",
+        400
       );
     }
 
     const {
-      data: patientProfile,
-      error: patientProfileError,
-    } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("id", user.id)
-      .maybeSingle();
+      data:
+        patientProfile,
+      error:
+        patientProfileError,
+    } =
+      await supabase
+        .from("profiles")
+        .select(`
+          id,
+          role,
+          account_status
+        `)
+        .eq(
+          "id",
+          user.id
+        )
+        .maybeSingle();
 
-    if (patientProfileError) {
+    if (
+      patientProfileError
+    ) {
       console.error(
         "Patient profile lookup failed:",
         patientProfileError
       );
 
-      return NextResponse.json(
-        {
-          error:
-            "Contul pacientului nu a putut fi verificat.",
-        },
-        {
-          status: 500,
-        }
+      return jsonError(
+        "Contul pacientului nu a putut fi verificat.",
+        500
       );
     }
 
     if (
       !patientProfile ||
-      !["patient", "user"].includes(
+      ![
+        "patient",
+        "user",
+      ].includes(
         patientProfile.role
+      ) ||
+      (
+        patientProfile
+          .account_status &&
+        patientProfile
+          .account_status !==
+          "active"
       )
     ) {
-      return NextResponse.json(
-        {
-          error:
-            "Doar conturile de pacient pot solicita programări.",
-        },
-        {
-          status: 403,
-        }
+      return jsonError(
+        "Doar conturile active de pacient pot solicita programări.",
+        403
+      );
+    }
+
+    const rateLimit =
+      await consumeRateLimit({
+        namespace:
+          "patient-appointment-scheduling",
+        identifier:
+          user.id,
+        limit: 10,
+        windowSeconds:
+          60 * 60,
+      });
+
+    if (
+      !rateLimit.allowed
+    ) {
+      return rateLimitResponse(
+        rateLimit
       );
     }
 
     const patientEmail =
-      user.email.trim().toLowerCase();
+      user.email
+        .trim()
+        .toLowerCase();
 
-    /*
-     * Verify that the doctor is active.
-     */
     const {
       data: doctor,
       error: doctorError,
-    } = await supabase
-      .from("doctors")
-      .select("id")
-      .eq("id", doctorId)
-      .eq("status", "active")
-      .maybeSingle();
+    } =
+      await supabase
+        .from("doctors")
+        .select("id")
+        .eq(
+          "id",
+          doctorId
+        )
+        .eq(
+          "status",
+          "active"
+        )
+        .maybeSingle();
 
     if (doctorError) {
       console.error(
@@ -465,92 +519,79 @@ export async function POST(
         doctorError
       );
 
-      return NextResponse.json(
-        {
-          error:
-            "Medicul selectat nu a putut fi verificat.",
-        },
-        {
-          status: 500,
-        }
+      return jsonError(
+        "Medicul selectat nu a putut fi verificat.",
+        500
       );
     }
 
     if (!doctor) {
-      return NextResponse.json(
-        {
-          error:
-            "Medicul selectat nu este disponibil.",
-        },
-        {
-          status: 400,
-        }
+      return jsonError(
+        "Medicul selectat nu este disponibil.",
+        400
       );
     }
 
-    /*
-     * Verify that the clinic belongs to the doctor.
-     */
     const {
       data: doctorClinic,
-      error: doctorClinicError,
-    } = await supabase
-      .from("doctor_clinics")
-      .select(
-        "doctor_id, clinic_id"
-      )
-      .eq("doctor_id", doctorId)
-      .eq("clinic_id", clinicId)
-      .maybeSingle();
+      error:
+        doctorClinicError,
+    } =
+      await supabase
+        .from(
+          "doctor_clinics"
+        )
+        .select(`
+          doctor_id,
+          clinic_id
+        `)
+        .eq(
+          "doctor_id",
+          doctorId
+        )
+        .eq(
+          "clinic_id",
+          clinicId
+        )
+        .maybeSingle();
 
-    if (doctorClinicError) {
+    if (
+      doctorClinicError
+    ) {
       console.error(
         "Appointment doctor-clinic lookup failed:",
         doctorClinicError
       );
 
-      return NextResponse.json(
-        {
-          error:
-            "Clinica selectată nu a putut fi verificată.",
-        },
-        {
-          status: 500,
-        }
+      return jsonError(
+        "Clinica selectată nu a putut fi verificată.",
+        500
       );
     }
 
     if (!doctorClinic) {
-      return NextResponse.json(
-        {
-          error:
-            "Clinica selectată nu este disponibilă pentru acest medic.",
-        },
-        {
-          status: 400,
-        }
+      return jsonError(
+        "Clinica selectată nu este disponibilă pentru acest medic.",
+        400
       );
     }
 
-    /*
-     * Recheck the selected slot immediately before insert.
-     */
     const {
-      data: availableSlots,
+      data:
+        availableSlots,
       error: slotsError,
-    } = await supabase.rpc(
-      "get_available_appointment_slots",
-      {
-        target_doctor_id:
-          doctorId,
-
-        target_clinic_id:
-          clinicId,
-
-        target_date:
-          requestedDate,
-      }
-    );
+    } =
+      await supabase.rpc(
+        "get_available_appointment_slots",
+        {
+          target_doctor_id:
+            doctorId,
+          target_clinic_id:
+            clinicId,
+          target_date:
+            requestedDate,
+        }
+      );
 
     if (slotsError) {
       console.error(
@@ -558,98 +599,82 @@ export async function POST(
         slotsError
       );
 
-      return NextResponse.json(
-        {
-          error:
-            "Ora selectată nu a putut fi verificată. Reîncarcă pagina și încearcă din nou.",
-        },
-        {
-          status: 500,
-        }
+      return jsonError(
+        "Ora selectată nu a putut fi verificată. Reîncarcă pagina și încearcă din nou.",
+        500
       );
     }
 
     const slotRows =
-      (availableSlots as
-        | AvailableSlotRow[]
-        | null) ?? [];
+      (
+        availableSlots as
+          | AvailableSlotRow[]
+          | null
+      ) ?? [];
 
     const selectedSlot =
       slotRows.find(
         (slot) =>
-          slot.slot_time.slice(0, 5) ===
+          slot.slot_time
+            .slice(0, 5) ===
             requestedTime &&
           Number(
             slot.duration_minutes
-          ) === durationMinutes
+          ) ===
+            durationMinutes
       );
 
     if (!selectedSlot) {
-      return NextResponse.json(
-        {
-          error:
-            "Intervalul selectat nu mai este disponibil. Alege o altă oră.",
-        },
-        {
-          status: 409,
-        }
+      return jsonError(
+        "Intervalul selectat nu mai este disponibil. Alege o altă oră.",
+        409
       );
     }
 
-    /*
-     * Generate the ID before insertion so no post-insert
-     * SELECT is required.
-     */
     const appointmentId =
       crypto.randomUUID();
 
     const {
-      error: appointmentError,
-    } = await supabase
-      .from("appointments")
-      .insert({
-        id: appointmentId,
+      error:
+        appointmentError,
+    } =
+      await supabase
+        .from(
+          "appointments"
+        )
+        .insert({
+          id:
+            appointmentId,
+          patient_profile_id:
+            user.id,
+          doctor_id:
+            doctorId,
+          clinic_id:
+            clinicId,
+          patient_name:
+            patientName,
+          patient_email:
+            patientEmail,
+          patient_phone:
+            patientPhone,
+          requested_date:
+            requestedDate,
+          requested_time:
+            requestedTime,
+          duration_minutes:
+            durationMinutes,
+          notes,
+          status:
+            "pending",
+          source:
+            "online_request",
+          created_by_profile_id:
+            user.id,
+        });
 
-        patient_profile_id:
-          user.id,
-
-        doctor_id:
-          doctorId,
-
-        clinic_id:
-          clinicId,
-
-        patient_name:
-          patientName,
-
-        patient_email:
-          patientEmail,
-
-        patient_phone:
-          patientPhone,
-
-        requested_date:
-          requestedDate,
-
-        requested_time:
-          requestedTime,
-
-        duration_minutes:
-          durationMinutes,
-
-        notes,
-
-        status:
-          "pending",
-
-        source:
-          "online_request",
-
-        created_by_profile_id:
-          user.id,
-      });
-
-    if (appointmentError) {
+    if (
+      appointmentError
+    ) {
       console.error(
         "Appointment insert failed:",
         appointmentError
@@ -664,29 +689,23 @@ export async function POST(
             "exclusion constraint"
           );
 
-      return NextResponse.json(
-        {
-          error:
-            getFriendlyAppointmentError(
-              appointmentError.message
-            ),
-        },
-        {
-          status:
-            isConflict ? 409 : 500,
-        }
+      return jsonError(
+        getFriendlyAppointmentError(
+          appointmentError.message
+        ),
+        isConflict
+          ? 409
+          : 500
       );
     }
 
-    /*
-     * The appointment remains saved even when email
-     * delivery fails.
-     */
     const resendApiKey =
-      process.env.RESEND_API_KEY;
+      process.env
+        .RESEND_API_KEY;
 
     const resendFromEmail =
-      process.env.RESEND_FROM_EMAIL;
+      process.env
+        .RESEND_FROM_EMAIL;
 
     if (
       !resendApiKey ||
@@ -696,31 +715,52 @@ export async function POST(
         "Resend environment variables are missing."
       );
 
-      return NextResponse.json({
-        success: true,
-        appointmentId,
-        emailSent: false,
-      });
+      return NextResponse.json(
+        {
+          success: true,
+          appointmentId,
+          emailSent: false,
+        },
+        {
+          status: 201,
+          headers: {
+            "Cache-Control":
+              "no-store",
+          },
+        }
+      );
     }
 
     const resend =
-      new Resend(resendApiKey);
+      new Resend(
+        resendApiKey
+      );
 
     const safePatientName =
-      escapeHtml(patientName);
+      escapeHtml(
+        patientName
+      );
 
     const safeDoctorName =
-      escapeHtml(doctorName);
+      escapeHtml(
+        doctorName
+      );
 
     const safeClinicName =
-      escapeHtml(clinicName);
+      escapeHtml(
+        clinicName
+      );
 
     const safePatientPhone =
-      escapeHtml(patientPhone);
+      escapeHtml(
+        patientPhone
+      );
 
     const safeNotes =
       notes
-        ? escapeHtml(notes)
+        ? escapeHtml(
+            notes
+          )
         : null;
 
     const formattedDate =
@@ -729,156 +769,160 @@ export async function POST(
       );
 
     const formattedTime =
-      requestedTime.slice(0, 5);
+      requestedTime.slice(
+        0,
+        5
+      );
 
     const {
       error: emailError,
-    } = await resend.emails.send({
-      from: resendFromEmail,
-      to: patientEmail,
+    } =
+      await resend.emails.send({
+        from:
+          resendFromEmail,
+        to:
+          patientEmail,
+        subject:
+          `Cerere de programare primită – ${doctorName}`,
+        html: `
+          <!doctype html>
+          <html lang="ro">
+            <head>
+              <meta charset="utf-8" />
+            </head>
 
-      subject:
-        `Cerere de programare primită – ${doctorName}`,
-
-      html: `
-        <!doctype html>
-        <html lang="ro">
-          <head>
-            <meta charset="utf-8" />
-          </head>
-
-          <body
-            style="
-              margin: 0;
-              padding: 0;
-              background-color: #f0eee9;
-              color: #111827;
-              font-family: Arial, Helvetica, sans-serif;
-            "
-          >
-            <div
+            <body
               style="
-                max-width: 640px;
-                margin: 0 auto;
-                padding: 32px 16px;
+                margin: 0;
+                padding: 0;
+                background-color: #f0eee9;
+                color: #111827;
+                font-family: Arial, Helvetica, sans-serif;
               "
             >
               <div
                 style="
-                  background-color: #ffffff;
-                  border-radius: 16px;
-                  padding: 32px;
+                  max-width: 640px;
+                  margin: 0 auto;
+                  padding: 32px 16px;
                 "
               >
-                <h1
-                  style="
-                    margin: 0;
-                    font-size: 28px;
-                    line-height: 1.3;
-                  "
-                >
-                  Cererea ta a fost primită
-                </h1>
-
-                <p
-                  style="
-                    margin-top: 20px;
-                    line-height: 1.7;
-                  "
-                >
-                  Bună, ${safePatientName}.
-                </p>
-
-                <p style="line-height: 1.7;">
-                  Am primit cererea ta de programare.
-                  Clinica te va contacta pentru confirmare.
-                </p>
-
                 <div
                   style="
-                    margin-top: 24px;
-                    padding: 20px;
-                    border-radius: 12px;
-                    background-color: #f9fafb;
+                    background-color: #ffffff;
+                    border-radius: 16px;
+                    padding: 32px;
                   "
                 >
-                  <p style="margin: 0 0 10px;">
-                    <strong>Medic:</strong>
-                    ${safeDoctorName}
+                  <h1
+                    style="
+                      margin: 0;
+                      font-size: 28px;
+                      line-height: 1.3;
+                    "
+                  >
+                    Cererea ta a fost primită
+                  </h1>
+
+                  <p
+                    style="
+                      margin-top: 20px;
+                      line-height: 1.7;
+                    "
+                  >
+                    Bună, ${safePatientName}.
                   </p>
 
-                  <p style="margin: 0 0 10px;">
-                    <strong>Clinică:</strong>
-                    ${safeClinicName}
+                  <p style="line-height: 1.7;">
+                    Am primit cererea ta de programare.
+                    Clinica te va contacta pentru confirmare.
                   </p>
 
-                  <p style="margin: 0 0 10px;">
-                    <strong>Data solicitată:</strong>
-                    ${formattedDate}
+                  <div
+                    style="
+                      margin-top: 24px;
+                      padding: 20px;
+                      border-radius: 12px;
+                      background-color: #f9fafb;
+                    "
+                  >
+                    <p style="margin: 0 0 10px;">
+                      <strong>Medic:</strong>
+                      ${safeDoctorName}
+                    </p>
+
+                    <p style="margin: 0 0 10px;">
+                      <strong>Clinică:</strong>
+                      ${safeClinicName}
+                    </p>
+
+                    <p style="margin: 0 0 10px;">
+                      <strong>Data solicitată:</strong>
+                      ${formattedDate}
+                    </p>
+
+                    <p style="margin: 0 0 10px;">
+                      <strong>Ora solicitată:</strong>
+                      ${formattedTime}
+                    </p>
+
+                    <p style="margin: 0 0 10px;">
+                      <strong>Durata:</strong>
+                      ${durationMinutes} minute
+                    </p>
+
+                    <p style="margin: 0;">
+                      <strong>Telefon:</strong>
+                      ${safePatientPhone}
+                    </p>
+                  </div>
+
+                  ${
+                    safeNotes
+                      ? `
+                        <div style="margin-top: 24px;">
+                          <p style="margin-bottom: 8px;">
+                            <strong>Mesajul tău:</strong>
+                          </p>
+
+                          <p
+                            style="
+                              margin: 0;
+                              line-height: 1.7;
+                              white-space: pre-wrap;
+                            "
+                          >${safeNotes}</p>
+                        </div>
+                      `
+                      : ""
+                  }
+
+                  <p
+                    style="
+                      margin-top: 28px;
+                      color: #4b5563;
+                      line-height: 1.7;
+                    "
+                  >
+                    Aceasta nu este încă o confirmare finală
+                    a programării.
                   </p>
 
-                  <p style="margin: 0 0 10px;">
-                    <strong>Ora solicitată:</strong>
-                    ${formattedTime}
-                  </p>
-
-                  <p style="margin: 0 0 10px;">
-                    <strong>Durata:</strong>
-                    ${durationMinutes} minute
-                  </p>
-
-                  <p style="margin: 0;">
-                    <strong>Telefon:</strong>
-                    ${safePatientPhone}
+                  <p
+                    style="
+                      margin-top: 28px;
+                      font-size: 13px;
+                      color: #6b7280;
+                    "
+                  >
+                    RomDoc — găsește medicul potrivit.
                   </p>
                 </div>
-
-                ${
-                  safeNotes
-                    ? `
-                      <div style="margin-top: 24px;">
-                        <p style="margin-bottom: 8px;">
-                          <strong>Mesajul tău:</strong>
-                        </p>
-
-                        <p
-                          style="
-                            margin: 0;
-                            line-height: 1.7;
-                            white-space: pre-wrap;
-                          "
-                        >${safeNotes}</p>
-                      </div>
-                    `
-                    : ""
-                }
-
-                <p
-                  style="
-                    margin-top: 28px;
-                    color: #4b5563;
-                    line-height: 1.7;
-                  "
-                >
-                  Aceasta nu este încă o confirmare finală
-                  a programării.
-                </p>
-
-                <p
-                  style="
-                    margin-top: 28px;
-                    font-size: 13px;
-                    color: #6b7280;
-                  "
-                >
-                  RomDoc — găsește medicul potrivit.
-                </p>
               </div>
-            </div>
-          </body>
-        </html>
-      `,
-    });
+            </body>
+          </html>
+        `,
+      });
 
     if (emailError) {
       console.error(
@@ -886,32 +930,45 @@ export async function POST(
         emailError
       );
 
-      return NextResponse.json({
-        success: true,
-        appointmentId,
-        emailSent: false,
-      });
+      return NextResponse.json(
+        {
+          success: true,
+          appointmentId,
+          emailSent: false,
+        },
+        {
+          status: 201,
+          headers: {
+            "Cache-Control":
+              "no-store",
+          },
+        }
+      );
     }
 
-    return NextResponse.json({
-      success: true,
-      appointmentId,
-      emailSent: true,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        appointmentId,
+        emailSent: true,
+      },
+      {
+        status: 201,
+        headers: {
+          "Cache-Control":
+            "no-store",
+        },
+      }
+    );
   } catch (error) {
     console.error(
       "Appointment API failed:",
       error
     );
 
-    return NextResponse.json(
-      {
-        error:
-          "A apărut o eroare neașteptată. Încearcă din nou.",
-      },
-      {
-        status: 500,
-      }
+    return jsonError(
+      "A apărut o eroare neașteptată. Încearcă din nou.",
+      500
     );
   }
 }

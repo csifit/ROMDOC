@@ -9,6 +9,10 @@ import {
 import {
   createClient,
 } from "@/lib/supabase/server";
+import {
+  consumeRateLimit,
+  rateLimitResponse,
+} from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -267,6 +271,23 @@ export async function POST(
     return authorization.response;
   }
 
+  const rateLimit =
+    await consumeRateLimit({
+      namespace:
+        "patient-document-sharing",
+      identifier:
+        authorization.user.id,
+      limit: 30,
+      windowSeconds:
+        60 * 60,
+    });
+
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(
+      rateLimit
+    );
+  }
+
   let body: {
     documentId?: unknown;
     doctorId?: unknown;
@@ -508,6 +529,23 @@ export async function DELETE(
 
   if (authorization.response) {
     return authorization.response;
+  }
+
+  const rateLimit =
+    await consumeRateLimit({
+      namespace:
+        "patient-document-sharing",
+      identifier:
+        authorization.user.id,
+      limit: 30,
+      windowSeconds:
+        60 * 60,
+    });
+
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(
+      rateLimit
+    );
   }
 
   let body: {
