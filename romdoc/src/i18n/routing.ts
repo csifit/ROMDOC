@@ -1,18 +1,47 @@
-import {defineRouting} from "next-intl/routing";
+import {
+  defineRouting,
+} from "next-intl/routing";
 
-export const routing = defineRouting({
-  locales: ["ro", "en"],
-  defaultLocale: "ro",
-  localePrefix: "always",
-  localeDetection: false,
-  pathnames: {
-    "/": "/",
-    "/medici": {ro: "/medici", en: "/doctors"},
-    "/medici/[specialty]": {ro: "/medici/[specialty]", en: "/doctors/[specialty]"},
-    "/medici/[specialty]/[city]": {ro: "/medici/[specialty]/[city]", en: "/doctors/[specialty]/[city]"},
-    "/doctor/[slug]": "/doctor/[slug]",
-    "/specialitati": {ro: "/specialitati", en: "/specialties"}
-  }
-});
+export const routing =
+  defineRouting({
+    locales: ["ro", "en"],
+    defaultLocale: "ro",
+    localePrefix: "always",
+    localeDetection: false,
+    pathnames: {
+      "/": "/",
 
-export type AppLocale = (typeof routing.locales)[number];
+      "/medici": {
+        ro: "/medici",
+        en: "/doctors",
+      },
+
+      "/medici/[specialty]": {
+        ro: "/medici/[specialty]",
+        en: "/doctors/[specialty]",
+      },
+
+      "/medici/[specialty]/[city]": {
+        ro:
+          "/medici/[specialty]/[city]",
+        en:
+          "/doctors/[specialty]/[city]",
+      },
+
+      "/doctor/[slug]":
+        "/doctor/[slug]",
+
+      "/specialitati": {
+        ro: "/specialitati",
+        en: "/specialties",
+      },
+
+      "/ghid-pacienti": {
+        ro: "/ghid-pacienti",
+        en: "/patient-guide",
+      },
+    },
+  });
+
+export type AppLocale =
+  (typeof routing.locales)[number];

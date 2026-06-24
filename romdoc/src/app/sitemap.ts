@@ -418,6 +418,15 @@ sitemap(): Promise<
         changeFrequency: "weekly",
         priority: 0.8,
       }),
+
+      ...createLocalizedEntries({
+        paths: {
+          ro: "/ro/ghid-pacienti",
+          en: "/en/patient-guide",
+        },
+        changeFrequency: "monthly",
+        priority: 0.65,
+      }),
     ];
 
   for (const doctor of doctors) {
