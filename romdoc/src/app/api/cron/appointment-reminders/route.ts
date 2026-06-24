@@ -313,6 +313,8 @@ export async function GET(
         clinicName: getClinicName(appointment),
         scheduledDate: appointment.scheduled_date,
         scheduledTime: appointment.scheduled_time,
+        cancellationUrl:
+          `${request.nextUrl.origin}/patient-dashboard`,
       });
 
     const finalStatus = sendResult.sent
