@@ -1,0 +1,16 @@
+{
+  "Locale": {
+    "romanian": "Română",
+    "english": "Engleză"
+  },
+  "Navigation": {
+    "home": "Acasă",
+    "doctors": "Medici",
+    "specializations": "Specializări"
+  },
+  "HomePage": {
+    "specializationsEyebrow": "Domenii medicale",
+    "specializationsTitle": "Specializări",
+    "allSpecializations": "Vezi toate specializările"
+  }
+}

@@ -541,7 +541,7 @@ export default async function Home() {
 
             <div className="mt-2">
               <h2 className="text-3xl font-bold tracking-tight text-gray-900">
-                Specialități
+                Specializări
               </h2>
 
               <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-600">

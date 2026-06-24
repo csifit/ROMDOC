@@ -1,0 +1,16 @@
+{
+  "Locale": {
+    "romanian": "Romanian",
+    "english": "English"
+  },
+  "Navigation": {
+    "home": "Home",
+    "doctors": "Doctors",
+    "specializations": "Specialties"
+  },
+  "HomePage": {
+    "specializationsEyebrow": "Medical fields",
+    "specializationsTitle": "Specialties",
+    "allSpecializations": "View all specialties"
+  }
+}
