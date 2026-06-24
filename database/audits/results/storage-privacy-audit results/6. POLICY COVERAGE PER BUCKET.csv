@@ -1,0 +1,5 @@
+bucket_id,public,policies_mentioning_bucket,matching_policies,audit_status
+doctor-photo-staging,false,0,null,REVIEW: private bucket has no policy mentioning its ID
+doctor-profile-photos,true,0,null,OK/REVIEW HELPERS
+doctor-verification-documents,false,5,"Admins can manage verification files, Doctors and admins can read verification files, Doctors can delete own draft verification files, Doctors can update own draft verification files, Doctors can upload own verification files",OK/REVIEW HELPERS
+patient-medical-folder,false,1,Authorized users can read patient medical files,OK/REVIEW HELPERS

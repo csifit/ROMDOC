@@ -1,0 +1,2 @@
+schema_name,table_name,rls_enabled,force_rls,audit_status
+storage,objects,true,false,OK

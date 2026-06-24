@@ -1,0 +1,101 @@
+RomDoc storage security source audit
+====================================
+
+[CRITICAL] src/app/api/doctor/photo/route.ts:211
+  Rule: getPublicUrl used in application source
+  Match: .getPublicUrl(
+
+[REVIEW] src/app/api/admin/verifications/route.ts:142
+  Rule: Signed URL generation
+  Match: .createSignedUrl(
+
+[REVIEW] src/app/api/cron/medical-folder-cleanup/route.ts:103
+  Rule: Storage object removal
+  Match: .remove(
+
+[REVIEW] src/app/api/doctor/patient-folder/download/route.ts:124
+  Rule: Signed URL generation
+  Match: .createSignedUrl(
+
+[REVIEW] src/app/api/doctor/patient-folder/route.ts:589
+  Rule: Storage upload
+  Match: .upload(
+
+[REVIEW] src/app/api/doctor/patient-folder/route.ts:661
+  Rule: Storage object removal
+  Match: .remove(
+
+[REVIEW] src/app/api/doctor/patient-folder/route.ts:816
+  Rule: Storage object removal
+  Match: .remove(
+
+[REVIEW] src/app/api/doctor/photo/route.ts:153
+  Rule: Storage upload
+  Match: .upload(
+
+[REVIEW] src/app/api/doctor/photo/route.ts:176
+  Rule: Direct storage download
+  Match: .download(
+
+[REVIEW] src/app/api/doctor/photo/route.ts:197
+  Rule: Storage upload
+  Match: .upload(
+
+[REVIEW] src/app/api/doctor/photo/route.ts:229
+  Rule: Storage object removal
+  Match: .remove(
+
+[REVIEW] src/app/api/doctor/photo/route.ts:239
+  Rule: Storage object removal
+  Match: .remove(
+
+[REVIEW] src/app/api/doctor/photo/route.ts:268
+  Rule: Storage object removal
+  Match: .remove(
+
+[REVIEW] src/app/api/doctor/photo/route.ts:313
+  Rule: Storage object removal
+  Match: .remove(
+
+[REVIEW] src/app/api/doctor/verification/documents/route.ts:281
+  Rule: Storage upload
+  Match: .upload(
+
+[REVIEW] src/app/api/doctor/verification/documents/route.ts:337
+  Rule: Storage object removal
+  Match: .remove(
+
+[REVIEW] src/app/api/doctor/verification/documents/route.ts:456
+  Rule: Storage object removal
+  Match: .remove(
+
+[REVIEW] src/app/api/patient/folder/route.ts:388
+  Rule: Signed URL generation
+  Match: .createSignedUrl(
+
+[REVIEW] src/components/doctor/doctor-patient-folder-manager.tsx:309
+  Rule: Storage object removal
+  Match: .remove(
+
+[REVIEW] src/components/patient/patient-medical-folder.tsx:383
+  Rule: Storage object removal
+  Match: .remove(
+
+[REVIEW] src/components/public/public-clinic-map.tsx:423
+  Rule: Storage object removal
+  Match: .remove(
+
+[REVIEW] src/components/public/public-clinic-map.tsx:645
+  Rule: Storage object removal
+  Match: .remove(
+
+[REVIEW] src/lib/google-maps/load-google-maps.ts:159
+  Rule: Storage object removal
+  Match: .remove(
+
+Summary
+-------
+CRITICAL: 1
+HIGH: 0
+MEDIUM: 0
+REVIEW: 22

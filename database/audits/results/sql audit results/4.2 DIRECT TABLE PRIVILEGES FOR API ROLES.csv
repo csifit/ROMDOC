@@ -1,0 +1,72 @@
+grantee,table_schema,table_name,privileges
+authenticated,public,appointment_audit_events,SELECT
+authenticated,public,appointment_notification_deliveries,SELECT
+authenticated,public,appointment_reminder_schedules,SELECT
+anon,public,appointments,"DELETE, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,appointments,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,availability,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,availability,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,availability_breaks,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,availability_breaks,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,cities,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,cities,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,city_translations,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,city_translations,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,clinic_translations,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,clinic_translations,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,clinics,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,clinics,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,doctor_applications,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,doctor_applications,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,doctor_clinics,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,doctor_clinics,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,doctor_days_off,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,doctor_days_off,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,doctor_service_translations,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,doctor_service_translations,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,doctor_services,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,doctor_services,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,doctor_specialties,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,doctor_specialties,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,doctor_staff,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,doctor_staff,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,doctor_subscriptions,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,doctor_subscriptions,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,doctor_translations,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,doctor_translations,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,doctor_verification_admin_notes,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,doctor_verification_admin_notes,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,doctor_verification_audit_events,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,doctor_verification_audit_events,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,doctor_verification_documents,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,doctor_verification_documents,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,doctor_verification_submissions,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,doctor_verification_submissions,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,doctors,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,doctors,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,patient_medical_document_events,SELECT
+authenticated,public,patient_medical_document_shares,SELECT
+authenticated,public,patient_medical_documents,"INSERT, SELECT, UPDATE"
+authenticated,public,patient_reminder_preferences,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,profiles,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,profiles,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,reviews,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,reviews,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,specialties,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,specialties,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,public,specialty_translations,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,public,specialty_translations,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,storage,buckets,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,storage,buckets,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,storage,buckets_analytics,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,storage,buckets_analytics,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,storage,buckets_vectors,SELECT
+authenticated,storage,buckets_vectors,SELECT
+anon,storage,objects,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+authenticated,storage,objects,"DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE"
+anon,storage,s3_multipart_uploads,SELECT
+authenticated,storage,s3_multipart_uploads,SELECT
+anon,storage,s3_multipart_uploads_parts,SELECT
+authenticated,storage,s3_multipart_uploads_parts,SELECT
+anon,storage,vector_indexes,SELECT
+authenticated,storage,vector_indexes,SELECT

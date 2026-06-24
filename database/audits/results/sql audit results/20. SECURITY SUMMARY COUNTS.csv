@@ -1,0 +1,2 @@
+public_table_count,tables_without_rls,rls_tables_without_policies,security_definer_function_count,definer_functions_callable_by_anon_or_public,definer_functions_without_fixed_search_path,public_storage_bucket_count
+33,0,1,39,28,0,1

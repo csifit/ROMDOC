@@ -1,0 +1,9 @@
+schemaname,tablename,policyname,roles,cmd,qual,with_check,risk_reason
+public,appointments,Public can create online appointment requests,"{anon,authenticated}",INSERT,null,((source = 'online'::text) AND (created_by_profile_id IS NULL) AND (status = 'pending'::text) AND (scheduled_date IS NULL) AND (scheduled_time IS NULL)),policy applies to anon
+public,appointments,admin_all_appointments,{public},ALL,is_admin(),is_admin(),policy applies to PUBLIC
+public,clinics,admin_all_clinics,{public},ALL,is_admin(),is_admin(),policy applies to PUBLIC
+public,doctors,admin_all_doctors,{public},ALL,is_admin(),is_admin(),policy applies to PUBLIC
+public,profiles,admin_all_profiles,{public},ALL,is_admin(),is_admin(),policy applies to PUBLIC
+public,profiles,profiles_insert_own,{public},INSERT,null,(auth.uid() = id),policy applies to PUBLIC
+public,profiles,profiles_update_own,{public},UPDATE,(auth.uid() = id),(auth.uid() = id),policy applies to PUBLIC
+public,reviews,admin_all_reviews,{public},ALL,is_admin(),is_admin(),policy applies to PUBLIC

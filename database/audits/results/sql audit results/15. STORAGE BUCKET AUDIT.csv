@@ -1,0 +1,5 @@
+id,name,public,file_size_limit,allowed_mime_types,created_at,updated_at,audit_status
+doctor-profile-photos,doctor-profile-photos,true,5242880,"[""image/jpeg"",""image/png"",""image/webp""]",2026-06-22 20:48:36.310119+00,2026-06-22 20:48:36.310119+00,REVIEW: public bucket
+doctor-photo-staging,doctor-photo-staging,false,5242880,"[""image/jpeg"",""image/png"",""image/webp""]",2026-06-22 20:48:36.310119+00,2026-06-22 20:48:36.310119+00,OK: private bucket
+doctor-verification-documents,doctor-verification-documents,false,10485760,"[""application/pdf"",""image/jpeg"",""image/png"",""image/webp""]",2026-06-22 17:46:44.2172+00,2026-06-22 17:46:44.2172+00,OK: private bucket
+patient-medical-folder,patient-medical-folder,false,2097152,"[""application/pdf"",""image/jpeg"",""image/png"",""image/webp""]",2026-06-23 14:54:13.306861+00,2026-06-23 14:54:13.306861+00,OK: private bucket

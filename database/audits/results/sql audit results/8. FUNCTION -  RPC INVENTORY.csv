@@ -1,0 +1,235 @@
+function_schema,function_name,identity_arguments,return_type,language,security_definer,volatility_code,owner_role,function_configuration,description
+public,activate_doctor_staff_assignment,,trigger,plpgsql,true,v,postgres,"[""search_path=\""\""""]",null
+public,admin_review_doctor_verification,"target_submission_id uuid, review_action text, review_reason text, private_note text",doctor_verification_submissions,plpgsql,true,v,postgres,"[""search_path=public""]",Atomically reviews a doctor verification submission and synchronizes the public doctors verification summary. Admin only.
+public,appointment_occurrence_instant,"appointment_date date, appointment_time time without time zone",timestamp with time zone,sql,false,i,postgres,"[""search_path=public""]",Converts a Romania-local appointment date/time into an absolute timestamptz instant.
+public,appointment_reminder_already_sent,target_reminder_schedule_id uuid,boolean,sql,true,s,postgres,"[""search_path=public""]",Returns true when a successful immutable delivery already exists for a reminder schedule.
+public,assert_appointment_slot_available,"target_appointment_id uuid, target_doctor_id uuid, target_clinic_id uuid, target_date date, target_time time without time zone, target_duration_minutes integer",void,plpgsql,true,v,postgres,"[""search_path=public""]","Validates doctor-clinic ownership, approved clinic, advance window, availability, duration alignment, breaks, days off, and appointment overlap."
+public,can_access_doctor_verification_storage_object,object_name text,boolean,sql,true,s,postgres,"[""search_path=public, storage""]",null
+public,can_doctor_create_appointment,"target_doctor_id uuid, target_clinic_id uuid",boolean,sql,true,s,postgres,"[""search_path=public""]",null
+public,can_read_patient_medical_storage_object,object_name text,boolean,sql,true,s,postgres,"[""search_path=public, storage""]",null
+public,cash_dist,"money, money",money,c,false,i,supabase_admin,null,null
+public,claim_due_appointment_reminders,"worker_id text, batch_size integer",SETOF appointment_reminder_schedules,plpgsql,true,v,postgres,"[""search_path=public""]",null
+public,date_dist,"date, date",integer,c,false,i,supabase_admin,null,null
+public,doctor_can_access_patient_folder,target_patient_profile_id uuid,boolean,sql,true,s,postgres,"[""search_path=public""]",null
+public,doctor_can_read_medical_document,target_document_id uuid,boolean,sql,true,s,postgres,"[""search_path=public""]",null
+public,doctor_owns_medical_document,target_document_id uuid,boolean,sql,true,s,postgres,"[""search_path=public""]",null
+public,expire_due_doctor_verifications,,integer,plpgsql,true,v,postgres,"[""search_path=public""]",Expires due verified submissions and removes the public verification badge. Intended for a trusted daily service-role job.
+public,finalize_appointment_reminder,"reminder_id uuid, worker_id text, final_status text, error_code text, error_message text",boolean,plpgsql,true,v,postgres,"[""search_path=public""]",null
+public,find_approved_clinics_nearby,"search_latitude double precision, search_longitude double precision, radius_kilometres double precision","TABLE(clinic_id uuid, distance_metres double precision)",plpgsql,true,s,postgres,"[""search_path=public, extensions""]","Returns approved clinics within a radius of a latitude/longitude point, ordered by distance."
+public,float4_dist,"real, real",real,c,false,i,supabase_admin,null,null
+public,float8_dist,"double precision, double precision",double precision,c,false,i,supabase_admin,null,null
+public,gbt_bit_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_bit_consistent,"internal, bit, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_bit_penalty,"internal, internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_bit_picksplit,"internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_bit_same,"gbtreekey_var, gbtreekey_var, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_bit_union,"internal, internal",gbtreekey_var,c,false,i,supabase_admin,null,null
+public,gbt_bool_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_bool_consistent,"internal, boolean, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_bool_fetch,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_bool_penalty,"internal, internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_bool_picksplit,"internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_bool_same,"gbtreekey2, gbtreekey2, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_bool_union,"internal, internal",gbtreekey2,c,false,i,supabase_admin,null,null
+public,gbt_bpchar_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_bpchar_consistent,"internal, character, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_bytea_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_bytea_consistent,"internal, bytea, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_bytea_penalty,"internal, internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_bytea_picksplit,"internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_bytea_same,"gbtreekey_var, gbtreekey_var, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_bytea_union,"internal, internal",gbtreekey_var,c,false,i,supabase_admin,null,null
+public,gbt_cash_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_cash_consistent,"internal, money, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_cash_distance,"internal, money, smallint, oid, internal",double precision,c,false,i,supabase_admin,null,null
+public,gbt_cash_fetch,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_cash_penalty,"internal, internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_cash_picksplit,"internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_cash_same,"gbtreekey16, gbtreekey16, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_cash_union,"internal, internal",gbtreekey16,c,false,i,supabase_admin,null,null
+public,gbt_date_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_date_consistent,"internal, date, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_date_distance,"internal, date, smallint, oid, internal",double precision,c,false,i,supabase_admin,null,null
+public,gbt_date_fetch,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_date_penalty,"internal, internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_date_picksplit,"internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_date_same,"gbtreekey8, gbtreekey8, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_date_union,"internal, internal",gbtreekey8,c,false,i,supabase_admin,null,null
+public,gbt_decompress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_enum_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_enum_consistent,"internal, anyenum, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_enum_fetch,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_enum_penalty,"internal, internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_enum_picksplit,"internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_enum_same,"gbtreekey8, gbtreekey8, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_enum_union,"internal, internal",gbtreekey8,c,false,i,supabase_admin,null,null
+public,gbt_float4_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_float4_consistent,"internal, real, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_float4_distance,"internal, real, smallint, oid, internal",double precision,c,false,i,supabase_admin,null,null
+public,gbt_float4_fetch,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_float4_penalty,"internal, internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_float4_picksplit,"internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_float4_same,"gbtreekey8, gbtreekey8, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_float4_union,"internal, internal",gbtreekey8,c,false,i,supabase_admin,null,null
+public,gbt_float8_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_float8_consistent,"internal, double precision, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_float8_distance,"internal, double precision, smallint, oid, internal",double precision,c,false,i,supabase_admin,null,null
+public,gbt_float8_fetch,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_float8_penalty,"internal, internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_float8_picksplit,"internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_float8_same,"gbtreekey16, gbtreekey16, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_float8_union,"internal, internal",gbtreekey16,c,false,i,supabase_admin,null,null
+public,gbt_inet_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_inet_consistent,"internal, inet, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_inet_penalty,"internal, internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_inet_picksplit,"internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_inet_same,"gbtreekey16, gbtreekey16, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_inet_union,"internal, internal",gbtreekey16,c,false,i,supabase_admin,null,null
+public,gbt_int2_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_int2_consistent,"internal, smallint, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_int2_distance,"internal, smallint, smallint, oid, internal",double precision,c,false,i,supabase_admin,null,null
+public,gbt_int2_fetch,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_int2_penalty,"internal, internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_int2_picksplit,"internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_int2_same,"gbtreekey4, gbtreekey4, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_int2_union,"internal, internal",gbtreekey4,c,false,i,supabase_admin,null,null
+public,gbt_int4_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_int4_consistent,"internal, integer, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_int4_distance,"internal, integer, smallint, oid, internal",double precision,c,false,i,supabase_admin,null,null
+public,gbt_int4_fetch,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_int4_penalty,"internal, internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_int4_picksplit,"internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_int4_same,"gbtreekey8, gbtreekey8, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_int4_union,"internal, internal",gbtreekey8,c,false,i,supabase_admin,null,null
+public,gbt_int8_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_int8_consistent,"internal, bigint, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_int8_distance,"internal, bigint, smallint, oid, internal",double precision,c,false,i,supabase_admin,null,null
+public,gbt_int8_fetch,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_int8_penalty,"internal, internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_int8_picksplit,"internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_int8_same,"gbtreekey16, gbtreekey16, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_int8_union,"internal, internal",gbtreekey16,c,false,i,supabase_admin,null,null
+public,gbt_intv_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_intv_consistent,"internal, interval, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_intv_decompress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_intv_distance,"internal, interval, smallint, oid, internal",double precision,c,false,i,supabase_admin,null,null
+public,gbt_intv_fetch,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_intv_penalty,"internal, internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_intv_picksplit,"internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_intv_same,"gbtreekey32, gbtreekey32, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_intv_union,"internal, internal",gbtreekey32,c,false,i,supabase_admin,null,null
+public,gbt_macad8_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_macad8_consistent,"internal, macaddr8, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_macad8_fetch,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_macad8_penalty,"internal, internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_macad8_picksplit,"internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_macad8_same,"gbtreekey16, gbtreekey16, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_macad8_union,"internal, internal",gbtreekey16,c,false,i,supabase_admin,null,null
+public,gbt_macad_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_macad_consistent,"internal, macaddr, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_macad_fetch,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_macad_penalty,"internal, internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_macad_picksplit,"internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_macad_same,"gbtreekey16, gbtreekey16, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_macad_union,"internal, internal",gbtreekey16,c,false,i,supabase_admin,null,null
+public,gbt_numeric_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_numeric_consistent,"internal, numeric, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_numeric_penalty,"internal, internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_numeric_picksplit,"internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_numeric_same,"gbtreekey_var, gbtreekey_var, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_numeric_union,"internal, internal",gbtreekey_var,c,false,i,supabase_admin,null,null
+public,gbt_oid_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_oid_consistent,"internal, oid, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_oid_distance,"internal, oid, smallint, oid, internal",double precision,c,false,i,supabase_admin,null,null
+public,gbt_oid_fetch,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_oid_penalty,"internal, internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_oid_picksplit,"internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_oid_same,"gbtreekey8, gbtreekey8, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_oid_union,"internal, internal",gbtreekey8,c,false,i,supabase_admin,null,null
+public,gbt_text_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_text_consistent,"internal, text, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_text_penalty,"internal, internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_text_picksplit,"internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_text_same,"gbtreekey_var, gbtreekey_var, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_text_union,"internal, internal",gbtreekey_var,c,false,i,supabase_admin,null,null
+public,gbt_time_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_time_consistent,"internal, time without time zone, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_time_distance,"internal, time without time zone, smallint, oid, internal",double precision,c,false,i,supabase_admin,null,null
+public,gbt_time_fetch,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_time_penalty,"internal, internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_time_picksplit,"internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_time_same,"gbtreekey16, gbtreekey16, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_time_union,"internal, internal",gbtreekey16,c,false,i,supabase_admin,null,null
+public,gbt_timetz_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_timetz_consistent,"internal, time with time zone, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_ts_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_ts_consistent,"internal, timestamp without time zone, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_ts_distance,"internal, timestamp without time zone, smallint, oid, internal",double precision,c,false,i,supabase_admin,null,null
+public,gbt_ts_fetch,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_ts_penalty,"internal, internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_ts_picksplit,"internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_ts_same,"gbtreekey16, gbtreekey16, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_ts_union,"internal, internal",gbtreekey16,c,false,i,supabase_admin,null,null
+public,gbt_tstz_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_tstz_consistent,"internal, timestamp with time zone, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_tstz_distance,"internal, timestamp with time zone, smallint, oid, internal",double precision,c,false,i,supabase_admin,null,null
+public,gbt_uuid_compress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_uuid_consistent,"internal, uuid, smallint, oid, internal",boolean,c,false,i,supabase_admin,null,null
+public,gbt_uuid_fetch,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_uuid_penalty,"internal, internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_uuid_picksplit,"internal, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_uuid_same,"gbtreekey32, gbtreekey32, internal",internal,c,false,i,supabase_admin,null,null
+public,gbt_uuid_union,"internal, internal",gbtreekey32,c,false,i,supabase_admin,null,null
+public,gbt_var_decompress,internal,internal,c,false,i,supabase_admin,null,null
+public,gbt_var_fetch,internal,internal,c,false,i,supabase_admin,null,null
+public,gbtreekey16_in,cstring,gbtreekey16,c,false,i,supabase_admin,null,null
+public,gbtreekey16_out,gbtreekey16,cstring,c,false,i,supabase_admin,null,null
+public,gbtreekey2_in,cstring,gbtreekey2,c,false,i,supabase_admin,null,null
+public,gbtreekey2_out,gbtreekey2,cstring,c,false,i,supabase_admin,null,null
+public,gbtreekey32_in,cstring,gbtreekey32,c,false,i,supabase_admin,null,null
+public,gbtreekey32_out,gbtreekey32,cstring,c,false,i,supabase_admin,null,null
+public,gbtreekey4_in,cstring,gbtreekey4,c,false,i,supabase_admin,null,null
+public,gbtreekey4_out,gbtreekey4,cstring,c,false,i,supabase_admin,null,null
+public,gbtreekey8_in,cstring,gbtreekey8,c,false,i,supabase_admin,null,null
+public,gbtreekey8_out,gbtreekey8,cstring,c,false,i,supabase_admin,null,null
+public,gbtreekey_var_in,cstring,gbtreekey_var,c,false,i,supabase_admin,null,null
+public,gbtreekey_var_out,gbtreekey_var,cstring,c,false,i,supabase_admin,null,null
+public,get_available_appointment_slots,"target_doctor_id uuid, target_clinic_id uuid, target_date date","TABLE(slot_time time without time zone, duration_minutes integer)",sql,true,s,postgres,"[""search_path=public""]",null
+public,get_own_appointment_timeline,target_appointment_id uuid,"TABLE(event_id uuid, event_type text, status text, event_date date, event_time time without time zone, occurred_at timestamp with time zone)",plpgsql,true,s,postgres,"[""search_path=public""]","Returns a patient-safe lifecycle timeline for an appointment owned by the authenticated patient. Internal reasons, notes, actor identities, and metadata are excluded."
+public,guard_appointment_lifecycle,,trigger,plpgsql,true,v,postgres,"[""search_path=public""]","Rejects invalid status transitions, requires scheduled fields for operational statuses, protects terminal appointments, and records lifecycle timestamps."
+public,handle_appointment_reminder_schedule_change,,trigger,plpgsql,true,v,postgres,"[""search_path=public""]",null
+public,handle_new_user,,trigger,plpgsql,true,v,postgres,"[""search_path=\""\""""]",null
+public,handle_updated_at,,trigger,plpgsql,false,v,postgres,null,null
+public,int2_dist,"smallint, smallint",smallint,c,false,i,supabase_admin,null,null
+public,int4_dist,"integer, integer",integer,c,false,i,supabase_admin,null,null
+public,int8_dist,"bigint, bigint",bigint,c,false,i,supabase_admin,null,null
+public,interval_dist,"interval, interval",interval,c,false,i,supabase_admin,null,null
+public,is_active_patient_profile,target_profile_id uuid,boolean,sql,true,s,postgres,"[""search_path=public""]",null
+public,is_admin,,boolean,sql,true,s,postgres,"[""search_path=public""]",null
+public,is_staff_for_doctor_clinic,"requested_staff_profile_id uuid, requested_doctor_id uuid, requested_clinic_id uuid",boolean,sql,true,s,postgres,"[""search_path=\""\""""]",null
+public,is_valid_appointment_transition,"previous_status text, next_status text",boolean,sql,false,i,postgres,"[""search_path=public""]","Returns whether an appointment may move from one canonical status to another. Cancelled, completed, and no_show are terminal."
+public,oid_dist,"oid, oid",oid,c,false,i,supabase_admin,null,null
+public,owns_availability,target_availability_id uuid,boolean,sql,true,s,postgres,"[""search_path=public""]",null
+public,owns_doctor_service,target_service_id uuid,boolean,sql,true,s,postgres,"[""search_path=public""]",null
+public,owns_doctor_verification_submission,target_submission_id uuid,boolean,sql,true,s,postgres,"[""search_path=public""]",null
+public,patient_cancel_own_appointment,"target_appointment_id uuid, cancellation_reason text","TABLE(appointment_id uuid, previous_status text, current_status text, cancelled_at timestamp with time zone)",plpgsql,true,v,postgres,"[""search_path=public""]","Allows an active authenticated patient to cancel only their own pending, confirmed, or rescheduled future appointment."
+public,prevent_appointment_audit_mutation,,trigger,plpgsql,true,v,postgres,"[""search_path=public""]","Prevents updates and deletions of appointment audit events, including privileged accidental mutations."
+public,prevent_appointment_notification_mutation,,trigger,plpgsql,true,v,postgres,"[""search_path=public""]",null
+public,prevent_patient_medical_document_event_mutation,,trigger,plpgsql,true,v,postgres,"[""search_path=public""]",null
+public,record_appointment_audit_event,,trigger,plpgsql,true,v,postgres,"[""search_path=public""]",Writes immutable appointment audit events without copying patient contact details or full appointment notes.
+public,record_doctor_verification_audit_event,,trigger,plpgsql,true,v,postgres,"[""search_path=public""]",null
+public,record_patient_medical_document_event,,trigger,plpgsql,true,v,postgres,"[""search_path=public""]",null
+public,release_stale_appointment_reminder_locks,stale_after interval,integer,plpgsql,true,v,postgres,"[""search_path=public""]",null
+public,resolve_appointment_audit_actor_role,requested_actor_profile_id uuid,text,plpgsql,true,s,postgres,"[""search_path=public""]","Returns the supported appointment-audit role for a profile, or system when no supported actor can be resolved."
+public,resolve_appointment_audit_event_type,"requested_status text, requested_actor_role text",text,sql,false,i,postgres,"[""search_path=public""]",null
+public,rls_auto_enable,,event_trigger,plpgsql,true,v,postgres,"[""search_path=pg_catalog""]",null
+public,set_appointment_reminder_updated_at,,trigger,plpgsql,false,v,postgres,"[""search_path=public""]",null
+public,set_own_doctor_specialties,requested_specialty_ids uuid[],TABLE(specialty_id uuid),plpgsql,true,v,postgres,"[""search_path=public""]",Atomically replaces the authenticated active doctor own specialty set with one to five active specialties.
+public,set_patient_medical_share_updated_at,,trigger,plpgsql,false,v,postgres,"[""search_path=public""]",null
+public,set_patient_reminder_preferences_updated_at,,trigger,plpgsql,false,v,postgres,"[""search_path=public""]",null
+public,sync_appointment_reminder_schedules,target_appointment_id uuid,integer,plpgsql,true,v,postgres,"[""search_path=public""]",Synchronizes future 48-hour and 24-hour reminder rows for one appointment. Intended for triggers and trusted server-side use.
+public,time_dist,"time without time zone, time without time zone",interval,c,false,i,supabase_admin,null,null
+public,transition_own_appointment,"target_appointment_id uuid, target_status text, target_scheduled_date date, target_scheduled_time time without time zone, transition_reason text","TABLE(appointment_id uuid, previous_status text, current_status text, scheduled_date date, scheduled_time time without time zone, status_changed_at timestamp with time zone)",plpgsql,true,v,postgres,"[""search_path=public""]","Atomically authorizes, serializes, validates, and applies appointment lifecycle transitions. Confirm and reschedule lock the doctor/date before reserving a slot."
+public,ts_dist,"timestamp without time zone, timestamp without time zone",interval,c,false,i,supabase_admin,null,null
+public,tstz_dist,"timestamp with time zone, timestamp with time zone",interval,c,false,i,supabase_admin,null,null
+public,validate_appointment_schedule,,trigger,plpgsql,true,v,postgres,"[""search_path=public""]",null

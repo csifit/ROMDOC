@@ -1,0 +1,40 @@
+function_signature,anon_can_execute,authenticated_can_execute,authorization_observation
+activate_doctor_staff_assignment(),true,true,REVIEW: no obvious caller authorization reference
+appointment_reminder_already_sent(uuid),false,false,REVIEW: no obvious caller authorization reference
+"assert_appointment_slot_available(uuid,uuid,uuid,date,time without time zone,integer)",false,true,REVIEW: no obvious caller authorization reference
+"claim_due_appointment_reminders(text,integer)",false,false,REVIEW: no obvious caller authorization reference
+expire_due_doctor_verifications(),false,false,REVIEW: no obvious caller authorization reference
+"finalize_appointment_reminder(uuid,text,text,text,text)",false,false,REVIEW: no obvious caller authorization reference
+"find_approved_clinics_nearby(double precision,double precision,double precision)",true,true,REVIEW: no obvious caller authorization reference
+"get_available_appointment_slots(uuid,uuid,date)",true,true,REVIEW: no obvious caller authorization reference
+handle_appointment_reminder_schedule_change(),true,true,REVIEW: no obvious caller authorization reference
+handle_new_user(),true,true,REVIEW: no obvious caller authorization reference
+is_active_patient_profile(uuid),true,true,REVIEW: no obvious caller authorization reference
+"is_staff_for_doctor_clinic(uuid,uuid,uuid)",true,true,REVIEW: no obvious caller authorization reference
+prevent_appointment_audit_mutation(),true,true,REVIEW: no obvious caller authorization reference
+prevent_appointment_notification_mutation(),true,true,REVIEW: no obvious caller authorization reference
+prevent_patient_medical_document_event_mutation(),true,true,REVIEW: no obvious caller authorization reference
+release_stale_appointment_reminder_locks(interval),false,false,REVIEW: no obvious caller authorization reference
+resolve_appointment_audit_actor_role(uuid),true,true,REVIEW: no obvious caller authorization reference
+rls_auto_enable(),true,true,REVIEW: no obvious caller authorization reference
+sync_appointment_reminder_schedules(uuid),false,false,REVIEW: no obvious caller authorization reference
+validate_appointment_schedule(),true,true,REVIEW: no obvious caller authorization reference
+"admin_review_doctor_verification(uuid,text,text,text)",true,true,contains auth.uid() check/reference
+can_access_doctor_verification_storage_object(text),true,true,contains auth.uid() check/reference
+"can_doctor_create_appointment(uuid,uuid)",true,true,contains auth.uid() check/reference
+can_read_patient_medical_storage_object(text),true,true,contains auth.uid() check/reference
+doctor_can_access_patient_folder(uuid),true,true,contains auth.uid() check/reference
+doctor_can_read_medical_document(uuid),true,true,contains auth.uid() check/reference
+doctor_owns_medical_document(uuid),true,true,contains auth.uid() check/reference
+get_own_appointment_timeline(uuid),false,true,contains auth.uid() check/reference
+guard_appointment_lifecycle(),true,true,contains auth.uid() check/reference
+is_admin(),true,true,contains auth.uid() check/reference
+owns_availability(uuid),true,true,contains auth.uid() check/reference
+owns_doctor_service(uuid),true,true,contains auth.uid() check/reference
+owns_doctor_verification_submission(uuid),true,true,contains auth.uid() check/reference
+"patient_cancel_own_appointment(uuid,text)",false,true,contains auth.uid() check/reference
+record_appointment_audit_event(),true,true,contains auth.uid() check/reference
+record_doctor_verification_audit_event(),true,true,contains auth.uid() check/reference
+record_patient_medical_document_event(),true,true,contains auth.uid() check/reference
+set_own_doctor_specialties(uuid[]),false,true,contains auth.uid() check/reference
+"transition_own_appointment(uuid,text,date,time without time zone,text)",false,true,contains auth.uid() check/reference

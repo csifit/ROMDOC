@@ -1,0 +1,5 @@
+doctor_id,slug,locale,translation_id,missing_title,missing_biography,missing_meta_title,missing_meta_description
+e7473c4b-ace8-4830-be0d-ee1ae65bffaf,dr-andrei-popescu,en,null,true,true,true,true
+e7473c4b-ace8-4830-be0d-ee1ae65bffaf,dr-andrei-popescu,ro,2845913f-88ae-4a94-9d44-2e1db1d75638,false,false,true,true
+bef7109d-9c73-4eb2-b781-604b0ee94b3d,dr-maria-ionescu,en,null,true,true,true,true
+bef7109d-9c73-4eb2-b781-604b0ee94b3d,dr-maria-ionescu,ro,5fb690c5-f9e3-4042-9a55-857f96da2a96,false,false,true,true

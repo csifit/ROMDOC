@@ -1,0 +1,243 @@
+schemaname,tablename,policyname,permissive,roles,cmd,using_expression,with_check_expression
+public,appointment_audit_events,Admins can read all appointment audit events,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM profiles profile
+  WHERE ((profile.id = auth.uid()) AND (profile.role = 'admin'::text) AND (profile.account_status = 'active'::text))))",null
+public,appointment_audit_events,Doctors can read own appointment audit events,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM (doctors doctor
+     JOIN profiles profile ON ((profile.id = doctor.profile_id)))
+  WHERE ((doctor.id = appointment_audit_events.doctor_id) AND (doctor.profile_id = auth.uid()) AND (profile.role = 'doctor'::text) AND (profile.account_status = 'active'::text))))",null
+public,appointment_audit_events,Staff can read assigned appointment audit events,PERMISSIVE,{authenticated},SELECT,"((clinic_id IS NOT NULL) AND is_staff_for_doctor_clinic(auth.uid(), doctor_id, clinic_id) AND (EXISTS ( SELECT 1
+   FROM profiles profile
+  WHERE ((profile.id = auth.uid()) AND (profile.role = 'staff'::text) AND (profile.account_status = 'active'::text)))))",null
+public,appointment_notification_deliveries,Admins can read appointment notification deliveries,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text) AND (profiles.account_status = 'active'::text))))",null
+public,appointment_notification_deliveries,Doctors can read own appointment notification deliveries,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM ((appointments appointment
+     JOIN doctors doctor ON ((doctor.id = appointment.doctor_id)))
+     JOIN profiles profile ON ((profile.id = doctor.profile_id)))
+  WHERE ((appointment.id = appointment_notification_deliveries.appointment_id) AND (doctor.profile_id = auth.uid()) AND (profile.account_status = 'active'::text))))",null
+public,appointment_notification_deliveries,Staff can read assigned appointment notification deliveries,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM appointments appointment
+  WHERE ((appointment.id = appointment_notification_deliveries.appointment_id) AND (appointment.clinic_id IS NOT NULL) AND is_staff_for_doctor_clinic(auth.uid(), appointment.doctor_id, appointment.clinic_id))))",null
+public,appointment_reminder_schedules,Admins can read appointment reminder schedules,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'admin'::text) AND (profiles.account_status = 'active'::text))))",null
+public,appointment_reminder_schedules,Doctors can read own appointment reminder schedules,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM ((appointments appointment
+     JOIN doctors doctor ON ((doctor.id = appointment.doctor_id)))
+     JOIN profiles profile ON ((profile.id = doctor.profile_id)))
+  WHERE ((appointment.id = appointment_reminder_schedules.appointment_id) AND (doctor.profile_id = auth.uid()) AND (profile.account_status = 'active'::text))))",null
+public,appointment_reminder_schedules,Staff can read assigned appointment reminder schedules,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM appointments appointment
+  WHERE ((appointment.id = appointment_reminder_schedules.appointment_id) AND (appointment.clinic_id IS NOT NULL) AND is_staff_for_doctor_clinic(auth.uid(), appointment.doctor_id, appointment.clinic_id))))",null
+public,appointments,admin_all_appointments,PERMISSIVE,{public},ALL,is_admin(),is_admin()
+public,appointments,Doctors can create their own appointments,PERMISSIVE,{authenticated},INSERT,null,"(can_doctor_create_appointment(doctor_id, clinic_id) AND (created_by_profile_id = auth.uid()) AND (source = ANY (ARRAY['phone'::text, 'walk_in'::text, 'email'::text, 'other'::text])) AND (status = 'confirmed'::text) AND (requested_date IS NOT NULL) AND (requested_time IS NOT NULL) AND (scheduled_date IS NOT NULL) AND (scheduled_time IS NOT NULL) AND (requested_date = scheduled_date) AND (requested_time = scheduled_time) AND (reschedule_reason IS NULL))"
+public,appointments,Patients can create their own appointments,PERMISSIVE,{authenticated},INSERT,null,"((patient_profile_id = auth.uid()) AND (EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.role = ANY (ARRAY['patient'::text, 'user'::text]))))))"
+public,appointments,Public can create online appointment requests,PERMISSIVE,"{anon,authenticated}",INSERT,null,((source = 'online'::text) AND (created_by_profile_id IS NULL) AND (status = 'pending'::text) AND (scheduled_date IS NULL) AND (scheduled_time IS NULL))
+public,appointments,Patients can view their own appointments,PERMISSIVE,{authenticated},SELECT,"((patient_profile_id = auth.uid()) AND (EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.role = ANY (ARRAY['patient'::text, 'user'::text]))))))",null
+public,availability,Doctors can delete their own availability,PERMISSIVE,{authenticated},DELETE,"(EXISTS ( SELECT 1
+   FROM doctors d
+  WHERE ((d.id = availability.doctor_id) AND (d.profile_id = auth.uid()))))",null
+public,availability,Doctors can create their own availability,PERMISSIVE,{authenticated},INSERT,null,"((EXISTS ( SELECT 1
+   FROM doctors d
+  WHERE ((d.id = availability.doctor_id) AND (d.profile_id = auth.uid())))) AND (EXISTS ( SELECT 1
+   FROM doctor_clinics dc
+  WHERE ((dc.doctor_id = availability.doctor_id) AND (dc.clinic_id = availability.clinic_id)))))"
+public,availability,Doctors can view their own availability,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM doctors d
+  WHERE ((d.id = availability.doctor_id) AND (d.profile_id = auth.uid()))))",null
+public,availability,availability_public_read,PERMISSIVE,{public},SELECT,true,null
+public,availability,Doctors can update their own availability,PERMISSIVE,{authenticated},UPDATE,"(EXISTS ( SELECT 1
+   FROM doctors d
+  WHERE ((d.id = availability.doctor_id) AND (d.profile_id = auth.uid()))))","((EXISTS ( SELECT 1
+   FROM doctors d
+  WHERE ((d.id = availability.doctor_id) AND (d.profile_id = auth.uid())))) AND (EXISTS ( SELECT 1
+   FROM doctor_clinics dc
+  WHERE ((dc.doctor_id = availability.doctor_id) AND (dc.clinic_id = availability.clinic_id)))))"
+public,availability_breaks,Doctors can delete their own availability breaks,PERMISSIVE,{authenticated},DELETE,owns_availability(availability_id),null
+public,availability_breaks,Doctors can create their own availability breaks,PERMISSIVE,{authenticated},INSERT,null,owns_availability(availability_id)
+public,availability_breaks,Doctors can view their own availability breaks,PERMISSIVE,{authenticated},SELECT,owns_availability(availability_id),null
+public,availability_breaks,Doctors can update their own availability breaks,PERMISSIVE,{authenticated},UPDATE,owns_availability(availability_id),owns_availability(availability_id)
+public,cities,cities_public_read,PERMISSIVE,{public},SELECT,true,null
+public,city_translations,city_translations_public_read,PERMISSIVE,{public},SELECT,true,null
+public,clinic_translations,clinic_translations_public_read,PERMISSIVE,{public},SELECT,true,null
+public,clinics,admin_all_clinics,PERMISSIVE,{public},ALL,is_admin(),is_admin()
+public,clinics,clinics_public_read,PERMISSIVE,{public},SELECT,true,null
+public,doctor_applications,Admins can view all doctor applications,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.role = 'admin'::text))))",null
+public,doctor_applications,Doctor applicants can view their own application,PERMISSIVE,{authenticated},SELECT,(profile_id = auth.uid()),null
+public,doctor_applications,Admins can update doctor applications,PERMISSIVE,{authenticated},UPDATE,"(EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.role = 'admin'::text))))","(EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.role = 'admin'::text))))"
+public,doctor_clinics,doctor_clinics_public_read,PERMISSIVE,{public},SELECT,true,null
+public,doctor_days_off,Doctors can delete their own days off,PERMISSIVE,{authenticated},DELETE,"(EXISTS ( SELECT 1
+   FROM doctors d
+  WHERE ((d.id = doctor_days_off.doctor_id) AND (d.profile_id = auth.uid()))))",null
+public,doctor_days_off,Doctors can create their own days off,PERMISSIVE,{authenticated},INSERT,null,"((EXISTS ( SELECT 1
+   FROM doctors d
+  WHERE ((d.id = doctor_days_off.doctor_id) AND (d.profile_id = auth.uid())))) AND ((clinic_id IS NULL) OR (EXISTS ( SELECT 1
+   FROM doctor_clinics dc
+  WHERE ((dc.doctor_id = doctor_days_off.doctor_id) AND (dc.clinic_id = doctor_days_off.clinic_id))))))"
+public,doctor_days_off,Doctors can view their own days off,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM doctors d
+  WHERE ((d.id = doctor_days_off.doctor_id) AND (d.profile_id = auth.uid()))))",null
+public,doctor_days_off,Doctors can update their own days off,PERMISSIVE,{authenticated},UPDATE,"(EXISTS ( SELECT 1
+   FROM doctors d
+  WHERE ((d.id = doctor_days_off.doctor_id) AND (d.profile_id = auth.uid()))))","((EXISTS ( SELECT 1
+   FROM doctors d
+  WHERE ((d.id = doctor_days_off.doctor_id) AND (d.profile_id = auth.uid())))) AND ((clinic_id IS NULL) OR (EXISTS ( SELECT 1
+   FROM doctor_clinics dc
+  WHERE ((dc.doctor_id = doctor_days_off.doctor_id) AND (dc.clinic_id = doctor_days_off.clinic_id))))))"
+public,doctor_service_translations,Doctors can delete their own service translations,PERMISSIVE,{authenticated},DELETE,owns_doctor_service(doctor_service_id),null
+public,doctor_service_translations,Doctors can create their own service translations,PERMISSIVE,{authenticated},INSERT,null,owns_doctor_service(doctor_service_id)
+public,doctor_service_translations,Doctors can view their own service translations,PERMISSIVE,{authenticated},SELECT,owns_doctor_service(doctor_service_id),null
+public,doctor_service_translations,Public can view active service translations,PERMISSIVE,"{anon,authenticated}",SELECT,"(EXISTS ( SELECT 1
+   FROM (doctor_services ds
+     JOIN doctors d ON ((d.id = ds.doctor_id)))
+  WHERE ((ds.id = doctor_service_translations.doctor_service_id) AND (ds.is_active = true) AND (d.status = 'active'::text))))",null
+public,doctor_service_translations,Doctors can update their own service translations,PERMISSIVE,{authenticated},UPDATE,owns_doctor_service(doctor_service_id),owns_doctor_service(doctor_service_id)
+public,doctor_services,Doctors can delete their own services,PERMISSIVE,{authenticated},DELETE,"(EXISTS ( SELECT 1
+   FROM doctors d
+  WHERE ((d.id = doctor_services.doctor_id) AND (d.profile_id = auth.uid()))))",null
+public,doctor_services,Doctors can create their own services,PERMISSIVE,{authenticated},INSERT,null,"(EXISTS ( SELECT 1
+   FROM doctors d
+  WHERE ((d.id = doctor_services.doctor_id) AND (d.profile_id = auth.uid()))))"
+public,doctor_services,Doctors can view their own services,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM doctors d
+  WHERE ((d.id = doctor_services.doctor_id) AND (d.profile_id = auth.uid()))))",null
+public,doctor_services,Public can view active doctor services,PERMISSIVE,"{anon,authenticated}",SELECT,"((is_active = true) AND (EXISTS ( SELECT 1
+   FROM doctors d
+  WHERE ((d.id = doctor_services.doctor_id) AND (d.status = 'active'::text)))))",null
+public,doctor_services,Doctors can update their own services,PERMISSIVE,{authenticated},UPDATE,"(EXISTS ( SELECT 1
+   FROM doctors d
+  WHERE ((d.id = doctor_services.doctor_id) AND (d.profile_id = auth.uid()))))","(EXISTS ( SELECT 1
+   FROM doctors d
+  WHERE ((d.id = doctor_services.doctor_id) AND (d.profile_id = auth.uid()))))"
+public,doctor_specialties,doctor_specialties_public_read,PERMISSIVE,{public},SELECT,true,null
+public,doctor_staff,Admins can view all doctor staff,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.role = 'admin'::text))))",null
+public,doctor_staff,Doctors can view their own staff,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM doctors d
+  WHERE ((d.id = doctor_staff.doctor_id) AND (d.profile_id = auth.uid()))))",null
+public,doctor_staff,Staff can view their own assignments,PERMISSIVE,{authenticated},SELECT,((auth.uid() IS NOT NULL) AND (staff_profile_id = auth.uid())),null
+public,doctor_subscriptions,Admins can view doctor subscriptions,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.role = 'admin'::text))))",null
+public,doctor_subscriptions,Users can view their own doctor subscription,PERMISSIVE,{authenticated},SELECT,(profile_id = auth.uid()),null
+public,doctor_translations,Doctors can delete their own translations,PERMISSIVE,{authenticated},DELETE,"(EXISTS ( SELECT 1
+   FROM doctors d
+  WHERE ((d.id = doctor_translations.doctor_id) AND (d.profile_id = auth.uid()))))",null
+public,doctor_translations,Doctors can create their own translations,PERMISSIVE,{authenticated},INSERT,null,"(EXISTS ( SELECT 1
+   FROM doctors d
+  WHERE ((d.id = doctor_translations.doctor_id) AND (d.profile_id = auth.uid()))))"
+public,doctor_translations,Doctors can view their own translations,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM doctors d
+  WHERE ((d.id = doctor_translations.doctor_id) AND (d.profile_id = auth.uid()))))",null
+public,doctor_translations,doctor_translations_public_read,PERMISSIVE,{public},SELECT,true,null
+public,doctor_translations,Doctors can update their own translations,PERMISSIVE,{authenticated},UPDATE,"(EXISTS ( SELECT 1
+   FROM doctors d
+  WHERE ((d.id = doctor_translations.doctor_id) AND (d.profile_id = auth.uid()))))","(EXISTS ( SELECT 1
+   FROM doctors d
+  WHERE ((d.id = doctor_translations.doctor_id) AND (d.profile_id = auth.uid()))))"
+public,doctor_verification_admin_notes,Admins can manage verification admin notes,PERMISSIVE,{authenticated},ALL,is_admin(),(is_admin() AND (author_profile_id = auth.uid()))
+public,doctor_verification_audit_events,Admins can read verification audit events,PERMISSIVE,{authenticated},SELECT,is_admin(),null
+public,doctor_verification_documents,Admins can manage verification document metadata,PERMISSIVE,{authenticated},ALL,is_admin(),is_admin()
+public,doctor_verification_documents,Doctors can create own verification document metadata,PERMISSIVE,{authenticated},INSERT,null,"((uploaded_by_profile_id = auth.uid()) AND (deleted_at IS NULL) AND (deleted_by_profile_id IS NULL) AND owns_doctor_verification_submission(submission_id) AND (EXISTS ( SELECT 1
+   FROM doctor_verification_submissions submission
+  WHERE ((submission.id = doctor_verification_documents.submission_id) AND (submission.status = 'draft'::text)))))"
+public,doctor_verification_documents,Doctors can read own verification document metadata,PERMISSIVE,{authenticated},SELECT,owns_doctor_verification_submission(submission_id),null
+public,doctor_verification_documents,Doctors can update own draft verification document metadata,PERMISSIVE,{authenticated},UPDATE,"((uploaded_by_profile_id = auth.uid()) AND owns_doctor_verification_submission(submission_id) AND (EXISTS ( SELECT 1
+   FROM doctor_verification_submissions submission
+  WHERE ((submission.id = doctor_verification_documents.submission_id) AND (submission.status = 'draft'::text)))))","((uploaded_by_profile_id = auth.uid()) AND owns_doctor_verification_submission(submission_id) AND (EXISTS ( SELECT 1
+   FROM doctor_verification_submissions submission
+  WHERE ((submission.id = doctor_verification_documents.submission_id) AND (submission.status = 'draft'::text)))))"
+public,doctor_verification_submissions,Admins can manage verification submissions,PERMISSIVE,{authenticated},ALL,is_admin(),is_admin()
+public,doctor_verification_submissions,Doctors can create own verification drafts,PERMISSIVE,{authenticated},INSERT,null,"((status = 'draft'::text) AND (submitted_at IS NULL) AND (reviewed_at IS NULL) AND (reviewed_by_profile_id IS NULL) AND (rejection_reason IS NULL) AND (EXISTS ( SELECT 1
+   FROM (doctors doctor
+     JOIN profiles profile ON ((profile.id = doctor.profile_id)))
+  WHERE ((doctor.id = doctor_verification_submissions.doctor_id) AND (doctor.profile_id = auth.uid()) AND (profile.role = 'doctor'::text) AND (profile.account_status = 'active'::text)))))"
+public,doctor_verification_submissions,Doctors can read own verification submissions,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM (doctors doctor
+     JOIN profiles profile ON ((profile.id = doctor.profile_id)))
+  WHERE ((doctor.id = doctor_verification_submissions.doctor_id) AND (doctor.profile_id = auth.uid()) AND (profile.role = 'doctor'::text) AND (profile.account_status = 'active'::text))))",null
+public,doctor_verification_submissions,Doctors can update own editable verification submissions,PERMISSIVE,{authenticated},UPDATE,"((status = 'draft'::text) AND (EXISTS ( SELECT 1
+   FROM (doctors doctor
+     JOIN profiles profile ON ((profile.id = doctor.profile_id)))
+  WHERE ((doctor.id = doctor_verification_submissions.doctor_id) AND (doctor.profile_id = auth.uid()) AND (profile.role = 'doctor'::text) AND (profile.account_status = 'active'::text)))))","((status = ANY (ARRAY['draft'::text, 'submitted'::text])) AND (reviewed_at IS NULL) AND (reviewed_by_profile_id IS NULL) AND (rejection_reason IS NULL) AND ((status <> 'submitted'::text) OR (submitted_at IS NOT NULL)) AND (EXISTS ( SELECT 1
+   FROM (doctors doctor
+     JOIN profiles profile ON ((profile.id = doctor.profile_id)))
+  WHERE ((doctor.id = doctor_verification_submissions.doctor_id) AND (doctor.profile_id = auth.uid()) AND (profile.role = 'doctor'::text) AND (profile.account_status = 'active'::text)))))"
+public,doctors,admin_all_doctors,PERMISSIVE,{public},ALL,is_admin(),is_admin()
+public,doctors,Doctors can view their own doctor profile,PERMISSIVE,{authenticated},SELECT,(profile_id = auth.uid()),null
+public,doctors,doctors_public_read,PERMISSIVE,{public},SELECT,true,null
+public,doctors,Doctors can update their own doctor profile,PERMISSIVE,{authenticated},UPDATE,(profile_id = auth.uid()),(profile_id = auth.uid())
+public,patient_medical_document_events,Admins can read medical document events,PERMISSIVE,{authenticated},SELECT,is_admin(),null
+public,patient_medical_document_events,Doctors can read explicitly accessible medical document events,PERMISSIVE,{authenticated},SELECT,doctor_can_read_medical_document(document_id),null
+public,patient_medical_document_events,Patients can read own medical document events,PERMISSIVE,{authenticated},SELECT,((patient_profile_id = auth.uid()) AND is_active_patient_profile(auth.uid())),null
+public,patient_medical_document_shares,Admins can read medical document shares,PERMISSIVE,{authenticated},SELECT,is_admin(),null
+public,patient_medical_document_shares,Patients can read own medical document shares,PERMISSIVE,{authenticated},SELECT,((patient_profile_id = auth.uid()) AND is_active_patient_profile(auth.uid())),null
+public,patient_medical_document_shares,Shared doctors can read own active grants,PERMISSIVE,{authenticated},SELECT,"(doctor_id IN ( SELECT doctor.id
+   FROM (doctors doctor
+     JOIN profiles profile ON ((profile.id = doctor.profile_id)))
+  WHERE ((doctor.profile_id = auth.uid()) AND (profile.role = 'doctor'::text) AND (profile.account_status = 'active'::text))))",null
+public,patient_medical_documents,Doctors can create patient medical document metadata,PERMISSIVE,{authenticated},INSERT,null,"((uploaded_by_profile_id = auth.uid()) AND (uploaded_by_doctor_id IS NOT NULL) AND (deleted_at IS NULL) AND (deleted_by_profile_id IS NULL) AND is_active_patient_profile(patient_profile_id) AND (EXISTS ( SELECT 1
+   FROM (doctors doctor
+     JOIN profiles profile ON ((profile.id = doctor.profile_id)))
+  WHERE ((doctor.id = patient_medical_documents.uploaded_by_doctor_id) AND (doctor.profile_id = auth.uid()) AND (profile.role = 'doctor'::text) AND (profile.account_status = 'active'::text)))) AND doctor_can_access_patient_folder(patient_profile_id) AND ((appointment_id IS NULL) OR (EXISTS ( SELECT 1
+   FROM appointments appointment
+  WHERE ((appointment.id = patient_medical_documents.appointment_id) AND (appointment.patient_profile_id = appointment.patient_profile_id) AND (appointment.doctor_id = patient_medical_documents.uploaded_by_doctor_id) AND (appointment.status = ANY (ARRAY['confirmed'::text, 'rescheduled'::text, 'completed'::text])))))) AND ((storage.foldername(storage_path))[1] = (patient_profile_id)::text) AND ((storage.foldername(storage_path))[2] = (id)::text))"
+public,patient_medical_documents,Admins can read patient medical documents,PERMISSIVE,{authenticated},SELECT,is_admin(),null
+public,patient_medical_documents,Doctors can read explicitly accessible medical documents,PERMISSIVE,{authenticated},SELECT,((deleted_at IS NULL) AND doctor_can_read_medical_document(id)),null
+public,patient_medical_documents,Patients can read own medical documents,PERMISSIVE,{authenticated},SELECT,((patient_profile_id = auth.uid()) AND (deleted_at IS NULL) AND is_active_patient_profile(auth.uid())),null
+public,patient_medical_documents,Uploading doctors can soft delete own medical documents,PERMISSIVE,{authenticated},UPDATE,((deleted_at IS NULL) AND doctor_owns_medical_document(id)),(doctor_owns_medical_document(id) AND (deleted_at IS NOT NULL) AND (deleted_by_profile_id = auth.uid()))
+public,patient_reminder_preferences,Patients can insert own reminder preferences,PERMISSIVE,{authenticated},INSERT,null,"((patient_profile_id = auth.uid()) AND (EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'patient'::text) AND (profiles.account_status = 'active'::text)))))"
+public,patient_reminder_preferences,Patients can read own reminder preferences,PERMISSIVE,{authenticated},SELECT,"((patient_profile_id = auth.uid()) AND (EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'patient'::text) AND (profiles.account_status = 'active'::text)))))",null
+public,patient_reminder_preferences,Patients can update own reminder preferences,PERMISSIVE,{authenticated},UPDATE,"((patient_profile_id = auth.uid()) AND (EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'patient'::text) AND (profiles.account_status = 'active'::text)))))","((patient_profile_id = auth.uid()) AND (EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'patient'::text) AND (profiles.account_status = 'active'::text)))))"
+public,profiles,admin_all_profiles,PERMISSIVE,{public},ALL,is_admin(),is_admin()
+public,profiles,profiles_insert_own,PERMISSIVE,{public},INSERT,null,(auth.uid() = id)
+public,profiles,profiles_select_own,PERMISSIVE,{public},SELECT,(auth.uid() = id),null
+public,profiles,profiles_update_own,PERMISSIVE,{public},UPDATE,(auth.uid() = id),(auth.uid() = id)
+public,reviews,admin_all_reviews,PERMISSIVE,{public},ALL,is_admin(),is_admin()
+public,reviews,Admins can view all reviews,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.role = 'admin'::text))))",null
+public,reviews,Anyone can view published reviews,PERMISSIVE,{public},SELECT,((status = 'published'::text) AND (approved = true)),null
+public,reviews,Patients can view their reviews,PERMISSIVE,{authenticated},SELECT,(patient_profile_id = auth.uid()),null
+public,reviews,reviews_public_read,PERMISSIVE,{public},SELECT,(approved = true),null
+public,specialties,specialties_public_read,PERMISSIVE,{public},SELECT,true,null
+public,specialty_translations,specialty_translations_public_read,PERMISSIVE,{public},SELECT,true,null
+storage,objects,Admins can manage verification files,PERMISSIVE,{authenticated},ALL,((bucket_id = 'doctor-verification-documents'::text) AND is_admin()),((bucket_id = 'doctor-verification-documents'::text) AND is_admin())
+storage,objects,Doctors can delete own draft verification files,PERMISSIVE,{authenticated},DELETE,"((bucket_id = 'doctor-verification-documents'::text) AND (owner_id = (auth.uid())::text) AND ((storage.foldername(name))[1] = (auth.uid())::text) AND (EXISTS ( SELECT 1
+   FROM (doctor_verification_submissions submission
+     JOIN doctors doctor ON ((doctor.id = submission.doctor_id)))
+  WHERE (((submission.id)::text = (storage.foldername(objects.name))[2]) AND (submission.status = 'draft'::text) AND (doctor.profile_id = auth.uid())))))",null
+storage,objects,Doctors can upload own verification files,PERMISSIVE,{authenticated},INSERT,null,"((bucket_id = 'doctor-verification-documents'::text) AND (owner_id = (auth.uid())::text) AND ((storage.foldername(name))[1] = (auth.uid())::text) AND (EXISTS ( SELECT 1
+   FROM (doctor_verification_submissions submission
+     JOIN doctors doctor ON ((doctor.id = submission.doctor_id)))
+  WHERE (((submission.id)::text = (storage.foldername(objects.name))[2]) AND (submission.status = 'draft'::text) AND (doctor.profile_id = auth.uid())))))"
+storage,objects,Authorized users can read patient medical files,PERMISSIVE,{authenticated},SELECT,((bucket_id = 'patient-medical-folder'::text) AND can_read_patient_medical_storage_object(name)),null
+storage,objects,Doctors and admins can read verification files,PERMISSIVE,{authenticated},SELECT,((bucket_id = 'doctor-verification-documents'::text) AND can_access_doctor_verification_storage_object(name)),null
+storage,objects,Doctors can update own draft verification files,PERMISSIVE,{authenticated},UPDATE,"((bucket_id = 'doctor-verification-documents'::text) AND (owner_id = (auth.uid())::text) AND ((storage.foldername(name))[1] = (auth.uid())::text) AND (EXISTS ( SELECT 1
+   FROM (doctor_verification_submissions submission
+     JOIN doctors doctor ON ((doctor.id = submission.doctor_id)))
+  WHERE (((submission.id)::text = (storage.foldername(objects.name))[2]) AND (submission.status = 'draft'::text) AND (doctor.profile_id = auth.uid())))))","((bucket_id = 'doctor-verification-documents'::text) AND (owner_id = (auth.uid())::text) AND ((storage.foldername(name))[1] = (auth.uid())::text) AND (EXISTS ( SELECT 1
+   FROM (doctor_verification_submissions submission
+     JOIN doctors doctor ON ((doctor.id = submission.doctor_id)))
+  WHERE (((submission.id)::text = (storage.foldername(objects.name))[2]) AND (submission.status = 'draft'::text) AND (doctor.profile_id = auth.uid())))))"

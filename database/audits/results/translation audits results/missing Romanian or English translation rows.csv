@@ -1,0 +1,5 @@
+entity_type,active_entities,missing_ro_rows,missing_en_rows,incomplete_entities
+city,320,0,314,314
+clinic,1,0,0,0
+doctor,2,0,2,2
+specialty,58,0,0,0

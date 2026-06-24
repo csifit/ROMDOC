@@ -1,0 +1,19 @@
+schemaname,tablename,policyname,roles,cmd,qual,with_check
+storage,objects,Admins can manage verification files,{authenticated},ALL,((bucket_id = 'doctor-verification-documents'::text) AND is_admin()),((bucket_id = 'doctor-verification-documents'::text) AND is_admin())
+storage,objects,Doctors can delete own draft verification files,{authenticated},DELETE,"((bucket_id = 'doctor-verification-documents'::text) AND (owner_id = (auth.uid())::text) AND ((storage.foldername(name))[1] = (auth.uid())::text) AND (EXISTS ( SELECT 1
+   FROM (doctor_verification_submissions submission
+     JOIN doctors doctor ON ((doctor.id = submission.doctor_id)))
+  WHERE (((submission.id)::text = (storage.foldername(objects.name))[2]) AND (submission.status = 'draft'::text) AND (doctor.profile_id = auth.uid())))))",null
+storage,objects,Doctors can upload own verification files,{authenticated},INSERT,null,"((bucket_id = 'doctor-verification-documents'::text) AND (owner_id = (auth.uid())::text) AND ((storage.foldername(name))[1] = (auth.uid())::text) AND (EXISTS ( SELECT 1
+   FROM (doctor_verification_submissions submission
+     JOIN doctors doctor ON ((doctor.id = submission.doctor_id)))
+  WHERE (((submission.id)::text = (storage.foldername(objects.name))[2]) AND (submission.status = 'draft'::text) AND (doctor.profile_id = auth.uid())))))"
+storage,objects,Authorized users can read patient medical files,{authenticated},SELECT,((bucket_id = 'patient-medical-folder'::text) AND can_read_patient_medical_storage_object(name)),null
+storage,objects,Doctors and admins can read verification files,{authenticated},SELECT,((bucket_id = 'doctor-verification-documents'::text) AND can_access_doctor_verification_storage_object(name)),null
+storage,objects,Doctors can update own draft verification files,{authenticated},UPDATE,"((bucket_id = 'doctor-verification-documents'::text) AND (owner_id = (auth.uid())::text) AND ((storage.foldername(name))[1] = (auth.uid())::text) AND (EXISTS ( SELECT 1
+   FROM (doctor_verification_submissions submission
+     JOIN doctors doctor ON ((doctor.id = submission.doctor_id)))
+  WHERE (((submission.id)::text = (storage.foldername(objects.name))[2]) AND (submission.status = 'draft'::text) AND (doctor.profile_id = auth.uid())))))","((bucket_id = 'doctor-verification-documents'::text) AND (owner_id = (auth.uid())::text) AND ((storage.foldername(name))[1] = (auth.uid())::text) AND (EXISTS ( SELECT 1
+   FROM (doctor_verification_submissions submission
+     JOIN doctors doctor ON ((doctor.id = submission.doctor_id)))
+  WHERE (((submission.id)::text = (storage.foldername(objects.name))[2]) AND (submission.status = 'draft'::text) AND (doctor.profile_id = auth.uid())))))"

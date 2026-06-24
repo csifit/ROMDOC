@@ -1,0 +1,12 @@
+function_schema,function_name,argument_types,security_definer,anon_can_execute,authenticated_can_execute,service_role_can_execute,public_can_execute
+public,admin_review_doctor_verification,"target_submission_id uuid, review_action text, review_reason text, private_note text",true,false,true,true,false
+public,can_access_doctor_verification_storage_object,object_name text,true,false,true,true,false
+public,can_read_patient_medical_storage_object,object_name text,true,false,true,true,false
+public,doctor_can_access_patient_folder,target_patient_profile_id uuid,true,false,true,true,false
+public,doctor_can_read_medical_document,target_document_id uuid,true,false,true,true,false
+public,doctor_owns_medical_document,target_document_id uuid,true,false,true,true,false
+public,expire_due_doctor_verifications,,true,false,false,true,false
+public,owns_doctor_verification_submission,target_submission_id uuid,true,false,true,true,false
+public,prevent_patient_medical_document_event_mutation,,true,false,false,true,false
+public,record_doctor_verification_audit_event,,true,false,false,true,false
+public,record_patient_medical_document_event,,true,false,false,true,false
