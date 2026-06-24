@@ -126,20 +126,40 @@ function truncate(
     .trimEnd()}…`;
 }
 
+type LocalizedPaths = {
+  ro: string;
+  en: string;
+};
+
 function createMetadata({
   locale,
   title,
   description,
+  paths,
   type = "website",
 }: {
   locale: AppLocale;
   title: string;
   description: string;
+  paths: LocalizedPaths;
   type?: "website" | "profile";
 }): Metadata {
+  const canonical =
+    locale === "ro"
+      ? paths.ro
+      : paths.en;
+
   return {
     title,
     description,
+    alternates: {
+      canonical,
+      languages: {
+        ro: paths.ro,
+        en: paths.en,
+        "x-default": paths.ro,
+      },
+    },
     openGraph: {
       type,
       locale:
@@ -168,6 +188,10 @@ export function getHomeMetadata(
         "Doctors and medical appointments in Romania",
       description:
         "Find doctors, approved clinics and online medical appointments across Romania with RomDoc.",
+      paths: {
+        ro: "/ro",
+        en: "/en",
+      },
     });
   }
 
@@ -177,6 +201,10 @@ export function getHomeMetadata(
       "Medici și programări medicale în România",
     description:
       "Găsește medici, clinici aprobate și programări medicale online în România prin RomDoc.",
+    paths: {
+      ro: "/ro",
+      en: "/en",
+    },
   });
 }
 
@@ -190,6 +218,10 @@ export function getDoctorsIndexMetadata(
         "Find doctors in Romania",
       description:
         "Browse RomDoc doctors by specialty, city, professional verification and online availability.",
+      paths: {
+        ro: "/ro/medici",
+        en: "/en/doctors",
+      },
     });
   }
 
@@ -199,6 +231,10 @@ export function getDoctorsIndexMetadata(
       "Găsește medici în România",
     description:
       "Caută medici RomDoc după specializare, oraș, verificare profesională și disponibilitate online.",
+    paths: {
+      ro: "/ro/medici",
+      en: "/en/doctors",
+    },
   });
 }
 
@@ -212,6 +248,10 @@ export function getSpecializationsMetadata(
         "Medical specialties",
       description:
         "Browse medical specialties and find the right doctors and clinics in Romania.",
+      paths: {
+        ro: "/ro/specialitati",
+        en: "/en/specialties",
+      },
     });
   }
 
@@ -221,6 +261,10 @@ export function getSpecializationsMetadata(
       "Specializări medicale",
     description:
       "Explorează specializările medicale și găsește medicii și clinicile potrivite în România.",
+    paths: {
+      ro: "/ro/specialitati",
+      en: "/en/specialties",
+    },
   });
 }
 
@@ -366,11 +410,20 @@ getDoctorProfileMetadata({
       )
   );
 
+  const encodedSlug =
+    encodeURIComponent(slug);
+
   return createMetadata({
     locale,
     title:
       title || doctorName,
     description,
+    paths: {
+      ro:
+        `/ro/doctor/${encodedSlug}`,
+      en:
+        `/en/doctor/${encodedSlug}`,
+    },
     type: "profile",
   });
 }
@@ -446,10 +499,21 @@ getSpecialtyMetadata({
       )
   );
 
+  const encodedSpecialtySlug =
+    encodeURIComponent(
+      specialtySlug
+    );
+
   return createMetadata({
     locale,
     title,
     description,
+    paths: {
+      ro:
+        `/ro/medici/${encodedSpecialtySlug}`,
+      en:
+        `/en/doctors/${encodedSpecialtySlug}`,
+    },
   });
 }
 
@@ -558,10 +622,24 @@ getDirectoryMetadata({
       ? `Find ${specialtyName.toLowerCase()} doctors in ${cityName}. Compare clinics, reviews, professional verification and appointment availability.`
       : `Găsește medici de ${specialtyName.toLowerCase()} în ${cityName}. Compară clinicile, recenziile, verificarea profesională și disponibilitatea pentru programări.`;
 
+  const encodedSpecialtySlug =
+    encodeURIComponent(
+      specialtySlug
+    );
+
+  const encodedCitySlug =
+    encodeURIComponent(citySlug);
+
   return createMetadata({
     locale,
     title,
     description:
       truncate(description),
+    paths: {
+      ro:
+        `/ro/medici/${encodedSpecialtySlug}/${encodedCitySlug}`,
+      en:
+        `/en/doctors/${encodedSpecialtySlug}/${encodedCitySlug}`,
+    },
   });
 }
