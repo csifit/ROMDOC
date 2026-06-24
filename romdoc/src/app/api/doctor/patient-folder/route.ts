@@ -14,6 +14,15 @@ import {
 import {
   createClient,
 } from "@/lib/supabase/server";
+import {
+  consumeRateLimit,
+  rateLimitResponse,
+} from "@/lib/security/rate-limit";
+import {
+  ALLOWED_DOCUMENT_MIME_TYPES,
+  MAX_UPLOAD_BYTES,
+  MAX_UPLOAD_LABEL,
+} from "@/lib/security/upload-policy";
 
 export const runtime = "nodejs";
 
@@ -21,15 +30,10 @@ const BUCKET_NAME =
   "patient-medical-folder";
 
 const MAX_FILE_SIZE =
-  20 * 1024 * 1024;
+  MAX_UPLOAD_BYTES;
 
 const allowedMimeTypes =
-  new Set([
-    "application/pdf",
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-  ]);
+  ALLOWED_DOCUMENT_MIME_TYPES;
 
 const allowedDocumentTypes =
   new Set([
@@ -365,6 +369,23 @@ export async function POST(
     return result.response;
   }
 
+  const rateLimit =
+    await consumeRateLimit({
+      namespace:
+        "doctor-medical-folder-upload",
+      identifier:
+        result.authorization.userId,
+      limit: 30,
+      windowSeconds:
+        60 * 60,
+    });
+
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(
+      rateLimit
+    );
+  }
+
   let formData: FormData;
 
   try {
@@ -555,12 +576,13 @@ export async function POST(
 
   if (
     !allowedMimeTypes.has(file.type) ||
+    file.size <= 0 ||
     file.size > MAX_FILE_SIZE
   ) {
     return NextResponse.json(
       {
         error:
-          "Sunt acceptate fișiere PDF, JPEG, PNG sau WebP de maximum 20 MB.",
+          `Sunt acceptate fișiere PDF, JPEG, PNG sau WebP de maximum ${MAX_UPLOAD_LABEL}.`,
       },
       { status: 400 }
     );

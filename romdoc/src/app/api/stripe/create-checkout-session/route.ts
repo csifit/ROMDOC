@@ -3,6 +3,10 @@ import {
   NextResponse,
 } from "next/server";
 import { getStripe } from "@/lib/stripe";
+import {
+  consumeRateLimit,
+  rateLimitResponse,
+} from "@/lib/security/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -217,6 +221,22 @@ export async function POST(
         {
           status: 400,
         }
+      );
+    }
+
+    const rateLimit =
+      await consumeRateLimit({
+        namespace:
+          "stripe-doctor-checkout",
+        identifier: user.id,
+        limit: 8,
+        windowSeconds:
+          15 * 60,
+      });
+
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(
+        rateLimit
       );
     }
 

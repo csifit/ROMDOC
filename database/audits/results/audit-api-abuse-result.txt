@@ -1,0 +1,194 @@
+RomDoc API abuse audit
+======================
+
+src/app/api/admin/cities/route.ts:245
+  Mutation route without visible rate-limit helper
+  export async function POST(
+
+src/app/api/admin/cities/route.ts:577
+  Mutation route without visible rate-limit helper
+  export async function PATCH(
+
+src/app/api/admin/clinics/route.ts:365
+  Mutation route without visible rate-limit helper
+  export async function PATCH(
+
+src/app/api/admin/doctors/route.ts:505
+  Mutation route without visible rate-limit helper
+  export async function PATCH(
+
+src/app/api/admin/reviews/route.ts:212
+  Mutation route without visible rate-limit helper
+  export async function PATCH(
+
+src/app/api/admin/specialties/route.ts:192
+  Mutation route without visible rate-limit helper
+  export async function POST(
+
+src/app/api/admin/specialties/route.ts:486
+  Mutation route without visible rate-limit helper
+  export async function PATCH(
+
+src/app/api/admin/users/route.ts:559
+  Mutation route without visible rate-limit helper
+  export async function PATCH(
+
+src/app/api/admin/verifications/route.ts:306
+  Mutation route without visible rate-limit helper
+  export async function PATCH(
+
+src/app/api/appointments/lifecycle/route.ts:387
+  Mutation route without visible rate-limit helper
+  export async function PATCH(
+
+src/app/api/appointments/route.ts:156
+  Mutation route without visible rate-limit helper
+  export async function POST(
+
+src/app/api/doctor/appointments/route.ts:133
+  Mutation route without visible rate-limit helper
+  export async function POST(
+
+src/app/api/doctor/availability/route.ts:198
+  Mutation route without visible rate-limit helper
+  export async function POST(
+
+src/app/api/doctor/availability/route.ts:826
+  Mutation route without visible rate-limit helper
+  export async function PATCH(
+
+src/app/api/doctor/availability/route.ts:1068
+  Mutation route without visible rate-limit helper
+  export async function DELETE(
+
+src/app/api/doctor/clinics/route.ts:399
+  Mutation route without visible rate-limit helper
+  export async function POST(
+
+src/app/api/doctor/patient-folder/download/route.ts:23
+  Mutation route without visible rate-limit helper
+  export async function POST(
+
+src/app/api/doctor/patient-folder/route.ts:24
+  Upload limit above 2 MB
+  20 * 1024 * 1024
+
+src/app/api/doctor/patient-folder/route.ts:563
+  User-facing upload text above 2 MB
+  20 MB
+
+src/app/api/doctor/patient-folder/route.ts:358
+  Mutation route without visible rate-limit helper
+  export async function POST(
+
+src/app/api/doctor/patient-folder/route.ts:686
+  Mutation route without visible rate-limit helper
+  export async function DELETE(
+
+src/app/api/doctor/photo/route.ts:141
+  User-facing upload text above 2 MB
+  5 MB
+
+src/app/api/doctor/profile/route.ts:151
+  Mutation route without visible rate-limit helper
+  export async function PATCH(
+
+src/app/api/doctor/services/route.ts:257
+  Mutation route without visible rate-limit helper
+  export async function POST(
+
+src/app/api/doctor/services/route.ts:450
+  Mutation route without visible rate-limit helper
+  export async function PATCH(
+
+src/app/api/doctor/services/route.ts:664
+  Mutation route without visible rate-limit helper
+  export async function DELETE(
+
+src/app/api/doctor/specialties/route.ts:76
+  Mutation route without visible rate-limit helper
+  export async function PATCH(
+
+src/app/api/doctor/staff/route.ts:273
+  Mutation route without visible rate-limit helper
+  export async function POST(
+
+src/app/api/doctor/staff/route.ts:653
+  Mutation route without visible rate-limit helper
+  export async function PATCH(
+
+src/app/api/doctor/verification/documents/route.ts:14
+  Upload limit above 2 MB
+  10 * 1024 * 1024
+
+src/app/api/doctor/verification/documents/route.ts:220
+  User-facing upload text above 2 MB
+  10 MB
+
+src/app/api/doctor/verification/documents/route.ts:140
+  Mutation route without visible rate-limit helper
+  export async function POST(
+
+src/app/api/doctor/verification/documents/route.ts:354
+  Mutation route without visible rate-limit helper
+  export async function DELETE(
+
+src/app/api/doctor/verification/route.ts:253
+  Mutation route without visible rate-limit helper
+  export async function PATCH(
+
+src/app/api/google/places/details/route.ts:36
+  Mutation route without visible rate-limit helper
+  export async function POST(
+
+src/app/api/medical-folder/pdf/route.ts:90
+  Mutation route without visible rate-limit helper
+  export async function POST(
+
+src/app/api/patient/appointments/[appointmentId]/route.ts:223
+  Mutation route without visible rate-limit helper
+  export async function PATCH(
+
+src/app/api/patient/folder/route.ts:289
+  Mutation route without visible rate-limit helper
+  export async function POST(
+
+src/app/api/patient/folder/shares/route.ts:260
+  Mutation route without visible rate-limit helper
+  export async function POST(
+
+src/app/api/patient/folder/shares/route.ts:503
+  Mutation route without visible rate-limit helper
+  export async function DELETE(
+
+src/app/api/patient/reminder-preferences/route.ts:166
+  Mutation route without visible rate-limit helper
+  export async function PUT(
+
+src/app/api/patient/reviews/route.ts:228
+  Mutation route without visible rate-limit helper
+  export async function POST(
+
+src/app/api/stripe/create-checkout-session/route.ts:63
+  Mutation route without visible rate-limit helper
+  export async function POST(
+
+src/app/api/stripe/customer-portal/route.ts:20
+  Mutation route without visible rate-limit helper
+  export async function POST(
+
+src/app/api/stripe/webhook/route.ts:565
+  Mutation route without visible rate-limit helper
+  export async function POST(
+
+src/components/doctor/doctor-photo-manager.tsx:52
+  User-facing upload text above 2 MB
+  5 MB
+
+src/components/doctor/doctor-photo-manager.tsx:178
+  User-facing upload text above 2 MB
+  5 MB
+
+src/components/doctor/doctor-verification-form.tsx:591
+  User-facing upload text above 2 MB
+  10 MB

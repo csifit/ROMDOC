@@ -155,10 +155,20 @@ export async function GET(request: NextRequest): Promise<Response> {
       );
     }
 
-    return NextResponse.json({
-      signedUrl: signedData.signedUrl,
-      expiresInSeconds: SIGNED_URL_SECONDS,
-    });
+    return NextResponse.json(
+      {
+        signedUrl:
+          signedData.signedUrl,
+        expiresInSeconds:
+          SIGNED_URL_SECONDS,
+      },
+      {
+        headers: {
+          "Cache-Control":
+            "no-store",
+        },
+      }
+    );
   }
 
   const status = request.nextUrl.searchParams.get("status") ?? "all";

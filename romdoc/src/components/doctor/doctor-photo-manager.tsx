@@ -48,7 +48,7 @@ export default function DoctorPhotoManager({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > 2 * 1024 * 1024) {
       setError("Fotografia trebuie să aibă cel mult 5 MB.");
       event.target.value = "";
       return;

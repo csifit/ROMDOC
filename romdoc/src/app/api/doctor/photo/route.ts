@@ -1,20 +1,24 @@
 import { randomUUID } from "crypto";
-import { NextResponse } from "next/server";
+import {
+  NextRequest,
+  NextResponse,
+} from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import {
+  consumeRateLimit,
+  rateLimitResponse,
+} from "@/lib/security/rate-limit";
+import {
+  ALLOWED_IMAGE_MIME_TYPES,
+  MAX_UPLOAD_BYTES,
+  validateUploadFile,
+} from "@/lib/security/upload-policy";
 
 export const runtime = "nodejs";
 
 const STAGING_BUCKET = "doctor-photo-staging";
 const PUBLIC_BUCKET = "doctor-profile-photos";
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
-
-const allowedMimeTypes = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-]);
-
 const extensionByMimeType: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -92,11 +96,30 @@ async function requireActiveDoctor() {
   };
 }
 
-export async function POST(request: Request): Promise<Response> {
+export async function POST(
+  request: NextRequest
+): Promise<Response> {
   const authorization = await requireActiveDoctor();
 
   if (authorization.response || !authorization.doctor) {
     return authorization.response;
+  }
+
+  const rateLimit =
+    await consumeRateLimit({
+      namespace:
+        "doctor-photo-upload",
+      identifier:
+        authorization.doctor.profile_id,
+      limit: 10,
+      windowSeconds:
+        60 * 60,
+    });
+
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(
+      rateLimit
+    );
   }
 
   let formData: FormData;
@@ -119,23 +142,30 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  if (!allowedMimeTypes.has(file.type)) {
-    return NextResponse.json(
-      {
-        error:
-          "Fotografia trebuie să fie JPG, PNG sau WebP.",
-      },
-      { status: 400 }
-    );
-  }
+  const validation =
+    validateUploadFile({
+      file,
+      allowedMimeTypes:
+        ALLOWED_IMAGE_MIME_TYPES,
+      emptyMessage:
+        "Selectează o fotografie.",
+      typeMessage:
+        "Fotografia trebuie să fie JPG, PNG sau WebP.",
+    });
 
-  if (file.size <= 0 || file.size > MAX_FILE_SIZE) {
+  if (!validation.ok) {
     return NextResponse.json(
       {
         error:
-          "Fotografia trebuie să aibă cel mult 5 MB.",
+          validation.error,
       },
-      { status: 400 }
+      {
+        status: 400,
+        headers: {
+          "Cache-Control":
+            "no-store",
+        },
+      }
     );
   }
 
@@ -185,7 +215,7 @@ export async function POST(request: Request): Promise<Response> {
 
     if (
       stagedBytes.byteLength <= 0 ||
-      stagedBytes.byteLength > MAX_FILE_SIZE
+      stagedBytes.byteLength > MAX_UPLOAD_BYTES
     ) {
       throw new Error("Invalid staged image size");
     }

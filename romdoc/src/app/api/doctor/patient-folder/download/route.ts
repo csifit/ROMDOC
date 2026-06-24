@@ -164,10 +164,18 @@ export async function POST(
       metadata: {},
     });
 
-  return NextResponse.json({
-    signedUrl:
-      signed.signedUrl,
-    expiresIn:
-      URL_TTL_SECONDS,
-  });
+  return NextResponse.json(
+    {
+      signedUrl:
+        signed.signedUrl,
+      expiresIn:
+        URL_TTL_SECONDS,
+    },
+    {
+      headers: {
+        "Cache-Control":
+          "no-store",
+      },
+    }
+  );
 }

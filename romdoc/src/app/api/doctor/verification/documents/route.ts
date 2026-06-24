@@ -6,20 +6,19 @@ import {
   NextResponse,
 } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import {
+  consumeRateLimit,
+  rateLimitResponse,
+} from "@/lib/security/rate-limit";
+import {
+  ALLOWED_DOCUMENT_MIME_TYPES,
+  validateUploadFile,
+} from "@/lib/security/upload-policy";
 
 export const runtime = "nodejs";
 
 const BUCKET_NAME =
   "doctor-verification-documents";
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-
-const allowedMimeTypes = new Set([
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-]);
-
 const allowedDocumentTypes = new Set([
   "identity_document",
   "professional_certificate",
@@ -153,6 +152,22 @@ export async function POST(
     doctor,
   } = authorization;
 
+  const rateLimit =
+    await consumeRateLimit({
+      namespace:
+        "doctor-verification-upload",
+      identifier: user.id,
+      limit: 20,
+      windowSeconds:
+        60 * 60,
+    });
+
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(
+      rateLimit
+    );
+  }
+
   let formData: FormData;
 
   try {
@@ -200,26 +215,30 @@ export async function POST(
     );
   }
 
-  if (!allowedMimeTypes.has(fileValue.type)) {
-    return NextResponse.json(
-      {
-        error:
-          "Sunt acceptate numai fișiere PDF, JPEG, PNG sau WebP.",
-      },
-      { status: 400 }
-    );
-  }
+  const validation =
+    validateUploadFile({
+      file: fileValue,
+      allowedMimeTypes:
+        ALLOWED_DOCUMENT_MIME_TYPES,
+      emptyMessage:
+        "Selectează un document pentru încărcare.",
+      typeMessage:
+        "Sunt acceptate numai fișiere PDF, JPEG, PNG sau WebP.",
+    });
 
-  if (
-    fileValue.size <= 0 ||
-    fileValue.size > MAX_FILE_SIZE
-  ) {
+  if (!validation.ok) {
     return NextResponse.json(
       {
         error:
-          "Fișierul trebuie să aibă maximum 10 MB.",
+          validation.error,
       },
-      { status: 400 }
+      {
+        status: 400,
+        headers: {
+          "Cache-Control":
+            "no-store",
+        },
+      }
     );
   }
 
