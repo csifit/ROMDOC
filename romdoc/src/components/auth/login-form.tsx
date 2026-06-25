@@ -7,8 +7,9 @@ import {
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+
 import Button from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
 
 type LoginFormProps = {
   initialMessage?: string | null;
@@ -16,7 +17,8 @@ type LoginFormProps = {
 
 function getSafeNextPath() {
   if (
-    typeof window === "undefined"
+    typeof window ===
+    "undefined"
   ) {
     return "/dashboard";
   }
@@ -43,27 +45,40 @@ function getSafeNextPath() {
 export default function LoginForm({
   initialMessage = null,
 }: LoginFormProps) {
-  const router = useRouter();
+  const router =
+    useRouter();
 
-  const [isPending, startTransition] =
+  const [
+    isPending,
+    startTransition,
+  ] =
     useTransition();
 
   const [email, setEmail] =
     useState("");
 
-  const [password, setPassword] =
+  const [
+    password,
+    setPassword,
+  ] =
     useState("");
 
   const [error, setError] =
-    useState<string | null>(null);
+    useState<string | null>(
+      null
+    );
 
-  const [message, setMessage] =
+  const [
+    message,
+    setMessage,
+  ] =
     useState<string | null>(
       initialMessage
     );
 
   function handleSubmit(
-    event: FormEvent<HTMLFormElement>
+    event:
+      FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
@@ -71,13 +86,14 @@ export default function LoginForm({
     setMessage(null);
 
     const normalizedEmail =
-      email.trim().toLowerCase();
+      email
+        .trim()
+        .toLowerCase();
 
     if (!normalizedEmail) {
       setError(
         "Introdu adresa de e-mail."
       );
-
       return;
     }
 
@@ -85,78 +101,105 @@ export default function LoginForm({
       setError(
         "Introdu parola."
       );
-
       return;
     }
 
-    startTransition(async () => {
-      try {
-        const supabase =
-          createClient();
+    startTransition(
+      async () => {
+        try {
+          const supabase =
+            createClient();
 
-        const {
-          error: loginError,
-        } =
-          await supabase.auth.signInWithPassword(
-            {
-              email:
-                normalizedEmail,
+          const {
+            error:
+              loginError,
+          } =
+            await supabase.auth
+              .signInWithPassword({
+                email:
+                  normalizedEmail,
+                password,
+              });
 
-              password,
+          if (loginError) {
+            switch (
+              loginError.message
+                .toLowerCase()
+            ) {
+              case "invalid login credentials":
+                setError(
+                  "Adresa de e-mail sau parola este incorectă."
+                );
+                return;
+
+              case "email not confirmed":
+                setError(
+                  "Adresa de e-mail nu a fost confirmată."
+                );
+                return;
+
+              default:
+                setError(
+                  loginError.message
+                );
+                return;
             }
+          }
+
+          const destination =
+            getSafeNextPath();
+
+          const {
+            data: factors,
+            error:
+              factorsError,
+          } =
+            await supabase.auth.mfa
+              .listFactors();
+
+          if (factorsError) {
+            console.error(
+              "Login MFA factor lookup failed:",
+              factorsError
+            );
+
+            setError(
+              "Starea autentificării în doi pași nu a putut fi verificată."
+            );
+            return;
+          }
+
+          if (
+            factors.totp.length >
+            0
+          ) {
+            router.replace(
+              `/mfa/verify?next=${encodeURIComponent(
+                destination
+              )}`
+            );
+            router.refresh();
+            return;
+          }
+
+          router.replace(
+            destination
+          );
+          router.refresh();
+        } catch (
+          submitError
+        ) {
+          console.error(
+            "Login failed:",
+            submitError
           );
 
-        if (loginError) {
-          switch (
-            loginError.message
-              .toLowerCase()
-          ) {
-            case "invalid login credentials":
-              setError(
-                "Adresa de e-mail sau parola este incorectă."
-              );
-              return;
-
-            case "email not confirmed":
-              setError(
-                "Adresa de e-mail nu a fost confirmată."
-              );
-              return;
-
-            default:
-              setError(
-                loginError.message
-              );
-              return;
-          }
+          setError(
+            "Autentificarea nu a putut fi finalizată. Încearcă din nou."
+          );
         }
-
-        /*
-         * When login was opened from a doctor page, return
-         * to that doctor page. Otherwise, /dashboard routes
-         * the user according to their role:
-         *
-         * admin   -> /admin
-         * doctor  -> /doctor-dashboard/appointments
-         * patient -> /patient-dashboard
-         * staff   -> /staff-dashboard
-         */
-        const destination =
-          getSafeNextPath();
-
-        router.replace(destination);
-        router.refresh();
-      } catch (submitError) {
-        console.error(
-          "Login failed:",
-          submitError
-        );
-
-        setError(
-          "Autentificarea nu a putut fi finalizată. Încearcă din nou."
-        );
       }
-    });
+    );
   }
 
   return (
@@ -174,13 +217,14 @@ export default function LoginForm({
         </h1>
 
         <p className="mt-2 text-sm leading-6 text-gray-600">
-          Introdu adresa de e-mail și
-          parola pentru a accesa contul.
+          Introdu adresa de e-mail și parola pentru a accesa contul.
         </p>
       </header>
 
       <form
-        onSubmit={handleSubmit}
+        onSubmit={
+          handleSubmit
+        }
         className="mt-8 space-y-5"
       >
         <label className="block">
@@ -193,8 +237,12 @@ export default function LoginForm({
             required
             autoComplete="email"
             value={email}
-            disabled={isPending}
-            onChange={(event) =>
+            disabled={
+              isPending
+            }
+            onChange={(
+              event
+            ) =>
               setEmail(
                 event.target.value
               )
@@ -214,8 +262,12 @@ export default function LoginForm({
             required
             autoComplete="current-password"
             value={password}
-            disabled={isPending}
-            onChange={(event) =>
+            disabled={
+              isPending
+            }
+            onChange={(
+              event
+            ) =>
               setPassword(
                 event.target.value
               )
@@ -246,7 +298,9 @@ export default function LoginForm({
         <Button
           type="submit"
           fullWidth
-          isLoading={isPending}
+          isLoading={
+            isPending
+          }
           loadingText="Se autentifică..."
         >
           Autentificare

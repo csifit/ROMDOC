@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdminAal2Api } from "@/lib/auth/require-admin-aal2-api";
 
 export const runtime = "nodejs";
 
@@ -28,59 +28,6 @@ function normalizeString(value: unknown, maximumLength: number) {
   return value.trim().slice(0, maximumLength);
 }
 
-async function requireAdmin() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return {
-      supabase,
-      profileId: null,
-      response: NextResponse.json(
-        { error: "Trebuie să fii autentificat." },
-        { status: 401 }
-      ),
-    };
-  }
-
-  const {
-    data: profile,
-    error: profileError,
-  } = await supabase
-    .from("profiles")
-    .select("role, account_status")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (
-    profileError ||
-    profile?.role !== "admin" ||
-    profile.account_status !== "active"
-  ) {
-    return {
-      supabase,
-      profileId: null,
-      response: NextResponse.json(
-        {
-          error:
-            "Nu ai permisiunea de a administra verificările profesionale.",
-        },
-        { status: 403 }
-      ),
-    };
-  }
-
-  return {
-    supabase,
-    profileId: user.id,
-    response: null,
-  };
-}
-
 function relationOne<T>(value: T | T[] | null | undefined): T | null {
   if (!value) {
     return null;
@@ -90,7 +37,7 @@ function relationOne<T>(value: T | T[] | null | undefined): T | null {
 }
 
 export async function GET(request: NextRequest): Promise<Response> {
-  const authorization = await requireAdmin();
+  const authorization = await requireAdminAal2Api();
 
   if (authorization.response) {
     return authorization.response;
@@ -314,7 +261,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 }
 
 export async function PATCH(request: NextRequest): Promise<Response> {
-  const authorization = await requireAdmin();
+  const authorization = await requireAdminAal2Api();
 
   if (authorization.response) {
     return authorization.response;

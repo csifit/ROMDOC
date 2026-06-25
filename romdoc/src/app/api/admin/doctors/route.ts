@@ -9,20 +9,10 @@ import {
   createAdminClient,
 } from "@/lib/supabase/admin";
 import {
-  createClient,
-} from "@/lib/supabase/server";
+  requireAdminAal2Api,
+} from "@/lib/auth/require-admin-aal2-api";
 
 export const runtime = "nodejs";
-
-type AdminAuthorizationResult =
-  | {
-      profileId: string;
-      response: null;
-    }
-  | {
-      profileId: null;
-      response: NextResponse;
-    };
 
 type DoctorActionBody = {
   doctorId?: unknown;
@@ -52,71 +42,6 @@ function normalizeString(
   return value
     .trim()
     .slice(0, maximumLength);
-}
-
-async function requireAdmin(): Promise<AdminAuthorizationResult> {
-  const supabase =
-    await createClient();
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (
-    userError ||
-    !user
-  ) {
-    return {
-      profileId: null,
-      response: NextResponse.json(
-        {
-          error:
-            "Trebuie să fii autentificat.",
-        },
-        {
-          status: 401,
-        }
-      ),
-    };
-  }
-
-  const {
-    data: profile,
-    error: profileError,
-  } = await supabase
-    .from("profiles")
-    .select(`
-      role,
-      account_status
-    `)
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (
-    profileError ||
-    profile?.role !== "admin" ||
-    profile.account_status !==
-      "active"
-  ) {
-    return {
-      profileId: null,
-      response: NextResponse.json(
-        {
-          error:
-            "Nu ai permisiunea de a administra medicii.",
-        },
-        {
-          status: 403,
-        }
-      ),
-    };
-  }
-
-  return {
-    profileId: user.id,
-    response: null,
-  };
 }
 
 async function listAllAuthUsers(): Promise<AuthUserMap> {
@@ -173,7 +98,7 @@ async function listAllAuthUsers(): Promise<AuthUserMap> {
 
 export async function GET(): Promise<Response> {
   const authorization =
-    await requireAdmin();
+    await requireAdminAal2Api();
 
   if (authorization.response) {
     return authorization.response;
@@ -506,7 +431,7 @@ export async function PATCH(
   request: NextRequest
 ): Promise<Response> {
   const authorization =
-    await requireAdmin();
+    await requireAdminAal2Api();
 
   if (authorization.response) {
     return authorization.response;
