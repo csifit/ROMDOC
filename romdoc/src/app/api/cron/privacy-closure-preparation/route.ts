@@ -11,6 +11,9 @@ import {
   validateCronRequest,
 } from "@/lib/security/cron-auth";
 import {
+  sendAccountClosureNotification,
+} from "@/lib/privacy/send-account-closure-notification";
+import {
   createAdminClient,
 } from "@/lib/supabase/admin";
 
@@ -225,6 +228,39 @@ export async function GET(
       } else {
         finalizedLocks +=
           1;
+      }
+
+      const { data: authUserResult, error: authUserError } =
+        await admin.auth.admin.getUserById(item.profile_id);
+
+      if (authUserError) {
+        console.error("Closure processing email recipient lookup failed:", authUserError);
+      } else if (authUserResult.user?.email) {
+        const { data: profile } = await admin
+          .from("profiles")
+          .select("first_name,last_name")
+          .eq("id", item.profile_id)
+          .maybeSingle();
+
+        const recipientName =
+          [profile?.first_name, profile?.last_name]
+            .filter(Boolean)
+            .join(" ")
+            .trim() ||
+          authUserResult.user.email.split("@")[0];
+
+        const emailResult = await sendAccountClosureNotification({
+          closureRequestId: item.closure_request_id,
+          profileId: item.profile_id,
+          recipientEmail: authUserResult.user.email,
+          recipientName,
+          notificationType: "processing_started",
+          locale: authUserResult.user.user_metadata?.locale,
+        });
+
+        if (!emailResult.sent && !emailResult.skipped) {
+          console.error("Closure processing-start email failed:", emailResult);
+        }
       }
 
       await admin

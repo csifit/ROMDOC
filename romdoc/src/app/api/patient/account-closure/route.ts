@@ -8,6 +8,9 @@ import {
   sameOriginErrorResponse,
 } from "@/lib/security/same-origin";
 import {
+  sendAccountClosureNotification,
+} from "@/lib/privacy/send-account-closure-notification";
+import {
   createClient,
 } from "@/lib/supabase/server";
 
@@ -72,6 +75,7 @@ async function requirePatient() {
     return {
       supabase,
       user: null,
+      profile: null,
       response:
         NextResponse.json(
           {
@@ -98,7 +102,9 @@ async function requirePatient() {
       .select(`
         id,
         role,
-        account_status
+        account_status,
+        first_name,
+        last_name
       `)
       .eq(
         "id",
@@ -115,6 +121,7 @@ async function requirePatient() {
     return {
       supabase,
       user,
+      profile: null,
       response:
         NextResponse.json(
           {
@@ -143,6 +150,7 @@ async function requirePatient() {
     return {
       supabase,
       user,
+      profile: null,
       response:
         NextResponse.json(
           {
@@ -163,6 +171,7 @@ async function requirePatient() {
   return {
     supabase,
     user,
+    profile,
     response: null,
   };
 }
@@ -309,6 +318,41 @@ export async function POST(
     );
   }
 
+  const { data: statusRows } =
+    await authorization.supabase.rpc(
+      "get_own_account_closure_status"
+    );
+
+  const latestStatus =
+    ((statusRows ?? []) as ClosureStatusRow[])[0] ?? null;
+
+  const recipientName =
+    [
+      authorization.profile?.first_name,
+      authorization.profile?.last_name,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim() ||
+    authorization.user?.email?.split("@")[0] ||
+    "pacient";
+
+  if (authorization.user?.email && typeof data === "string") {
+    const emailResult = await sendAccountClosureNotification({
+      closureRequestId: data,
+      profileId: authorization.user.id,
+      recipientEmail: authorization.user.email,
+      recipientName,
+      notificationType: "closure_requested",
+      locale: authorization.user.user_metadata?.locale,
+      coolingOffEndsAt: latestStatus?.cooling_off_ends_at ?? null,
+    });
+
+    if (!emailResult.sent && !emailResult.skipped) {
+      console.error("Closure request email failed:", emailResult);
+    }
+  }
+
   return NextResponse.json(
     {
       success: true,
@@ -345,6 +389,14 @@ export async function DELETE(
   ) {
     return authorization.response;
   }
+
+  const { data: beforeCancelRows } =
+    await authorization.supabase.rpc(
+      "get_own_account_closure_status"
+    );
+
+  const beforeCancel =
+    ((beforeCancelRows ?? []) as ClosureStatusRow[])[0] ?? null;
 
   const {
     data,
@@ -390,6 +442,32 @@ export async function DELETE(
         },
       }
     );
+  }
+
+  const recipientName =
+    [
+      authorization.profile?.first_name,
+      authorization.profile?.last_name,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim() ||
+    authorization.user?.email?.split("@")[0] ||
+    "pacient";
+
+  if (authorization.user?.email && beforeCancel?.request_id) {
+    const emailResult = await sendAccountClosureNotification({
+      closureRequestId: beforeCancel.request_id,
+      profileId: authorization.user.id,
+      recipientEmail: authorization.user.email,
+      recipientName,
+      notificationType: "closure_cancelled",
+      locale: authorization.user.user_metadata?.locale,
+    });
+
+    if (!emailResult.sent && !emailResult.skipped) {
+      console.error("Closure cancellation email failed:", emailResult);
+    }
   }
 
   return NextResponse.json(
