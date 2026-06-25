@@ -55,25 +55,30 @@ export default async function AdminDashboardLayout({
       )
       .maybeSingle();
 
-  if (profileError) {
-    console.error(
-      "Admin dashboard layout profile query failed:",
-      profileError
-    );
-  }
-
   if (
+    profileError ||
     !profile ||
-    profile.role !==
-      "admin" ||
+    ![
+      "admin",
+      "manager",
+    ].includes(
+      profile.role
+    ) ||
     profile.account_status !==
       "active"
   ) {
     redirect("/");
   }
 
+  /*
+   * Trusted-IP MFA bypass remains admin-only.
+   * Managers must always reach AAL2.
+   */
   const trustedIp =
-    await isTrustedAdminMfaIp();
+    profile.role ===
+    "admin"
+      ? await isTrustedAdminMfaIp()
+      : false;
 
   if (!trustedIp) {
     const mfaRedirect =
@@ -98,12 +103,18 @@ export default async function AdminDashboardLayout({
     .join(" ")
     .trim();
 
+  const roleLabel =
+    profile.role ===
+    "admin"
+      ? "Administrator"
+      : "Manager";
+
   const userName =
     fullName ||
     user.email?.split(
       "@"
     )[0] ||
-    "Administrator RomDoc";
+    roleLabel;
 
   const userEmail =
     user.email ??
@@ -113,7 +124,9 @@ export default async function AdminDashboardLayout({
     <AdminDashboardSidebar
       userName={userName}
       userEmail={userEmail}
-      roleLabel="Administrator"
+      roleLabel={
+        roleLabel
+      }
     >
       {children}
     </AdminDashboardSidebar>

@@ -42,14 +42,10 @@ export default async function AdminMfaSetupPage({
 
   const {
     data: { user },
-    error: userError,
   } =
     await supabase.auth.getUser();
 
-  if (
-    userError ||
-    !user
-  ) {
+  if (!user) {
     redirect(
       `/login?next=${encodeURIComponent(
         nextPath
@@ -59,7 +55,6 @@ export default async function AdminMfaSetupPage({
 
   const {
     data: profile,
-    error: profileError,
   } =
     await supabase
       .from("profiles")
@@ -74,10 +69,13 @@ export default async function AdminMfaSetupPage({
       .maybeSingle();
 
   if (
-    profileError ||
     !profile ||
-    profile.role !==
-      "admin" ||
+    ![
+      "admin",
+      "manager",
+    ].includes(
+      profile.role
+    ) ||
     profile.account_status !==
       "active"
   ) {
@@ -88,17 +86,9 @@ export default async function AdminMfaSetupPage({
 
   const {
     data: assurance,
-    error: assuranceError,
   } =
     await supabase.auth.mfa
       .getAuthenticatorAssuranceLevel();
-
-  if (assuranceError) {
-    console.error(
-      "Admin MFA setup assurance lookup failed:",
-      assuranceError
-    );
-  }
 
   if (
     assurance?.currentLevel ===
@@ -109,17 +99,9 @@ export default async function AdminMfaSetupPage({
 
   const {
     data: factors,
-    error: factorsError,
   } =
     await supabase.auth.mfa
       .listFactors();
-
-  if (factorsError) {
-    console.error(
-      "Admin MFA setup factors lookup failed:",
-      factorsError
-    );
-  }
 
   if (
     (
