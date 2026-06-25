@@ -65,8 +65,12 @@ export default async function PatientDashboardLayout({
     !profile ||
     profile.role !==
       "patient" ||
-    profile.account_status !==
-      "active"
+    ![
+      "active",
+      "closure_requested",
+    ].includes(
+      profile.account_status
+    )
   ) {
     redirect(
       "/dashboard"
@@ -96,6 +100,9 @@ export default async function PatientDashboardLayout({
     <PatientDashboardSidebar
       userName={userName}
       userEmail={userEmail}
+      accountStatus={
+        profile.account_status
+      }
       footer={
         <PublicFooter />
       }

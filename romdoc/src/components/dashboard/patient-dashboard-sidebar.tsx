@@ -7,6 +7,7 @@ import {
 } from "next/navigation";
 import {
   type ReactNode,
+  useEffect,
   useState,
 } from "react";
 
@@ -15,6 +16,7 @@ import { createClient } from "@/lib/supabase/client";
 type PatientDashboardSidebarProps = {
   userName: string;
   userEmail: string;
+  accountStatus: string;
   children: ReactNode;
   footer?: ReactNode;
 };
@@ -24,6 +26,7 @@ type NavigationIcon =
   | "appointments"
   | "folder"
   | "doctors"
+  | "settings"
   | "home";
 
 type NavigationItem = {
@@ -47,6 +50,11 @@ const navigationItems: NavigationItem[] = [
     href: "/patient-dashboard/folder",
     label: "Dosarul medical",
     icon: "folder",
+  },
+  {
+    href: "/patient-dashboard/account",
+    label: "Cont și confidențialitate",
+    icon: "settings",
   },
   {
     href: "/medici",
@@ -162,6 +170,22 @@ function Icon({
           <path
             strokeLinecap="round"
             d="M18 5v4M16 7h4"
+          />
+        </svg>
+      );
+
+    case "settings":
+      return (
+        <svg {...commonProps}>
+          <circle
+            cx="12"
+            cy="12"
+            r="3"
+          />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6 1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"
           />
         </svg>
       );
@@ -326,6 +350,7 @@ function isActiveRoute(
 export default function PatientDashboardSidebar({
   userName,
   userEmail,
+  accountStatus,
   children,
   footer,
 }: PatientDashboardSidebarProps) {
@@ -352,6 +377,26 @@ export default function PatientDashboardSidebar({
     setIsSigningOut,
   ] =
     useState(false);
+
+  const isClosurePending =
+    accountStatus ===
+    "closure_requested";
+
+  useEffect(() => {
+    if (
+      isClosurePending &&
+      pathname !==
+        "/patient-dashboard/account"
+    ) {
+      router.replace(
+        "/patient-dashboard/account"
+      );
+    }
+  }, [
+    isClosurePending,
+    pathname,
+    router,
+  ]);
 
   async function handleSignOut() {
     if (isSigningOut) {
@@ -481,6 +526,12 @@ export default function PatientDashboardSidebar({
               <span className="mt-1 inline-flex rounded-full bg-[#036661]/10 px-2.5 py-1 text-xs font-semibold text-[#036661]">
                 Pacient
               </span>
+
+              {isClosurePending && (
+                <span className="ml-1 mt-1 inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                  Închidere solicitată
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -492,6 +543,14 @@ export default function PatientDashboardSidebar({
       >
         {navigationItems.map(
           (item) => {
+            if (
+              isClosurePending &&
+              item.href !==
+                "/patient-dashboard/account"
+            ) {
+              return null;
+            }
+
             if (
               item.label ===
               "Prezentare generală"
@@ -662,12 +721,18 @@ export default function PatientDashboardSidebar({
             </p>
           </div>
 
-          <Link
-            href="/medici"
-            className="rounded-xl bg-[#036661] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#ff2800]"
-          >
-            Caută un medic
-          </Link>
+          {isClosurePending ? (
+            <span className="rounded-xl bg-amber-100 px-4 py-2.5 text-sm font-semibold text-amber-900">
+              Cerere de închidere în perioada de așteptare
+            </span>
+          ) : (
+            <Link
+              href="/medici"
+              className="rounded-xl bg-[#036661] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#ff2800]"
+            >
+              Caută un medic
+            </Link>
+          )}
         </div>
 
         <main className="flex-1">
