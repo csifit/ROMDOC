@@ -1,6 +1,15 @@
 import { redirect } from "next/navigation";
-import type { ReactNode } from "react";
+import type {
+  ReactNode,
+} from "react";
+
 import AdminDashboardSidebar from "@/components/dashboard/admin-dashboard-sidebar";
+import {
+  getAdminMfaRedirect,
+} from "@/lib/auth/admin-mfa";
+import {
+  isTrustedAdminMfaIp,
+} from "@/lib/auth/admin-mfa-ip";
 import { createClient } from "@/lib/supabase/server";
 
 type AdminDashboardLayoutProps = {
@@ -10,27 +19,41 @@ type AdminDashboardLayoutProps = {
 export default async function AdminDashboardLayout({
   children,
 }: AdminDashboardLayoutProps) {
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
 
   const {
     data: { user },
     error: userError,
-  } = await supabase.auth.getUser();
+  } =
+    await supabase.auth.getUser();
 
-  if (userError || !user) {
-    redirect("/login");
+  if (
+    userError ||
+    !user
+  ) {
+    redirect(
+      "/login?next=/admin"
+    );
   }
 
   const {
     data: profile,
     error: profileError,
-  } = await supabase
-    .from("profiles")
-    .select(
-      "role, first_name, last_name"
-    )
-    .eq("id", user.id)
-    .maybeSingle();
+  } =
+    await supabase
+      .from("profiles")
+      .select(`
+        role,
+        account_status,
+        first_name,
+        last_name
+      `)
+      .eq(
+        "id",
+        user.id
+      )
+      .maybeSingle();
 
   if (profileError) {
     console.error(
@@ -41,9 +64,30 @@ export default async function AdminDashboardLayout({
 
   if (
     !profile ||
-    profile.role !== "admin"
+    profile.role !==
+      "admin" ||
+    profile.account_status !==
+      "active"
   ) {
     redirect("/");
+  }
+
+  const trustedIp =
+    await isTrustedAdminMfaIp();
+
+  if (!trustedIp) {
+    const mfaRedirect =
+      await getAdminMfaRedirect({
+        supabase,
+        nextPath:
+          "/admin",
+      });
+
+    if (mfaRedirect) {
+      redirect(
+        mfaRedirect
+      );
+    }
   }
 
   const fullName = [
@@ -56,11 +100,14 @@ export default async function AdminDashboardLayout({
 
   const userName =
     fullName ||
-    user.email?.split("@")[0] ||
+    user.email?.split(
+      "@"
+    )[0] ||
     "Administrator RomDoc";
 
   const userEmail =
-    user.email ?? "E-mail indisponibil";
+    user.email ??
+    "E-mail indisponibil";
 
   return (
     <AdminDashboardSidebar
