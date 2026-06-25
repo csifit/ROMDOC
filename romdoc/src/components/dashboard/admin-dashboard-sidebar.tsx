@@ -29,6 +29,7 @@ type NavigationIcon =
   | "specialties"
   | "cities"
   | "reviews"
+  | "privacy"
   | "home";
 
 type NavigationItem = {
@@ -100,6 +101,13 @@ const navigationItems: NavigationItem[] = [
     label: "Recenzii",
     icon: "reviews",
     available: true,
+  },
+  {
+    href: "/admin/privacy",
+    label: "Confidențialitate",
+    icon: "privacy",
+    available: true,
+    adminOnly: true,
   },
   {
     href: "/",
@@ -278,6 +286,22 @@ function Icon({
             strokeLinecap="round"
             strokeLinejoin="round"
             d="M12 3.5 14.6 9l6 .7-4.4 4.1 1.2 5.9L12 16.8 6.6 19.7l1.2-5.9-4.4-4.1 6-.7L12 3.5Z"
+          />
+        </svg>
+      );
+
+    case "privacy":
+      return (
+        <svg {...commonProps}>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M12 3 19 6v5c0 4.6-2.7 8-7 10-4.3-2-7-5.4-7-10V6l7-3Z"
+          />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9 11V9a3 3 0 0 1 6 0v2M8 11h8v6H8v-6Z"
           />
         </svg>
       );
