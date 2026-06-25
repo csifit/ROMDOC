@@ -30,6 +30,7 @@ type ViewState =
   | "disabled"
   | "enrolling"
   | "enabled"
+  | "disabling"
   | "error";
 
 function formatDate(
@@ -94,6 +95,12 @@ export default function DoctorSecuritySettings() {
 
   const [code, setCode] =
     useState("");
+
+  const [
+    disableConfirmed,
+    setDisableConfirmed,
+  ] =
+    useState(false);
 
   const [error, setError] =
     useState<string | null>(
@@ -351,6 +358,155 @@ export default function DoctorSecuritySettings() {
     );
   }
 
+  function beginDisable() {
+    setError(null);
+    setMessage(null);
+    setCode("");
+    setDisableConfirmed(
+      false
+    );
+    setViewState(
+      "disabling"
+    );
+  }
+
+  function cancelDisable() {
+    setError(null);
+    setMessage(null);
+    setCode("");
+    setDisableConfirmed(
+      false
+    );
+    setViewState(
+      "enabled"
+    );
+  }
+
+  function disableMfa(
+    event:
+      FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    setError(null);
+    setMessage(null);
+
+    const normalizedCode =
+      code
+        .replace(
+          /\D/g,
+          ""
+        )
+        .slice(
+          0,
+          6
+        );
+
+    if (
+      !/^\d{6}$/.test(
+        normalizedCode
+      )
+    ) {
+      setError(
+        "Introdu codul curent de 6 cifre din Google Authenticator."
+      );
+      return;
+    }
+
+    if (
+      !disableConfirmed
+    ) {
+      setError(
+        "Confirmă că înțelegi că autentificarea în doi pași va fi dezactivată."
+      );
+      return;
+    }
+
+    if (
+      !verifiedFactor
+    ) {
+      setError(
+        "Factorul Google Authenticator nu mai este disponibil."
+      );
+      return;
+    }
+
+    startTransition(
+      async () => {
+        const supabase =
+          createClient();
+
+        /*
+         * First verify the current TOTP code. This upgrades the
+         * session to AAL2 before the verified factor is removed.
+         */
+        const {
+          error:
+            verifyError,
+        } =
+          await supabase.auth.mfa
+            .challengeAndVerify({
+              factorId:
+                verifiedFactor.id,
+              code:
+                normalizedCode,
+            });
+
+        if (
+          verifyError
+        ) {
+          console.error(
+            "Doctor MFA disable verification failed:",
+            verifyError
+          );
+
+          setError(
+            "Codul nu este valid sau a expirat. Introdu codul curent din Google Authenticator."
+          );
+          return;
+        }
+
+        const {
+          error:
+            unenrollError,
+        } =
+          await supabase.auth.mfa
+            .unenroll({
+              factorId:
+                verifiedFactor.id,
+            });
+
+        if (
+          unenrollError
+        ) {
+          console.error(
+            "Doctor MFA unenroll failed:",
+            unenrollError
+          );
+
+          setError(
+            "Google Authenticator nu a putut fi dezactivat. Încearcă din nou."
+          );
+          return;
+        }
+
+        setVerifiedFactor(
+          null
+        );
+        setCode("");
+        setDisableConfirmed(
+          false
+        );
+        setMessage(
+          "Google Authenticator a fost dezactivat. Viitoarele autentificări vor folosi doar parola."
+        );
+        setViewState(
+          "disabled"
+        );
+      }
+    );
+  }
+
   if (
     viewState ===
     "loading"
@@ -449,10 +605,145 @@ export default function DoctorSecuritySettings() {
         )}
 
         <div className="mt-6 rounded-xl border border-green-200 bg-white px-4 py-4 text-sm leading-6 text-gray-700">
-          Dezactivarea și înlocuirea dispozitivului vor fi adăugate
-          separat, cu reverificare AAL2, pentru a evita eliminarea
-          accidentală sau abuzivă a protecției.
+          Poți dezactiva Google Authenticator numai după verificarea
+          codului curent. După dezactivare, viitoarele autentificări vor
+          folosi doar parola.
         </div>
+
+        <div className="mt-5">
+          <button
+            type="button"
+            onClick={
+              beginDisable
+            }
+            className="rounded-xl border border-red-300 bg-white px-5 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-50"
+          >
+            Dezactivează Google Authenticator
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  if (
+    viewState ===
+    "disabling" &&
+    verifiedFactor
+  ) {
+    return (
+      <section className="rounded-2xl border border-red-200 bg-red-50 p-6">
+        <h2 className="text-xl font-bold text-red-900">
+          Dezactivează Google Authenticator
+        </h2>
+
+        <p className="mt-3 text-sm leading-6 text-red-800">
+          Această acțiune elimină autentificarea în doi pași din cont.
+          După confirmare, parola va fi singura protecție la autentificare.
+        </p>
+
+        <form
+          onSubmit={
+            disableMfa
+          }
+          className="mt-6 space-y-5"
+        >
+          <label className="block">
+            <span className="text-sm font-medium text-gray-800">
+              Codul curent din Google Authenticator
+            </span>
+
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              required
+              autoFocus
+              value={code}
+              disabled={
+                isPending
+              }
+              onChange={(
+                event
+              ) =>
+                setCode(
+                  event.target.value
+                    .replace(
+                      /\D/g,
+                      ""
+                    )
+                    .slice(
+                      0,
+                      6
+                    )
+                )
+              }
+              placeholder="123456"
+              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-center text-xl tracking-[0.35em] text-gray-900 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+            />
+          </label>
+
+          <label className="flex items-start gap-3 rounded-xl border border-red-200 bg-white p-4">
+            <input
+              type="checkbox"
+              checked={
+                disableConfirmed
+              }
+              disabled={
+                isPending
+              }
+              onChange={(
+                event
+              ) =>
+                setDisableConfirmed(
+                  event.target.checked
+                )
+              }
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+            />
+
+            <span className="text-sm leading-6 text-gray-700">
+              Înțeleg că autentificarea în doi pași va fi dezactivată și
+              că viitoarele autentificări vor solicita doar parola.
+            </span>
+          </label>
+
+          {error && (
+            <div
+              role="alert"
+              className="rounded-xl border border-red-300 bg-white px-4 py-3 text-sm text-red-800"
+            >
+              {error}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button
+              type="submit"
+              disabled={
+                isPending
+              }
+              className="rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isPending
+                ? "Se dezactivează..."
+                : "Confirmă dezactivarea"}
+            </button>
+
+            <button
+              type="button"
+              disabled={
+                isPending
+              }
+              onClick={
+                cancelDisable
+              }
+              className="rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Anulează
+            </button>
+          </div>
+        </form>
       </section>
     );
   }
@@ -644,6 +935,15 @@ export default function DoctorSecuritySettings() {
               • RomDoc nu stochează codurile de 6 cifre sau secretul TOTP în tabelele aplicației.
             </li>
           </ul>
+
+          {message && (
+            <div
+              role="status"
+              className="mt-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
+            >
+              {message}
+            </div>
+          )}
 
           {error && (
             <div
