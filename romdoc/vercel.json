@@ -10,6 +10,10 @@
       "schedule": "45 2 * * *"
     },
     {
+      "path": "/api/cron/privacy-retention",
+      "schedule": "15 3 * * *"
+    },
+    {
       "path": "/api/cron/appointment-reminders",
       "schedule": "*/15 * * * *"
     }
