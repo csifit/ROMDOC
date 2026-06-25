@@ -6,23 +6,14 @@ import {
   createAdminClient,
 } from "@/lib/supabase/admin";
 import {
-  createClient,
-} from "@/lib/supabase/server";
+  requireAdministratorCapability,
+  requirePlatformOperatorAal2Api,
+} from "@/lib/auth/require-platform-operator-aal2-api";
 import {
   createLocationSlug,
 } from "@/lib/locations/create-location-slug";
 
 export const runtime = "nodejs";
-
-type AdminAuthorizationResult =
-  | {
-      profileId: string;
-      response: null;
-    }
-  | {
-      profileId: null;
-      response: NextResponse;
-    };
 
 type CityRequestBody = {
   cityId?: unknown;
@@ -103,74 +94,9 @@ function normalizeCoordinate(
   );
 }
 
-async function requireAdmin(): Promise<AdminAuthorizationResult> {
-  const supabase =
-    await createClient();
-
-  const {
-    data: { user },
-    error: userError,
-  } =
-    await supabase.auth.getUser();
-
-  if (
-    userError ||
-    !user
-  ) {
-    return {
-      profileId: null,
-
-      response:
-        NextResponse.json(
-          {
-            error:
-              "Trebuie să fii autentificat.",
-          },
-          {
-            status: 401,
-          }
-        ),
-    };
-  }
-
-  const {
-    data: profile,
-    error: profileError,
-  } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (
-    profileError ||
-    profile?.role !== "admin"
-  ) {
-    return {
-      profileId: null,
-
-      response:
-        NextResponse.json(
-          {
-            error:
-              "Nu ai permisiunea de a administra orașele.",
-          },
-          {
-            status: 403,
-          }
-        ),
-    };
-  }
-
-  return {
-    profileId: user.id,
-    response: null,
-  };
-}
-
 export async function GET(): Promise<Response> {
   const authorization =
-    await requireAdmin();
+    await requirePlatformOperatorAal2Api();
 
   if (authorization.response) {
     return authorization.response;
@@ -239,6 +165,17 @@ export async function GET(): Promise<Response> {
 
   return NextResponse.json({
     cities: result,
+    operatorRole:
+      authorization.role,
+    capabilities: {
+      canCreateCities:
+        authorization.role ===
+        "admin",
+      canUpdateCities:
+        true,
+      canDeleteCities:
+        false,
+    },
   });
 }
 
@@ -246,10 +183,20 @@ export async function POST(
   request: NextRequest
 ): Promise<Response> {
   const authorization =
-    await requireAdmin();
+    await requirePlatformOperatorAal2Api();
 
   if (authorization.response) {
     return authorization.response;
+  }
+
+  const adminOnlyResponse =
+    requireAdministratorCapability(
+      authorization.role,
+      "Doar administratorii pot adăuga orașe."
+    );
+
+  if (adminOnlyResponse) {
+    return adminOnlyResponse;
   }
 
   let body: CityRequestBody;
@@ -578,7 +525,7 @@ export async function PATCH(
   request: NextRequest
 ): Promise<Response> {
   const authorization =
-    await requireAdmin();
+    await requirePlatformOperatorAal2Api();
 
   if (authorization.response) {
     return authorization.response;

@@ -6,8 +6,8 @@ import {
   createAdminClient,
 } from "@/lib/supabase/admin";
 import {
-  createClient,
-} from "@/lib/supabase/server";
+  requirePlatformOperatorAal2Api,
+} from "@/lib/auth/require-platform-operator-aal2-api";
 
 export const runtime =
   "nodejs";
@@ -18,16 +18,6 @@ type ClinicActionBody = {
   rejectionReason?: unknown;
 };
 
-type AdminAuthorizationResult =
-  | {
-      profileId: string;
-      response: null;
-    }
-  | {
-      profileId: null;
-      response: NextResponse;
-    };
-
 type ProposerDetails = {
   id: string;
   first_name: string | null;
@@ -35,71 +25,6 @@ type ProposerDetails = {
   doctor_id: string | null;
   doctor_slug: string | null;
 };
-
-async function requireAdmin(): Promise<AdminAuthorizationResult> {
-  const supabase =
-    await createClient();
-
-  const {
-    data: { user },
-    error: userError,
-  } =
-    await supabase.auth.getUser();
-
-  if (
-    userError ||
-    !user
-  ) {
-    return {
-      profileId: null,
-
-      response:
-        NextResponse.json(
-          {
-            error:
-              "Trebuie să fii autentificat.",
-          },
-          {
-            status: 401,
-          }
-        ),
-    };
-  }
-
-  const {
-    data: profile,
-    error: profileError,
-  } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (
-    profileError ||
-    profile?.role !== "admin"
-  ) {
-    return {
-      profileId: null,
-
-      response:
-        NextResponse.json(
-          {
-            error:
-              "Nu ai permisiunea de a administra clinicile.",
-          },
-          {
-            status: 403,
-          }
-        ),
-    };
-  }
-
-  return {
-    profileId: user.id,
-    response: null,
-  };
-}
 
 function normalizeString(
   value: unknown
@@ -113,7 +38,7 @@ export async function GET(
   request: NextRequest
 ): Promise<Response> {
   const authorization =
-    await requireAdmin();
+    await requirePlatformOperatorAal2Api();
 
   if (authorization.response) {
     return authorization.response;
@@ -359,6 +284,15 @@ export async function GET(
   return NextResponse.json({
     clinics:
       enrichedClinics,
+    operatorRole:
+      authorization.role,
+    capabilities: {
+      canManageClinics:
+        true,
+      canDeleteClinics:
+        authorization.role ===
+        "admin",
+    },
   });
 }
 
@@ -366,7 +300,7 @@ export async function PATCH(
   request: NextRequest
 ): Promise<Response> {
   const authorization =
-    await requireAdmin();
+    await requirePlatformOperatorAal2Api();
 
   if (authorization.response) {
     return authorization.response;

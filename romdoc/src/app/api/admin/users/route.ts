@@ -9,20 +9,10 @@ import {
   createAdminClient,
 } from "@/lib/supabase/admin";
 import {
-  createClient,
-} from "@/lib/supabase/server";
+  requirePlatformOperatorAal2Api,
+} from "@/lib/auth/require-platform-operator-aal2-api";
 
 export const runtime = "nodejs";
-
-type AdminAuthorizationResult =
-  | {
-      profileId: string;
-      response: null;
-    }
-  | {
-      profileId: null;
-      response: NextResponse;
-    };
 
 type UserActionBody = {
   userId?: unknown;
@@ -151,76 +141,6 @@ async function getUniqueDoctorSlug(
   }
 }
 
-async function requireAdmin(): Promise<AdminAuthorizationResult> {
-  const supabase =
-    await createClient();
-
-  const {
-    data: { user },
-    error: userError,
-  } =
-    await supabase.auth.getUser();
-
-  if (
-    userError ||
-    !user
-  ) {
-    return {
-      profileId: null,
-
-      response:
-        NextResponse.json(
-          {
-            error:
-              "Trebuie să fii autentificat.",
-          },
-          {
-            status: 401,
-          }
-        ),
-    };
-  }
-
-  const {
-    data: profile,
-    error: profileError,
-  } = await supabase
-    .from("profiles")
-    .select(`
-      role,
-      account_status
-    `)
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (
-    profileError ||
-    profile?.role !== "admin" ||
-    profile.account_status !==
-      "active"
-  ) {
-    return {
-      profileId: null,
-
-      response:
-        NextResponse.json(
-          {
-            error:
-              "Nu ai permisiunea de a administra utilizatorii.",
-          },
-          {
-            status: 403,
-          }
-        ),
-    };
-  }
-
-  return {
-    profileId: user.id,
-    response: null,
-  };
-}
-
 async function listAllAuthUsers() {
   const admin =
     createAdminClient();
@@ -263,7 +183,7 @@ async function listAllAuthUsers() {
 
 export async function GET(): Promise<Response> {
   const authorization =
-    await requireAdmin();
+    await requirePlatformOperatorAal2Api();
 
   if (authorization.response) {
     return authorization.response;
@@ -553,6 +473,15 @@ export async function GET(): Promise<Response> {
 
   return NextResponse.json({
     users,
+    operatorRole:
+      authorization.role,
+    capabilities: {
+      canSuspendUsers:
+        true,
+      canChangePrivilegedRoles:
+        authorization.role ===
+        "admin",
+    },
   });
 }
 
@@ -560,7 +489,7 @@ export async function PATCH(
   request: NextRequest
 ): Promise<Response> {
   const authorization =
-    await requireAdmin();
+    await requirePlatformOperatorAal2Api();
 
   if (authorization.response) {
     return authorization.response;
@@ -690,6 +619,44 @@ export async function PATCH(
       },
       {
         status: 404,
+      }
+    );
+  }
+
+  if (
+    authorization.role ===
+      "manager" &&
+    (
+      targetProfile.role ===
+        "admin" ||
+      targetProfile.role ===
+        "manager"
+    )
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Managerii nu pot modifica administratori sau alți manageri.",
+      },
+      {
+        status: 403,
+      }
+    );
+  }
+
+  if (
+    authorization.role ===
+      "manager" &&
+    action !== "block" &&
+    action !== "unblock"
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Managerii pot doar suspenda sau reactiva utilizatori.",
+      },
+      {
+        status: 403,
       }
     );
   }
@@ -1258,6 +1225,7 @@ export async function PATCH(
       })
       .eq("id", userId)
       .neq("role", "admin")
+      .neq("role", "manager")
       .select("id")
       .maybeSingle();
 
@@ -1356,6 +1324,7 @@ export async function PATCH(
     })
     .eq("id", userId)
     .neq("role", "admin")
+      .neq("role", "manager")
     .select("id")
     .maybeSingle();
 

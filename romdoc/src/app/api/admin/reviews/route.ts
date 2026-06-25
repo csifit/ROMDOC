@@ -6,21 +6,11 @@ import {
   createAdminClient,
 } from "@/lib/supabase/admin";
 import {
-  createClient,
-} from "@/lib/supabase/server";
+  requirePlatformOperatorAal2Api,
+} from "@/lib/auth/require-platform-operator-aal2-api";
 
 export const runtime =
   "nodejs";
-
-type AdminAuthorizationResult =
-  | {
-      profileId: string;
-      response: null;
-    }
-  | {
-      profileId: null;
-      response: NextResponse;
-    };
 
 type ReviewActionBody = {
   reviewId?: unknown;
@@ -41,76 +31,11 @@ function normalizeString(
     .slice(0, maximumLength);
 }
 
-async function requireAdmin(): Promise<AdminAuthorizationResult> {
-  const supabase =
-    await createClient();
-
-  const {
-    data: { user },
-    error: userError,
-  } =
-    await supabase.auth.getUser();
-
-  if (
-    userError ||
-    !user
-  ) {
-    return {
-      profileId: null,
-
-      response:
-        NextResponse.json(
-          {
-            error:
-              "Trebuie să fii autentificat.",
-          },
-          {
-            status: 401,
-          }
-        ),
-    };
-  }
-
-  const {
-    data: profile,
-    error: profileError,
-  } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (
-    profileError ||
-    profile?.role !== "admin"
-  ) {
-    return {
-      profileId: null,
-
-      response:
-        NextResponse.json(
-          {
-            error:
-              "Nu ai permisiunea de a modera recenziile.",
-          },
-          {
-            status: 403,
-          }
-        ),
-    };
-  }
-
-  return {
-    profileId: user.id,
-    response: null,
-  };
-}
-
 export async function GET(
   request: NextRequest
 ): Promise<Response> {
   const authorization =
-    await requireAdmin();
+    await requirePlatformOperatorAal2Api();
 
   if (authorization.response) {
     return authorization.response;
@@ -206,6 +131,12 @@ export async function GET(
   return NextResponse.json({
     reviews:
       reviews ?? [],
+    operatorRole:
+      authorization.role,
+    capabilities: {
+      canModerateReviews:
+        true,
+    },
   });
 }
 
@@ -213,7 +144,7 @@ export async function PATCH(
   request: NextRequest
 ): Promise<Response> {
   const authorization =
-    await requireAdmin();
+    await requirePlatformOperatorAal2Api();
 
   if (authorization.response) {
     return authorization.response;

@@ -36,6 +36,7 @@ type NavigationItem = {
   label: string;
   icon: NavigationIcon;
   available: boolean;
+  adminOnly?: boolean;
 };
 
 const navigationItems: NavigationItem[] = [
@@ -50,6 +51,13 @@ const navigationItems: NavigationItem[] = [
     label: "Utilizatori",
     icon: "users",
     available: true,
+  },
+  {
+    href: "/admin/managers",
+    label: "Manageri",
+    icon: "users",
+    available: true,
+    adminOnly: true,
   },
   {
     href:
@@ -77,6 +85,7 @@ const navigationItems: NavigationItem[] = [
     label: "Specialități",
     icon: "specialties",
     available: true,
+    adminOnly: true,
   },
   {
     href:
@@ -586,6 +595,14 @@ export default function AdminDashboardSidebar({
       >
         {navigationItems.map(
           (item) => {
+            if (
+              roleLabel ===
+                "Manager" &&
+              item.adminOnly
+            ) {
+              return null;
+            }
+
             const active =
               isActiveRoute(
                 pathname,
