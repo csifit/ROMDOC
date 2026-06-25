@@ -4,12 +4,12 @@ import {
 } from "next/server";
 
 import {
-  validateSameOrigin,
   sameOriginErrorResponse,
+  validateSameOrigin,
 } from "@/lib/security/same-origin";
 import {
-  sendAccountClosureNotification,
-} from "@/lib/privacy/send-account-closure-notification";
+  createAdminClient,
+} from "@/lib/supabase/admin";
 import {
   createClient,
 } from "@/lib/supabase/server";
@@ -17,48 +17,7 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type ClosureStatusRow = {
-  request_id: string | null;
-  status: string | null;
-  requested_at: string | null;
-  cooling_off_ends_at:
-    | string
-    | null;
-  restricted_at: string | null;
-  processing_started_at:
-    | string
-    | null;
-  completed_at: string | null;
-  cancelled_at: string | null;
-  legal_hold_active:
-    | boolean
-    | null;
-};
-
-type RequestClosureBody = {
-  reason?: unknown;
-};
-
-function normalizeReason(
-  value: unknown
-) {
-  if (
-    typeof value !==
-    "string"
-  ) {
-    return null;
-  }
-
-  const normalized =
-    value
-      .trim()
-      .slice(0, 2000);
-
-  return normalized ||
-    null;
-}
-
-async function requirePatient() {
+async function requireActivePatient() {
   const supabase =
     await createClient();
 
@@ -73,9 +32,7 @@ async function requirePatient() {
     !user
   ) {
     return {
-      supabase,
       user: null,
-      profile: null,
       response:
         NextResponse.json(
           {
@@ -100,11 +57,8 @@ async function requirePatient() {
     await supabase
       .from("profiles")
       .select(`
-        id,
         role,
-        account_status,
-        first_name,
-        last_name
+        account_status
       `)
       .eq(
         "id",
@@ -114,19 +68,18 @@ async function requirePatient() {
 
   if (
     profileError ||
-    !profile ||
-    profile.role !==
-      "patient"
+    profile?.role !==
+      "patient" ||
+    profile.account_status !==
+      "active"
   ) {
     return {
-      supabase,
-      user,
-      profile: null,
+      user: null,
       response:
         NextResponse.json(
           {
             error:
-              "Contul nu are acces la setările pacientului.",
+              "Contul de pacient nu este activ.",
           },
           {
             status: 403,
@@ -139,39 +92,8 @@ async function requirePatient() {
     };
   }
 
-  if (
-    ![
-      "active",
-      "closure_requested",
-    ].includes(
-      profile.account_status
-    )
-  ) {
-    return {
-      supabase,
-      user,
-      profile: null,
-      response:
-        NextResponse.json(
-          {
-            error:
-              "Contul nu permite această acțiune.",
-          },
-          {
-            status: 409,
-            headers: {
-              "Cache-Control":
-                "no-store",
-            },
-          }
-        ),
-    };
-  }
-
   return {
-    supabase,
     user,
-    profile,
     response: null,
   };
 }
@@ -179,7 +101,7 @@ async function requirePatient() {
 export async function GET():
   Promise<Response> {
   const authorization =
-    await requirePatient();
+    await requireActivePatient();
 
   if (
     authorization.response
@@ -187,14 +109,23 @@ export async function GET():
     return authorization.response;
   }
 
+  const admin =
+    createAdminClient();
+
   const {
-    data,
+    data: profile,
     error,
   } =
-    await authorization.supabase
-      .rpc(
-        "get_own_account_closure_status"
-      );
+    await admin
+      .from("profiles")
+      .select(`
+        account_closure_requested_at
+      `)
+      .eq(
+        "id",
+        authorization.user.id
+      )
+      .maybeSingle();
 
   if (error) {
     console.error(
@@ -205,7 +136,7 @@ export async function GET():
     return NextResponse.json(
       {
         error:
-          "Starea cererii de închidere nu a putut fi încărcată.",
+          "Starea solicitării nu a putut fi încărcată.",
       },
       {
         status: 500,
@@ -217,14 +148,11 @@ export async function GET():
     );
   }
 
-  const rows =
-    (data ??
-      []) as ClosureStatusRow[];
-
   return NextResponse.json(
     {
-      closure:
-        rows[0] ??
+      requestedAt:
+        profile
+          ?.account_closure_requested_at ??
         null,
     },
     {
@@ -248,7 +176,7 @@ export async function POST(
   }
 
   const authorization =
-    await requirePatient();
+    await requireActivePatient();
 
   if (
     authorization.response
@@ -256,57 +184,55 @@ export async function POST(
     return authorization.response;
   }
 
-  let body:
-    RequestClosureBody;
+  const admin =
+    createAdminClient();
 
-  try {
-    body =
-      (await request.json()) as
-        RequestClosureBody;
-  } catch {
-    return NextResponse.json(
-      {
-        error:
-          "Cererea nu conține date JSON valide.",
-      },
-      {
-        status: 400,
-        headers: {
-          "Cache-Control":
-            "no-store",
-        },
-      }
-    );
-  }
-
-  const reason =
-    normalizeReason(
-      body.reason
-    );
+  const requestedAt =
+    new Date().toISOString();
 
   const {
-    data,
+    data: profile,
     error,
   } =
-    await authorization.supabase
-      .rpc(
-        "request_own_account_closure",
-        {
-          request_reason:
-            reason,
-        }
-      );
+    await admin
+      .from("profiles")
+      .update({
+        account_closure_requested_at:
+          requestedAt,
+        updated_at:
+          requestedAt,
+      })
+      .eq(
+        "id",
+        authorization.user.id
+      )
+      .eq(
+        "role",
+        "patient"
+      )
+      .eq(
+        "account_status",
+        "active"
+      )
+      .is(
+        "account_closure_requested_at",
+        null
+      )
+      .select(`
+        account_closure_requested_at
+      `)
+      .maybeSingle();
 
   if (error) {
     console.error(
-      "Patient account closure request failed:",
+      "Patient closure request failed:",
       error
     );
 
     return NextResponse.json(
       {
         error:
-          "Cererea de închidere nu a putut fi înregistrată.",
+          "Solicitarea nu a putut fi înregistrată.",
       },
       {
         status: 500,
@@ -318,47 +244,29 @@ export async function POST(
     );
   }
 
-  const { data: statusRows } =
-    await authorization.supabase.rpc(
-      "get_own_account_closure_status"
+  if (!profile) {
+    return NextResponse.json(
+      {
+        error:
+          "Solicitarea este deja înregistrată.",
+      },
+      {
+        status: 409,
+        headers: {
+          "Cache-Control":
+            "no-store",
+        },
+      }
     );
-
-  const latestStatus =
-    ((statusRows ?? []) as ClosureStatusRow[])[0] ?? null;
-
-  const recipientName =
-    [
-      authorization.profile?.first_name,
-      authorization.profile?.last_name,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .trim() ||
-    authorization.user?.email?.split("@")[0] ||
-    "pacient";
-
-  if (authorization.user?.email && typeof data === "string") {
-    const emailResult = await sendAccountClosureNotification({
-      closureRequestId: data,
-      profileId: authorization.user.id,
-      recipientEmail: authorization.user.email,
-      recipientName,
-      notificationType: "closure_requested",
-      locale: authorization.user.user_metadata?.locale,
-      coolingOffEndsAt: latestStatus?.cooling_off_ends_at ?? null,
-    });
-
-    if (!emailResult.sent && !emailResult.skipped) {
-      console.error("Closure request email failed:", emailResult);
-    }
   }
 
   return NextResponse.json(
     {
       success: true,
-      requestId: data,
+      requestedAt:
+        profile.account_closure_requested_at,
       message:
-        "Cererea a fost înregistrată. Ai la dispoziție 30 de zile pentru a o anula.",
+        "Solicitarea de închidere a contului a fost trimisă administratorului.",
     },
     {
       status: 201,
@@ -382,7 +290,7 @@ export async function DELETE(
   }
 
   const authorization =
-    await requirePatient();
+    await requireActivePatient();
 
   if (
     authorization.response
@@ -390,33 +298,43 @@ export async function DELETE(
     return authorization.response;
   }
 
-  const { data: beforeCancelRows } =
-    await authorization.supabase.rpc(
-      "get_own_account_closure_status"
-    );
-
-  const beforeCancel =
-    ((beforeCancelRows ?? []) as ClosureStatusRow[])[0] ?? null;
+  const admin =
+    createAdminClient();
 
   const {
-    data,
     error,
   } =
-    await authorization.supabase
-      .rpc(
-        "cancel_own_account_closure"
+    await admin
+      .from("profiles")
+      .update({
+        account_closure_requested_at:
+          null,
+        updated_at:
+          new Date().toISOString(),
+      })
+      .eq(
+        "id",
+        authorization.user.id
+      )
+      .eq(
+        "role",
+        "patient"
+      )
+      .eq(
+        "account_status",
+        "active"
       );
 
   if (error) {
     console.error(
-      "Patient account closure cancellation failed:",
+      "Patient closure cancellation failed:",
       error
     );
 
     return NextResponse.json(
       {
         error:
-          "Cererea de închidere nu a putut fi anulată.",
+          "Solicitarea nu a putut fi anulată.",
       },
       {
         status: 500,
@@ -428,53 +346,13 @@ export async function DELETE(
     );
   }
 
-  if (!data) {
-    return NextResponse.json(
-      {
-        error:
-          "Nu există o cerere care poate fi anulată.",
-      },
-      {
-        status: 409,
-        headers: {
-          "Cache-Control":
-            "no-store",
-        },
-      }
-    );
-  }
-
-  const recipientName =
-    [
-      authorization.profile?.first_name,
-      authorization.profile?.last_name,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .trim() ||
-    authorization.user?.email?.split("@")[0] ||
-    "pacient";
-
-  if (authorization.user?.email && beforeCancel?.request_id) {
-    const emailResult = await sendAccountClosureNotification({
-      closureRequestId: beforeCancel.request_id,
-      profileId: authorization.user.id,
-      recipientEmail: authorization.user.email,
-      recipientName,
-      notificationType: "closure_cancelled",
-      locale: authorization.user.user_metadata?.locale,
-    });
-
-    if (!emailResult.sent && !emailResult.skipped) {
-      console.error("Closure cancellation email failed:", emailResult);
-    }
-  }
-
   return NextResponse.json(
     {
       success: true,
+      requestedAt:
+        null,
       message:
-        "Cererea de închidere a fost anulată.",
+        "Solicitarea de închidere a contului a fost anulată.",
     },
     {
       headers: {
