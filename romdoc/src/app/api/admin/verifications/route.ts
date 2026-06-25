@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireAdminAal2Api } from "@/lib/auth/require-admin-aal2-api";
+import { requirePlatformOperatorAal2Api } from "@/lib/auth/require-platform-operator-aal2-api";
 
 export const runtime = "nodejs";
 
@@ -37,7 +37,7 @@ function relationOne<T>(value: T | T[] | null | undefined): T | null {
 }
 
 export async function GET(request: NextRequest): Promise<Response> {
-  const authorization = await requireAdminAal2Api();
+  const authorization = await requirePlatformOperatorAal2Api();
 
   if (authorization.response) {
     return authorization.response;
@@ -261,7 +261,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 }
 
 export async function PATCH(request: NextRequest): Promise<Response> {
-  const authorization = await requireAdminAal2Api();
+  const authorization = await requirePlatformOperatorAal2Api();
 
   if (authorization.response) {
     return authorization.response;

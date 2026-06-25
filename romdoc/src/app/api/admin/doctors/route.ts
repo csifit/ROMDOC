@@ -9,8 +9,8 @@ import {
   createAdminClient,
 } from "@/lib/supabase/admin";
 import {
-  requireAdminAal2Api,
-} from "@/lib/auth/require-admin-aal2-api";
+  requirePlatformOperatorAal2Api,
+} from "@/lib/auth/require-platform-operator-aal2-api";
 
 export const runtime = "nodejs";
 
@@ -98,7 +98,7 @@ async function listAllAuthUsers(): Promise<AuthUserMap> {
 
 export async function GET(): Promise<Response> {
   const authorization =
-    await requireAdminAal2Api();
+    await requirePlatformOperatorAal2Api();
 
   if (authorization.response) {
     return authorization.response;
@@ -424,6 +424,17 @@ export async function GET(): Promise<Response> {
 
   return NextResponse.json({
     doctors,
+    operatorRole:
+      authorization.role,
+    capabilities: {
+      canDeleteDoctors:
+        authorization.role ===
+        "admin",
+      canManageDoctors:
+        true,
+      canManageVerification:
+        true,
+    },
   });
 }
 
@@ -431,7 +442,7 @@ export async function PATCH(
   request: NextRequest
 ): Promise<Response> {
   const authorization =
-    await requireAdminAal2Api();
+    await requirePlatformOperatorAal2Api();
 
   if (authorization.response) {
     return authorization.response;
