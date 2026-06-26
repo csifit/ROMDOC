@@ -100,3 +100,14 @@ where tablename in (
 order by schemaname, tablename, policyname;
 
 -- =====================================================
+-- verify legal pages
+-- =====================================================
+
+select
+  page_key,
+  title,
+  is_published,
+  updated_at,
+  updated_by_profile_id
+from public.legal_pages
+order by page_key;

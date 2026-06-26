@@ -2,20 +2,19 @@ import Link from "next/link";
 import type {
   ReactNode,
 } from "react";
-import PublicLayout from "@/components/public/public-layout";
 
-type LegalSection = {
-  id: string;
-  title: string;
-  content: ReactNode;
-};
+import PublicLayout from "@/components/public/public-layout";
+import {
+  formatLegalDate,
+  parseLegalContent,
+} from "@/lib/legal/legal-pages";
 
 type LegalPageShellProps = {
   eyebrow: string;
   title: string;
   description: string;
   updatedAt: string;
-  sections: LegalSection[];
+  content: string;
   notice?: ReactNode;
 };
 
@@ -24,9 +23,12 @@ export default function LegalPageShell({
   title,
   description,
   updatedAt,
-  sections,
+  content,
   notice,
 }: LegalPageShellProps) {
+  const sections =
+    parseLegalContent(content);
+
   return (
     <PublicLayout>
       <main className="min-h-screen bg-[#F0EEE9] px-4 py-10 sm:px-6 lg:px-8">
@@ -84,7 +86,10 @@ export default function LegalPageShell({
                 </p>
 
                 <p className="mt-4 text-sm text-gray-500">
-                  Ultima actualizare: {updatedAt}
+                  Ultima actualizare:{" "}
+                  {formatLegalDate(
+                    updatedAt
+                  )}
                 </p>
               </header>
 
@@ -95,22 +100,64 @@ export default function LegalPageShell({
               )}
 
               <div className="mt-10 space-y-10">
-                {sections.map(
-                  (section) => (
-                    <section
-                      key={section.id}
-                      id={section.id}
-                      className="scroll-mt-28"
-                    >
-                      <h2 className="text-2xl font-bold tracking-tight text-gray-900">
-                        {section.title}
-                      </h2>
+                {sections.length > 0 ? (
+                  sections.map(
+                    (section) => (
+                      <section
+                        key={section.id}
+                        id={section.id}
+                        className="scroll-mt-28"
+                      >
+                        <h2 className="text-2xl font-bold tracking-tight text-gray-900">
+                          {section.title}
+                        </h2>
 
-                      <div className="mt-4 space-y-4 text-base leading-7 text-gray-700">
-                        {section.content}
-                      </div>
-                    </section>
+                        <div className="mt-4 space-y-4 text-base leading-7 text-gray-700">
+                          {section.blocks.map(
+                            (block, index) => {
+                              if (
+                                block.type ===
+                                "list"
+                              ) {
+                                return (
+                                  <ul
+                                    key={`${section.id}-list-${index}`}
+                                    className="list-disc space-y-2 pl-6"
+                                  >
+                                    {block.items.map(
+                                      (
+                                        item,
+                                        itemIndex
+                                      ) => (
+                                        <li
+                                          key={`${section.id}-list-${index}-${itemIndex}`}
+                                        >
+                                          {item}
+                                        </li>
+                                      )
+                                    )}
+                                  </ul>
+                                );
+                              }
+
+                              return (
+                                <p
+                                  key={`${section.id}-paragraph-${index}`}
+                                  className="whitespace-pre-line"
+                                >
+                                  {block.text}
+                                </p>
+                              );
+                            }
+                          )}
+                        </div>
+                      </section>
+                    )
                   )
+                ) : (
+                  <p className="text-base leading-7 text-gray-700">
+                    Conținutul acestui document va fi publicat în curând.
+                  </p>
                 )}
               </div>
             </article>
