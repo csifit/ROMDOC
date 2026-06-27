@@ -182,7 +182,7 @@ Utilizatorii pot controla cookie-urile din setările browserului. Dezactivarea c
     description:
       "Detalii generale despre rolul platformei, verificarea profesioniștilor și responsabilitățile participanților.",
     notice:
-      "Datele complete ale entității care operează RomDoc, adresa sediului, identificatorii fiscali și datele autorităților relevante vor fi adăugate înainte de lansare.",
+      "Datele complete ale entității care operează RomDoc, adresa sediului, identificatorii fiscali și datele autorităților relevante.",
     fallbackUpdatedAt:
       FALLBACK_UPDATED_AT,
     defaultContent: `## 1. Operatorul platformei
