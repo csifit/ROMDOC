@@ -102,7 +102,7 @@ Termenii pot fi actualizați pentru a reflecta modificări funcționale, comerci
     description:
       "Această pagină descrie categoriile de date folosite de RomDoc și scopurile principale ale prelucrării.",
     notice:
-      "Documentul este un proiect tehnic. Datele operatorului, temeiurile juridice, perioadele exacte de păstrare și procedura completă pentru exercitarea drepturilor trebuie validate înainte de lansare.",
+      "Vă rugăm sa citiți cu atenție și să considerați Politicile de confidențilitate. ",
     fallbackUpdatedAt:
       FALLBACK_UPDATED_AT,
     defaultContent: `## 1. Date pe care le putem colecta
