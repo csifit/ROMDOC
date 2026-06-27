@@ -50,7 +50,7 @@ export const LEGAL_PAGE_DEFINITIONS: Record<
     description:
       "Această pagină prezintă regulile generale pentru accesarea și utilizarea platformei RomDoc.",
     notice:
-      "Acesta este un text de lucru pentru structura tehnică a platformei. Înainte de lansarea comercială, documentul trebuie completat cu datele operatorului și revizuit de un specialist juridic.",
+      "Vă rugăm, să citiți cu atenție.",
     fallbackUpdatedAt:
       FALLBACK_UPDATED_AT,
     defaultContent: `## 1. Despre platformă
