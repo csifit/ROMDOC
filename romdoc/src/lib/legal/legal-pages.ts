@@ -147,7 +147,7 @@ Solicitările privind datele personale pot fi transmise prin pagina de contact. 
     description:
       "Această pagină explică rolul cookie-urilor și al tehnologiilor similare utilizate de platformă.",
     notice:
-      "Lista exactă a cookie-urilor trebuie completată după auditarea implementării finale de autentificare, analiză și plăți.",
+      "Lista exactă a cookie-urilor se modifică în funcție de serviciile introduse pentru inbunatațire.",
     fallbackUpdatedAt:
       FALLBACK_UPDATED_AT,
     defaultContent: `## 1. Ce sunt cookie-urile
