@@ -758,9 +758,11 @@ export default function RegisterForm({
           mare, o literă mică și o cifră.
         </p>
 
-        <label className="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
+        <div className="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
           <input
+            id="accepted-terms"
             type="checkbox"
+            aria-labelledby="accepted-terms-label"
             required
             checked={acceptedTerms}
             disabled={isPending}
@@ -769,15 +771,40 @@ export default function RegisterForm({
                 event.target.checked
               )
             }
-            className="mt-1 h-4 w-4"
+            className="mt-1 h-4 w-4 shrink-0"
           />
 
-          <span className="text-sm leading-6 text-gray-700">
-            Sunt de acord cu termenii de
-            utilizare și politica de
-            confidențialitate RomDoc.
-          </span>
-        </label>
+          <p
+            id="accepted-terms-label"
+            className="text-sm leading-6 text-gray-700"
+          >
+            <label
+              htmlFor="accepted-terms"
+              className="cursor-pointer"
+            >
+              Sunt de acord cu{" "}
+            </label>
+
+            <Link
+              href="/termeni-si-conditii"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-[#036661] underline underline-offset-4 transition-colors hover:text-[#ff2800] focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#036661] focus-visible:ring-offset-2"
+            >
+              termenii și condițiile
+            </Link>{" "}
+            și{" "}
+            <Link
+              href="/confidentialitate"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-[#036661] underline underline-offset-4 transition-colors hover:text-[#ff2800] focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#036661] focus-visible:ring-offset-2"
+            >
+              politica de confidențialitate
+            </Link>{" "}
+            RomDoc.
+          </p>
+        </div>
 
         {error && (
           <div
