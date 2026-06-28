@@ -10,9 +10,9 @@ import {
 import StaffAppointmentsFilteredList, {
   type StaffAppointmentListItem,
 } from "@/components/staff/staff-appointments-filtered-list";
-import StaffConfirmedAppointmentsWeeklyCalendar, {
-  type StaffConfirmedWeeklyAppointment,
-} from "@/components/staff/staff-confirmed-appointments-weekly-calendar";
+import StaffAppointmentsWeeklyCalendar, {
+  type StaffWeeklyAppointment,
+} from "@/components/staff/staff-appointments-weekly-calendar";
 
 type Translation = {
   locale: string;
@@ -253,20 +253,13 @@ export default function StaffAppointmentsManager() {
       [appointments]
     );
 
-  const confirmedCalendarAppointments =
+  const calendarAppointments =
     useMemo<
-      StaffConfirmedWeeklyAppointment[]
+      StaffWeeklyAppointment[]
     >(
       () =>
         appointments.flatMap(
           (appointment) => {
-            if (
-              appointment.status !==
-                "confirmed"
-            ) {
-              return [];
-            }
-
             const date =
               appointment.scheduled_date ??
               appointment.requested_date;
@@ -295,6 +288,8 @@ export default function StaffAppointmentsManager() {
                   ),
                 date,
                 time,
+                status:
+                  appointment.status,
               },
             ];
           }
@@ -324,10 +319,7 @@ export default function StaffAppointmentsManager() {
         </h1>
 
         <p className="mt-3 text-sm leading-6 text-gray-600">
-          Ai acces numai la programările și
-          dosarele medicale pentru medicii și
-          clinicile unde atribuirea ta este
-          activă.
+          Ai acces la toate tipurile de programări și la dosarele medicale pentru medicii și clinicile unde atribuirea ta este activă.
         </p>
       </section>
 
@@ -342,9 +334,9 @@ export default function StaffAppointmentsManager() {
 
       {!error && (
         <>
-          <StaffConfirmedAppointmentsWeeklyCalendar
+          <StaffAppointmentsWeeklyCalendar
             appointments={
-              confirmedCalendarAppointments
+              calendarAppointments
             }
           />
 

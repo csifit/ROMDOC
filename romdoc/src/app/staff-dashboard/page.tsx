@@ -4,6 +4,7 @@ import {
 } from "next/navigation";
 
 import StaffAppointmentsManager from "@/components/staff/staff-appointments-manager";
+import StaffLogoutButton from "@/components/staff/staff-logout-button";
 import {
   createClient,
 } from "@/lib/supabase/server";
@@ -131,12 +132,16 @@ export default async function StaffDashboardPage() {
             </span>
           </div>
 
-          <Link
-            href="/"
-            className="romdoc-button romdoc-button-secondary romdoc-button-sm"
-          >
-            Pagina principală
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/"
+              className="romdoc-button romdoc-button-secondary romdoc-button-sm"
+            >
+              Pagina principală
+            </Link>
+
+            <StaffLogoutButton />
+          </div>
         </header>
 
         {hasActiveAssignment ? (
