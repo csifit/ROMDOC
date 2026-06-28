@@ -294,7 +294,7 @@ export default function DoctorAppointmentsFilteredList({
         )}
       </div>
 
-      <div className="mb-5 grid gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:grid-cols-2">
+      <div className="mb-5 grid gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm xl:grid-cols-2">
         <label className="block">
           <span className="text-sm font-semibold text-gray-700">
             Filtrează după status
