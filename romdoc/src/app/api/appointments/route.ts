@@ -4,10 +4,6 @@ import {
 } from "next/server";
 import { Resend } from "resend";
 
-import {
-  consumeRateLimit,
-  rateLimitResponse,
-} from "@/lib/security/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 type AppointmentRequestBody = {
@@ -469,25 +465,6 @@ export async function POST(
       return jsonError(
         "Doar conturile active de pacient pot solicita programări.",
         403
-      );
-    }
-
-    const rateLimit =
-      await consumeRateLimit({
-        namespace:
-          "patient-appointment-scheduling",
-        identifier:
-          user.id,
-        limit: 10,
-        windowSeconds:
-          60 * 60,
-      });
-
-    if (
-      !rateLimit.allowed
-    ) {
-      return rateLimitResponse(
-        rateLimit
       );
     }
 
