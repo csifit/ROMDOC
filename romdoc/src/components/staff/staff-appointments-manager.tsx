@@ -319,7 +319,7 @@ export default function StaffAppointmentsManager() {
         </h1>
 
         <p className="mt-3 text-sm leading-6 text-gray-600">
-          Ai acces la toate tipurile de programări și la dosarele medicale pentru medicii și clinicile unde atribuirea ta este activă.
+          Ai acces la toate programările, indiferent de status sau clinică, pentru fiecare medic pentru care ai cel puțin o atribuire activă.
         </p>
       </section>
 

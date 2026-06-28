@@ -11,7 +11,6 @@ import {
 
 export type StaffMedicalFolderAssignment = {
   doctorId: string;
-  clinicId: string;
 };
 
 export type StaffMedicalFolderAuthorization = {
@@ -113,9 +112,7 @@ export async function requireActiveStaffMedicalFolderAccess():
     error: assignmentError,
   } = await admin
     .from("doctor_staff")
-    .select(
-      "doctor_id, clinic_id"
-    )
+    .select("doctor_id")
     .eq(
       "staff_profile_id",
       user.id
@@ -136,16 +133,23 @@ export async function requireActiveStaffMedicalFolderAccess():
     };
   }
 
+  const doctorIds =
+    Array.from(
+      new Set(
+        (assignments ?? []).map(
+          (assignment) =>
+            assignment.doctor_id
+        )
+      )
+    );
+
   return {
     authorization: {
       userId: user.id,
       assignments:
-        (assignments ?? []).map(
-          (assignment) => ({
-            doctorId:
-              assignment.doctor_id,
-            clinicId:
-              assignment.clinic_id,
+        doctorIds.map(
+          (doctorId) => ({
+            doctorId,
           })
         ),
     },
@@ -201,9 +205,7 @@ export async function loadStaffMedicalFolderAppointment(
     authorization.assignments.some(
       (assignment) =>
         assignment.doctorId ===
-          appointment.doctor_id &&
-        assignment.clinicId ===
-          appointment.clinic_id
+        appointment.doctor_id
     );
 
   if (!allowed) {

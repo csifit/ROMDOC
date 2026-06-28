@@ -131,13 +131,23 @@ export async function GET() {
     });
   }
 
+  const doctorIds =
+    Array.from(
+      new Set(
+        authorization.assignments.map(
+          (assignment) =>
+            assignment.doctor_id
+        )
+      )
+    );
+
   const admin =
     createAdminClient();
 
   const results =
     await Promise.all(
-      authorization.assignments.map(
-        (assignment) =>
+      doctorIds.map(
+        (doctorId) =>
           admin
             .from("appointments")
             .select(`
@@ -178,22 +188,18 @@ export async function GET() {
             `)
             .eq(
               "doctor_id",
-              assignment.doctor_id
-            )
-            .eq(
-              "clinic_id",
-              assignment.clinic_id
+              doctorId
             )
             .order(
               "requested_date",
               {
-                ascending: true,
+                ascending: false,
               }
             )
             .order(
               "requested_time",
               {
-                ascending: true,
+                ascending: false,
               }
             )
       )
@@ -207,7 +213,7 @@ export async function GET() {
 
   if (failed?.error) {
     console.error(
-      "Staff appointment query failed:",
+      "Staff doctor-wide appointment query failed:",
       failed.error
     );
 
@@ -221,9 +227,15 @@ export async function GET() {
   }
 
   const uniqueAppointments =
-    new Map<string, unknown>();
+    new Map<
+      string,
+      Record<string, unknown>
+    >();
 
-  for (const result of results) {
+  for (
+    const result
+    of results
+  ) {
     for (
       const appointment
       of result.data ?? []
@@ -235,11 +247,61 @@ export async function GET() {
     }
   }
 
+  const appointments =
+    Array.from(
+      uniqueAppointments.values()
+    ).sort(
+      (
+        firstAppointment,
+        secondAppointment
+      ) => {
+        const firstDate =
+          String(
+            firstAppointment
+              .scheduled_date ??
+            firstAppointment
+              .requested_date ??
+            ""
+          );
+
+        const secondDate =
+          String(
+            secondAppointment
+              .scheduled_date ??
+            secondAppointment
+              .requested_date ??
+            ""
+          );
+
+        const firstTime =
+          String(
+            firstAppointment
+              .scheduled_time ??
+            firstAppointment
+              .requested_time ??
+            ""
+          );
+
+        const secondTime =
+          String(
+            secondAppointment
+              .scheduled_time ??
+            secondAppointment
+              .requested_time ??
+            ""
+          );
+
+        return (
+          `${secondDate}T${secondTime}`
+            .localeCompare(
+              `${firstDate}T${firstTime}`
+            )
+        );
+      }
+    );
+
   return NextResponse.json({
-    appointments:
-      Array.from(
-        uniqueAppointments.values()
-      ),
+    appointments,
     assignments:
       authorization.assignments,
   });
