@@ -540,17 +540,37 @@ export default function DoctorPatientFolderManager({
             className="romdoc-focus-ring w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm"
           />
         ) : (
-          <input
+          <div>
+           <input
+            id={`patient-document-${appointmentId}`}
             type="file"
-            accept=".pdf,.jpg,.jpeg,.png,.webp"
-            onChange={(event) =>
-              setFile(
-                event.target.files?.[0] ??
-                  null
-              )
-            }
-            className="block w-full text-sm text-gray-700"
-          />
+                accept=".pdf,.jpg,.jpeg,.png,.webp"
+              onChange={(event) =>
+           setFile(
+             event.target.files?.[0] ??
+              null
+            )
+             }
+            className="sr-only"
+             />
+
+              <label
+              htmlFor={`patient-document-${appointmentId}`}
+               className="romdoc-focus-ring block w-full cursor-pointer rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-700 transition-colors hover:border-[#036661] hover:bg-[#036661]/5"
+              >
+             <span className="font-semibold text-[#036661]">
+                    Click here to upload
+               </span>{" "}
+                    <span>
+                  (accepted: .pdf, .jpg, .jpeg, .png, .webp):
+               </span>{" "}
+                <span className="font-medium text-gray-900">
+                   {file
+                  ? file.name
+                   : "No files chosen."}
+                </span>
+               </label>
+           </div>
         )}
 
         <button
