@@ -328,7 +328,7 @@ export default function DoctorAppointmentsFilteredList({
             Data programării
           </legend>
 
-          <div className="mt-2 flex items-center gap-2">
+          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1.4fr)] items-center gap-2">
             <input
               type="text"
               inputMode="numeric"
@@ -344,7 +344,7 @@ export default function DoctorAppointmentsFilteredList({
                 );
                 setOpenAppointmentId(null);
               }}
-              className="min-w-0 flex-1 rounded-xl border border-gray-300 px-3 py-3 text-center text-gray-900 outline-none transition-colors focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+              className="w-full min-w-0 rounded-xl border border-gray-300 px-3 py-3 text-center text-gray-900 outline-none transition-colors focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
             />
 
             <span
@@ -369,7 +369,7 @@ export default function DoctorAppointmentsFilteredList({
                 );
                 setOpenAppointmentId(null);
               }}
-              className="min-w-0 flex-1 rounded-xl border border-gray-300 px-3 py-3 text-center text-gray-900 outline-none transition-colors focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+              className="w-full min-w-0 rounded-xl border border-gray-300 px-3 py-3 text-center text-gray-900 outline-none transition-colors focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
             />
 
             <span
@@ -394,7 +394,7 @@ export default function DoctorAppointmentsFilteredList({
                 );
                 setOpenAppointmentId(null);
               }}
-              className="min-w-0 flex-[1.5] rounded-xl border border-gray-300 px-3 py-3 text-center text-gray-900 outline-none transition-colors focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+              className="w-full min-w-0 rounded-xl border border-gray-300 px-3 py-3 text-center text-gray-900 outline-none transition-colors focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
             />
           </div>
 
