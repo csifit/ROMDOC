@@ -1,7 +1,12 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import {
+  redirect,
+} from "next/navigation";
+
 import StaffAppointmentsManager from "@/components/staff/staff-appointments-manager";
-import { createClient } from "@/lib/supabase/server";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
 export default async function StaffDashboardPage() {
   const supabase =
@@ -42,7 +47,9 @@ export default async function StaffDashboardPage() {
     redirect("/dashboard");
   }
 
-  if (profile.role !== "staff") {
+  if (
+    profile.role !== "staff"
+  ) {
     redirect("/dashboard");
   }
 
@@ -97,7 +104,7 @@ export default async function StaffDashboardPage() {
             </p>
 
             <span className="mt-2 inline-flex rounded-full bg-[#F0EEE9] px-3 py-1 text-xs font-semibold text-[#9A4F35]">
-              Personal — numai programări
+              Personal — programări și dosare medicale
             </span>
           </div>
 
@@ -121,7 +128,8 @@ export default async function StaffDashboardPage() {
               Invitația a fost creată, dar
               medicul trebuie să activeze
               atribuirea înainte de a putea
-              administra programările.
+              administra programările și
+              dosarele medicale.
             </p>
           </section>
         )}

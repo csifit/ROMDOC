@@ -1,0 +1,9 @@
+diff --git a/romdoc/src/app/staff-dashboard/page.tsx b/romdoc/src/app/staff-dashboard/page.tsx
+--- a/romdoc/src/app/staff-dashboard/page.tsx
++++ b/romdoc/src/app/staff-dashboard/page.tsx
+@@ -99,7 +99,7 @@ export default async function StaffDashboardPage() {
+
+             <span className="mt-2 inline-flex rounded-full bg-[#F0EEE9] px-3 py-1 text-xs font-semibold text-[#9A4F35]">
+-              Personal — numai programări
++              Personal — programări și dosare medicale
+             </span>

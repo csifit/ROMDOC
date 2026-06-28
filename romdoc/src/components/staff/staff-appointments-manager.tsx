@@ -3,10 +3,16 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 
-import Button from "@/components/ui/button";
+import StaffAppointmentsFilteredList, {
+  type StaffAppointmentListItem,
+} from "@/components/staff/staff-appointments-filtered-list";
+import StaffConfirmedAppointmentsWeeklyCalendar, {
+  type StaffConfirmedWeeklyAppointment,
+} from "@/components/staff/staff-confirmed-appointments-weekly-calendar";
 
 type Translation = {
   locale: string;
@@ -37,6 +43,7 @@ type Appointment = {
   id: string;
   doctor_id: string;
   clinic_id: string;
+  patient_profile_id: string | null;
   patient_name: string;
   patient_email: string;
   patient_phone: string;
@@ -62,17 +69,8 @@ type Appointment = {
 
 type StaffAppointmentsResponse = {
   appointments?: Appointment[];
-  message?: string;
-  emailSent?: boolean | null;
   error?: string;
 };
-
-type LifecycleAction =
-  | "confirm"
-  | "reschedule"
-  | "complete"
-  | "cancel"
-  | "no_show";
 
 function getFirstRelation<T>(
   relation:
@@ -123,7 +121,16 @@ function getDoctorName(
     return "Medic";
   }
 
-  return doctor.slug
+  const translatedTitle =
+    doctor.doctor_translations?.find(
+      (translation) =>
+        translation.locale === "ro"
+    )?.title ??
+    doctor.doctor_translations?.[0]
+      ?.title ??
+    null;
+
+  const name = doctor.slug
     .split("-")
     .map(
       (part) =>
@@ -131,67 +138,10 @@ function getDoctorName(
         part.slice(1)
     )
     .join(" ");
-}
 
-function getStatusLabel(
-  status: string
-) {
-  switch (status) {
-    case "pending":
-      return "În așteptare";
-    case "confirmed":
-      return "Confirmată";
-    case "rescheduled":
-      return "Reprogramată";
-    case "completed":
-      return "Finalizată";
-    case "no_show":
-      return "Neprezentare";
-    case "cancelled":
-      return "Anulată";
-    default:
-      return status;
-  }
-}
-
-function getStatusClasses(
-  status: string
-) {
-  switch (status) {
-    case "confirmed":
-      return "bg-green-100 text-green-800";
-    case "rescheduled":
-      return "bg-blue-100 text-blue-800";
-    case "completed":
-      return "bg-gray-200 text-gray-800";
-    case "no_show":
-      return "bg-orange-100 text-orange-900";
-    case "cancelled":
-      return "bg-red-100 text-red-800";
-    default:
-      return "bg-amber-100 text-amber-900";
-  }
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat(
-    "ro-RO",
-    {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    }
-  ).format(
-    new Date(`${value}T12:00:00`)
-  );
-}
-
-function formatTime(
-  value: string | null
-) {
-  return value
-    ? value.slice(0, 5)
-    : "—";
+  return translatedTitle
+    ? `${name} — ${translatedTitle}`
+    : name;
 }
 
 export default function StaffAppointmentsManager() {
@@ -203,15 +153,7 @@ export default function StaffAppointmentsManager() {
   const [isLoading, setIsLoading] =
     useState(true);
 
-  const [
-    savingAppointmentId,
-    setSavingAppointmentId,
-  ] = useState<string | null>(null);
-
   const [error, setError] =
-    useState<string | null>(null);
-
-  const [success, setSuccess] =
     useState<string | null>(null);
 
   const loadAppointments =
@@ -258,176 +200,107 @@ export default function StaffAppointmentsManager() {
     void loadAppointments();
   }, [loadAppointments]);
 
-  async function updateAppointment(
-    appointment: Appointment,
-    action: LifecycleAction
-  ) {
-    setError(null);
-    setSuccess(null);
-
-    const terminal = [
-      "cancelled",
-      "completed",
-      "no_show",
-    ].includes(appointment.status);
-
-    if (terminal) {
-      setError(
-        "Programarea este deja într-o stare finală."
-      );
-      return;
-    }
-
-    let scheduledDate =
-      appointment.scheduled_date ??
-      appointment.requested_date;
-
-    let scheduledTime =
-      appointment.scheduled_time
-        ?.slice(0, 5) ??
-      appointment.requested_time
-        ?.slice(0, 5) ??
-      "";
-
-    let reason = "";
-
-    if (
-      action === "confirm" ||
-      action === "reschedule"
-    ) {
-      const enteredDate =
-        window.prompt(
-          "Data programării (AAAA-LL-ZZ):",
-          scheduledDate
-        );
-
-      if (!enteredDate) {
-        return;
-      }
-
-      const enteredTime =
-        window.prompt(
-          "Ora programării (HH:MM):",
-          scheduledTime
-        );
-
-      if (!enteredTime) {
-        return;
-      }
-
-      scheduledDate =
-        enteredDate.trim();
-
-      scheduledTime =
-        enteredTime.trim();
-    }
-
-    if (
-      action === "reschedule"
-    ) {
-      const enteredReason =
-        window.prompt(
-          "Motivul reprogramării:"
-        );
-
-      if (!enteredReason) {
-        return;
-      }
-
-      reason =
-        enteredReason.trim();
-    }
-
-    if (
-      action === "cancel" ||
-      action === "complete" ||
-      action === "no_show"
-    ) {
-      const promptText =
-        action === "cancel"
-          ? "Motivul anulării — opțional:"
-          : action === "complete"
-            ? "Notă operațională — opțional:"
-            : "Notă despre neprezentare — opțional:";
-
-      const enteredReason =
-        window.prompt(
-          promptText,
-          ""
-        );
-
-      if (enteredReason === null) {
-        return;
-      }
-
-      reason =
-        enteredReason.trim();
-    }
-
-    setSavingAppointmentId(
-      appointment.id
+  const appointmentListItems =
+    useMemo<
+      StaffAppointmentListItem[]
+    >(
+      () =>
+        appointments.map(
+          (appointment) => ({
+            id: appointment.id,
+            doctorId:
+              appointment.doctor_id,
+            clinicId:
+              appointment.clinic_id,
+            patientProfileId:
+              appointment.patient_profile_id,
+            patientName:
+              appointment.patient_name,
+            patientEmail:
+              appointment.patient_email,
+            patientPhone:
+              appointment.patient_phone,
+            requestedDate:
+              appointment.requested_date,
+            requestedTime:
+              appointment.requested_time,
+            scheduledDate:
+              appointment.scheduled_date,
+            scheduledTime:
+              appointment.scheduled_time,
+            durationMinutes:
+              appointment.duration_minutes,
+            rescheduleReason:
+              appointment.reschedule_reason,
+            notes:
+              appointment.notes,
+            source:
+              appointment.source,
+            status:
+              appointment.status,
+            createdAt:
+              appointment.created_at,
+            doctorName:
+              getDoctorName(
+                appointment
+              ),
+            clinicName:
+              getClinicName(
+                appointment
+              ),
+          })
+        ),
+      [appointments]
     );
 
-    try {
-      const response =
-        await fetch(
-          "/api/appointments/lifecycle",
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              appointmentId:
-                appointment.id,
-              action,
-              scheduledDate:
-                action === "confirm" ||
-                action === "reschedule"
-                  ? scheduledDate
-                  : null,
-              scheduledTime:
-                action === "confirm" ||
-                action === "reschedule"
-                  ? scheduledTime
-                  : null,
-              reason: reason || null,
-            }),
+  const confirmedCalendarAppointments =
+    useMemo<
+      StaffConfirmedWeeklyAppointment[]
+    >(
+      () =>
+        appointments.flatMap(
+          (appointment) => {
+            if (
+              appointment.status !==
+                "confirmed"
+            ) {
+              return [];
+            }
+
+            const date =
+              appointment.scheduled_date ??
+              appointment.requested_date;
+
+            const time =
+              appointment.scheduled_time ??
+              appointment.requested_time;
+
+            if (!date || !time) {
+              return [];
+            }
+
+            return [
+              {
+                id:
+                  appointment.id,
+                patientName:
+                  appointment.patient_name,
+                doctorName:
+                  getDoctorName(
+                    appointment
+                  ),
+                clinicName:
+                  getClinicName(
+                    appointment
+                  ),
+                date,
+                time,
+              },
+            ];
           }
-        );
-
-      const result =
-        (await response.json()) as
-          StaffAppointmentsResponse;
-
-      if (!response.ok) {
-        throw new Error(
-          result.error ??
-            "Programarea nu a putut fi actualizată."
-        );
-      }
-
-      setSuccess(
-        result.emailSent === false
-          ? `${result.message ?? "Programarea a fost actualizată."} E-mailul pacientului nu a putut fi trimis.`
-          : result.message ??
-              "Programarea a fost actualizată."
-      );
-
-      await loadAppointments();
-    } catch (updateError) {
-      setError(
-        updateError instanceof Error
-          ? updateError.message
-          : "Programarea nu a putut fi actualizată."
-      );
-    } finally {
-      setSavingAppointmentId(
-        null
-      );
-    }
-  }
+        ),
+      [appointments]
+    );
 
   if (isLoading) {
     return (
@@ -440,7 +313,7 @@ export default function StaffAppointmentsManager() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
         <p className="text-sm font-semibold text-[#036661]">
           Personal
@@ -451,8 +324,10 @@ export default function StaffAppointmentsManager() {
         </h1>
 
         <p className="mt-3 text-sm leading-6 text-gray-600">
-          Ai acces numai la programările medicului și clinicii
-          pentru care ai fost autorizat.
+          Ai acces numai la programările și
+          dosarele medicale pentru medicii și
+          clinicile unde atribuirea ta este
+          activă.
         </p>
       </section>
 
@@ -465,230 +340,23 @@ export default function StaffAppointmentsManager() {
         </div>
       )}
 
-      {success && (
-        <div
-          role="status"
-          className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800"
-        >
-          {success}
-        </div>
-      )}
-
-      {appointments.length === 0 ? (
-        <section className="rounded-2xl border border-gray-200 bg-white p-8 text-sm text-gray-600 shadow-sm">
-          Nu există programări disponibile pentru atribuirea ta.
-        </section>
-      ) : (
-        <div className="space-y-5">
-          {appointments.map(
-            (appointment) => {
-              const isSaving =
-                savingAppointmentId ===
-                appointment.id;
-
-              const date =
-                appointment.scheduled_date ??
-                appointment.requested_date;
-
-              const time =
-                appointment.scheduled_time ??
-                appointment.requested_time;
-
-              const terminal = [
-                "cancelled",
-                "completed",
-                "no_show",
-              ].includes(
-                appointment.status
-              );
-
-              return (
-                <article
-                  key={appointment.id}
-                  className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                      <h2 className="text-lg font-bold text-gray-900">
-                        {appointment.patient_name}
-                      </h2>
-
-                      <p className="mt-1 text-sm text-gray-600">
-                        {getDoctorName(
-                          appointment
-                        )}
-                      </p>
-
-                      <p className="mt-1 text-sm text-gray-600">
-                        {getClinicName(
-                          appointment
-                        )}
-                      </p>
-                    </div>
-
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusClasses(
-                        appointment.status
-                      )}`}
-                    >
-                      {getStatusLabel(
-                        appointment.status
-                      )}
-                    </span>
-                  </div>
-
-                  <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
-                    <div>
-                      <dt className="font-medium text-gray-500">
-                        Data
-                      </dt>
-                      <dd className="mt-1 text-gray-900">
-                        {formatDate(date)}
-                      </dd>
-                    </div>
-
-                    <div>
-                      <dt className="font-medium text-gray-500">
-                        Ora
-                      </dt>
-                      <dd className="mt-1 text-gray-900">
-                        {formatTime(time)}
-                      </dd>
-                    </div>
-
-                    <div>
-                      <dt className="font-medium text-gray-500">
-                        Telefon
-                      </dt>
-                      <dd className="mt-1 text-gray-900">
-                        {appointment.patient_phone}
-                      </dd>
-                    </div>
-
-                    <div>
-                      <dt className="font-medium text-gray-500">
-                        E-mail
-                      </dt>
-                      <dd className="mt-1 break-all text-gray-900">
-                        {appointment.patient_email}
-                      </dd>
-                    </div>
-
-                    <div>
-                      <dt className="font-medium text-gray-500">
-                        Durată
-                      </dt>
-                      <dd className="mt-1 text-gray-900">
-                        {appointment.duration_minutes
-                          ? `${appointment.duration_minutes} minute`
-                          : "—"}
-                      </dd>
-                    </div>
-
-                    <div>
-                      <dt className="font-medium text-gray-500">
-                        Sursă
-                      </dt>
-                      <dd className="mt-1 text-gray-900">
-                        {appointment.source ?? "—"}
-                      </dd>
-                    </div>
-                  </dl>
-
-                  {appointment.notes && (
-                    <div className="mt-5 rounded-xl bg-gray-50 p-4 text-sm text-gray-700">
-                      <span className="font-semibold">
-                        Observații:
-                      </span>{" "}
-                      {appointment.notes}
-                    </div>
-                  )}
-
-                  {terminal ? (
-                    <div className="mt-6 rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
-                      Programarea este închisă și nu mai poate fi modificată.
-                    </div>
-                  ) : (
-                    <div className="mt-6 flex flex-wrap gap-3">
-                      <Button
-                        type="button"
-                        disabled={isSaving}
-                        onClick={() =>
-                          void updateAppointment(
-                            appointment,
-                            "confirm"
-                          )
-                        }
-                        size="sm"
-                      >
-                        Confirmă
-                      </Button>
-
-                      <Button
-                        type="button"
-                        disabled={isSaving}
-                        onClick={() =>
-                          void updateAppointment(
-                            appointment,
-                            "reschedule"
-                          )
-                        }
-                        size="sm"
-                      >
-                        Reprogramează
-                      </Button>
-
-                      <Button
-                        type="button"
-                        disabled={isSaving}
-                        onClick={() =>
-                          void updateAppointment(
-                            appointment,
-                            "complete"
-                          )
-                        }
-                        variant="secondary"
-                        size="sm"
-                      >
-                        Finalizează
-                      </Button>
-
-                      <Button
-                        type="button"
-                        disabled={isSaving}
-                        onClick={() =>
-                          void updateAppointment(
-                            appointment,
-                            "no_show"
-                          )
-                        }
-                        variant="secondary"
-                        size="sm"
-                      >
-                        Neprezentare
-                      </Button>
-
-                      <Button
-                        type="button"
-                        disabled={isSaving}
-                        onClick={() =>
-                          void updateAppointment(
-                            appointment,
-                            "cancel"
-                          )
-                        }
-                        variant="danger-outline"
-                        size="sm"
-                      >
-                        Anulează
-                      </Button>
-                    </div>
-                  )}
-                </article>
-              );
+      {!error && (
+        <>
+          <StaffConfirmedAppointmentsWeeklyCalendar
+            appointments={
+              confirmedCalendarAppointments
             }
-          )}
-        </div>
+          />
+
+          <StaffAppointmentsFilteredList
+            appointments={
+              appointmentListItems
+            }
+            onUpdated={
+              loadAppointments
+            }
+          />
+        </>
       )}
     </div>
   );

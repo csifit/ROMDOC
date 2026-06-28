@@ -1,0 +1,26 @@
+diff --git a/romdoc/src/components/admin/appointment-actions.tsx b/romdoc/src/components/admin/appointment-actions.tsx
+--- a/romdoc/src/components/admin/appointment-actions.tsx
++++ b/romdoc/src/components/admin/appointment-actions.tsx
+@@ -18,6 +18,7 @@ type AppointmentActionsProps = {
+   scheduledDate: string | null;
+   scheduledTime: string | null;
+   currentReason: string | null;
++  onUpdated?: () => void | Promise<void>;
+ };
+
+ type LifecycleResponse = {
+@@ -42,6 +43,7 @@ export default function AppointmentActions({
+   scheduledDate,
+   scheduledTime,
+   currentReason,
++  onUpdated,
+ }: AppointmentActionsProps) {
+   const router = useRouter();
+@@ -190,6 +192,8 @@ export default function AppointmentActions({
+               "Programarea a fost actualizată."
+       );
+
++      await onUpdated?.();
++
+       router.refresh();
+     } catch (error) {

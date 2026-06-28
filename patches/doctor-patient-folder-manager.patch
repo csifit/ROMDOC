@@ -1,0 +1,87 @@
+diff --git a/romdoc/src/components/doctor/doctor-patient-folder-manager.tsx b/romdoc/src/components/doctor/doctor-patient-folder-manager.tsx
+--- a/romdoc/src/components/doctor/doctor-patient-folder-manager.tsx
++++ b/romdoc/src/components/doctor/doctor-patient-folder-manager.tsx
+@@ -35,6 +35,9 @@ type Props = {
+   appointmentId: string;
+   appointmentStatus: string;
++  apiEndpoint?: string;
++  downloadEndpoint?: string;
++  pdfEndpoint?: string;
+ };
+@@ -56,6 +59,9 @@ export default function DoctorPatientFolderManager({
+   appointmentId,
+   appointmentStatus,
++  apiEndpoint = "/api/doctor/patient-folder",
++  downloadEndpoint = "/api/doctor/patient-folder/download",
++  pdfEndpoint = "/api/medical-folder/pdf",
+ }: Props) {
+@@ -110,7 +116,7 @@ export default function DoctorPatientFolderManager({
+       try {
+         const response =
+           await fetch(
+-            `/api/doctor/patient-folder?appointmentId=${appointmentId}`,
++            `${apiEndpoint}?appointmentId=${appointmentId}`,
+             {
+               cache: "no-store",
+             }
+@@ -140,6 +146,7 @@ export default function DoctorPatientFolderManager({
+     }, [
+       appointmentId,
++      apiEndpoint,
+       enabled,
+     ]);
+@@ -214,7 +221,7 @@ export default function DoctorPatientFolderManager({
+       const response =
+         await fetch(
+-          "/api/doctor/patient-folder",
++          apiEndpoint,
+           {
+             method: "POST",
+             body: formData,
+@@ -267,7 +274,7 @@ export default function DoctorPatientFolderManager({
+     try {
+       const response =
+         await fetch(
+-          "/api/medical-folder/pdf",
++          pdfEndpoint,
+           {
+             method: "POST",
+             headers: {
+@@ -277,6 +284,7 @@ export default function DoctorPatientFolderManager({
+             body: JSON.stringify({
+               documentId,
++              appointmentId,
+             }),
+           }
+         );
+@@ -335,7 +343,7 @@ export default function DoctorPatientFolderManager({
+     try {
+       const response =
+         await fetch(
+-          "/api/doctor/patient-folder/download",
++          downloadEndpoint,
+           {
+             method: "POST",
+             headers: {
+@@ -345,6 +353,7 @@ export default function DoctorPatientFolderManager({
+             body: JSON.stringify({
+               documentId,
++              appointmentId,
+             }),
+           }
+         );
+@@ -393,7 +402,7 @@ export default function DoctorPatientFolderManager({
+     const response =
+       await fetch(
+-        "/api/doctor/patient-folder",
++        apiEndpoint,
+         {
+           method: "DELETE",
+           headers: {
+@@ -404,6 +413,7 @@ export default function DoctorPatientFolderManager({
+           body: JSON.stringify({
+             documentId,
++            appointmentId,
+           }),
+         }
+       );
