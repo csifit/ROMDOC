@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 
 import AppointmentActions from "@/components/admin/appointment-actions";
+import ConfirmedAppointmentsWeeklyCalendar, {
+  type ConfirmedWeeklyAppointment,
+} from "@/components/doctor/confirmed-appointments-weekly-calendar";
 import CreateAppointmentForm from "@/components/doctor/create-appointment-form";
 import DoctorPatientFolderManager from "@/components/doctor/doctor-patient-folder-manager";
 import { createClient } from "@/lib/supabase/server";
@@ -373,6 +376,34 @@ export default async function DoctorAppointmentsPage() {
       | Appointment[]
       | null) ?? [];
 
+  const confirmedCalendarAppointments: ConfirmedWeeklyAppointment[] =
+  appointments.flatMap((appointment: Appointment) => {
+    if (appointment.status !== "confirmed") {
+      return [];
+    }
+
+    const date =
+      appointment.scheduled_date ?? appointment.requested_date;
+    const time =
+      appointment.scheduled_time ?? appointment.requested_time;
+
+    if (!date || !time) {
+      return [];
+    }
+
+    const clinic = getFirstRelation(appointment.clinics);
+
+    return [
+      {
+        id: appointment.id,
+        patientName: appointment.patient_name,
+        clinicName: getClinicName(clinic),
+        date,
+        time,
+      },
+    ];
+  });
+
   return (
     <main className="min-h-screen bg-gray-50 px-6 py-12">
       <div className="mx-auto max-w-6xl">
@@ -402,6 +433,9 @@ export default async function DoctorAppointmentsPage() {
         )}
 
         <CreateAppointmentForm clinics={clinicOptions} />
+        <ConfirmedAppointmentsWeeklyCalendar
+         appointments={confirmedCalendarAppointments}
+        />
 
         <section className="mt-10">
           <div className="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
