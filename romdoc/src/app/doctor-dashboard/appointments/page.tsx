@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
 
-import AppointmentActions from "@/components/admin/appointment-actions";
 import ConfirmedAppointmentsWeeklyCalendar, {
   type ConfirmedWeeklyAppointment,
 } from "@/components/doctor/confirmed-appointments-weekly-calendar";
 import CreateAppointmentForm from "@/components/doctor/create-appointment-form";
-import DoctorPatientFolderManager from "@/components/doctor/doctor-patient-folder-manager";
+import DoctorAppointmentsFilteredList, {
+  type DoctorAppointmentListItem,
+} from "@/components/doctor/doctor-appointments-filtered-list";
 import { createClient } from "@/lib/supabase/server";
 
 type ClinicTranslation = {
@@ -69,87 +70,6 @@ function formatDoctorName(slug: string) {
       return part.charAt(0).toUpperCase() + part.slice(1);
     })
     .join(" ");
-}
-
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat("ro-RO", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(`${date}T12:00:00`));
-}
-
-function formatCreatedAt(date: string) {
-  return new Intl.DateTimeFormat("ro-RO", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(date));
-}
-
-function getStatusLabel(status: string) {
-  switch (status) {
-    case "confirmed":
-      return "Confirmată";
-
-    case "rescheduled":
-      return "Reprogramată";
-
-    case "cancelled":
-      return "Anulată";
-
-    case "completed":
-      return "Finalizată";
-
-    case "no_show":
-      return "Neprezentare";
-
-    default:
-      return "În așteptare";
-  }
-}
-
-function getStatusClasses(status: string) {
-  switch (status) {
-    case "confirmed":
-      return "bg-green-100 text-green-800";
-
-    case "rescheduled":
-      return "bg-blue-100 text-blue-800";
-
-    case "cancelled":
-      return "bg-red-100 text-red-800";
-
-    case "completed":
-      return "bg-gray-200 text-gray-800";
-
-    case "no_show":
-      return "bg-orange-100 text-orange-900";
-
-    default:
-      return "bg-amber-100 text-amber-800";
-  }
-}
-
-function getSourceLabel(source: string) {
-  switch (source) {
-    case "phone":
-      return "Telefon";
-
-    case "walk_in":
-      return "Direct la clinică";
-
-    case "email":
-      return "E-mail";
-
-    case "other":
-      return "Altă sursă";
-
-    default:
-      return "Cerere online";
-  }
 }
 
 function getClinicName(clinic: ClinicRelation | null) {
@@ -376,33 +296,65 @@ export default async function DoctorAppointmentsPage() {
       | Appointment[]
       | null) ?? [];
 
-  const confirmedCalendarAppointments: ConfirmedWeeklyAppointment[] =
-  appointments.flatMap((appointment: Appointment) => {
-    if (appointment.status !== "confirmed") {
-      return [];
-    }
+  const appointmentListItems: DoctorAppointmentListItem[] =
+    appointments.map((appointment: Appointment) => {
+      const clinic = getFirstRelation(
+        appointment.clinics
+      );
 
-    const date =
-      appointment.scheduled_date ?? appointment.requested_date;
-    const time =
-      appointment.scheduled_time ?? appointment.requested_time;
-
-    if (!date || !time) {
-      return [];
-    }
-
-    const clinic = getFirstRelation(appointment.clinics);
-
-    return [
-      {
+      return {
         id: appointment.id,
+        patientProfileId:
+          appointment.patient_profile_id,
         patientName: appointment.patient_name,
+        patientEmail: appointment.patient_email,
+        patientPhone: appointment.patient_phone,
+        requestedDate: appointment.requested_date,
+        requestedTime: appointment.requested_time,
+        scheduledDate: appointment.scheduled_date,
+        scheduledTime: appointment.scheduled_time,
+        rescheduleReason:
+          appointment.reschedule_reason,
+        notes: appointment.notes,
+        source: appointment.source,
+        status: appointment.status,
+        createdAt: appointment.created_at,
         clinicName: getClinicName(clinic),
-        date,
-        time,
-      },
-    ];
-  });
+      };
+    });
+
+  const confirmedCalendarAppointments: ConfirmedWeeklyAppointment[] =
+    appointments.flatMap((appointment: Appointment) => {
+      if (appointment.status !== "confirmed") {
+        return [];
+      }
+
+      const date =
+        appointment.scheduled_date ??
+        appointment.requested_date;
+
+      const time =
+        appointment.scheduled_time ??
+        appointment.requested_time;
+
+      if (!date || !time) {
+        return [];
+      }
+
+      const clinic = getFirstRelation(
+        appointment.clinics
+      );
+
+      return [
+        {
+          id: appointment.id,
+          patientName: appointment.patient_name,
+          clinicName: getClinicName(clinic),
+          date,
+          time,
+        },
+      ];
+    });
 
   return (
     <main className="min-h-screen bg-gray-50 px-6 py-12">
@@ -433,213 +385,21 @@ export default async function DoctorAppointmentsPage() {
         )}
 
         <CreateAppointmentForm clinics={clinicOptions} />
+
         <ConfirmedAppointmentsWeeklyCalendar
-         appointments={confirmedCalendarAppointments}
+          appointments={confirmedCalendarAppointments}
         />
 
         <section className="mt-10">
-          <div className="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">
-                Lista programărilor
-              </h2>
-
-              <p className="mt-1 text-sm text-gray-600">
-                {appointments.length === 1
-                  ? "1 programare"
-                  : `${appointments.length} programări`}
-              </p>
-            </div>
-          </div>
-
           {appointmentsError ? (
             <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-red-800 shadow-sm">
               Programările nu au putut fi încărcate. Verifică
               politicile Supabase și încearcă din nou.
             </div>
-          ) : appointments.length > 0 ? (
-            <div className="space-y-5">
-              {appointments.map(
-                (appointment: Appointment) => {
-                  const clinic = getFirstRelation(
-                    appointment.clinics
-                  );
-
-                  return (
-                    <article
-                      key={appointment.id}
-                      className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
-                    >
-                      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-                        <div>
-                          <h3 className="text-xl font-semibold text-gray-900">
-                            {appointment.patient_name}
-                          </h3>
-
-                          <p className="mt-1 text-sm text-gray-500">
-                            Creată la{" "}
-                            {formatCreatedAt(
-                              appointment.created_at
-                            )}
-                          </p>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          <span className="w-fit rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
-                            {getSourceLabel(
-                              appointment.source
-                            )}
-                          </span>
-
-                          <span
-                            className={`w-fit rounded-full px-3 py-1 text-sm font-medium ${getStatusClasses(
-                              appointment.status
-                            )}`}
-                          >
-                            {getStatusLabel(
-                              appointment.status
-                            )}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                            Clinica
-                          </p>
-
-                          <p className="mt-1 text-gray-900">
-                            {getClinicName(clinic)}
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                            Data solicitată
-                          </p>
-
-                          <p className="mt-1 text-gray-900">
-                            {formatDate(
-                              appointment.requested_date
-                            )}
-
-                            {appointment.requested_time
-                              ? `, ${appointment.requested_time.slice(
-                                  0,
-                                  5
-                                )}`
-                              : ""}
-                          </p>
-                        </div>
-
-                        {appointment.scheduled_date && (
-                          <div>
-                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                              Data confirmată
-                            </p>
-
-                            <p className="mt-1 font-medium text-gray-900">
-                              {formatDate(
-                                appointment.scheduled_date
-                              )}
-
-                              {appointment.scheduled_time
-                                ? `, ${appointment.scheduled_time.slice(
-                                    0,
-                                    5
-                                  )}`
-                                : ""}
-                            </p>
-                          </div>
-                        )}
-
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                            Telefon
-                          </p>
-
-                          <a
-                            href={`tel:${appointment.patient_phone.replace(
-                              /\s+/g,
-                              ""
-                            )}`}
-                            className="mt-1 block text-gray-900 underline-offset-4 hover:underline"
-                          >
-                            {appointment.patient_phone}
-                          </a>
-                        </div>
-
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                            E-mail
-                          </p>
-
-                          <a
-                            href={`mailto:${appointment.patient_email}`}
-                            className="mt-1 block break-all text-gray-900 underline-offset-4 hover:underline"
-                          >
-                            {appointment.patient_email}
-                          </a>
-                        </div>
-                      </div>
-
-                      {appointment.notes && (
-                        <div className="mt-6 rounded-xl bg-gray-50 p-4">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                            Observații
-                          </p>
-
-                          <p className="mt-2 whitespace-pre-wrap text-gray-700">
-                            {appointment.notes}
-                          </p>
-                        </div>
-                      )}
-
-                      {appointment.reschedule_reason && (
-                        <div className="mt-4 rounded-xl bg-blue-50 p-4">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                            Motivul reprogramării
-                          </p>
-
-                          <p className="mt-2 whitespace-pre-wrap text-blue-900">
-                            {appointment.reschedule_reason}
-                          </p>
-                        </div>
-                      )}
-
-                      <AppointmentActions
-                        appointmentId={appointment.id}
-                        currentStatus={appointment.status}
-                        requestedDate={appointment.requested_date}
-                        requestedTime={appointment.requested_time}
-                        scheduledDate={appointment.scheduled_date}
-                        scheduledTime={appointment.scheduled_time}
-                        currentReason={
-                          appointment.reschedule_reason
-                        }
-                      />
-
-                      {appointment.patient_profile_id ? (
-                        <DoctorPatientFolderManager
-                          appointmentId={appointment.id}
-                          appointmentStatus={appointment.status}
-                        />
-                      ) : (
-                        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                          Dosarul medical este disponibil numai pentru
-                          programările asociate unui cont de pacient.
-                        </div>
-                      )}
-                    </article>
-                  );
-                }
-              )}
-            </div>
           ) : (
-            <div className="rounded-2xl border border-gray-200 bg-white p-8 text-gray-600 shadow-sm">
-              Nu există încă programări pentru profilul tău.
-            </div>
+            <DoctorAppointmentsFilteredList
+              appointments={appointmentListItems}
+            />
           )}
         </section>
       </div>
