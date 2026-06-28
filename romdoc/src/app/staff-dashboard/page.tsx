@@ -27,6 +27,29 @@ export default async function StaffDashboardPage() {
     );
   }
 
+  const registrationType =
+    typeof user.user_metadata
+      ?.registration_type ===
+      "string"
+      ? user.user_metadata
+          .registration_type
+      : "";
+
+  const passwordInitialized =
+    user.user_metadata
+      ?.password_initialized ===
+      true;
+
+  if (
+    registrationType ===
+      "staff" &&
+    !passwordInitialized
+  ) {
+    redirect(
+      "/set-password?mode=invite&next=/staff-dashboard"
+    );
+  }
+
   const {
     data: profile,
     error: profileError,
@@ -125,11 +148,7 @@ export default async function StaffDashboardPage() {
             </h1>
 
             <p className="mt-3 max-w-2xl text-sm leading-6 text-amber-900">
-              Invitația a fost creată, dar
-              medicul trebuie să activeze
-              atribuirea înainte de a putea
-              administra programările și
-              dosarele medicale.
+              Invitația a fost confirmată și parola contului a fost creată, dar medicul trebuie să activeze atribuirea înainte de a putea administra programările și dosarele medicale.
             </p>
           </section>
         )}

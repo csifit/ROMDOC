@@ -2,14 +2,19 @@
 
 import {
   type FormEvent,
+  useEffect,
   useState,
   useTransition,
 } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import {
+  useRouter,
+} from "next/navigation";
 
 import Button from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/client";
+import {
+  createClient,
+} from "@/lib/supabase/client";
 
 type LoginFormProps = {
   initialMessage?: string | null;
@@ -75,6 +80,32 @@ export default function LoginForm({
     useState<string | null>(
       initialMessage
     );
+
+  useEffect(() => {
+    const searchParams =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    if (
+      searchParams.get(
+        "password_updated"
+      ) === "1"
+    ) {
+      setMessage(
+        "Parola a fost actualizată. Te poți autentifica folosind noua parolă."
+      );
+    }
+
+    if (
+      searchParams.get("error") ===
+      "confirmation_failed"
+    ) {
+      setError(
+        "Linkul de autentificare nu este valid sau a expirat. Solicită un link nou."
+      );
+    }
+  }, []);
 
   function handleSubmit(
     event:
@@ -253,8 +284,17 @@ export default function LoginForm({
         </label>
 
         <label className="block">
-          <span className="text-sm font-medium text-gray-700">
-            Parolă
+          <span className="flex items-center justify-between gap-3">
+            <span className="text-sm font-medium text-gray-700">
+              Parolă
+            </span>
+
+            <Link
+              href="/forgot-password"
+              className="text-sm font-semibold text-[#036661] underline-offset-4 hover:underline"
+            >
+              Am uitat parola
+            </Link>
           </span>
 
           <input
