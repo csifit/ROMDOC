@@ -7,7 +7,7 @@ import {
   useState,
   useTransition,
 } from "react";
-import AvailableSlotSelector from "@/components/appointments/available-slot-selector";
+import PublicAvailabilityCalendar from "@/components/appointments/public-availability-calendar";
 import Button from "@/components/ui/button";
 
 type ClinicOption = {
@@ -97,7 +97,7 @@ export default function AppointmentRequestForm({
     const date = new Date();
 
     date.setDate(
-      date.getDate() + 180
+      date.getDate() + 90
     );
 
     return getLocalDateString(date);
@@ -108,6 +108,17 @@ export default function AppointmentRequestForm({
       (clinic) =>
         clinic.id === clinicId
     ) ?? null;
+
+  const handleDateChange = useCallback(
+    (date: string) => {
+      setRequestedDate(date);
+      setRequestedTime("");
+      setDurationMinutes(30);
+      setMessage(null);
+      setError(null);
+    },
+    []
+  );
 
   const handleTimeChange = useCallback(
     (
@@ -121,6 +132,9 @@ export default function AppointmentRequestForm({
           selectedDuration
         );
       }
+
+      setMessage(null);
+      setError(null);
     },
     []
   );
@@ -328,6 +342,7 @@ export default function AppointmentRequestForm({
                 event.target.value
               );
 
+              setRequestedDate("");
               setRequestedTime("");
               setDurationMinutes(30);
               setMessage(null);
@@ -415,41 +430,16 @@ export default function AppointmentRequestForm({
           </span>
         </label>
 
-        <label className="block">
-          <span className="text-sm font-medium text-gray-700">
-            Data programării
-          </span>
-
-          <input
-            type="date"
-            required
-            min={today}
-            max={maximumDate}
-            value={requestedDate}
-            disabled={isPending}
-            onChange={(event) => {
-              setRequestedDate(
-                event.target.value
-              );
-
-              setRequestedTime("");
-              setDurationMinutes(30);
-              setMessage(null);
-              setError(null);
-            }}
-            className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:opacity-60"
-          />
-        </label>
-
-        <AvailableSlotSelector
+        <PublicAvailabilityCalendar
           doctorId={doctorId}
           clinicId={clinicId}
-          date={requestedDate}
+          minimumDate={today}
+          maximumDate={maximumDate}
+          selectedDate={requestedDate}
           selectedTime={requestedTime}
           disabled={isPending}
-          onTimeChange={
-            handleTimeChange
-          }
+          onDateChange={handleDateChange}
+          onTimeChange={handleTimeChange}
         />
 
         {requestedTime && (

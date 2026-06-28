@@ -634,7 +634,10 @@ export default async function DoctorPage({
             )}
           </section>
 
-          <section className="mt-10">
+          <section
+            id="programare"
+            className="mt-10 scroll-mt-24"
+          >
             <AuthenticatedAppointmentRequest
               doctorId={doctor.id}
               doctorName={doctorName}
