@@ -40,6 +40,11 @@ export const routing =
         ro: "/ghid-pacienti",
         en: "/patient-guide",
       },
+
+      "/ghid-medici-personal": {
+        ro: "/ghid-medici-personal",
+        en: "/doctor-staff-guide",
+      },
     },
   });
 
