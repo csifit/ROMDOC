@@ -63,7 +63,7 @@ type DoctorRelation = {
   id: string;
   slug: string;
   status: string;
-  profiles:
+  profile:
     | ProfileRelation
     | ProfileRelation[]
     | null;
@@ -230,7 +230,7 @@ function getDoctorName(
 ) {
   const profile =
     getFirstRelation(
-      doctor.profiles
+      doctor.profile
     );
 
   const profileName = [
@@ -574,7 +574,7 @@ export async function GET() {
         id,
         slug,
         status,
-        profiles (
+        profile:profiles!doctors_profile_id_fkey (
           first_name,
           last_name
         ),
@@ -1051,7 +1051,7 @@ export async function POST(
         id,
         slug,
         status,
-        profiles (
+        profile:profiles!doctors_profile_id_fkey (
           first_name,
           last_name
         ),
