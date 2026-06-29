@@ -13,6 +13,9 @@ import StaffAppointmentsFilteredList, {
 import StaffAppointmentsWeeklyCalendar, {
   type StaffWeeklyAppointment,
 } from "@/components/staff/staff-appointments-weekly-calendar";
+import StaffCreateAppointmentForm, {
+  type StaffDoctorOption,
+} from "@/components/staff/staff-create-appointment-form";
 
 type Translation = {
   locale: string;
@@ -69,6 +72,7 @@ type Appointment = {
 
 type StaffAppointmentsResponse = {
   appointments?: Appointment[];
+  doctorOptions?: StaffDoctorOption[];
   error?: string;
 };
 
@@ -150,6 +154,13 @@ export default function StaffAppointmentsManager() {
     setAppointments,
   ] = useState<Appointment[]>([]);
 
+  const [
+    doctorOptions,
+    setDoctorOptions,
+  ] = useState<
+    StaffDoctorOption[]
+  >([]);
+
   const [isLoading, setIsLoading] =
     useState(true);
 
@@ -184,6 +195,10 @@ export default function StaffAppointmentsManager() {
 
         setAppointments(
           result.appointments ?? []
+        );
+
+        setDoctorOptions(
+          result.doctorOptions ?? []
         );
       } catch (loadError) {
         setError(
@@ -319,7 +334,7 @@ export default function StaffAppointmentsManager() {
         </h1>
 
         <p className="mt-3 text-sm leading-6 text-gray-600">
-          Ai acces la toate programările, indiferent de status sau clinică, pentru fiecare medic pentru care ai cel puțin o atribuire activă.
+          Ai acces la toate programările și poți crea, confirma, reprograma, finaliza, marca drept neprezentare sau anula programări pentru medicii pe care îi gestionezi.
         </p>
       </section>
 
@@ -334,6 +349,13 @@ export default function StaffAppointmentsManager() {
 
       {!error && (
         <>
+          <StaffCreateAppointmentForm
+            doctors={doctorOptions}
+            onCreated={
+              loadAppointments
+            }
+          />
+
           <StaffAppointmentsWeeklyCalendar
             appointments={
               calendarAppointments
