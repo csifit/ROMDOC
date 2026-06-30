@@ -2,10 +2,12 @@ import {
   NextRequest,
   NextResponse,
 } from "next/server";
+
 import {
   createAdminClient,
 } from "@/lib/supabase/admin";
 import {
+  requireAdministratorCapability,
   requirePlatformOperatorAal2Api,
 } from "@/lib/auth/require-platform-operator-aal2-api";
 
@@ -16,6 +18,7 @@ type ClinicActionBody = {
   clinicId?: unknown;
   action?: unknown;
   rejectionReason?: unknown;
+  blockReason?: unknown;
 };
 
 type ProposerDetails = {
@@ -27,10 +30,16 @@ type ProposerDetails = {
 };
 
 function normalizeString(
-  value: unknown
+  value: unknown,
+  maximumLength = 1000
 ) {
   return typeof value === "string"
-    ? value.trim()
+    ? value
+        .trim()
+        .slice(
+          0,
+          maximumLength
+        )
     : "";
 }
 
@@ -53,6 +62,7 @@ export async function GET(
     "pending",
     "approved",
     "rejected",
+    "blocked",
   ];
 
   const status =
@@ -93,6 +103,9 @@ export async function GET(
       approved_at,
       rejected_at,
       rejection_reason,
+      blocked_at,
+      blocked_by_profile_id,
+      blocked_reason,
       created_at,
       updated_at,
       clinic_translations (
@@ -284,12 +297,19 @@ export async function GET(
   return NextResponse.json({
     clinics:
       enrichedClinics,
+
     operatorRole:
       authorization.role,
+
     capabilities: {
       canManageClinics:
         true,
+
       canDeleteClinics:
+        authorization.role ===
+        "admin",
+
+      canBlockClinics:
         authorization.role ===
         "admin",
     },
@@ -306,7 +326,7 @@ export async function PATCH(
     return authorization.response;
   }
 
-  const adminProfileId =
+  const operatorProfileId =
     authorization.profileId;
 
   let body: ClinicActionBody;
@@ -329,17 +349,24 @@ export async function PATCH(
 
   const clinicId =
     normalizeString(
-      body.clinicId
+      body.clinicId,
+      100
     );
 
   const action =
     normalizeString(
-      body.action
+      body.action,
+      50
     );
 
   const rejectionReason =
     normalizeString(
       body.rejectionReason
+    );
+
+  const blockReason =
+    normalizeString(
+      body.blockReason
     );
 
   if (!clinicId) {
@@ -356,7 +383,9 @@ export async function PATCH(
 
   if (
     action !== "approve" &&
-    action !== "reject"
+    action !== "reject" &&
+    action !== "block" &&
+    action !== "unblock"
   ) {
     return NextResponse.json(
       {
@@ -382,6 +411,36 @@ export async function PATCH(
         status: 400,
       }
     );
+  }
+
+  if (
+    action === "block" &&
+    blockReason.length < 3
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Introdu motivul blocării.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  if (
+    action === "block" ||
+    action === "unblock"
+  ) {
+    const capabilityResponse =
+      requireAdministratorCapability(
+        authorization.role,
+        "Numai administratorii pot bloca sau reactiva clinici."
+      );
+
+    if (capabilityResponse) {
+      return capabilityResponse;
+    }
   }
 
   const admin =
@@ -415,6 +474,151 @@ export async function PATCH(
     );
   }
 
+  const now =
+    new Date().toISOString();
+
+  if (action === "block") {
+    if (
+      clinic.status !==
+      "approved"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Numai clinicile aprobate pot fi blocate.",
+        },
+        {
+          status: 409,
+        }
+      );
+    }
+
+    const {
+      data: blockedClinic,
+      error: blockError,
+    } = await admin
+      .from("clinics")
+      .update({
+        status:
+          "blocked",
+
+        blocked_at:
+          now,
+
+        blocked_by_profile_id:
+          operatorProfileId,
+
+        blocked_reason:
+          blockReason,
+      })
+      .eq(
+        "id",
+        clinic.id
+      )
+      .eq(
+        "status",
+        "approved"
+      )
+      .select("id")
+      .maybeSingle();
+
+    if (
+      blockError ||
+      !blockedClinic
+    ) {
+      console.error(
+        "Clinic blocking failed:",
+        blockError
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "Clinica nu a putut fi blocată. Este posibil ca statutul ei să fi fost modificat între timp.",
+        },
+        {
+          status: 409,
+        }
+      );
+    }
+
+    return NextResponse.json({
+      message:
+        "Clinica a fost blocată și nu mai apare în zonele publice RomDoc.",
+    });
+  }
+
+  if (action === "unblock") {
+    if (
+      clinic.status !==
+      "blocked"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Numai clinicile blocate pot fi reactivate.",
+        },
+        {
+          status: 409,
+        }
+      );
+    }
+
+    const {
+      data: unblockedClinic,
+      error: unblockError,
+    } = await admin
+      .from("clinics")
+      .update({
+        status:
+          "approved",
+
+        blocked_at:
+          null,
+
+        blocked_by_profile_id:
+          null,
+
+        blocked_reason:
+          null,
+      })
+      .eq(
+        "id",
+        clinic.id
+      )
+      .eq(
+        "status",
+        "blocked"
+      )
+      .select("id")
+      .maybeSingle();
+
+    if (
+      unblockError ||
+      !unblockedClinic
+    ) {
+      console.error(
+        "Clinic unblocking failed:",
+        unblockError
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "Clinica nu a putut fi reactivată. Este posibil ca statutul ei să fi fost modificat între timp.",
+        },
+        {
+          status: 409,
+        }
+      );
+    }
+
+    return NextResponse.json({
+      message:
+        "Clinica a fost reactivată și este din nou aprobată.",
+    });
+  }
+
   if (
     clinic.status !==
     "pending"
@@ -429,9 +633,6 @@ export async function PATCH(
       }
     );
   }
-
-  const now =
-    new Date().toISOString();
 
   if (action === "reject") {
     const {
@@ -453,6 +654,15 @@ export async function PATCH(
           null,
 
         approved_by_profile_id:
+          null,
+
+        blocked_at:
+          null,
+
+        blocked_by_profile_id:
+          null,
+
+        blocked_reason:
           null,
       })
       .eq("id", clinic.id)
@@ -540,7 +750,7 @@ export async function PATCH(
         "approved",
 
       approved_by_profile_id:
-        adminProfileId,
+        operatorProfileId,
 
       approved_at:
         now,
@@ -549,6 +759,15 @@ export async function PATCH(
         null,
 
       rejection_reason:
+        null,
+
+      blocked_at:
+        null,
+
+      blocked_by_profile_id:
+        null,
+
+      blocked_reason:
         null,
     })
     .eq("id", clinic.id)
