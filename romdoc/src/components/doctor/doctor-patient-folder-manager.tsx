@@ -1,5 +1,6 @@
 "use client";
 
+import PatientMedicalProfile from "@/components/medical-folder/patient-medical-profile";
 import MedicalFolderManager from "@/components/medical-folder/medical-folder-manager";
 
 type Props = {
@@ -14,15 +15,22 @@ export default function DoctorPatientFolderManager({
   standalone = false,
 }: Props) {
   return (
-    <MedicalFolderManager
-      appointmentId={appointmentId}
-      appointmentStatus={
-        appointmentStatus
-      }
-      apiEndpoint="/api/doctor/patient-folder"
-      downloadEndpoint="/api/doctor/patient-folder/download"
-      pdfEndpoint="/api/medical-folder/pdf"
-      standalone={standalone}
-    />
+    <>
+      <PatientMedicalProfile
+        appointmentId={appointmentId}
+        editable
+      />
+
+      <MedicalFolderManager
+        appointmentId={appointmentId}
+        appointmentStatus={
+          appointmentStatus
+        }
+        apiEndpoint="/api/doctor/patient-folder"
+        downloadEndpoint="/api/doctor/patient-folder/download"
+        pdfEndpoint="/api/medical-folder/pdf"
+        standalone={standalone}
+      />
+    </>
   );
 }

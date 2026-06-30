@@ -3,6 +3,7 @@ import {
   redirect,
 } from "next/navigation";
 
+import PatientMedicalProfile from "@/components/medical-folder/patient-medical-profile";
 import PatientMedicalFolder from "@/components/patient/patient-medical-folder";
 import {
   createClient,
@@ -79,8 +80,8 @@ export default async function PatientFolderPage() {
 
               <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
                 {patientName
-                  ? `${patientName}, aici găsești documentele și notele medicale adăugate de medicii tăi.`
-                  : "Aici găsești documentele și notele medicale adăugate de medicii tăi."}
+                  ? `${patientName}, aici găsești profilul medical, documentele și notele adăugate de medicii tăi.`
+                  : "Aici găsești profilul medical, documentele și notele adăugate de medicii tăi."}
               </p>
             </div>
 
@@ -93,10 +94,13 @@ export default async function PatientFolderPage() {
           </div>
 
           <div className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-950">
-            Fișierele sunt private. Linkurile de descărcare sunt
-            temporare și sunt create numai după verificarea contului tău.
+            Informațiile și fișierele sunt private. Profilul medical poate fi
+            modificat numai de un medic care are acces legitim printr-o
+            programare RomDoc.
           </div>
         </header>
+
+        <PatientMedicalProfile />
 
         <PatientMedicalFolder />
       </div>
