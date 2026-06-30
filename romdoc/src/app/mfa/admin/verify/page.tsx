@@ -1,8 +1,12 @@
-import { redirect } from "next/navigation";
+import {
+  redirect,
+} from "next/navigation";
 
 import AdminMfaVerifyForm from "@/components/auth/admin-mfa-verify-form";
 import PublicFooter from "@/components/public/public-footer";
-import { createClient } from "@/lib/supabase/server";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
 type AdminMfaVerifyPageProps = {
   searchParams: Promise<{
@@ -13,14 +17,31 @@ type AdminMfaVerifyPageProps = {
 function safeNextPath(
   value: string | undefined
 ) {
+  if (!value) {
+    return "/dashboard";
+  }
+
+  const isAdminPath =
+    value === "/admin" ||
+    value.startsWith(
+      "/admin/"
+    );
+
+  const isManagerPath =
+    value ===
+      "/manager-dashboard" ||
+    value.startsWith(
+      "/manager-dashboard/"
+    );
+
   if (
-    !value ||
-    !value.startsWith(
-      "/admin"
-    ) ||
-    value.startsWith("//")
+    value.startsWith("//") ||
+    (
+      !isAdminPath &&
+      !isManagerPath
+    )
   ) {
-    return "/admin";
+    return "/dashboard";
   }
 
   return value;

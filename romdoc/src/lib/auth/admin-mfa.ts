@@ -5,13 +5,27 @@ import type {
 function safeNextPath(
   value: string
 ) {
+  const isAdminPath =
+    value === "/admin" ||
+    value.startsWith(
+      "/admin/"
+    );
+
+  const isManagerPath =
+    value ===
+      "/manager-dashboard" ||
+    value.startsWith(
+      "/manager-dashboard/"
+    );
+
   if (
-    !value.startsWith(
-      "/admin"
-    ) ||
-    value.startsWith("//")
+    value.startsWith("//") ||
+    (
+      !isAdminPath &&
+      !isManagerPath
+    )
   ) {
-    return "/admin";
+    return "/dashboard";
   }
 
   return value;
@@ -40,7 +54,7 @@ getAdminMfaRedirect({
 
   if (assuranceError) {
     console.error(
-      "Admin MFA assurance lookup failed:",
+      "Administrative MFA assurance lookup failed:",
       assuranceError
     );
 
@@ -68,7 +82,7 @@ getAdminMfaRedirect({
 
   if (factorsError) {
     console.error(
-      "Admin MFA factor lookup failed:",
+      "Administrative MFA factor lookup failed:",
       factorsError
     );
 

@@ -1,4 +1,6 @@
-import { redirect } from "next/navigation";
+import {
+  redirect,
+} from "next/navigation";
 
 import {
   createAdminClient,
@@ -6,7 +8,9 @@ import {
 import {
   getAdminMfaRedirect,
 } from "@/lib/auth/admin-mfa";
-import { createClient } from "@/lib/supabase/server";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
 type ProfileRole =
   | "admin"
@@ -77,74 +81,8 @@ export default async function DashboardRouterPage() {
 
   if (
     typedProfile.role ===
-      "admin" ||
-    typedProfile.role ===
-      "manager"
+    "admin"
   ) {
-    if (
-      typedProfile.role ===
-      "manager"
-    ) {
-      const admin =
-        createAdminClient();
-
-      const {
-        data: invitation,
-      } =
-        await admin
-          .from(
-            "manager_invitations"
-          )
-          .select("id")
-          .eq(
-            "invited_user_id",
-            user.id
-          )
-          .eq(
-            "status",
-            "pending"
-          )
-          .maybeSingle();
-
-      if (invitation) {
-        const now =
-          new Date()
-            .toISOString();
-
-        await admin
-          .from(
-            "manager_invitations"
-          )
-          .update({
-            status:
-              "accepted",
-            accepted_by_profile_id:
-              user.id,
-            accepted_at:
-              now,
-          })
-          .eq(
-            "id",
-            invitation.id
-          );
-
-        await admin
-          .from(
-            "manager_audit_events"
-          )
-          .insert({
-            manager_profile_id:
-              user.id,
-            invitation_id:
-              invitation.id,
-            actor_profile_id:
-              user.id,
-            event_type:
-              "accepted",
-          });
-      }
-    }
-
     const mfaRedirect =
       await getAdminMfaRedirect({
         supabase,
@@ -157,6 +95,85 @@ export default async function DashboardRouterPage() {
     }
 
     redirect("/admin");
+  }
+
+  if (
+    typedProfile.role ===
+    "manager"
+  ) {
+    const admin =
+      createAdminClient();
+
+    const {
+      data: invitation,
+    } =
+      await admin
+        .from(
+          "manager_invitations"
+        )
+        .select("id")
+        .eq(
+          "invited_user_id",
+          user.id
+        )
+        .eq(
+          "status",
+          "pending"
+        )
+        .maybeSingle();
+
+    if (invitation) {
+      const now =
+        new Date()
+          .toISOString();
+
+      await admin
+        .from(
+          "manager_invitations"
+        )
+        .update({
+          status:
+            "accepted",
+          accepted_by_profile_id:
+            user.id,
+          accepted_at:
+            now,
+        })
+        .eq(
+          "id",
+          invitation.id
+        );
+
+      await admin
+        .from(
+          "manager_audit_events"
+        )
+        .insert({
+          manager_profile_id:
+            user.id,
+          invitation_id:
+            invitation.id,
+          actor_profile_id:
+            user.id,
+          event_type:
+            "accepted",
+        });
+    }
+
+    const mfaRedirect =
+      await getAdminMfaRedirect({
+        supabase,
+        nextPath:
+          "/manager-dashboard",
+      });
+
+    if (mfaRedirect) {
+      redirect(mfaRedirect);
+    }
+
+    redirect(
+      "/manager-dashboard"
+    );
   }
 
   switch (

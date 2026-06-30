@@ -1,4 +1,6 @@
-import { redirect } from "next/navigation";
+import {
+  redirect,
+} from "next/navigation";
 import type {
   ReactNode,
 } from "react";
@@ -10,7 +12,9 @@ import {
 import {
   isTrustedAdminMfaIp,
 } from "@/lib/auth/admin-mfa-ip";
-import { createClient } from "@/lib/supabase/server";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
 type AdminDashboardLayoutProps = {
   children: ReactNode;
@@ -58,27 +62,30 @@ export default async function AdminDashboardLayout({
   if (
     profileError ||
     !profile ||
-    ![
-      "admin",
-      "manager",
-    ].includes(
-      profile.role
-    ) ||
     profile.account_status !==
       "active"
   ) {
     redirect("/");
   }
 
-  /*
-   * Trusted-IP MFA bypass remains admin-only.
-   * Managers must always reach AAL2.
-   */
-  const trustedIp =
+  if (
     profile.role ===
+    "manager"
+  ) {
+    redirect(
+      "/manager-dashboard"
+    );
+  }
+
+  if (
+    profile.role !==
     "admin"
-      ? await isTrustedAdminMfaIp()
-      : false;
+  ) {
+    redirect("/");
+  }
+
+  const trustedIp =
+    await isTrustedAdminMfaIp();
 
   if (!trustedIp) {
     const mfaRedirect =
@@ -103,18 +110,12 @@ export default async function AdminDashboardLayout({
     .join(" ")
     .trim();
 
-  const roleLabel =
-    profile.role ===
-    "admin"
-      ? "Administrator"
-      : "Manager";
-
   const userName =
     fullName ||
     user.email?.split(
       "@"
     )[0] ||
-    roleLabel;
+    "Administrator";
 
   const userEmail =
     user.email ??
@@ -124,9 +125,7 @@ export default async function AdminDashboardLayout({
     <AdminDashboardSidebar
       userName={userName}
       userEmail={userEmail}
-      roleLabel={
-        roleLabel
-      }
+      roleLabel="Administrator"
     >
       {children}
     </AdminDashboardSidebar>
