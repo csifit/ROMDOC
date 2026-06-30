@@ -9,6 +9,7 @@ import {
   type ReactNode,
   useState,
 } from "react";
+
 import {
   createClient,
 } from "@/lib/supabase/client";
@@ -30,6 +31,7 @@ type NavigationIcon =
   | "cities"
   | "reviews"
   | "privacy"
+  | "security"
   | "home";
 
 type NavigationItem = {
@@ -61,8 +63,7 @@ const navigationItems: NavigationItem[] = [
     adminOnly: true,
   },
   {
-    href:
-      "/admin/doctors",
+    href: "/admin/doctors",
     label: "Medici",
     icon: "doctors",
     available: true,
@@ -74,30 +75,26 @@ const navigationItems: NavigationItem[] = [
     available: true,
   },
   {
-    href:
-      "/admin/clinics",
+    href: "/admin/clinics",
     label: "Clinici",
     icon: "clinics",
     available: true,
   },
   {
-    href:
-      "/admin/specialties",
+    href: "/admin/specialties",
     label: "Specialități",
     icon: "specialties",
     available: true,
     adminOnly: true,
   },
   {
-    href:
-      "/admin/cities",
+    href: "/admin/cities",
     label: "Orașe",
     icon: "cities",
     available: true,
   },
   {
-    href:
-      "/admin/reviews",
+    href: "/admin/reviews",
     label: "Recenzii",
     icon: "reviews",
     available: true,
@@ -108,6 +105,12 @@ const navigationItems: NavigationItem[] = [
     icon: "privacy",
     available: true,
     adminOnly: true,
+  },
+  {
+    href: "/admin/security",
+    label: "Account security",
+    icon: "security",
+    available: true,
   },
   {
     href: "/",
@@ -143,7 +146,6 @@ function Icon({
             height="6"
             rx="1"
           />
-
           <rect
             x="14"
             y="4"
@@ -151,7 +153,6 @@ function Icon({
             height="6"
             rx="1"
           />
-
           <rect
             x="4"
             y="14"
@@ -159,7 +160,6 @@ function Icon({
             height="6"
             rx="1"
           />
-
           <rect
             x="14"
             y="14"
@@ -174,17 +174,15 @@ function Icon({
       return (
         <svg {...commonProps}>
           <path
-           strokeLinecap="round"
-           strokeLinejoin="round"
-           d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
           />
-
           <circle
             cx="9"
             cy="7"
             r="4"
           />
-
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -192,8 +190,8 @@ function Icon({
           />
         </svg>
       );
-      
-      case "doctors":
+
+    case "doctors":
       return (
         <svg {...commonProps}>
           <circle
@@ -201,12 +199,10 @@ function Icon({
             cy="8"
             r="4"
           />
-
           <path
             strokeLinecap="round"
             d="M5 21c.7-4 3.1-6 7-6s6.3 2 7 6"
           />
-
           <path
             strokeLinecap="round"
             d="M18 5v4M16 7h4"
@@ -222,7 +218,6 @@ function Icon({
             strokeLinejoin="round"
             d="M12 3 19 6v5c0 4.6-2.7 8-7 10-4.3-2-7-5.4-7-10V6l7-3Z"
           />
-
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -239,7 +234,6 @@ function Icon({
             strokeLinejoin="round"
             d="M5 21V5h14v16M3 21h18"
           />
-
           <path
             strokeLinecap="round"
             d="M9 9h6M12 6v6M8 15h2M14 15h2M8 18h2M14 18h2"
@@ -255,7 +249,6 @@ function Icon({
             strokeLinejoin="round"
             d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10Z"
           />
-
           <path
             strokeLinecap="round"
             d="M9 12h6M12 9v6"
@@ -271,7 +264,6 @@ function Icon({
             strokeLinejoin="round"
             d="M4 21V9l6-4v16M10 21V3l10 5v13M2 21h20"
           />
-
           <path
             strokeLinecap="round"
             d="M7 12h1M7 16h1M14 9h1M18 10h1M14 14h1M18 15h1"
@@ -306,7 +298,30 @@ function Icon({
         </svg>
       );
 
-    default:
+    case "security":
+      return (
+        <svg {...commonProps}>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M12 3 19 6v5c0 4.6-2.7 8-7 10-4.3-2-7-5.4-7-10V6l7-3Z"
+          />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9 11V9a3 3 0 0 1 6 0v2M8 11h8v6H8v-6Z"
+          />
+          <circle
+            cx="12"
+            cy="14"
+            r=".5"
+            fill="currentColor"
+            stroke="none"
+          />
+        </svg>
+      );
+
+    case "home":
       return (
         <svg {...commonProps}>
           <path
@@ -314,7 +329,6 @@ function Icon({
             strokeLinejoin="round"
             d="m3 11 9-8 9 8"
           />
-
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -403,7 +417,6 @@ function LogoutIcon() {
         strokeLinejoin="round"
         d="M10 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"
       />
-
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -464,7 +477,6 @@ export default function AdminDashboardSidebar({
 }: AdminDashboardSidebarProps) {
   const pathname =
     usePathname();
-
   const router =
     useRouter();
 
@@ -504,16 +516,11 @@ export default function AdminDashboardSidebar({
           "Admin sign-out failed:",
           error
         );
-
         return;
       }
 
       setIsMobileOpen(false);
-
-      router.replace(
-        "/login"
-      );
-
+      router.replace("/login");
       router.refresh();
     } finally {
       setIsSigningOut(false);
@@ -633,9 +640,7 @@ export default function AdminDashboardSidebar({
                 item.href
               );
 
-            if (
-              !item.available
-            ) {
+            if (!item.available) {
               return (
                 <div
                   key={item.href}
