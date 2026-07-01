@@ -36,7 +36,7 @@ const publicNavigation: NavigationItem[] = [
   },
   {
     href: "/#specialitati",
-    label: "Specialități",
+    label: "Specializări",
   },
   {
     href: "/#orase",
