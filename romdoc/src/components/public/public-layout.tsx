@@ -1,9 +1,13 @@
 import type {
   ReactNode,
 } from "react";
+
 import PublicFooter from "@/components/public/public-footer";
 import PublicHeader from "@/components/public/public-header";
-import { createClient } from "@/lib/supabase/server";
+import PublicVoiceMicrophone from "@/components/public/public-voice-microphone";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
 type PublicLayoutProps = {
   children: ReactNode;
@@ -74,15 +78,20 @@ export default async function PublicLayout({
       );
     } else {
       profile =
-        data as PublicProfile | null;
+        data as
+          | PublicProfile
+          | null;
     }
   }
+
+  const isAuthenticated =
+    Boolean(user);
 
   return (
     <div className="flex min-h-screen flex-col">
       <PublicHeader
         isAuthenticated={
-          Boolean(user)
+          isAuthenticated
         }
         userName={
           getDisplayName(
@@ -100,6 +109,12 @@ export default async function PublicLayout({
       </div>
 
       <PublicFooter />
+
+      <PublicVoiceMicrophone
+        isAuthenticated={
+          isAuthenticated
+        }
+      />
     </div>
   );
 }
