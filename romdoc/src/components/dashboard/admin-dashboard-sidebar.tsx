@@ -31,6 +31,7 @@ type NavigationIcon =
   | "cities"
   | "reviews"
   | "privacy"
+  | "ai"
   | "security"
   | "home";
 
@@ -42,97 +43,168 @@ type NavigationItem = {
   adminOnly?: boolean;
 };
 
-const navigationItems: NavigationItem[] = [
-  {
-    href: "/admin",
-    label: "Prezentare generală",
-    icon: "overview",
-    available: true,
-  },
-  {
-    href: "/admin/users",
-    label: "Utilizatori",
-    icon: "users",
-    available: true,
-  },
-  {
-    href: "/admin/managers",
-    label: "Manageri",
-    icon: "users",
-    available: true,
-    adminOnly: true,
-  },
-  {
-    href: "/admin/doctors",
-    label: "Medici",
-    icon: "doctors",
-    available: true,
-  },
-  {
-    href: "/admin/verifications",
-    label: "Verificări profesionale",
-    icon: "verifications",
-    available: true,
-  },
-  {
-    href: "/admin/clinics",
-    label: "Clinici",
-    icon: "clinics",
-    available: true,
-  },
-  {
-    href: "/admin/specialties",
-    label: "Specialități",
-    icon: "specialties",
-    available: true,
-    adminOnly: true,
-  },
-  {
-    href: "/admin/cities",
-    label: "Orașe",
-    icon: "cities",
-    available: true,
-  },
-  {
-    href: "/admin/reviews",
-    label: "Recenzii",
-    icon: "reviews",
-    available: true,
-  },
-  {
-    href: "/admin/privacy",
-    label: "Confidențialitate",
-    icon: "privacy",
-    available: true,
-    adminOnly: true,
-  },
-  {
-    href: "/admin/security",
-    label: "Account security",
-    icon: "security",
-    available: true,
-  },
-  {
-    href: "/",
-    label: "Pagina principală",
-    icon: "home",
-    available: true,
-  },
-];
+const navigationItems:
+  NavigationItem[] = [
+    {
+      href:
+        "/admin",
+      label:
+        "Prezentare generală",
+      icon:
+        "overview",
+      available:
+        true,
+    },
+    {
+      href:
+        "/admin/users",
+      label:
+        "Utilizatori",
+      icon:
+        "users",
+      available:
+        true,
+    },
+    {
+      href:
+        "/admin/managers",
+      label:
+        "Manageri",
+      icon:
+        "users",
+      available:
+        true,
+      adminOnly:
+        true,
+    },
+    {
+      href:
+        "/admin/doctors",
+      label:
+        "Medici",
+      icon:
+        "doctors",
+      available:
+        true,
+    },
+    {
+      href:
+        "/admin/verifications",
+      label:
+        "Verificări profesionale",
+      icon:
+        "verifications",
+      available:
+        true,
+    },
+    {
+      href:
+        "/admin/clinics",
+      label:
+        "Clinici",
+      icon:
+        "clinics",
+      available:
+        true,
+    },
+    {
+      href:
+        "/admin/specialties",
+      label:
+        "Specialități",
+      icon:
+        "specialties",
+      available:
+        true,
+      adminOnly:
+        true,
+    },
+    {
+      href:
+        "/admin/cities",
+      label:
+        "Orașe",
+      icon:
+        "cities",
+      available:
+        true,
+    },
+    {
+      href:
+        "/admin/reviews",
+      label:
+        "Recenzii",
+      icon:
+        "reviews",
+      available:
+        true,
+    },
+    {
+      href:
+        "/admin/privacy",
+      label:
+        "Confidențialitate",
+      icon:
+        "privacy",
+      available:
+        true,
+      adminOnly:
+        true,
+    },
+    {
+      href:
+        "/admin/settings/ai",
+      label:
+        "Asistent AI",
+      icon:
+        "ai",
+      available:
+        true,
+      adminOnly:
+        true,
+    },
+    {
+      href:
+        "/admin/security",
+      label:
+        "Account security",
+      icon:
+        "security",
+      available:
+        true,
+    },
+    {
+      href:
+        "/",
+      label:
+        "Pagina principală",
+      icon:
+        "home",
+      available:
+        true,
+    },
+  ];
+
+type IconProps = {
+  type: NavigationIcon;
+};
 
 function Icon({
   type,
-}: {
-  type: NavigationIcon;
-}) {
+}: IconProps) {
   const commonProps = {
-    viewBox: "0 0 24 24",
-    "aria-hidden": true,
+    viewBox:
+      "0 0 24 24",
+    "aria-hidden":
+      true,
     className:
       "h-5 w-5 shrink-0",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 1.8,
+    fill:
+      "none",
+    stroke:
+      "currentColor",
+    strokeWidth:
+      1.8,
   };
 
   switch (type) {
@@ -173,11 +245,6 @@ function Icon({
     case "users":
       return (
         <svg {...commonProps}>
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
-          />
           <circle
             cx="9"
             cy="7"
@@ -185,8 +252,11 @@ function Icon({
           />
           <path
             strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"
+            d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"
+          />
+          <path
+            strokeLinecap="round"
+            d="M16 3.2a4 4 0 0 1 0 7.6M22 21v-2a4 4 0 0 0-3-3.9"
           />
         </svg>
       );
@@ -201,11 +271,7 @@ function Icon({
           />
           <path
             strokeLinecap="round"
-            d="M5 21c.7-4 3.1-6 7-6s6.3 2 7 6"
-          />
-          <path
-            strokeLinecap="round"
-            d="M18 5v4M16 7h4"
+            d="M5 21c.7-4 3.1-6 7-6s6.3 2 7 6M18 5v4M16 7h4"
           />
         </svg>
       );
@@ -298,6 +364,21 @@ function Icon({
         </svg>
       );
 
+    case "ai":
+      return (
+        <svg {...commonProps}>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M8 4h8a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3Z"
+          />
+          <path
+            strokeLinecap="round"
+            d="M9 10h.01M15 10h.01M9 14c1.8 1.4 4.2 1.4 6 0M12 1v3M12 18v3M2 11h3M19 11h3"
+          />
+        </svg>
+      );
+
     case "security":
       return (
         <svg {...commonProps}>
@@ -310,13 +391,6 @@ function Icon({
             strokeLinecap="round"
             strokeLinejoin="round"
             d="M9 11V9a3 3 0 0 1 6 0v2M8 11h8v6H8v-6Z"
-          />
-          <circle
-            cx="12"
-            cy="14"
-            r=".5"
-            fill="currentColor"
-            stroke="none"
           />
         </svg>
       );
@@ -414,12 +488,10 @@ function LogoutIcon() {
     >
       <path
         strokeLinecap="round"
-        strokeLinejoin="round"
         d="M10 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"
       />
       <path
         strokeLinecap="round"
-        strokeLinejoin="round"
         d="m15 8 4 4-4 4M19 12H9"
       />
     </svg>
@@ -434,18 +506,26 @@ function getInitials(
     .split(/\s+/)
     .filter(Boolean);
 
-  if (parts.length === 0) {
+  if (
+    parts.length === 0
+  ) {
     return "A";
   }
 
-  if (parts.length === 1) {
+  if (
+    parts.length === 1
+  ) {
     return parts[0]
       .slice(0, 2)
       .toUpperCase();
   }
 
-  return `${parts[0][0]}${
-    parts[parts.length - 1][0]
+  return `${
+    parts[0][0]
+  }${
+    parts[
+      parts.length - 1
+    ][0]
   }`.toUpperCase();
 }
 
@@ -457,8 +537,11 @@ function isActiveRoute(
     return pathname === "/";
   }
 
-  if (href === "/admin") {
-    return pathname === "/admin";
+  if (
+    href === "/admin"
+  ) {
+    return pathname ===
+      "/admin";
   }
 
   return (
@@ -509,7 +592,8 @@ export default function AdminDashboardSidebar({
       const {
         error,
       } =
-        await supabase.auth.signOut();
+        await supabase.auth
+          .signOut();
 
       if (error) {
         console.error(
@@ -520,10 +604,14 @@ export default function AdminDashboardSidebar({
       }
 
       setIsMobileOpen(false);
-      router.replace("/login");
+      router.replace(
+        "/login"
+      );
       router.refresh();
     } finally {
-      setIsSigningOut(false);
+      setIsSigningOut(
+        false
+      );
     }
   }
 
@@ -640,10 +728,14 @@ export default function AdminDashboardSidebar({
                 item.href
               );
 
-            if (!item.available) {
+            if (
+              !item.available
+            ) {
               return (
                 <div
-                  key={item.href}
+                  key={
+                    item.href
+                  }
                   title={
                     isCollapsed
                       ? `${item.label} — în curând`
@@ -664,7 +756,9 @@ export default function AdminDashboardSidebar({
                   {!isCollapsed && (
                     <>
                       <span className="flex-1">
-                        {item.label}
+                        {
+                          item.label
+                        }
                       </span>
 
                       <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
@@ -678,8 +772,12 @@ export default function AdminDashboardSidebar({
 
             return (
               <Link
-                key={item.href}
-                href={item.href}
+                key={
+                  item.href
+                }
+                href={
+                  item.href
+                }
                 onClick={() =>
                   setIsMobileOpen(
                     false
@@ -713,7 +811,9 @@ export default function AdminDashboardSidebar({
 
                 {!isCollapsed && (
                   <span>
-                    {item.label}
+                    {
+                      item.label
+                    }
                   </span>
                 )}
               </Link>
