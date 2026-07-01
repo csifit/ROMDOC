@@ -8,6 +8,9 @@ import {
   requirePlatformOperatorAal2Api,
 } from "@/lib/auth/require-platform-operator-aal2-api";
 import {
+  getVoiceAssistantEnvironmentStatus,
+} from "@/lib/ai/voice-assistant-environment";
+import {
   VOICE_ASSISTANT_FEATURE_KEY,
   isVoiceAssistantAllowedRole,
   isVoiceAssistantOperationalState,
@@ -58,23 +61,6 @@ function noStoreJson(
           "no-store",
       },
     }
-  );
-}
-
-function providerConfigured() {
-  return Boolean(
-    process.env.OPENAI_API_KEY
-      ?.trim()
-  );
-}
-
-function emergencyLockActive() {
-  return (
-    process.env
-      .VOICE_ASSISTANT_EMERGENCY_DISABLED
-      ?.trim()
-      .toLowerCase() !==
-    "false"
   );
 }
 
@@ -217,11 +203,16 @@ export async function GET() {
       row.allowed_roles
     );
 
+  const environment =
+    getVoiceAssistantEnvironmentStatus();
+
   const hasProvider =
-    providerConfigured();
+    environment
+      .providerConfigured;
 
   const emergencyLocked =
-    emergencyLockActive();
+    environment
+      .emergencyLockActive;
 
   return noStoreJson({
     feature: {
@@ -238,6 +229,15 @@ export async function GET() {
       hasProvider,
     emergencyLockActive:
       emergencyLocked,
+    emergencyLockState:
+      environment
+        .emergencyLockState,
+    emergencyVariableConfigured:
+      environment
+        .emergencyVariableConfigured,
+    deploymentEnvironment:
+      environment
+        .deploymentEnvironment,
     publicAvailable:
       row.is_enabled &&
       state !==
@@ -417,11 +417,16 @@ export async function PATCH(
     );
   }
 
+  const environment =
+    getVoiceAssistantEnvironmentStatus();
+
   const hasProvider =
-    providerConfigured();
+    environment
+      .providerConfigured;
 
   const emergencyLocked =
-    emergencyLockActive();
+    environment
+      .emergencyLockActive;
 
   if (
     body.isEnabled &&

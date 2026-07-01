@@ -2,6 +2,7 @@ import {
   redirect,
 } from "next/navigation";
 
+import AiEmergencyConfiguration from "@/components/admin/ai-emergency-configuration";
 import AiFeatureControls from "@/components/admin/ai-feature-controls";
 import AiFeatureStatus, {
   type AiFeatureAuditItem,
@@ -12,6 +13,9 @@ import {
 import {
   isTrustedAdminMfaIp,
 } from "@/lib/auth/admin-mfa-ip";
+import {
+  getVoiceAssistantEnvironmentStatus,
+} from "@/lib/ai/voice-assistant-environment";
 import {
   VOICE_ASSISTANT_FEATURE_KEY,
   normalizeAllowedRoles,
@@ -405,21 +409,16 @@ export default async function AdminAiSettingsPage() {
       feature.allowed_roles
     );
 
-  const providerConfigured =
-    Boolean(
-      process.env.OPENAI_API_KEY
-        ?.trim()
-    );
+  const environment =
+    getVoiceAssistantEnvironmentStatus();
 
-  const emergencyValue =
-    process.env
-      .VOICE_ASSISTANT_EMERGENCY_DISABLED
-      ?.trim()
-      .toLowerCase();
+  const providerConfigured =
+    environment
+      .providerConfigured;
 
   const emergencyLockActive =
-    emergencyValue !==
-    "false";
+    environment
+      .emergencyLockActive;
 
   const publicAvailable =
     feature.is_enabled &&
@@ -488,6 +487,12 @@ export default async function AdminAiSettingsPage() {
           eliberarea blocării de urgență.
         </p>
       </header>
+
+      <AiEmergencyConfiguration
+        status={
+          environment
+        }
+      />
 
       <AiFeatureControls
         initialEnabled={

@@ -400,13 +400,19 @@ export default function AiFeatureStatus({
             </div>
 
             <p className="mt-4 text-sm leading-6 text-gray-600">
-              În lipsa variabilei
+              Protecția este eliberată numai când variabila
               <code className="mx-1 rounded bg-gray-200 px-1.5 py-0.5 text-xs">
-                VOICE_ASSISTANT_EMERGENCY_DISABLED=false
+                VOICE_ASSISTANT_EMERGENCY_DISABLED
               </code>
-              aplicația tratează blocarea de urgență ca fiind
-              activă. Configurarea completă va fi adăugată în
-              Step 71A-7.
+              are valoarea exactă
+              <code className="mx-1 rounded bg-gray-200 px-1.5 py-0.5 text-xs">
+                false
+              </code>
+              . O valoare absentă, invalidă sau
+              <code className="mx-1 rounded bg-gray-200 px-1.5 py-0.5 text-xs">
+                true
+              </code>
+              menține toate rutele vocale blocate.
             </p>
           </div>
         </div>
