@@ -2,6 +2,7 @@ import {
   redirect,
 } from "next/navigation";
 
+import AiFeatureControls from "@/components/admin/ai-feature-controls";
 import AiFeatureStatus, {
   type AiFeatureAuditItem,
 } from "@/components/admin/ai-feature-status";
@@ -481,12 +482,33 @@ export default async function AdminAiSettingsPage() {
         </h1>
 
         <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Verifică starea serviciului, protecțiile de
-          cost, rolurile permise și istoricul modificărilor.
-          Asistentul rămâne în așteptare și nu efectuează
-          solicitări către OpenAI.
+          Configurează în siguranță comutatorul principal,
+          starea de lansare și rolurile permise. Asistentul nu
+          poate fi activat fără furnizor configurat și fără
+          eliberarea blocării de urgență.
         </p>
       </header>
+
+      <AiFeatureControls
+        initialEnabled={
+          feature.is_enabled
+        }
+        initialOperationalState={
+          operationalState
+        }
+        initialAllowedRoles={
+          allowedRoles
+        }
+        providerConfigured={
+          providerConfigured
+        }
+        emergencyLockActive={
+          emergencyLockActive
+        }
+        initialUpdatedAt={
+          feature.updated_at
+        }
+      />
 
       <AiFeatureStatus
         databaseReady

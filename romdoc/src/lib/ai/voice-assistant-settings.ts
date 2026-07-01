@@ -1,18 +1,30 @@
 export const VOICE_ASSISTANT_FEATURE_KEY =
   "voice_appointment_assistant";
 
+export const
+VOICE_ASSISTANT_OPERATIONAL_STATES =
+  [
+    "standby",
+    "admin_testing",
+    "limited_rollout",
+    "active",
+  ] as const;
+
+export const
+VOICE_ASSISTANT_ALLOWED_ROLES =
+  [
+    "patient",
+    "doctor",
+    "staff",
+    "admin",
+    "manager",
+  ] as const;
+
 export type VoiceAssistantOperationalState =
-  | "standby"
-  | "admin_testing"
-  | "limited_rollout"
-  | "active";
+  (typeof VOICE_ASSISTANT_OPERATIONAL_STATES)[number];
 
 export type VoiceAssistantAllowedRole =
-  | "patient"
-  | "doctor"
-  | "staff"
-  | "admin"
-  | "manager";
+  (typeof VOICE_ASSISTANT_ALLOWED_ROLES)[number];
 
 export type VoiceAssistantSettings = {
   provider: string;
@@ -30,25 +42,6 @@ export type VoiceAssistantSettings = {
   automaticPauseAfterDailyLimit:
     boolean;
 };
-
-const operationalStates:
-  VoiceAssistantOperationalState[] =
-  [
-    "standby",
-    "admin_testing",
-    "limited_rollout",
-    "active",
-  ];
-
-const allowedRoles:
-  VoiceAssistantAllowedRole[] =
-  [
-    "patient",
-    "doctor",
-    "staff",
-    "admin",
-    "manager",
-  ];
 
 const defaultSettings:
   VoiceAssistantSettings = {
@@ -111,6 +104,36 @@ function positiveInteger(
   return Math.min(
     value,
     maximum
+  );
+}
+
+export function
+isVoiceAssistantOperationalState(
+  value: unknown
+): value is
+  VoiceAssistantOperationalState {
+  return (
+    typeof value ===
+      "string" &&
+    VOICE_ASSISTANT_OPERATIONAL_STATES.includes(
+      value as
+        VoiceAssistantOperationalState
+    )
+  );
+}
+
+export function
+isVoiceAssistantAllowedRole(
+  value: unknown
+): value is
+  VoiceAssistantAllowedRole {
+  return (
+    typeof value ===
+      "string" &&
+    VOICE_ASSISTANT_ALLOWED_ROLES.includes(
+      value as
+        VoiceAssistantAllowedRole
+    )
   );
 }
 
@@ -196,12 +219,10 @@ export function
 normalizeOperationalState(
   value: unknown
 ): VoiceAssistantOperationalState {
-  return operationalStates.includes(
-    value as
-      VoiceAssistantOperationalState
+  return isVoiceAssistantOperationalState(
+    value
   )
-    ? (value as
-        VoiceAssistantOperationalState)
+    ? value
     : "standby";
 }
 
@@ -217,16 +238,7 @@ normalizeAllowedRoles(
 
   const normalized =
     value.filter(
-      (
-        item
-      ): item is
-        VoiceAssistantAllowedRole =>
-        typeof item ===
-          "string" &&
-        allowedRoles.includes(
-          item as
-            VoiceAssistantAllowedRole
-        )
+      isVoiceAssistantAllowedRole
     );
 
   return normalized.length > 0
