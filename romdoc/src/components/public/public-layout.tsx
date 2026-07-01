@@ -4,6 +4,7 @@ import type {
 
 import PublicFooter from "@/components/public/public-footer";
 import PublicHeader from "@/components/public/public-header";
+import PublicVoiceAssistantShell from "@/components/public/public-voice-assistant-shell";
 import PublicVoiceMicrophone from "@/components/public/public-voice-microphone";
 import {
   createClient,
@@ -109,6 +110,12 @@ export default async function PublicLayout({
       </div>
 
       <PublicFooter />
+
+      <PublicVoiceAssistantShell
+        isAuthenticated={
+          isAuthenticated
+        }
+      />
 
       <PublicVoiceMicrophone
         isAuthenticated={

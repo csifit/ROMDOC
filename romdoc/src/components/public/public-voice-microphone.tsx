@@ -6,122 +6,16 @@ import {
 } from "react";
 
 import {
+  hasEnabledVoiceCapability,
+  isVoiceAccessSuccess,
+} from "@/lib/ai/voice-assistant-access-response";
+import {
   dispatchVoiceAssistantOpenEvent,
 } from "@/lib/ai/voice-assistant-browser-events";
 
 type PublicVoiceMicrophoneProps = {
   isAuthenticated: boolean;
 };
-
-type VoiceAccessCapabilities = {
-  voiceSearch: boolean;
-  appointmentDraft: boolean;
-  appointmentConfirmation:
-    boolean;
-};
-
-type VoiceAccessSuccess = {
-  available: true;
-  operationalState:
-    | "admin_testing"
-    | "limited_rollout"
-    | "active";
-  role:
-    | "patient"
-    | "doctor"
-    | "staff"
-    | "admin"
-    | "manager";
-  capabilities:
-    VoiceAccessCapabilities;
-};
-
-function isRecord(
-  value: unknown
-): value is Record<
-  string,
-  unknown
-> {
-  return (
-    typeof value ===
-      "object" &&
-    value !== null &&
-    !Array.isArray(value)
-  );
-}
-
-function isBoolean(
-  value: unknown
-): value is boolean {
-  return typeof value ===
-    "boolean";
-}
-
-function isVoiceAccessSuccess(
-  value: unknown
-): value is VoiceAccessSuccess {
-  if (
-    !isRecord(value) ||
-    value.available !==
-      true ||
-    !isRecord(
-      value.capabilities
-    )
-  ) {
-    return false;
-  }
-
-  const validState =
-    value.operationalState ===
-      "admin_testing" ||
-    value.operationalState ===
-      "limited_rollout" ||
-    value.operationalState ===
-      "active";
-
-  const validRole =
-    value.role ===
-      "patient" ||
-    value.role ===
-      "doctor" ||
-    value.role ===
-      "staff" ||
-    value.role ===
-      "admin" ||
-    value.role ===
-      "manager";
-
-  return (
-    validState &&
-    validRole &&
-    isBoolean(
-      value.capabilities
-        .voiceSearch
-    ) &&
-    isBoolean(
-      value.capabilities
-        .appointmentDraft
-    ) &&
-    isBoolean(
-      value.capabilities
-        .appointmentConfirmation
-    )
-  );
-}
-
-function hasEnabledCapability(
-  capabilities:
-    VoiceAccessCapabilities
-) {
-  return (
-    capabilities
-      .voiceSearch ||
-    capabilities
-      .appointmentDraft ||
-    capabilities
-      .appointmentConfirmation
-  );
-}
 
 function MicrophoneIcon() {
   return (
@@ -203,7 +97,7 @@ PublicVoiceMicrophone({
           !isVoiceAccessSuccess(
             payload
           ) ||
-          !hasEnabledCapability(
+          !hasEnabledVoiceCapability(
             payload.capabilities
           )
         ) {
@@ -262,6 +156,8 @@ PublicVoiceMicrophone({
         });
       }}
       aria-label="Deschide asistentul vocal RomDoc"
+      aria-haspopup="dialog"
+      aria-controls="romdoc-voice-assistant-dialog"
       title="Deschide asistentul vocal RomDoc"
       className="romdoc-focus-ring fixed bottom-5 right-4 z-30 inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/70 bg-[#036661] text-white shadow-[0_14px_35px_rgba(17,24,39,0.28)] transition hover:-translate-y-0.5 hover:bg-[#FF2800] hover:shadow-[0_18px_42px_rgba(17,24,39,0.32)] active:translate-y-0 sm:bottom-6 sm:right-6 sm:h-16 sm:w-16"
       data-romdoc-voice-trigger="public"
