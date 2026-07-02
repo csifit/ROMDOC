@@ -1,6 +1,8 @@
 import {
   redirect,
 } from "next/navigation";
+
+import AdminDoctorInvitations from "@/components/admin/admin-doctor-invitations";
 import DoctorsManagement from "@/components/admin/doctors-management";
 import {
   createClient,
@@ -58,11 +60,11 @@ export default async function AdminDoctorsPage() {
         </h1>
 
         <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Caută și filtrează medicii, verifică abonamentele Stripe,
-          gestionează statutul profilului și acordă verificarea
-          profesională RomDoc.
+          Invită medici, urmărește acceptarea invitațiilor, caută și filtrează medicii, verifică abonamentele Stripe, gestionează statutul profilului și acordă verificarea profesională RomDoc.
         </p>
       </header>
+
+      <AdminDoctorInvitations />
 
       <DoctorsManagement />
     </div>
