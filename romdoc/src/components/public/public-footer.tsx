@@ -3,6 +3,7 @@ import {
   getLocale,
 } from "next-intl/server";
 
+import CookieInformationLink from "@/components/privacy/cookie-information-link";
 import {
   type AppLocale,
 } from "@/i18n/routing";
@@ -236,10 +237,22 @@ export default async function PublicFooter() {
             links={doctorLinks}
           />
 
-          <FooterColumn
-            title="Legal"
-            links={legalLinks}
-          />
+          <div>
+            <FooterColumn
+              title="Legal"
+              links={legalLinks}
+            />
+
+            <div className="mt-3">
+              <CookieInformationLink
+                label={
+                  isEnglish
+                    ? "Cookie and privacy information"
+                    : "Informare cookie și confidențialitate"
+                }
+              />
+            </div>
+          </div>
 
           <FooterColumn
             title="Contact"
