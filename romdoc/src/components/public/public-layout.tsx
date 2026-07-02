@@ -1,11 +1,18 @@
 import type {
   ReactNode,
 } from "react";
+import {
+  getLocale,
+} from "next-intl/server";
 
+import CookieInformationBanner from "@/components/privacy/cookie-information-banner";
 import PublicFooter from "@/components/public/public-footer";
 import PublicHeader from "@/components/public/public-header";
 import PublicVoiceAssistantShell from "@/components/public/public-voice-assistant-shell";
 import PublicVoiceMicrophone from "@/components/public/public-voice-microphone";
+import {
+  type AppLocale,
+} from "@/i18n/routing";
 import {
   createClient,
 } from "@/lib/supabase/server";
@@ -47,6 +54,9 @@ function getDisplayName(
 export default async function PublicLayout({
   children,
 }: PublicLayoutProps) {
+  const locale =
+    (await getLocale()) as AppLocale;
+
   const supabase =
     await createClient();
 
@@ -110,6 +120,14 @@ export default async function PublicLayout({
       </div>
 
       <PublicFooter />
+
+      <CookieInformationBanner
+        locale={
+          locale === "en"
+            ? "en"
+            : "ro"
+        }
+      />
 
       <PublicVoiceAssistantShell
         isAuthenticated={
