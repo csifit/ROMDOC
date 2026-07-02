@@ -20,6 +20,10 @@ type DoctorInvitationAcceptanceProps = {
   personalMessage: string | null;
 };
 
+type AcceptanceResponse = {
+  error?: string;
+};
+
 export default function DoctorInvitationAcceptance({
   email,
   firstName,
@@ -40,8 +44,10 @@ export default function DoctorInvitationAcceptance({
     useState<string | null>(
       null
     );
-  const [isSubmitting, setIsSubmitting] =
-    useState(false);
+  const [
+    isSubmitting,
+    setIsSubmitting,
+  ] = useState(false);
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
@@ -83,7 +89,22 @@ export default function DoctorInvitationAcceptance({
             password,
           });
 
-      if (passwordError) {
+      /*
+       * Supabase may return `same_password` when the invited account
+       * already has this password, for example after a repeated
+       * submission or browser retry. The password is already valid,
+       * so invitation acceptance must continue.
+       */
+      if (
+        passwordError &&
+        passwordError.code !==
+          "same_password"
+      ) {
+        console.error(
+          "Doctor invitation password update failed:",
+          passwordError
+        );
+
         throw new Error(
           "Parola nu a putut fi salvată."
         );
@@ -102,9 +123,8 @@ export default function DoctorInvitationAcceptance({
         );
 
       const result =
-        (await response.json()) as {
-          error?: string;
-        };
+        (await response.json()) as
+          AcceptanceResponse;
 
       if (!response.ok) {
         throw new Error(
