@@ -218,7 +218,7 @@ export function getDoctorInvitationRedirectUrl(): string {
       ""
     );
 
-  return `${siteUrl}/auth/doctor-invitation`;
+  return `${siteUrl}/auth/confirm?next=/auth/doctor-invitation`;
 }
 
 export function getDoctorInvitationExpiryDate(): string {
