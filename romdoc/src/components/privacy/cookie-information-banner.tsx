@@ -62,7 +62,7 @@ export default function CookieInformationBanner({
           : "Informare privind cookie-urile și confidențialitatea"
       }
       aria-live="polite"
-      className="fixed inset-x-0 bottom-0 z-[100] border-t border-gray-200 bg-white/98 shadow-[0_-12px_40px_rgba(15,23,42,0.16)] backdrop-blur"
+      className="fixed inset-x-0 bottom-0 z-[100] border-t border-gray-200 bg-white shadow-[0_-12px_40px_rgba(15,23,42,0.16)]"
     >
       <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
         <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
