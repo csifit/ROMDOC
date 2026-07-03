@@ -1,6 +1,7 @@
 "use client";
 
 import Button from "@/components/ui/button";
+import AdminDoctorClinicsInline from "@/components/admin/admin-doctor-clinics-inline";
 
 import {
   useCallback,
@@ -1131,6 +1132,10 @@ export default function DoctorsManagement() {
                             </div>
                           </dl>
                         </div>
+
+                        <AdminDoctorClinicsInline
+                          doctorId={doctor.id}
+                        />
 
                         <div className="mt-6 flex flex-wrap gap-3">
                           <Link
