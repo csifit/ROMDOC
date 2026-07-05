@@ -207,7 +207,7 @@ export default async function PublicFooter() {
             <p className="mt-4 max-w-sm text-sm leading-6 text-gray-600">
               {isEnglish
                 ? "Multilingual platform for finding doctors, clinics and medical appointments in Romania."
-                : "Platformă multilingvă pentru descoperirea medicilor, clinicilor și programărilor medicale în România."}
+                : "Platformă pentru descoperirea medicilor, clinicilor și gestionarea programărilor medicale în România."}
             </p>
 
             <p className="mt-4 max-w-sm text-xs leading-5 text-gray-500">
