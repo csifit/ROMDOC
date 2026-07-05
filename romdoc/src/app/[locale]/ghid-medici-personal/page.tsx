@@ -379,6 +379,15 @@ export default async function DoctorStaffGuidePage({
               </a>
 
               <a
+                href="#abonament"
+                className="rounded-full bg-[#036661]/10 px-4 py-2 font-semibold text-[#036661] hover:bg-[#036661]/15"
+              >
+                {isEnglish
+                  ? "Subscription"
+                  : "Preț Abonament"}
+              </a>
+
+              <a
                 href="#securitate"
                 className="rounded-full bg-[#036661]/10 px-4 py-2 font-semibold text-[#036661] hover:bg-[#036661]/15"
               >
@@ -763,6 +772,90 @@ export default async function DoctorStaffGuidePage({
               )}
             </ul>
           </section>
+
+          <section
+            id="abonament"
+            aria-labelledby="subscription-title"
+            className="mt-8 scroll-mt-24 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8 lg:p-10"
+          >
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#036661]">
+             {isEnglish
+              ? "Doctor subscription"
+              : "Abonament medic"}
+            </p>
+
+            <h2
+              id="subscription-title"
+              className="mt-2 text-3xl font-bold tracking-tight text-gray-900"
+            >
+             {isEnglish
+              ? "Subscription price"
+              : "Preț abonament"}
+            </h2>
+
+            <p className="mt-5 max-w-3xl text-sm leading-7 text-gray-700">
+              {isEnglish
+               ? "Doctors can use RomDoc through a monthly or yearly subscription. The subscription gives access to the doctor dashboard, public doctor profile, appointment management, availability settings, services and clinic configuration."
+               : "Medicii pot folosi RomDoc printr-un abonament lunar sau anual. Abonamentul oferă acces la dashboard-ul medicului, profilul public, administrarea programărilor, setarea disponibilității, serviciilor și clinicilor."}
+            </p>
+
+            <div className="mt-7 grid gap-5 md:grid-cols-2">
+          <article className="rounded-2xl border border-[#036661]/20 bg-[#036661]/5 p-6">
+              <h3 className="text-lg font-semibold text-gray-900">
+               {isEnglish
+               ? "Monthly subscription"
+               : "Abonament lunar"}
+              </h3>
+
+            <p className="mt-4 text-4xl font-bold tracking-tight text-[#036661]">
+              60 lei
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-gray-700">
+              {isEnglish
+              ? "per month"
+              : "pe lună"}
+            </p>
+          </article>
+
+          <article className="rounded-2xl border border-[#036661]/20 bg-[#036661]/5 p-6">
+            <h3 className="text-lg font-semibold text-gray-900">
+             {isEnglish
+              ? "Yearly subscription"
+              : "Abonament anual"}
+            </h3>
+
+            <p className="mt-4 text-4xl font-bold tracking-tight text-[#036661]">
+              600 lei
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-gray-700">
+             {isEnglish
+              ? "per year"
+             : "pe an"}
+            </p>
+         </article>
+  </div>
+
+  <p className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-7 text-amber-950">
+    {isEnglish
+      ? "Prices are displayed in Romanian lei. Any applicable VAT or payment-provider conditions should be shown during checkout, according to the active billing configuration."
+      : "Prețurile sunt afișate în lei. TVA-ul aplicabil și condițiile procesatorului de plăți trebuie afișate la checkout, conform configurării active de plată."}
+  </p>
+
+  <div className="mt-6">
+    <Link
+      href={registerHref}
+      className="romdoc-button romdoc-button-primary"
+    >
+      {isEnglish
+        ? "Create doctor account"
+        : "Creează cont de medic"}
+    </Link>
+  </div>
+</section>
+
+
 
           <section
             id="securitate"

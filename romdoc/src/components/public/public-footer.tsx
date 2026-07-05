@@ -118,8 +118,9 @@ export default async function PublicFooter() {
           : "Ghid pentru medici și personal",
       },
       {
-        href:
-          "/doctor-application",
+        href: isEnglish
+          ? "/en/doctor-staff-guide#abonament"
+          : "/ro/ghid-medici-personal#abonament",
         label: isEnglish
           ? "Doctor subscription"
           : "Abonament medic",
