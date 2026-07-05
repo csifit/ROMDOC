@@ -840,7 +840,7 @@ export default async function DoctorStaffGuidePage({
   <p className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-7 text-amber-950">
     {isEnglish
       ? "Prices are displayed in Romanian lei. Any applicable VAT or payment-provider conditions should be shown during checkout, according to the active billing configuration."
-      : "Prețurile sunt afișate în lei. TVA-ul aplicabil și condițiile procesatorului de plăți trebuie afișate la checkout, conform configurării active de plată."}
+      : "Procesator de plăți: Stripe. Prețurile sunt afișate în lei. TVA-ul aplicabil și condițiile procesatorului de plăți vor fi afișate la checkout, conform configurării active de plată."}
   </p>
 
   <div className="mt-6">
