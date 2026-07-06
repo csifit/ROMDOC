@@ -51,12 +51,8 @@ type ClinicTranslation = {
 type ClinicRelation = {
   id: string;
   slug: string;
-  formatted_address:
-    | string
-    | null;
-  street_address:
-    | string
-    | null;
+  formatted_address: string | null;
+  street_address: string | null;
   clinic_translations:
     | ClinicTranslation[]
     | null;
@@ -75,6 +71,7 @@ type Appointment = {
   doctor_id: string;
   clinic_id: string;
   patient_name: string;
+  patient_email: string;
   requested_date: string;
   requested_time: string | null;
   scheduled_date: string | null;
@@ -108,9 +105,7 @@ function getFirstRelation<T>(
   return relation;
 }
 
-function formatDoctorName(
-  slug: string
-) {
+function formatDoctorName(slug: string) {
   return slug
     .split("-")
     .map(
@@ -128,9 +123,7 @@ function getDoctorName(
     return "Medic indisponibil";
   }
 
-  return formatDoctorName(
-    doctor.slug
-  );
+  return formatDoctorName(doctor.slug);
 }
 
 function getDoctorTitle(
@@ -141,8 +134,7 @@ function getDoctorTitle(
       (translation) =>
         translation.locale === "ro"
     )?.title ??
-    doctor?.doctor_translations?.[0]
-      ?.title ??
+    doctor?.doctor_translations?.[0]?.title ??
     null
   );
 }
@@ -153,10 +145,9 @@ function getSpecialtyName(
   const doctorSpecialty =
     doctor?.doctor_specialties?.[0];
 
-  const specialty =
-    getFirstRelation(
-      doctorSpecialty?.specialties
-    );
+  const specialty = getFirstRelation(
+    doctorSpecialty?.specialties
+  );
 
   return (
     specialty?.specialty_translations?.find(
@@ -177,55 +168,32 @@ function getClinicName(
       (translation) =>
         translation.locale === "ro"
     )?.name ??
-    clinic?.clinic_translations?.[0]
-      ?.name ??
+    clinic?.clinic_translations?.[0]?.name ??
     "Clinică indisponibilă"
   );
 }
 
-function formatDate(
-  value: string
-) {
-  return new Intl.DateTimeFormat(
-    "ro-RO",
-    {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    }
-  ).format(
-    new Date(
-      `${value}T12:00:00`
-    )
-  );
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("ro-RO", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${value}T12:00:00`));
 }
 
-function formatCreatedAt(
-  value: string
-) {
-  return new Intl.DateTimeFormat(
-    "ro-RO",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }
-  ).format(
-    new Date(value)
-  );
+function formatCreatedAt(value: string) {
+  return new Intl.DateTimeFormat("ro-RO", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
 }
 
-function formatTime(
-  value: string | null
-) {
-  return value
-    ? value.slice(0, 5)
-    : "—";
+function formatTime(value: string | null) {
+  return value ? value.slice(0, 5) : "—";
 }
 
-function getStatusLabel(
-  status: string
-) {
+function getStatusLabel(status: string) {
   switch (status) {
     case "confirmed":
       return "Confirmată";
@@ -247,9 +215,7 @@ function getStatusLabel(
   }
 }
 
-function getStatusClasses(
-  status: string
-) {
+function getStatusClasses(status: string) {
   switch (status) {
     case "confirmed":
       return "bg-green-100 text-green-800";
@@ -271,9 +237,7 @@ function getStatusClasses(
   }
 }
 
-function getReviewStatusLabel(
-  status: string
-) {
+function getReviewStatusLabel(status: string) {
   switch (status) {
     case "published":
       return "Publicată";
@@ -289,9 +253,7 @@ function getReviewStatusLabel(
   }
 }
 
-function getReviewStatusClasses(
-  status: string
-) {
+function getReviewStatusClasses(status: string) {
   switch (status) {
     case "published":
       return "bg-green-100 text-green-800";
@@ -308,27 +270,28 @@ function getReviewStatusClasses(
 }
 
 export default async function PatientDashboardPage() {
-  const supabase =
-    await createClient();
+  const supabase = await createClient();
 
   const {
     data: { user },
     error: userError,
-  } =
-    await supabase.auth.getUser();
+  } = await supabase.auth.getUser();
 
-  if (
-    userError ||
-    !user
-  ) {
-    redirect(
-      "/login?next=/patient-dashboard"
-    );
+  if (userError || !user) {
+    redirect("/login?next=/patient-dashboard");
   }
 
   if (!user.email_confirmed_at) {
     redirect("/check-email");
   }
+
+  if (!user.email) {
+    redirect("/dashboard");
+  }
+
+  const patientEmail = user.email
+    .trim()
+    .toLowerCase();
 
   const {
     data: profile,
@@ -343,41 +306,22 @@ export default async function PatientDashboardPage() {
     .eq("id", user.id)
     .maybeSingle();
 
-  if (
-    profileError ||
-    !profile
-  ) {
+  if (profileError || !profile) {
     redirect("/dashboard");
   }
 
-  if (
-    profile.role !== "patient"
-  ) {
+  if (profile.role !== "patient") {
     redirect("/dashboard");
   }
 
-  const { error: claimAppointmentsError } =
-    await supabase.rpc(
-      "claim_patient_appointments_by_email"
-    );
-
-  if (claimAppointmentsError) {
-    console.error(
-      "Patient appointment claim failed:",
-      claimAppointmentsError
-    );
-  }
-
-  const {
-    data,
-    error,
-  } = await supabase
+  const { data, error } = await supabase
     .from("appointments")
     .select(`
       id,
       doctor_id,
       clinic_id,
       patient_name,
+      patient_email,
       requested_date,
       requested_time,
       scheduled_date,
@@ -422,29 +366,12 @@ export default async function PatientDashboardPage() {
         created_at
       )
     `)
-    /*
-      Important:
-      Do not filter only by patient_profile_id here.
-
-      Some appointments are created by doctors or staff by phone/email.
-      Those rows can have patient_profile_id = null, especially when
-      the patient account is created later from the invitation link.
-
-      The database RLS policy decides what the authenticated patient
-      can see:
-      - appointments linked by patient_profile_id
-      - appointments matching the verified auth email address
-
-      This keeps past, future, pending, confirmed, completed, cancelled,
-      rescheduled and no-show appointments visible when they belong to
-      the patient.
-    */
-    .order(
-      "created_at",
-      {
-        ascending: false,
-      }
-    );
+    .or(
+      `patient_profile_id.eq.${user.id},patient_email.ilike.${patientEmail}`
+    )
+    .order("created_at", {
+      ascending: false,
+    });
 
   if (error) {
     console.error(
@@ -454,9 +381,8 @@ export default async function PatientDashboardPage() {
   }
 
   const appointments =
-    (data as unknown as
-      | Appointment[]
-      | null) ?? [];
+    (data as unknown as Appointment[] | null) ??
+    [];
 
   const patientName = [
     profile.first_name,
@@ -485,9 +411,7 @@ export default async function PatientDashboardPage() {
           </p>
 
           <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-            Vezi toate programările tale trecute și viitoare, notele
-            medicale disponibile și publică o recenzie după finalizarea
-            consultației.
+            Vezi toate programările tale trecute și viitoare, notele medicale disponibile și publică o recenzie după finalizarea consultației.
           </p>
         </header>
 
@@ -496,7 +420,17 @@ export default async function PatientDashboardPage() {
         <PatientReminderPreferencesShortcut />
 
         <section className="mt-8">
-          {appointments.length === 0 ? (
+          {error ? (
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-red-800 shadow-sm">
+              <h2 className="text-xl font-bold">
+                Programările nu au putut fi încărcate
+              </h2>
+
+              <p className="mt-3 text-sm leading-6">
+                Verifică dacă migrarea pentru citirea programărilor după e-mail a fost rulată în Supabase.
+              </p>
+            </div>
+          ) : appointments.length === 0 ? (
             <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
               <h2 className="text-xl font-bold text-gray-900">
                 Nu ai încă programări
@@ -504,8 +438,6 @@ export default async function PatientDashboardPage() {
 
               <p className="mt-3 text-sm text-gray-600">
                 Caută un medic și trimite prima solicitare de programare.
-                Dacă ai primit o programare creată de clinică, verifică să
-                folosești același e-mail cu care a fost creată programarea.
               </p>
 
               <Link
@@ -517,263 +449,230 @@ export default async function PatientDashboardPage() {
             </div>
           ) : (
             <div className="space-y-6">
-              {appointments.map(
-                (appointment) => {
-                  const doctor =
-                    getFirstRelation(
-                      appointment.doctors
-                    );
+              {appointments.map((appointment) => {
+                const doctor = getFirstRelation(
+                  appointment.doctors
+                );
 
-                  const clinic =
-                    getFirstRelation(
-                      appointment.clinics
-                    );
+                const clinic = getFirstRelation(
+                  appointment.clinics
+                );
 
-                  const existingReview =
-                    appointment.reviews?.[0] ??
-                    null;
+                const existingReview =
+                  appointment.reviews?.[0] ?? null;
 
-                  const doctorName =
-                    getDoctorName(
-                      doctor
-                    );
+                const doctorName = getDoctorName(
+                  doctor
+                );
 
-                  const doctorTitle =
-                    getDoctorTitle(
-                      doctor
-                    );
+                const doctorTitle = getDoctorTitle(
+                  doctor
+                );
 
-                  const appointmentDate =
-                    appointment.scheduled_date ??
-                    appointment.requested_date;
+                const appointmentDate =
+                  appointment.scheduled_date ??
+                  appointment.requested_date;
 
-                  const appointmentTime =
-                    appointment.scheduled_time ??
-                    appointment.requested_time;
+                const appointmentTime =
+                  appointment.scheduled_time ??
+                  appointment.requested_time;
 
-                  return (
-                    <article
-                      key={
-                        appointment.id
-                      }
-                      className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-4">
-                        <div>
-                          <p className="text-sm font-semibold text-[#036661]">
-                            {getSpecialtyName(
-                              doctor
-                            )}
+                return (
+                  <article
+                    key={appointment.id}
+                    className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-semibold text-[#036661]">
+                          {getSpecialtyName(doctor)}
+                        </p>
+
+                        <h2 className="mt-1 text-xl font-bold text-gray-900">
+                          {doctorName}
+                        </h2>
+
+                        {doctorTitle && (
+                          <p className="mt-1 text-sm text-gray-600">
+                            {doctorTitle}
                           </p>
-
-                          <h2 className="mt-1 text-xl font-bold text-gray-900">
-                            {doctorName}
-                          </h2>
-
-                          {doctorTitle && (
-                            <p className="mt-1 text-sm text-gray-600">
-                              {
-                                doctorTitle
-                              }
-                            </p>
-                          )}
-                        </div>
-
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusClasses(
-                            appointment.status
-                          )}`}
-                        >
-                          {getStatusLabel(
-                            appointment.status
-                          )}
-                        </span>
+                        )}
                       </div>
 
-                      <dl className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                        <div>
-                          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                            Clinică
-                          </dt>
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusClasses(
+                          appointment.status
+                        )}`}
+                      >
+                        {getStatusLabel(
+                          appointment.status
+                        )}
+                      </span>
+                    </div>
 
-                          <dd className="mt-1 text-sm font-medium text-gray-900">
-                            {getClinicName(
-                              clinic
-                            )}
+                    <dl className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                      <div>
+                        <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          Clinică
+                        </dt>
+
+                        <dd className="mt-1 text-sm font-medium text-gray-900">
+                          {getClinicName(clinic)}
+                        </dd>
+
+                        {(clinic?.formatted_address ||
+                          clinic?.street_address) && (
+                          <dd className="mt-1 text-xs leading-5 text-gray-500">
+                            {clinic.formatted_address ??
+                              clinic.street_address}
                           </dd>
+                        )}
+                      </div>
 
-                          {(clinic?.formatted_address ||
-                            clinic?.street_address) && (
-                            <dd className="mt-1 text-xs leading-5 text-gray-500">
-                              {clinic.formatted_address ??
-                                clinic.street_address}
-                            </dd>
+                      <div>
+                        <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          Data
+                        </dt>
+
+                        <dd className="mt-1 text-sm text-gray-900">
+                          {formatDate(appointmentDate)}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          Ora
+                        </dt>
+
+                        <dd className="mt-1 text-sm text-gray-900">
+                          {formatTime(appointmentTime)}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          Solicitare creată
+                        </dt>
+
+                        <dd className="mt-1 text-sm text-gray-900">
+                          {formatCreatedAt(
+                            appointment.created_at
                           )}
-                        </div>
+                        </dd>
+                      </div>
+                    </dl>
 
-                        <div>
-                          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                            Data
-                          </dt>
+                    {appointment.notes && (
+                      <div className="mt-6 rounded-xl bg-gray-50 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          Mesajul trimis
+                        </p>
 
-                          <dd className="mt-1 text-sm text-gray-900">
-                            {formatDate(
-                              appointmentDate
-                            )}
-                          </dd>
-                        </div>
+                        <p className="mt-2 whitespace-pre-line text-sm leading-6 text-gray-700">
+                          {appointment.notes}
+                        </p>
+                      </div>
+                    )}
 
-                        <div>
-                          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                            Ora
-                          </dt>
+                    {appointment.medical_notes && (
+                      <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-5">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                          Note medicale
+                        </p>
 
-                          <dd className="mt-1 text-sm text-gray-900">
-                            {formatTime(
-                              appointmentTime
-                            )}
-                          </dd>
-                        </div>
+                        <p className="mt-2 whitespace-pre-line text-sm leading-7 text-blue-950">
+                          {appointment.medical_notes}
+                        </p>
+                      </div>
+                    )}
 
-                        <div>
-                          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                            Solicitare creată
-                          </dt>
-
-                          <dd className="mt-1 text-sm text-gray-900">
-                            {formatCreatedAt(
-                              appointment.created_at
-                            )}
-                          </dd>
-                        </div>
-                      </dl>
-
-                      {appointment.notes && (
-                        <div className="mt-6 rounded-xl bg-gray-50 p-4">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                            Mesajul trimis
-                          </p>
-
-                          <p className="mt-2 whitespace-pre-line text-sm leading-6 text-gray-700">
-                            {
-                              appointment.notes
-                            }
-                          </p>
-                        </div>
-                      )}
-
-                      {appointment.medical_notes && (
-                        <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-5">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                            Note medicale
-                          </p>
-
-                          <p className="mt-2 whitespace-pre-line text-sm leading-7 text-blue-950">
-                            {
-                              appointment.medical_notes
-                            }
-                          </p>
-                        </div>
-                      )}
-
-                      <div className="mt-6 flex flex-wrap gap-3 border-t border-gray-200 pt-5">
-                        {doctor && (
-                          <Link
-                            href={`/doctor/${doctor.slug}`}
-                            className="romdoc-button romdoc-button-primary romdoc-button-sm"
-                          >
-                            Vezi profilul medicului
-                          </Link>
-                        )}
-
-                        {doctor && (
-                          <Link
-                            href={`/doctor/${doctor.slug}`}
-                            className="romdoc-button romdoc-button-secondary romdoc-button-sm"
-                          >
-                            Programează din nou
-                          </Link>
-                        )}
-
+                    <div className="mt-6 flex flex-wrap gap-3 border-t border-gray-200 pt-5">
+                      {doctor && (
                         <Link
-                          href={`/appointments/${appointment.id}/messages`}
+                          href={`/doctor/${doctor.slug}`}
+                          className="romdoc-button romdoc-button-primary romdoc-button-sm"
+                        >
+                          Vezi profilul medicului
+                        </Link>
+                      )}
+
+                      {doctor && (
+                        <Link
+                          href={`/doctor/${doctor.slug}`}
                           className="romdoc-button romdoc-button-secondary romdoc-button-sm"
                         >
-                          Mesaje și fișiere
+                          Programează din nou
                         </Link>
-                      </div>
+                      )}
 
-                      <PatientAppointmentLifecycle
-                       appointmentId={appointment.id}
-                       status={appointment.status}
-                       appointmentDate={appointmentDate}
-                       appointmentTime={appointmentTime}
-                      />
+                      <Link
+                        href={`/appointments/${appointment.id}/messages`}
+                        className="romdoc-button romdoc-button-secondary romdoc-button-sm"
+                      >
+                        Mesaje și fișiere
+                      </Link>
+                    </div>
 
-                      {appointment.status ===
-                        "completed" &&
-                        !existingReview && (
-                          <div className="mt-6 border-t border-gray-200 pt-6">
-                            <PatientReviewForm
-                              appointmentId={
-                                appointment.id
-                              }
-                              doctorName={
-                                doctorName
-                              }
-                            />
-                          </div>
-                        )}
+                    <PatientAppointmentLifecycle
+                      appointmentId={appointment.id}
+                      status={appointment.status}
+                      appointmentDate={appointmentDate}
+                      appointmentTime={appointmentTime}
+                    />
 
-                      {existingReview && (
-                        <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-5">
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-semibold text-gray-900">
-                                Recenzia ta
-                              </p>
-
-                              <div className="mt-2 flex items-center gap-3">
-                                <RatingStars
-                                  rating={
-                                    existingReview.rating
-                                  }
-                                  size="small"
-                                />
-
-                                <span className="text-sm font-semibold text-gray-700">
-                                  {
-                                    existingReview.rating
-                                  }
-                                  /5
-                                </span>
-                              </div>
-                            </div>
-
-                            <span
-                              className={`rounded-full px-3 py-1 text-xs font-semibold ${getReviewStatusClasses(
-                                existingReview.status
-                              )}`}
-                            >
-                              {getReviewStatusLabel(
-                                existingReview.status
-                              )}
-                            </span>
-                          </div>
-
-                          {existingReview.review_text && (
-                            <p className="mt-4 whitespace-pre-line text-sm leading-7 text-gray-700">
-                              {
-                                existingReview.review_text
-                              }
-                            </p>
-                          )}
+                    {appointment.status === "completed" &&
+                      !existingReview && (
+                        <div className="mt-6 border-t border-gray-200 pt-6">
+                          <PatientReviewForm
+                            appointmentId={appointment.id}
+                            doctorName={doctorName}
+                          />
                         </div>
                       )}
-                    </article>
-                  );
-                }
-              )}
+
+                    {existingReview && (
+                      <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-5">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">
+                              Recenzia ta
+                            </p>
+
+                            <div className="mt-2 flex items-center gap-3">
+                              <RatingStars
+                                rating={
+                                  existingReview.rating
+                                }
+                                size="small"
+                              />
+
+                              <span className="text-sm font-semibold text-gray-700">
+                                {existingReview.rating}/5
+                              </span>
+                            </div>
+                          </div>
+
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ${getReviewStatusClasses(
+                              existingReview.status
+                            )}`}
+                          >
+                            {getReviewStatusLabel(
+                              existingReview.status
+                            )}
+                          </span>
+                        </div>
+
+                        {existingReview.review_text && (
+                          <p className="mt-4 whitespace-pre-line text-sm leading-7 text-gray-700">
+                            {existingReview.review_text}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
             </div>
           )}
         </section>
