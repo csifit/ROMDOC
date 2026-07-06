@@ -100,6 +100,7 @@ function isAppointmentStatus(
     "rescheduled",
     "completed",
     "cancelled",
+    "no_show",
   ].includes(status);
 }
 
