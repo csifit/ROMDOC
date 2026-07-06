@@ -21,7 +21,8 @@ type AppointmentStatus =
   | "confirmed"
   | "rescheduled"
   | "completed"
-  | "cancelled";
+  | "cancelled"
+  | "no_show";
 
 export type DoctorCalendarAppointment = {
   id: string;
@@ -92,6 +93,13 @@ const statusColors: Record<
     text: "#FFFFFF",
     label: "Anulată",
   },
+
+  no_show: {
+    background: "#7C2D12",
+    border: "#9A3412",
+    text: "#FFFFFF",
+    label: "Neprezentare",
+  },
 };
 
 function normalizeTime(time: string | null) {
@@ -146,14 +154,6 @@ function getSourceLabel(source: string) {
 export default function AppointmentCalendar({
   appointments,
 }: AppointmentCalendarProps) {
-  /*
-   * We store only the selected appointment ID.
-   *
-   * After AppointmentActions calls router.refresh(), the server sends
-   * updated appointment data to this component. Deriving the selected
-   * appointment from the latest props prevents the details panel from
-   * keeping an outdated status or appointment time.
-   */
   const [
     selectedAppointmentId,
     setSelectedAppointmentId,
@@ -217,10 +217,6 @@ export default function AppointmentCalendar({
       return null;
     }
 
-    /*
-     * The year view shows only status dots.
-     * Patient names remain hidden in the full-year overview.
-     */
     if (
       eventInfo.view.type ===
       "multiMonthYear"
@@ -375,9 +371,9 @@ export default function AppointmentCalendar({
                   null
                 )
               }
-            variant="secondary"
-            size="sm"
-            className="w-fit"
+              variant="secondary"
+              size="sm"
+              className="w-fit"
             >
               Închide
             </Button>
