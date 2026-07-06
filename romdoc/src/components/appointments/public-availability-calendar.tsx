@@ -221,6 +221,12 @@ export default function PublicAvailabilityCalendar({
   const [availability, setAvailability] =
     useState<AvailableDate[]>([]);
 
+  const [hasLoadedAvailability, setHasLoadedAvailability] =
+    useState(false);
+
+  const [reloadKey, setReloadKey] =
+    useState(0);
+
   const [isLoading, setIsLoading] =
     useState(false);
 
@@ -242,6 +248,7 @@ export default function PublicAvailabilityCalendar({
   useEffect(() => {
     if (!clinicId) {
       setAvailability([]);
+      setHasLoadedAvailability(false);
       setLoadError(null);
       return;
     }
@@ -254,6 +261,7 @@ export default function PublicAvailabilityCalendar({
 
     if (!range) {
       setAvailability([]);
+      setHasLoadedAvailability(true);
       setLoadError(null);
       return;
     }
@@ -295,6 +303,7 @@ export default function PublicAvailabilityCalendar({
         setAvailability(
           result.dates ?? []
         );
+        setHasLoadedAvailability(true);
       } catch (error) {
         if (
           error instanceof DOMException &&
@@ -304,6 +313,7 @@ export default function PublicAvailabilityCalendar({
         }
 
         setAvailability([]);
+        setHasLoadedAvailability(true);
         setLoadError(
           error instanceof Error
             ? error.message
@@ -326,6 +336,7 @@ export default function PublicAvailabilityCalendar({
     doctorId,
     maximumDate,
     minimumDate,
+    reloadKey,
     visibleMonth,
   ]);
 
@@ -346,6 +357,12 @@ export default function PublicAvailabilityCalendar({
           selectedDate
         ) ?? null
       : null;
+
+  const hasAnyAvailableSlot =
+    availability.some(
+      (item) =>
+        item.availableSlotCount > 0
+    );
 
   useEffect(() => {
     if (
@@ -424,6 +441,12 @@ export default function PublicAvailabilityCalendar({
     onTimeChange("", 30);
   }
 
+  function retryLoadingAvailability() {
+    setReloadKey((currentKey) =>
+      currentKey + 1
+    );
+  }
+
   return (
     <section
       aria-labelledby="availability-calendar-title"
@@ -438,7 +461,7 @@ export default function PublicAvailabilityCalendar({
         </h3>
 
         <p className="mt-1 text-sm leading-6 text-gray-600">
-          Datele verzi au cel puțin un interval disponibil.
+          Datele verzi au cel puțin un interval disponibil. Programarea online se trimite după alegerea unei date și a unei ore.
         </p>
       </div>
 
@@ -609,18 +632,31 @@ export default function PublicAvailabilityCalendar({
                 role="alert"
                 className="rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-800"
               >
-                {loadError}
+                <p>{loadError}</p>
+
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={retryLoadingAvailability}
+                  className="mt-3 rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-semibold text-red-800 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Încearcă din nou
+                </button>
               </div>
             )}
 
             {!isLoading &&
               !loadError &&
-              availability.every(
-                (item) =>
-                  item.availableSlotCount === 0
-              ) && (
+              hasLoadedAvailability &&
+              !hasAnyAvailableSlot && (
                 <div className="rounded-xl border border-gray-200 bg-white px-4 py-5 text-sm text-gray-600">
-                  Medicul nu are intervale libere în această lună.
+                  <p className="font-medium text-gray-900">
+                    Nu există intervale libere afișate pentru această lună.
+                  </p>
+
+                  <p className="mt-2 leading-6">
+                    Poți verifica o altă lună disponibilă în calendar. Programarea online rămâne disponibilă doar după alegerea unei date și a unei ore libere.
+                  </p>
                 </div>
               )}
 
@@ -672,6 +708,16 @@ export default function PublicAvailabilityCalendar({
                   </div>
                 </div>
               )}
+          </div>
+
+          <div className="mt-4 rounded-xl border border-dashed border-gray-300 bg-white px-4 py-4 text-sm text-gray-600">
+            <p className="font-medium text-gray-900">
+              Nu găsești o oră potrivită?
+            </p>
+
+            <p className="mt-1 leading-6">
+              Momentan, RomDoc trimite programarea online doar după selectarea unui interval disponibil. Într-un pas următor, aici poate apărea o opțiune de solicitare generală, astfel încât clinica să te poată contacta.
+            </p>
           </div>
         </>
       )}
