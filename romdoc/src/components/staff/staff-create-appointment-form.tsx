@@ -2,6 +2,7 @@
 
 import {
   FormEvent,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -40,6 +41,16 @@ type CreateAppointmentResponse = {
   };
 };
 
+type AvailableSlot = {
+  time: string;
+  durationMinutes: number;
+};
+
+type AvailableSlotsResponse = {
+  slots?: AvailableSlot[];
+  error?: string;
+};
+
 function getLocalDateString() {
   const today = new Date();
 
@@ -57,6 +68,12 @@ function getLocalDateString() {
   return `${year}-${month}-${day}`;
 }
 
+function formatSlotDuration(
+  durationMinutes: number
+) {
+  return `${durationMinutes} min`;
+}
+
 export default function StaffCreateAppointmentForm({
   doctors,
   onCreated,
@@ -64,12 +81,10 @@ export default function StaffCreateAppointmentForm({
   const [isOpen, setIsOpen] =
     useState(false);
 
-  const [
-    doctorId,
-    setDoctorId,
-  ] = useState(
-    doctors[0]?.id ?? ""
-  );
+  const [doctorId, setDoctorId] =
+    useState(
+      doctors[0]?.id ?? ""
+    );
 
   const selectedDoctor =
     useMemo(
@@ -86,38 +101,38 @@ export default function StaffCreateAppointmentForm({
   const clinics =
     selectedDoctor?.clinics ?? [];
 
-  const [
-    clinicId,
-    setClinicId,
-  ] = useState(
-    doctors[0]?.clinics[0]?.id ??
-      ""
-  );
+  const [clinicId, setClinicId] =
+    useState(
+      doctors[0]?.clinics[0]?.id ??
+        ""
+    );
 
-  const [
-    patientName,
-    setPatientName,
-  ] = useState("");
+  const [patientName, setPatientName] =
+    useState("");
 
-  const [
-    patientEmail,
-    setPatientEmail,
-  ] = useState("");
+  const [patientEmail, setPatientEmail] =
+    useState("");
 
-  const [
-    patientPhone,
-    setPatientPhone,
-  ] = useState("");
+  const [patientPhone, setPatientPhone] =
+    useState("");
 
-  const [
-    scheduledDate,
-    setScheduledDate,
-  ] = useState("");
+  const [scheduledDate, setScheduledDate] =
+    useState("");
 
-  const [
-    scheduledTime,
-    setScheduledTime,
-  ] = useState("");
+  const [scheduledTime, setScheduledTime] =
+    useState("");
+
+  const [selectedDurationMinutes, setSelectedDurationMinutes] =
+    useState<number | null>(null);
+
+  const [availableSlots, setAvailableSlots] =
+    useState<AvailableSlot[]>([]);
+
+  const [slotsAreLoading, setSlotsAreLoading] =
+    useState(false);
+
+  const [slotsError, setSlotsError] =
+    useState("");
 
   const [source, setSource] =
     useState<AppointmentSource>(
@@ -127,28 +142,137 @@ export default function StaffCreateAppointmentForm({
   const [notes, setNotes] =
     useState("");
 
-  const [
-    isSubmitting,
-    setIsSubmitting,
-  ] = useState(false);
+  const [isSubmitting, setIsSubmitting] =
+    useState(false);
 
-  const [
-    successMessage,
-    setSuccessMessage,
-  ] = useState("");
+  const [successMessage, setSuccessMessage] =
+    useState("");
 
-  const [
-    warningMessage,
-    setWarningMessage,
-  ] = useState("");
+  const [warningMessage, setWarningMessage] =
+    useState("");
 
-  const [
-    errorMessage,
-    setErrorMessage,
-  ] = useState("");
+  const [errorMessage, setErrorMessage] =
+    useState("");
 
   const today =
     getLocalDateString();
+
+  useEffect(() => {
+    if (
+      doctors.length === 0
+    ) {
+      setDoctorId("");
+      setClinicId("");
+      return;
+    }
+
+    setDoctorId((currentDoctorId) => {
+      if (
+        doctors.some(
+          (doctor) =>
+            doctor.id ===
+            currentDoctorId
+        )
+      ) {
+        return currentDoctorId;
+      }
+
+      return doctors[0]?.id ?? "";
+    });
+  }, [doctors]);
+
+  useEffect(() => {
+    setClinicId((currentClinicId) => {
+      if (
+        clinics.some(
+          (clinic) =>
+            clinic.id ===
+            currentClinicId
+        )
+      ) {
+        return currentClinicId;
+      }
+
+      return clinics[0]?.id ?? "";
+    });
+  }, [clinics]);
+
+  useEffect(() => {
+    setScheduledTime("");
+    setSelectedDurationMinutes(null);
+    setAvailableSlots([]);
+    setSlotsError("");
+
+    if (
+      !doctorId ||
+      !clinicId ||
+      !scheduledDate
+    ) {
+      setSlotsAreLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    async function loadSlots() {
+      setSlotsAreLoading(true);
+      setSlotsError("");
+
+      try {
+        const params = new URLSearchParams({
+          doctorId,
+          clinicId,
+          date: scheduledDate,
+        });
+
+        const response = await fetch(
+          `/api/availability/slots?${params.toString()}`,
+          {
+            method: "GET",
+            cache: "no-store",
+            signal: controller.signal,
+          }
+        );
+
+        const result =
+          (await response.json()) as AvailableSlotsResponse;
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ??
+              "Intervalele disponibile nu au putut fi încărcate."
+          );
+        }
+
+        setAvailableSlots(
+          result.slots ?? []
+        );
+      } catch (error) {
+        if (
+          error instanceof DOMException &&
+          error.name === "AbortError"
+        ) {
+          return;
+        }
+
+        setSlotsError(
+          error instanceof Error
+            ? error.message
+            : "Intervalele disponibile nu au putut fi încărcate."
+        );
+      } finally {
+        if (!controller.signal.aborted) {
+          setSlotsAreLoading(false);
+        }
+      }
+    }
+
+    void loadSlots();
+
+    return () => {
+      controller.abort();
+    };
+  }, [clinicId, doctorId, scheduledDate]);
 
   function handleDoctorChange(
     nextDoctorId: string
@@ -168,6 +292,12 @@ export default function StaffCreateAppointmentForm({
       nextDoctor?.clinics[0]?.id ??
         ""
     );
+
+    setScheduledDate("");
+    setScheduledTime("");
+    setSelectedDurationMinutes(null);
+    setAvailableSlots([]);
+    setSlotsError("");
   }
 
   function resetPatientFields() {
@@ -176,6 +306,9 @@ export default function StaffCreateAppointmentForm({
     setPatientPhone("");
     setScheduledDate("");
     setScheduledTime("");
+    setSelectedDurationMinutes(null);
+    setAvailableSlots([]);
+    setSlotsError("");
     setSource("phone");
     setNotes("");
   }
@@ -238,7 +371,7 @@ export default function StaffCreateAppointmentForm({
       !scheduledTime
     ) {
       setErrorMessage(
-        "Selectează data și ora programării."
+        "Selectează data și unul dintre intervalele disponibile."
       );
       return;
     }
@@ -354,7 +487,7 @@ export default function StaffCreateAppointmentForm({
           </h2>
 
           <p className="mt-1 text-sm text-gray-600">
-            Creează o programare confirmată pentru unul dintre medicii pe care îi gestionezi.
+            Creează o programare confirmată pentru unul dintre medicii pe care îi gestionezi. Ora se alege din intervalele disponibile.
           </p>
         </div>
 
@@ -427,11 +560,16 @@ export default function StaffCreateAppointmentForm({
                 <select
                   id="staff-appointment-clinic"
                   value={clinicId}
-                  onChange={(event) =>
+                  onChange={(event) => {
                     setClinicId(
                       event.target.value
-                    )
-                  }
+                    );
+                    setScheduledDate("");
+                    setScheduledTime("");
+                    setSelectedDurationMinutes(null);
+                    setAvailableSlots([]);
+                    setSlotsError("");
+                  }}
                   required
                   disabled={
                     isSubmitting
@@ -619,31 +757,67 @@ export default function StaffCreateAppointmentForm({
                 />
               </div>
 
-              <div>
-                <label
-                  htmlFor="staff-appointment-time"
-                  className="block text-sm font-medium text-gray-700"
-                >
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <p className="text-sm font-semibold text-gray-700">
                   Ora programării
-                </label>
+                </p>
 
-                <input
-                  id="staff-appointment-time"
-                  type="time"
-                  value={
-                    scheduledTime
-                  }
-                  onChange={(event) =>
-                    setScheduledTime(
-                      event.target.value
-                    )
-                  }
-                  required
-                  disabled={
-                    isSubmitting
-                  }
-                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-not-allowed disabled:opacity-60"
-                />
+                {!scheduledDate ? (
+                  <p className="mt-2 text-sm text-gray-600">
+                    Selectează mai întâi data pentru a vedea intervalele disponibile.
+                  </p>
+                ) : slotsAreLoading ? (
+                  <p className="mt-2 text-sm text-gray-600">
+                    Se încarcă intervalele disponibile...
+                  </p>
+                ) : slotsError ? (
+                  <p className="mt-2 text-sm text-red-700">
+                    {slotsError}
+                  </p>
+                ) : availableSlots.length === 0 ? (
+                  <p className="mt-2 text-sm text-gray-600">
+                    Nu există intervale disponibile pentru data selectată.
+                  </p>
+                ) : (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {availableSlots.map((slot) => (
+                      <button
+                        key={`${slot.time}-${slot.durationMinutes}`}
+                        type="button"
+                        onClick={() => {
+                          setScheduledTime(slot.time);
+                          setSelectedDurationMinutes(
+                            slot.durationMinutes
+                          );
+                        }}
+                        disabled={isSubmitting}
+                        className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                          scheduledTime === slot.time
+                            ? "border-[#036661] bg-[#036661] text-white"
+                            : "border-gray-300 bg-white text-gray-800 hover:border-[#036661] hover:text-[#036661]"
+                        }`}
+                      >
+                        <span>{slot.time}</span>
+                        <span className="ml-2 text-xs opacity-80">
+                          {formatSlotDuration(
+                            slot.durationMinutes
+                          )}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {scheduledTime && (
+                  <p className="mt-3 text-xs text-gray-600">
+                    Interval selectat: {scheduledTime}
+                    {selectedDurationMinutes
+                      ? ` · ${formatSlotDuration(
+                          selectedDurationMinutes
+                        )}`
+                      : ""}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -714,7 +888,8 @@ export default function StaffCreateAppointmentForm({
               <Button
                 type="submit"
                 disabled={
-                  isSubmitting
+                  isSubmitting ||
+                  slotsAreLoading
                 }
               >
                 {isSubmitting

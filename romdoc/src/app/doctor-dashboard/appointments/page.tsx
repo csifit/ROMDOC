@@ -384,7 +384,10 @@ export default async function DoctorAppointmentsPage() {
           </div>
         )}
 
-        <CreateAppointmentForm clinics={clinicOptions} />
+        <CreateAppointmentForm
+          doctorId={doctor.id}
+          clinics={clinicOptions}
+        />
 
         <ConfirmedAppointmentsWeeklyCalendar
           appointments={confirmedCalendarAppointments}

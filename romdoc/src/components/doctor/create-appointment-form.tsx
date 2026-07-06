@@ -1,12 +1,13 @@
 "use client";
 
-import Button from "@/components/ui/button";
-
 import {
   FormEvent,
+  useEffect,
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
+
+import Button from "@/components/ui/button";
 
 type ClinicOption = {
   id: string;
@@ -20,6 +21,7 @@ type AppointmentSource =
   | "other";
 
 type CreateAppointmentFormProps = {
+  doctorId: string;
   clinics: ClinicOption[];
 };
 
@@ -30,6 +32,16 @@ type CreateAppointmentResponse = {
   appointment?: {
     id: string;
   };
+};
+
+type AvailableSlot = {
+  time: string;
+  durationMinutes: number;
+};
+
+type AvailableSlotsResponse = {
+  slots?: AvailableSlot[];
+  error?: string;
 };
 
 function getLocalDateString() {
@@ -48,7 +60,14 @@ function getLocalDateString() {
   return `${year}-${month}-${day}`;
 }
 
+function formatSlotDuration(
+  durationMinutes: number
+) {
+  return `${durationMinutes} min`;
+}
+
 export default function CreateAppointmentForm({
+  doctorId,
   clinics,
 }: CreateAppointmentFormProps) {
   const router = useRouter();
@@ -74,6 +93,18 @@ export default function CreateAppointmentForm({
   const [scheduledTime, setScheduledTime] =
     useState("");
 
+  const [selectedDurationMinutes, setSelectedDurationMinutes] =
+    useState<number | null>(null);
+
+  const [availableSlots, setAvailableSlots] =
+    useState<AvailableSlot[]>([]);
+
+  const [slotsAreLoading, setSlotsAreLoading] =
+    useState(false);
+
+  const [slotsError, setSlotsError] =
+    useState("");
+
   const [source, setSource] =
     useState<AppointmentSource>("phone");
 
@@ -94,6 +125,98 @@ export default function CreateAppointmentForm({
 
   const today = getLocalDateString();
 
+  useEffect(() => {
+    setClinicId((currentClinicId) => {
+      if (
+        clinics.some(
+          (clinic) =>
+            clinic.id === currentClinicId
+        )
+      ) {
+        return currentClinicId;
+      }
+
+      return clinics[0]?.id ?? "";
+    });
+  }, [clinics]);
+
+  useEffect(() => {
+    setScheduledTime("");
+    setSelectedDurationMinutes(null);
+    setAvailableSlots([]);
+    setSlotsError("");
+
+    if (
+      !doctorId ||
+      !clinicId ||
+      !scheduledDate
+    ) {
+      setSlotsAreLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    async function loadSlots() {
+      setSlotsAreLoading(true);
+      setSlotsError("");
+
+      try {
+        const params = new URLSearchParams({
+          doctorId,
+          clinicId,
+          date: scheduledDate,
+        });
+
+        const response = await fetch(
+          `/api/availability/slots?${params.toString()}`,
+          {
+            method: "GET",
+            cache: "no-store",
+            signal: controller.signal,
+          }
+        );
+
+        const result =
+          (await response.json()) as AvailableSlotsResponse;
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ??
+              "Intervalele disponibile nu au putut fi încărcate."
+          );
+        }
+
+        setAvailableSlots(
+          result.slots ?? []
+        );
+      } catch (error) {
+        if (
+          error instanceof DOMException &&
+          error.name === "AbortError"
+        ) {
+          return;
+        }
+
+        setSlotsError(
+          error instanceof Error
+            ? error.message
+            : "Intervalele disponibile nu au putut fi încărcate."
+        );
+      } finally {
+        if (!controller.signal.aborted) {
+          setSlotsAreLoading(false);
+        }
+      }
+    }
+
+    void loadSlots();
+
+    return () => {
+      controller.abort();
+    };
+  }, [clinicId, doctorId, scheduledDate]);
+
   function resetForm() {
     setClinicId(clinics[0]?.id ?? "");
     setPatientName("");
@@ -101,6 +224,9 @@ export default function CreateAppointmentForm({
     setPatientPhone("");
     setScheduledDate("");
     setScheduledTime("");
+    setSelectedDurationMinutes(null);
+    setAvailableSlots([]);
+    setSlotsError("");
     setSource("phone");
     setNotes("");
   }
@@ -148,7 +274,7 @@ export default function CreateAppointmentForm({
 
     if (!scheduledDate || !scheduledTime) {
       setErrorMessage(
-        "Selectează data și ora programării."
+        "Selectează data și unul dintre intervalele disponibile."
       );
 
       return;
@@ -253,7 +379,7 @@ export default function CreateAppointmentForm({
 
           <p className="mt-1 text-sm text-gray-600">
             Pentru programări primite prin telefon, e-mail sau direct
-            la clinică.
+            la clinică. Ora se alege din intervalele disponibile.
           </p>
         </div>
 
@@ -434,25 +560,67 @@ export default function CreateAppointmentForm({
                 />
               </div>
 
-              <div>
-                <label
-                  htmlFor="doctor-appointment-time"
-                  className="block text-sm font-medium text-gray-700"
-                >
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <p className="text-sm font-semibold text-gray-700">
                   Ora programării
-                </label>
+                </p>
 
-                <input
-                  id="doctor-appointment-time"
-                  type="time"
-                  value={scheduledTime}
-                  onChange={(event) =>
-                    setScheduledTime(event.target.value)
-                  }
-                  required
-                  disabled={isSubmitting}
-                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500 disabled:cursor-not-allowed disabled:opacity-60"
-                />
+                {!scheduledDate ? (
+                  <p className="mt-2 text-sm text-gray-600">
+                    Selectează mai întâi data pentru a vedea intervalele disponibile.
+                  </p>
+                ) : slotsAreLoading ? (
+                  <p className="mt-2 text-sm text-gray-600">
+                    Se încarcă intervalele disponibile...
+                  </p>
+                ) : slotsError ? (
+                  <p className="mt-2 text-sm text-red-700">
+                    {slotsError}
+                  </p>
+                ) : availableSlots.length === 0 ? (
+                  <p className="mt-2 text-sm text-gray-600">
+                    Nu există intervale disponibile pentru data selectată.
+                  </p>
+                ) : (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {availableSlots.map((slot) => (
+                      <button
+                        key={`${slot.time}-${slot.durationMinutes}`}
+                        type="button"
+                        onClick={() => {
+                          setScheduledTime(slot.time);
+                          setSelectedDurationMinutes(
+                            slot.durationMinutes
+                          );
+                        }}
+                        disabled={isSubmitting}
+                        className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                          scheduledTime === slot.time
+                            ? "border-[#036661] bg-[#036661] text-white"
+                            : "border-gray-300 bg-white text-gray-800 hover:border-[#036661] hover:text-[#036661]"
+                        }`}
+                      >
+                        <span>{slot.time}</span>
+                        <span className="ml-2 text-xs opacity-80">
+                          {formatSlotDuration(
+                            slot.durationMinutes
+                          )}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {scheduledTime && (
+                  <p className="mt-3 text-xs text-gray-600">
+                    Interval selectat: {scheduledTime}
+                    {selectedDurationMinutes
+                      ? ` · ${formatSlotDuration(
+                          selectedDurationMinutes
+                        )}`
+                      : ""}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -512,7 +680,10 @@ export default function CreateAppointmentForm({
             <div className="flex flex-wrap gap-3">
               <Button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={
+                  isSubmitting ||
+                  slotsAreLoading
+                }
               >
                 {isSubmitting
                   ? "Se creează..."
@@ -528,7 +699,7 @@ export default function CreateAppointmentForm({
                   setWarningMessage("");
                   setSuccessMessage("");
                 }}
-            variant="secondary"
+                variant="secondary"
               >
                 Golește formularul
               </Button>
