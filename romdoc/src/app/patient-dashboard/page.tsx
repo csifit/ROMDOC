@@ -356,6 +356,18 @@ export default async function PatientDashboardPage() {
     redirect("/dashboard");
   }
 
+  const { error: claimAppointmentsError } =
+    await supabase.rpc(
+      "claim_patient_appointments_by_email"
+    );
+
+  if (claimAppointmentsError) {
+    console.error(
+      "Patient appointment claim failed:",
+      claimAppointmentsError
+    );
+  }
+
   const {
     data,
     error,
