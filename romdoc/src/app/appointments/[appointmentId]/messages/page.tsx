@@ -56,7 +56,36 @@ function getBackHref(role: string) {
     return "/doctor-dashboard/appointments";
   }
 
+  if (role === "staff") {
+    return "/staff-dashboard";
+  }
+
   return "/patient-dashboard";
+}
+
+async function staffCanAccessAppointment(
+  staffProfileId: string,
+  doctorId: string
+) {
+  const admin = createAdminClient();
+
+  const { data, error } = await admin
+    .from("doctor_staff")
+    .select("id")
+    .eq("staff_profile_id", staffProfileId)
+    .eq("doctor_id", doctorId)
+    .eq("status", "active")
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error(
+      "Appointment messaging staff access lookup failed:",
+      error
+    );
+  }
+
+  return Boolean(data) && !error;
 }
 
 export default async function AppointmentMessagesPage({
@@ -99,6 +128,13 @@ export default async function AppointmentMessagesPage({
 
   const typedProfile = profile as ProfileRow;
 
+  if (
+    typedProfile.account_status &&
+    typedProfile.account_status !== "active"
+  ) {
+    redirect("/dashboard");
+  }
+
   const {
     data: appointment,
     error: appointmentError,
@@ -130,6 +166,13 @@ export default async function AppointmentMessagesPage({
 
     hasAccess =
       !!doctor && doctor.profile_id === user.id;
+  }
+
+  if (!hasAccess && typedProfile.role === "staff") {
+    hasAccess = await staffCanAccessAppointment(
+      user.id,
+      typedAppointment.doctor_id
+    );
   }
 
   if (!hasAccess) {

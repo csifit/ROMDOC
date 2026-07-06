@@ -1,5 +1,6 @@
 "use client";
 
+import PatientMedicalProfile from "@/components/medical-folder/patient-medical-profile";
 import MedicalFolderManager from "@/components/medical-folder/medical-folder-manager";
 
 type Props = {
@@ -13,16 +14,37 @@ export default function StaffPatientFolderManager({
   appointmentStatus,
   standalone = false,
 }: Props) {
+  if (!standalone) {
+    return (
+      <MedicalFolderManager
+        appointmentId={appointmentId}
+        appointmentStatus={appointmentStatus}
+        apiEndpoint="/api/staff/patient-folder"
+        downloadEndpoint="/api/staff/patient-folder/download"
+        pdfEndpoint="/api/staff/patient-folder/pdf"
+        standalone={false}
+      />
+    );
+  }
+
   return (
-    <MedicalFolderManager
-      appointmentId={appointmentId}
-      appointmentStatus={
-        appointmentStatus
-      }
-      apiEndpoint="/api/staff/patient-folder"
-      downloadEndpoint="/api/staff/patient-folder/download"
-      pdfEndpoint="/api/staff/patient-folder/pdf"
-      standalone={standalone}
-    />
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start">
+      <div className="min-w-0">
+        <PatientMedicalProfile
+          appointmentId={appointmentId}
+        />
+      </div>
+
+      <div className="min-w-0">
+        <MedicalFolderManager
+          appointmentId={appointmentId}
+          appointmentStatus={appointmentStatus}
+          apiEndpoint="/api/staff/patient-folder"
+          downloadEndpoint="/api/staff/patient-folder/download"
+          pdfEndpoint="/api/staff/patient-folder/pdf"
+          standalone
+        />
+      </div>
+    </div>
   );
 }

@@ -23,67 +23,44 @@ type Props = {
   }>;
 };
 
-function getStatusLabel(
-  status: string
-) {
+function getStatusLabel(status: string) {
   switch (status) {
     case "confirmed":
       return "Confirmată";
-
     case "rescheduled":
       return "Reprogramată";
-
     case "completed":
       return "Finalizată";
-
     default:
       return status;
   }
 }
 
-function formatDate(
-  date: string
-) {
-  return new Intl.DateTimeFormat(
-    "ro-RO",
-    {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    }
-  ).format(
-    new Date(
-      `${date}T12:00:00`
-    )
-  );
+function formatDate(date: string) {
+  return new Intl.DateTimeFormat("ro-RO", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(`${date}T12:00:00`));
 }
 
 export default async function MedicalFolderPage({
   params,
 }: Props) {
-  const {
-    appointmentId,
-  } = await params;
+  const { appointmentId } = await params;
 
-  if (
-    !isUuid(appointmentId)
-  ) {
+  if (!isUuid(appointmentId)) {
     notFound();
   }
 
-  const supabase =
-    await createClient();
+  const supabase = await createClient();
 
   const {
     data: { user },
     error: userError,
-  } =
-    await supabase.auth.getUser();
+  } = await supabase.auth.getUser();
 
-  if (
-    userError ||
-    !user
-  ) {
+  if (userError || !user) {
     redirect(
       `/login?next=${encodeURIComponent(
         `/medical-folder/${appointmentId}`
@@ -105,18 +82,13 @@ export default async function MedicalFolderPage({
   if (
     profileError ||
     !profile ||
-    profile.account_status !==
-      "active" ||
-    ![
-      "doctor",
-      "staff",
-    ].includes(profile.role)
+    profile.account_status !== "active" ||
+    !["doctor", "staff"].includes(profile.role)
   ) {
     redirect("/dashboard");
   }
 
-  const admin =
-    createAdminClient();
+  const admin = createAdminClient();
 
   const {
     data: appointment,
@@ -142,35 +114,26 @@ export default async function MedicalFolderPage({
     appointmentError ||
     !appointment ||
     !appointment.patient_profile_id ||
-    !canReadMedicalFolder(
-      appointment.status
-    )
+    !canReadMedicalFolder(appointment.status)
   ) {
     notFound();
   }
 
   let authorized = false;
 
-  if (
-    profile.role ===
-    "doctor"
-  ) {
+  if (profile.role === "doctor") {
     const {
       data: doctor,
       error: doctorError,
     } = await supabase
       .from("doctors")
       .select("id")
-      .eq(
-        "profile_id",
-        user.id
-      )
+      .eq("profile_id", user.id)
       .maybeSingle();
 
     authorized =
       !doctorError &&
-      doctor?.id ===
-        appointment.doctor_id;
+      doctor?.id === appointment.doctor_id;
   } else {
     const {
       data: assignment,
@@ -178,21 +141,14 @@ export default async function MedicalFolderPage({
     } = await admin
       .from("doctor_staff")
       .select("id")
-      .eq(
-        "staff_profile_id",
-        user.id
-      )
-      .eq(
-        "doctor_id",
-        appointment.doctor_id
-      )
+      .eq("staff_profile_id", user.id)
+      .eq("doctor_id", appointment.doctor_id)
       .eq("status", "active")
       .limit(1)
       .maybeSingle();
 
     authorized =
-      !assignmentError &&
-      Boolean(assignment);
+      !assignmentError && Boolean(assignment);
   }
 
   if (!authorized) {
@@ -227,32 +183,20 @@ export default async function MedicalFolderPage({
               </h1>
 
               <p className="mt-3 text-lg font-semibold text-gray-900">
-                {
-                  appointment.patient_name
-                }
+                {appointment.patient_name}
               </p>
 
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
                 <span>
-                  Status:{" "}
-                  <strong>
-                    {getStatusLabel(
-                      appointment.status
-                    )}
-                  </strong>
+                  Status: <strong>{getStatusLabel(appointment.status)}</strong>
                 </span>
 
                 <span>
                   Data:{" "}
                   <strong>
-                    {formatDate(
-                      effectiveDate
-                    )}
+                    {formatDate(effectiveDate)}
                     {effectiveTime
-                      ? `, ${effectiveTime.slice(
-                          0,
-                          5
-                        )}`
+                      ? `, ${effectiveTime.slice(0, 5)}`
                       : ""}
                   </strong>
                 </span>
@@ -268,25 +212,16 @@ export default async function MedicalFolderPage({
           </div>
         </header>
 
-        {profile.role ===
-        "doctor" ? (
+        {profile.role === "doctor" ? (
           <DoctorPatientFolderManager
-            appointmentId={
-              appointment.id
-            }
-            appointmentStatus={
-              appointment.status
-            }
+            appointmentId={appointment.id}
+            appointmentStatus={appointment.status}
             standalone
           />
         ) : (
           <StaffPatientFolderManager
-            appointmentId={
-              appointment.id
-            }
-            appointmentStatus={
-              appointment.status
-            }
+            appointmentId={appointment.id}
+            appointmentStatus={appointment.status}
             standalone
           />
         )}

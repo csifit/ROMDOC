@@ -11,6 +11,10 @@ import {
   validateMedicalProfileValue,
 } from "@/lib/patient-medical-profile";
 import {
+  loadStaffMedicalFolderAppointment,
+  requireActiveStaffMedicalFolderAccess,
+} from "@/lib/medical-folder/staff-access";
+import {
   createAdminClient,
 } from "@/lib/supabase/admin";
 import {
@@ -28,7 +32,7 @@ const ALLOWED_APPOINTMENT_STATUSES =
 
 type ActiveProfile = {
   id: string;
-  role: "patient" | "doctor";
+  role: "patient" | "doctor" | "staff";
 };
 
 type MedicalProfileRow = {
@@ -50,51 +54,40 @@ function isMedicalProfileFieldKey(
   return (
     typeof value === "string" &&
     MEDICAL_PROFILE_FIELDS.some(
-      (field) =>
-        field.key === value
+      (field) => field.key === value
     )
   );
 }
 
-async function requireActiveProfile():
-  Promise<
-    | {
-        supabase:
-          Awaited<
-            ReturnType<
-              typeof createClient
-            >
-          >;
-        profile: ActiveProfile;
-        response: null;
-      }
-    | {
-        supabase: null;
-        profile: null;
-        response: NextResponse;
-      }
-  > {
-  const supabase =
-    await createClient();
+async function requireActiveProfile(): Promise<
+  | {
+      supabase: Awaited<ReturnType<typeof createClient>>;
+      profile: ActiveProfile;
+      response: null;
+    }
+  | {
+      supabase: null;
+      profile: null;
+      response: NextResponse;
+    }
+> {
+  const supabase = await createClient();
 
   const {
     data: { user },
     error: userError,
-  } =
-    await supabase.auth.getUser();
+  } = await supabase.auth.getUser();
 
   if (userError || !user) {
     return {
       supabase: null,
       profile: null,
-      response:
-        NextResponse.json(
-          {
-            error:
-              "Trebuie să fii autentificat.",
-          },
-          { status: 401 }
-        ),
+      response: NextResponse.json(
+        {
+          error: "Trebuie să fii autentificat.",
+        },
+        { status: 401 }
+      ),
     };
   }
 
@@ -102,14 +95,13 @@ async function requireActiveProfile():
     return {
       supabase: null,
       profile: null,
-      response:
-        NextResponse.json(
-          {
-            error:
-              "Confirmă adresa de e-mail înainte de a accesa profilul medical.",
-          },
-          { status: 403 }
-        ),
+      response: NextResponse.json(
+        {
+          error:
+            "Confirmă adresa de e-mail înainte de a accesa profilul medical.",
+        },
+        { status: 403 }
+      ),
     };
   }
 
@@ -118,33 +110,28 @@ async function requireActiveProfile():
     error: profileError,
   } = await supabase
     .from("profiles")
-    .select(
-      "id, role, account_status"
-    )
+    .select("id, role, account_status")
     .eq("id", user.id)
     .maybeSingle();
 
   if (
     profileError ||
     !profile ||
-    profile.account_status !==
-      "active" ||
-    (
-      profile.role !== "patient" &&
-      profile.role !== "doctor"
+    profile.account_status !== "active" ||
+    !["patient", "doctor", "staff"].includes(
+      profile.role
     )
   ) {
     return {
       supabase: null,
       profile: null,
-      response:
-        NextResponse.json(
-          {
-            error:
-              "Contul nu are acces la profilul medical.",
-          },
-          { status: 403 }
-        ),
+      response: NextResponse.json(
+        {
+          error:
+            "Contul nu are acces la profilul medical.",
+        },
+        { status: 403 }
+      ),
     };
   }
 
@@ -166,8 +153,7 @@ async function resolveDoctorPatient(
     return null;
   }
 
-  const admin =
-    createAdminClient();
+  const admin = createAdminClient();
 
   const {
     data: doctor,
@@ -175,16 +161,10 @@ async function resolveDoctorPatient(
   } = await admin
     .from("doctors")
     .select("id")
-    .eq(
-      "profile_id",
-      doctorProfileId
-    )
+    .eq("profile_id", doctorProfileId)
     .maybeSingle();
 
-  if (
-    doctorError ||
-    !doctor
-  ) {
+  if (doctorError || !doctor) {
     return null;
   }
 
@@ -193,16 +173,9 @@ async function resolveDoctorPatient(
     error: appointmentError,
   } = await admin
     .from("appointments")
-    .select(`
-      id,
-      patient_profile_id,
-      status
-    `)
+    .select("id, patient_profile_id, status")
     .eq("id", appointmentId)
-    .eq(
-      "doctor_id",
-      doctor.id
-    )
+    .eq("doctor_id", doctor.id)
     .maybeSingle();
 
   if (
@@ -222,18 +195,47 @@ async function resolveDoctorPatient(
   };
 }
 
+async function resolveStaffPatient(
+  appointmentId: string
+) {
+  if (!isUuid(appointmentId)) {
+    return null;
+  }
+
+  const staffAccess =
+    await requireActiveStaffMedicalFolderAccess();
+
+  if (staffAccess.response) {
+    return null;
+  }
+
+  const appointment =
+    await loadStaffMedicalFolderAppointment(
+      appointmentId,
+      staffAccess.authorization
+    );
+
+  if (!appointment) {
+    return null;
+  }
+
+  return {
+    patientProfileId:
+      appointment.patient_profile_id,
+  };
+}
+
 function doctorDisplayName(
   firstName: string | null,
   lastName: string | null
 ) {
-  const name =
-    [
-      firstName,
-      lastName,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .trim();
+  const name = [
+    firstName,
+    lastName,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
 
   return name
     ? `Dr. ${name}`
@@ -243,26 +245,14 @@ function doctorDisplayName(
 async function loadEntries(
   patientProfileId: string
 ): Promise<MedicalProfileEntry[]> {
-  const admin =
-    createAdminClient();
+  const admin = createAdminClient();
 
-  const {
-    data,
-    error,
-  } = await admin
-    .from(
-      "patient_medical_profile_entries"
+  const { data, error } = await admin
+    .from("patient_medical_profile_entries")
+    .select(
+      "field_key, value, last_modified_by_profile_id, last_modified_at"
     )
-    .select(`
-      field_key,
-      value,
-      last_modified_by_profile_id,
-      last_modified_at
-    `)
-    .eq(
-      "patient_profile_id",
-      patientProfileId
-    );
+    .eq("patient_profile_id", patientProfileId);
 
   if (error) {
     console.error(
@@ -276,18 +266,15 @@ async function loadEntries(
   }
 
   const rows =
-    (data ?? []) as
-      MedicalProfileRow[];
+    (data ?? []) as MedicalProfileRow[];
 
-  const modifierIds =
-    Array.from(
-      new Set(
-        rows.map(
-          (row) =>
-            row.last_modified_by_profile_id
-        )
+  const modifierIds = Array.from(
+    new Set(
+      rows.map(
+        (row) => row.last_modified_by_profile_id
       )
-    );
+    )
+  );
 
   const modifierNames =
     new Map<string, string>();
@@ -298,11 +285,7 @@ async function loadEntries(
       error: profilesError,
     } = await admin
       .from("profiles")
-      .select(`
-        id,
-        first_name,
-        last_name
-      `)
+      .select("id, first_name, last_name")
       .in("id", modifierIds);
 
     if (profilesError) {
@@ -311,10 +294,7 @@ async function loadEntries(
         profilesError
       );
     } else {
-      for (
-        const modifier of
-          profiles ?? []
-      ) {
+      for (const modifier of profiles ?? []) {
         modifierNames.set(
           modifier.id,
           doctorDisplayName(
@@ -326,33 +306,27 @@ async function loadEntries(
     }
   }
 
-  const rowsByKey =
-    new Map<
-      MedicalProfileFieldKey,
-      MedicalProfileRow
-    >(
-      rows.map((row) => [
-        row.field_key,
-        row,
-      ])
-    );
+  const rowsByKey = new Map<
+    MedicalProfileFieldKey,
+    MedicalProfileRow
+  >(
+    rows.map((row) => [
+      row.field_key,
+      row,
+    ])
+  );
 
   return MEDICAL_PROFILE_FIELDS.map(
     (field): MedicalProfileEntry => {
-      const row =
-        rowsByKey.get(
-          field.key
-        );
+      const row = rowsByKey.get(field.key);
 
       if (!row) {
         return {
           fieldKey: field.key,
-          value:
-            emptyMedicalProfileValue(
-              field.key
-            ),
-          lastModifiedByDoctor:
-            null,
+          value: emptyMedicalProfileValue(
+            field.key
+          ),
+          lastModifiedByDoctor: null,
           lastModifiedAt: null,
         };
       }
@@ -361,16 +335,12 @@ async function loadEntries(
         fieldKey: field.key,
         value:
           row.value ??
-          emptyMedicalProfileValue(
-            field.key
-          ),
+          emptyMedicalProfileValue(field.key),
         lastModifiedByDoctor:
           modifierNames.get(
             row.last_modified_by_profile_id
-          ) ??
-          "Medic RomDoc",
-        lastModifiedAt:
-          row.last_modified_at,
+          ) ?? "Medic RomDoc",
+        lastModifiedAt: row.last_modified_at,
       };
     }
   );
@@ -379,30 +349,24 @@ async function loadEntries(
 export async function GET(
   request: NextRequest
 ): Promise<Response> {
-  const authorization =
-    await requireActiveProfile();
+  const authorization = await requireActiveProfile();
 
   if (authorization.response) {
     return authorization.response;
   }
 
-  let patientProfileId =
-    authorization.profile.id;
+  let patientProfileId = authorization.profile.id;
 
-  if (
-    authorization.profile.role ===
-      "doctor"
-  ) {
+  if (authorization.profile.role === "doctor") {
     const appointmentId =
       request.nextUrl.searchParams
         .get("appointmentId")
         ?.trim() ?? "";
 
-    const access =
-      await resolveDoctorPatient(
-        authorization.profile.id,
-        appointmentId
-      );
+    const access = await resolveDoctorPatient(
+      authorization.profile.id,
+      appointmentId
+    );
 
     if (!access) {
       return NextResponse.json(
@@ -414,22 +378,42 @@ export async function GET(
       );
     }
 
-    patientProfileId =
-      access.patientProfileId;
+    patientProfileId = access.patientProfileId;
+  }
+
+  if (authorization.profile.role === "staff") {
+    const appointmentId =
+      request.nextUrl.searchParams
+        .get("appointmentId")
+        ?.trim() ?? "";
+
+    const access = await resolveStaffPatient(
+      appointmentId
+    );
+
+    if (!access) {
+      return NextResponse.json(
+        {
+          error:
+            "Nu ai acces la profilul medical pentru această programare.",
+        },
+        { status: 403 }
+      );
+    }
+
+    patientProfileId = access.patientProfileId;
   }
 
   try {
-    const entries =
-      await loadEntries(
-        patientProfileId
-      );
+    const entries = await loadEntries(
+      patientProfileId
+    );
 
     return NextResponse.json(
       { entries },
       {
         headers: {
-          "Cache-Control":
-            "no-store",
+          "Cache-Control": "no-store",
         },
       }
     );
@@ -449,17 +433,13 @@ export async function GET(
 export async function PATCH(
   request: NextRequest
 ): Promise<Response> {
-  const authorization =
-    await requireActiveProfile();
+  const authorization = await requireActiveProfile();
 
   if (authorization.response) {
     return authorization.response;
   }
 
-  if (
-    authorization.profile.role !==
-      "doctor"
-  ) {
+  if (authorization.profile.role !== "doctor") {
     return NextResponse.json(
       {
         error:
@@ -477,7 +457,7 @@ export async function PATCH(
 
   try {
     body =
-      await request.json() as {
+      (await request.json()) as {
         appointmentId?: unknown;
         fieldKey?: unknown;
         value?: unknown;
@@ -485,24 +465,20 @@ export async function PATCH(
   } catch {
     return NextResponse.json(
       {
-        error:
-          "Datele trimise nu sunt valide.",
+        error: "Datele trimise nu sunt valide.",
       },
       { status: 400 }
     );
   }
 
   const appointmentId =
-    typeof body.appointmentId ===
-      "string"
+    typeof body.appointmentId === "string"
       ? body.appointmentId.trim()
       : "";
 
   if (
     !isUuid(appointmentId) ||
-    !isMedicalProfileFieldKey(
-      body.fieldKey
-    )
+    !isMedicalProfileFieldKey(body.fieldKey)
   ) {
     return NextResponse.json(
       {
@@ -513,27 +489,24 @@ export async function PATCH(
     );
   }
 
-  const validation =
-    validateMedicalProfileValue(
-      body.fieldKey,
-      body.value
-    );
+  const validation = validateMedicalProfileValue(
+    body.fieldKey,
+    body.value
+  );
 
   if (validation.error) {
     return NextResponse.json(
       {
-        error:
-          validation.error,
+        error: validation.error,
       },
       { status: 400 }
     );
   }
 
-  const access =
-    await resolveDoctorPatient(
-      authorization.profile.id,
-      appointmentId
-    );
+  const access = await resolveDoctorPatient(
+    authorization.profile.id,
+    appointmentId
+  );
 
   if (!access) {
     return NextResponse.json(
@@ -545,20 +518,15 @@ export async function PATCH(
     );
   }
 
-  const {
-    error: updateError,
-  } =
+  const { error: updateError } =
     await authorization.supabase.rpc(
       "update_patient_medical_profile_entry",
       {
         target_patient_profile_id:
           access.patientProfileId,
-        target_appointment_id:
-          appointmentId,
-        target_field_key:
-          body.fieldKey,
-        target_value:
-          validation.value,
+        target_appointment_id: appointmentId,
+        target_field_key: body.fieldKey,
+        target_value: validation.value,
       }
     );
 
@@ -578,10 +546,9 @@ export async function PATCH(
   }
 
   try {
-    const entries =
-      await loadEntries(
-        access.patientProfileId
-      );
+    const entries = await loadEntries(
+      access.patientProfileId
+    );
 
     return NextResponse.json(
       {
@@ -591,8 +558,7 @@ export async function PATCH(
       },
       {
         headers: {
-          "Cache-Control":
-            "no-store",
+          "Cache-Control": "no-store",
         },
       }
     );

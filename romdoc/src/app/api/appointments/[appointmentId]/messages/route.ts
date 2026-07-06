@@ -105,15 +105,23 @@ function getProfileDisplayName(
     return name;
   }
 
-  return profile.role === "doctor"
-    ? "Medic"
-    : "Pacient";
+  if (profile.role === "doctor") {
+    return "Medic";
+  }
+
+  if (profile.role === "staff") {
+    return "Personal medical";
+  }
+
+  return "Pacient";
 }
 
 function getRoleLabel(role: string) {
   switch (role) {
     case "doctor":
       return "Medic";
+    case "staff":
+      return "Personal medical";
     case "patient":
       return "Pacient";
     default:
@@ -142,6 +150,31 @@ function canSendMessage(
     "rescheduled",
     "completed",
   ].includes(appointment.status);
+}
+
+async function staffCanAccessAppointment(
+  staffProfileId: string,
+  doctorId: string
+) {
+  const admin = createAdminClient();
+
+  const { data, error } = await admin
+    .from("doctor_staff")
+    .select("id")
+    .eq("staff_profile_id", staffProfileId)
+    .eq("doctor_id", doctorId)
+    .eq("status", "active")
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error(
+      "Appointment messaging staff access lookup failed:",
+      error
+    );
+  }
+
+  return Boolean(data) && !error;
 }
 
 async function getAppointmentAccess(
@@ -205,8 +238,7 @@ async function getAppointmentAccess(
     };
   }
 
-  const typedProfile =
-    profile as ProfileRow;
+  const typedProfile = profile as ProfileRow;
 
   if (
     typedProfile.account_status &&
@@ -270,6 +302,13 @@ async function getAppointmentAccess(
       !!doctor && doctor.profile_id === user.id;
   }
 
+  if (!hasAccess && typedProfile.role === "staff") {
+    hasAccess = await staffCanAccessAppointment(
+      user.id,
+      typedAppointment.doctor_id
+    );
+  }
+
   if (!hasAccess) {
     return {
       access: null,
@@ -310,9 +349,7 @@ async function buildMessagesResponse(
       }),
 
     admin
-      .from(
-        "appointment_message_attachments"
-      )
+      .from("appointment_message_attachments")
       .select(
         "id, message_id, appointment_id, storage_path, file_name, mime_type, file_size_bytes, created_at"
       )
@@ -352,7 +389,6 @@ async function buildMessagesResponse(
 
   const messages =
     (messagesResult.data ?? []) as MessageRow[];
-
   const attachments =
     (attachmentsResult.data ?? []) as AttachmentRow[];
 
