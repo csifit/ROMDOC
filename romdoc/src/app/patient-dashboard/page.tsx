@@ -5,6 +5,7 @@ import PatientFolderShortcut from "@/components/patient/patient-folder-shortcut"
 import PatientReminderPreferencesShortcut from "@/components/patient/patient-reminder-preferences-shortcut";
 import PatientReviewForm from "@/components/reviews/patient-review-form";
 import RatingStars from "@/components/reviews/rating-stars";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 type DoctorTranslation = {
@@ -78,7 +79,6 @@ type Appointment = {
   scheduled_time: string | null;
   status: string;
   notes: string | null;
-  medical_notes: string | null;
   created_at: string;
   doctors:
     | DoctorRelation
@@ -314,75 +314,147 @@ export default async function PatientDashboardPage() {
     redirect("/dashboard");
   }
 
-  const { data, error } = await supabase
-    .from("appointments")
-    .select(`
+  const appointmentSelect = `
+    id,
+    doctor_id,
+    clinic_id,
+    patient_name,
+    patient_email,
+    requested_date,
+    requested_time,
+    scheduled_date,
+    scheduled_time,
+    status,
+    notes,
+    created_at,
+    doctors (
       id,
-      doctor_id,
-      clinic_id,
-      patient_name,
-      patient_email,
-      requested_date,
-      requested_time,
-      scheduled_date,
-      scheduled_time,
-      status,
-      notes,
-      medical_notes,
-      created_at,
-      doctors (
-        id,
-        slug,
-        doctor_translations (
-          locale,
-          title
-        ),
-        doctor_specialties (
-          specialties (
-            id,
-            slug,
-            specialty_translations (
-              locale,
-              name
-            )
+      slug,
+      doctor_translations (
+        locale,
+        title
+      ),
+      doctor_specialties (
+        specialties (
+          id,
+          slug,
+          specialty_translations (
+            locale,
+            name
           )
         )
-      ),
-      clinics (
-        id,
-        slug,
-        formatted_address,
-        street_address,
-        clinic_translations (
-          locale,
-          name
-        )
-      ),
-      reviews (
-        id,
-        rating,
-        review_text,
-        status,
-        created_at
       )
-    `)
-    .or(
-      `patient_profile_id.eq.${user.id},patient_email.ilike.${patientEmail}`
+    ),
+    clinics (
+      id,
+      slug,
+      formatted_address,
+      street_address,
+      clinic_translations (
+        locale,
+        name
+      )
+    ),
+    reviews (
+      id,
+      rating,
+      review_text,
+      status,
+      created_at
     )
-    .order("created_at", {
-      ascending: false,
-    });
+  `;
 
-  if (error) {
+  let appointmentsError: unknown = null;
+  let appointments: Appointment[] = [];
+
+  try {
+    const adminSupabase =
+      createAdminClient();
+
+    const [
+      byProfileResult,
+      byEmailResult,
+    ] = await Promise.all([
+      adminSupabase
+        .from("appointments")
+        .select(appointmentSelect)
+        .eq(
+          "patient_profile_id",
+          user.id
+        )
+        .order("created_at", {
+          ascending: false,
+        }),
+
+      adminSupabase
+        .from("appointments")
+        .select(appointmentSelect)
+        .ilike(
+          "patient_email",
+          patientEmail
+        )
+        .order("created_at", {
+          ascending: false,
+        }),
+    ]);
+
+    appointmentsError =
+      byProfileResult.error ??
+      byEmailResult.error ??
+      null;
+
+    if (appointmentsError) {
+      console.error(
+        "Patient appointments query failed:",
+        appointmentsError
+      );
+    }
+
+    const appointmentsById =
+      new Map<string, Appointment>();
+
+    const profileAppointments =
+      (byProfileResult.data as unknown as
+        | Appointment[]
+        | null) ?? [];
+
+    const emailAppointments =
+      (byEmailResult.data as unknown as
+        | Appointment[]
+        | null) ?? [];
+
+    for (const appointment of [
+      ...profileAppointments,
+      ...emailAppointments,
+    ]) {
+      appointmentsById.set(
+        appointment.id,
+        appointment
+      );
+    }
+
+    appointments = Array.from(
+      appointmentsById.values()
+    ).sort(
+      (
+        firstAppointment,
+        secondAppointment
+      ) =>
+        Date.parse(
+          secondAppointment.created_at
+        ) -
+        Date.parse(
+          firstAppointment.created_at
+        )
+    );
+  } catch (error) {
+    appointmentsError = error;
+
     console.error(
-      "Patient appointments query failed:",
+      "Patient appointments server lookup failed:",
       error
     );
   }
-
-  const appointments =
-    (data as unknown as Appointment[] | null) ??
-    [];
 
   const patientName = [
     profile.first_name,
@@ -420,14 +492,14 @@ export default async function PatientDashboardPage() {
         <PatientReminderPreferencesShortcut />
 
         <section className="mt-8">
-          {error ? (
+          {appointmentsError ? (
             <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-red-800 shadow-sm">
               <h2 className="text-xl font-bold">
                 Programările nu au putut fi încărcate
               </h2>
 
               <p className="mt-3 text-sm leading-6">
-                Verifică dacă migrarea pentru citirea programărilor după e-mail a fost rulată în Supabase.
+                Eroarea a fost afișată în consola serverului. Verifică dacă pagina solicită numai coloane existente în tabela appointments.
               </p>
             </div>
           ) : appointments.length === 0 ? (
@@ -448,7 +520,7 @@ export default async function PatientDashboardPage() {
               </Link>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-3">
               {appointments.map((appointment) => {
                 const doctor = getFirstRelation(
                   appointment.doctors
@@ -478,29 +550,47 @@ export default async function PatientDashboardPage() {
                   appointment.requested_time;
 
                 return (
-                  <article
+                  <details
                     key={appointment.id}
-                    className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8"
+                    className="group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
                   >
-                    <div className="flex flex-wrap items-start justify-between gap-4">
+                    <summary className="grid cursor-pointer list-none gap-3 px-5 py-4 transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#036661] sm:grid-cols-[minmax(180px,1.1fr)_minmax(150px,1fr)_120px_140px_24px] sm:items-center [&::-webkit-details-marker]:hidden">
                       <div>
-                        <p className="text-sm font-semibold text-[#036661]">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[#036661]">
                           {getSpecialtyName(doctor)}
                         </p>
 
-                        <h2 className="mt-1 text-xl font-bold text-gray-900">
+                        <p className="mt-1 font-semibold text-gray-900">
                           {doctorName}
-                        </h2>
+                        </p>
+                      </div>
 
-                        {doctorTitle && (
-                          <p className="mt-1 text-sm text-gray-600">
-                            {doctorTitle}
-                          </p>
-                        )}
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 sm:hidden">
+                          Clinică
+                        </p>
+
+                        <p className="truncate text-sm text-gray-800">
+                          {getClinicName(clinic)}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 sm:hidden">
+                          Data
+                        </p>
+
+                        <p className="text-sm font-medium text-gray-900">
+                          {formatDate(appointmentDate)}
+                        </p>
+
+                        <p className="text-xs text-gray-500">
+                          {formatTime(appointmentTime)}
+                        </p>
                       </div>
 
                       <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusClasses(
+                        className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${getStatusClasses(
                           appointment.status
                         )}`}
                       >
@@ -508,169 +598,194 @@ export default async function PatientDashboardPage() {
                           appointment.status
                         )}
                       </span>
-                    </div>
 
-                    <dl className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                      <div>
-                        <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          Clinică
-                        </dt>
+                      <span
+                        aria-hidden="true"
+                        className="hidden justify-self-end text-xl leading-none text-gray-400 transition-transform group-open:rotate-180 sm:block"
+                      >
+                        ˅
+                      </span>
+                    </summary>
 
-                        <dd className="mt-1 text-sm font-medium text-gray-900">
-                          {getClinicName(clinic)}
-                        </dd>
+                    <div className="border-t border-gray-200 p-6 sm:p-8">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-semibold text-[#036661]">
+                            {getSpecialtyName(doctor)}
+                          </p>
 
-                        {(clinic?.formatted_address ||
-                          clinic?.street_address) && (
-                          <dd className="mt-1 text-xs leading-5 text-gray-500">
-                            {clinic.formatted_address ??
-                              clinic.street_address}
-                          </dd>
-                        )}
-                      </div>
+                          <h2 className="mt-1 text-xl font-bold text-gray-900">
+                            {doctorName}
+                          </h2>
 
-                      <div>
-                        <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          Data
-                        </dt>
-
-                        <dd className="mt-1 text-sm text-gray-900">
-                          {formatDate(appointmentDate)}
-                        </dd>
-                      </div>
-
-                      <div>
-                        <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          Ora
-                        </dt>
-
-                        <dd className="mt-1 text-sm text-gray-900">
-                          {formatTime(appointmentTime)}
-                        </dd>
-                      </div>
-
-                      <div>
-                        <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          Solicitare creată
-                        </dt>
-
-                        <dd className="mt-1 text-sm text-gray-900">
-                          {formatCreatedAt(
-                            appointment.created_at
+                          {doctorTitle && (
+                            <p className="mt-1 text-sm text-gray-600">
+                              {doctorTitle}
+                            </p>
                           )}
-                        </dd>
-                      </div>
-                    </dl>
+                        </div>
 
-                    {appointment.notes && (
-                      <div className="mt-6 rounded-xl bg-gray-50 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          Mesajul trimis
-                        </p>
-
-                        <p className="mt-2 whitespace-pre-line text-sm leading-6 text-gray-700">
-                          {appointment.notes}
-                        </p>
-                      </div>
-                    )}
-
-                    {appointment.medical_notes && (
-                      <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-5">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                          Note medicale
-                        </p>
-
-                        <p className="mt-2 whitespace-pre-line text-sm leading-7 text-blue-950">
-                          {appointment.medical_notes}
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="mt-6 flex flex-wrap gap-3 border-t border-gray-200 pt-5">
-                      {doctor && (
-                        <Link
-                          href={`/doctor/${doctor.slug}`}
-                          className="romdoc-button romdoc-button-primary romdoc-button-sm"
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusClasses(
+                            appointment.status
+                          )}`}
                         >
-                          Vezi profilul medicului
-                        </Link>
+                          {getStatusLabel(
+                            appointment.status
+                          )}
+                        </span>
+                      </div>
+
+                      <dl className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                        <div>
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            Clinică
+                          </dt>
+
+                          <dd className="mt-1 text-sm font-medium text-gray-900">
+                            {getClinicName(clinic)}
+                          </dd>
+
+                          {(clinic?.formatted_address ||
+                            clinic?.street_address) && (
+                            <dd className="mt-1 text-xs leading-5 text-gray-500">
+                              {clinic.formatted_address ??
+                                clinic.street_address}
+                            </dd>
+                          )}
+                        </div>
+
+                        <div>
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            Data
+                          </dt>
+
+                          <dd className="mt-1 text-sm text-gray-900">
+                            {formatDate(appointmentDate)}
+                          </dd>
+                        </div>
+
+                        <div>
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            Ora
+                          </dt>
+
+                          <dd className="mt-1 text-sm text-gray-900">
+                            {formatTime(appointmentTime)}
+                          </dd>
+                        </div>
+
+                        <div>
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            Solicitare creată
+                          </dt>
+
+                          <dd className="mt-1 text-sm text-gray-900">
+                            {formatCreatedAt(
+                              appointment.created_at
+                            )}
+                          </dd>
+                        </div>
+                      </dl>
+
+                      {appointment.notes && (
+                        <div className="mt-6 rounded-xl bg-gray-50 p-4">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            Mesajul trimis
+                          </p>
+
+                          <p className="mt-2 whitespace-pre-line text-sm leading-6 text-gray-700">
+                            {appointment.notes}
+                          </p>
+                        </div>
                       )}
 
-                      {doctor && (
+                      <div className="mt-6 flex flex-wrap gap-3 border-t border-gray-200 pt-5">
+                        {doctor && (
+                          <Link
+                            href={`/doctor/${doctor.slug}`}
+                            className="romdoc-button romdoc-button-primary romdoc-button-sm"
+                          >
+                            Vezi profilul medicului
+                          </Link>
+                        )}
+
+                        {doctor && (
+                          <Link
+                            href={`/doctor/${doctor.slug}`}
+                            className="romdoc-button romdoc-button-secondary romdoc-button-sm"
+                          >
+                            Programează din nou
+                          </Link>
+                        )}
+
                         <Link
-                          href={`/doctor/${doctor.slug}`}
+                          href={`/appointments/${appointment.id}/messages`}
                           className="romdoc-button romdoc-button-secondary romdoc-button-sm"
                         >
-                          Programează din nou
+                          Mesaje și fișiere
                         </Link>
-                      )}
+                      </div>
 
-                      <Link
-                        href={`/appointments/${appointment.id}/messages`}
-                        className="romdoc-button romdoc-button-secondary romdoc-button-sm"
-                      >
-                        Mesaje și fișiere
-                      </Link>
-                    </div>
+                      <PatientAppointmentLifecycle
+                        appointmentId={appointment.id}
+                        status={appointment.status}
+                        appointmentDate={appointmentDate}
+                        appointmentTime={appointmentTime}
+                      />
 
-                    <PatientAppointmentLifecycle
-                      appointmentId={appointment.id}
-                      status={appointment.status}
-                      appointmentDate={appointmentDate}
-                      appointmentTime={appointmentTime}
-                    />
+                      {appointment.status === "completed" &&
+                        !existingReview && (
+                          <div className="mt-6 border-t border-gray-200 pt-6">
+                            <PatientReviewForm
+                              appointmentId={appointment.id}
+                              doctorName={doctorName}
+                            />
+                          </div>
+                        )}
 
-                    {appointment.status === "completed" &&
-                      !existingReview && (
-                        <div className="mt-6 border-t border-gray-200 pt-6">
-                          <PatientReviewForm
-                            appointmentId={appointment.id}
-                            doctorName={doctorName}
-                          />
-                        </div>
-                      )}
+                      {existingReview && (
+                        <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-5">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900">
+                                Recenzia ta
+                              </p>
 
-                    {existingReview && (
-                      <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-5">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900">
-                              Recenzia ta
-                            </p>
+                              <div className="mt-2 flex items-center gap-3">
+                                <RatingStars
+                                  rating={
+                                    existingReview.rating
+                                  }
+                                  size="small"
+                                />
 
-                            <div className="mt-2 flex items-center gap-3">
-                              <RatingStars
-                                rating={
-                                  existingReview.rating
-                                }
-                                size="small"
-                              />
-
-                              <span className="text-sm font-semibold text-gray-700">
-                                {existingReview.rating}/5
-                              </span>
+                                <span className="text-sm font-semibold text-gray-700">
+                                  {existingReview.rating}/5
+                                </span>
+                              </div>
                             </div>
+
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-semibold ${getReviewStatusClasses(
+                                existingReview.status
+                              )}`}
+                            >
+                              {getReviewStatusLabel(
+                                existingReview.status
+                              )}
+                            </span>
                           </div>
 
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${getReviewStatusClasses(
-                              existingReview.status
-                            )}`}
-                          >
-                            {getReviewStatusLabel(
-                              existingReview.status
-                            )}
-                          </span>
+                          {existingReview.review_text && (
+                            <p className="mt-4 whitespace-pre-line text-sm leading-7 text-gray-700">
+                              {existingReview.review_text}
+                            </p>
+                          )}
                         </div>
-
-                        {existingReview.review_text && (
-                          <p className="mt-4 whitespace-pre-line text-sm leading-7 text-gray-700">
-                            {existingReview.review_text}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </article>
+                      )}
+                    </div>
+                  </details>
                 );
               })}
             </div>
