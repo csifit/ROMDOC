@@ -620,7 +620,9 @@ export async function PATCH(
     action ===
       "suspend_manager" ||
     action ===
-      "activate_manager"
+      "activate_manager" ||
+    action ===
+      "delete_manager"
   ) {
     if (!profileId) {
       return NextResponse.json(
@@ -648,6 +650,150 @@ export async function PATCH(
         }
       );
     }
+
+    if (
+  action ===
+  "delete_manager"
+) {
+  const {
+    data: existingManager,
+    error:
+      existingManagerError,
+  } =
+    await admin
+      .from("profiles")
+      .select(`
+        id,
+        role,
+        account_status,
+        first_name,
+        last_name
+      `)
+      .eq(
+        "id",
+        profileId
+      )
+      .eq(
+        "role",
+        "manager"
+      )
+      .maybeSingle();
+
+  if (
+    existingManagerError ||
+    !existingManager
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Managerul nu a fost găsit.",
+      },
+      {
+        status: 404,
+      }
+    );
+  }
+
+  const {
+    data: removedManager,
+    error:
+      removeError,
+  } =
+    await admin
+      .from("profiles")
+      .update({
+        role:
+          "patient",
+        account_status:
+          "blocked",
+      })
+      .eq(
+        "id",
+        profileId
+      )
+      .eq(
+        "role",
+        "manager"
+      )
+      .select(`
+        id,
+        role,
+        account_status
+      `)
+      .maybeSingle();
+
+  if (
+    removeError ||
+    !removedManager
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Managerul nu a putut fi șters.",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+
+  await admin
+    .from(
+      "manager_invitations"
+    )
+    .update({
+      status:
+        "revoked",
+      revoked_at:
+        new Date()
+          .toISOString(),
+    })
+    .eq(
+      "invited_user_id",
+      profileId
+    )
+    .in(
+      "status",
+      [
+        "pending",
+        "accepted",
+      ]
+    );
+
+  await admin
+    .from(
+      "manager_audit_events"
+    )
+    .insert({
+      manager_profile_id:
+        profileId,
+      actor_profile_id:
+        authorization.profileId,
+      event_type:
+        "suspended",
+      metadata: {
+        admin_action:
+          "delete_manager",
+        previous_role:
+          "manager",
+        new_role:
+          "patient",
+        previous_account_status:
+          existingManager
+            .account_status,
+        new_account_status:
+          "blocked",
+      },
+    });
+
+  return NextResponse.json({
+    success: true,
+    manager:
+      removedManager,
+    message:
+      "Managerul a fost șters din lista de manageri și accesul operațional a fost blocat.",
+  });
+}
 
     const nextStatus =
       action ===

@@ -199,7 +199,9 @@ export default function ManagersManagement() {
       action: string;
       profileId?: string;
       invitationId?: string;
-    }
+    },
+    successMessage =
+      "Modificarea a fost salvată."
   ) {
     setError(null);
     setMessage(null);
@@ -226,6 +228,7 @@ export default function ManagersManagement() {
         const payload =
           (await response.json()) as {
             error?: string;
+            message?: string;
           };
 
         if (!response.ok) {
@@ -237,11 +240,41 @@ export default function ManagersManagement() {
         }
 
         setMessage(
-          "Modificarea a fost salvată."
+          payload.message ??
+            successMessage
         );
 
         await loadData();
       }
+    );
+  }
+
+  function deleteManager(
+    manager: ManagerRow
+  ) {
+    const name =
+      displayName(
+        manager.first_name,
+        manager.last_name
+      );
+
+    const confirmed =
+      window.confirm(
+        `Ștergi managerul ${name} din lista de manageri?\n\nContul nu va fi șters fizic din istoricul RomDoc, dar rolul de manager va fi eliminat și accesul operațional va fi blocat.`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    performAction(
+      {
+        action:
+          "delete_manager",
+        profileId:
+          manager.id,
+      },
+      "Managerul a fost șters din lista de manageri."
     );
   }
 
@@ -253,9 +286,7 @@ export default function ManagersManagement() {
         </h2>
 
         <p className="mt-2 text-sm leading-6 text-gray-600">
-          Managerul primește un e-mail de invitație și trebuie să
-          configureze Google Authenticator înainte de accesul la panoul
-          operațional.
+          Managerul primește un e-mail de invitație și trebuie să configureze Google Authenticator înainte de accesul la panoul operațional.
         </p>
 
         <form
@@ -374,7 +405,7 @@ export default function ManagersManagement() {
                   Status
                 </th>
                 <th className="px-3 py-3 text-right">
-                  Acțiune
+                  Acțiuni
                 </th>
               </tr>
             </thead>
@@ -414,30 +445,47 @@ export default function ManagersManagement() {
                         : "Suspendat"}
                     </td>
 
-                    <td className="px-3 py-4 text-right">
-                      <button
-                        type="button"
-                        disabled={
-                          isPending
-                        }
-                        onClick={() =>
-                          performAction({
-                            action:
-                              manager.account_status ===
-                              "active"
-                                ? "suspend_manager"
-                                : "activate_manager",
-                            profileId:
-                              manager.id,
-                          })
-                        }
-                        className="rounded-lg border border-gray-300 px-3 py-2 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-                      >
-                        {manager.account_status ===
-                        "active"
-                          ? "Suspendă"
-                          : "Activează"}
-                      </button>
+                    <td className="px-3 py-4">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          disabled={
+                            isPending
+                          }
+                          onClick={() =>
+                            performAction({
+                              action:
+                                manager.account_status ===
+                                "active"
+                                  ? "suspend_manager"
+                                  : "activate_manager",
+                              profileId:
+                                manager.id,
+                            })
+                          }
+                          className="rounded-lg border border-gray-300 px-3 py-2 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                        >
+                          {manager.account_status ===
+                          "active"
+                            ? "Suspendă"
+                            : "Activează"}
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={
+                            isPending
+                          }
+                          onClick={() =>
+                            deleteManager(
+                              manager
+                            )
+                          }
+                          className="rounded-lg border border-red-300 px-3 py-2 font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
+                        >
+                          Șterge
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )
