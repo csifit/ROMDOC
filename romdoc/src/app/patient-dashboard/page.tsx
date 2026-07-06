@@ -262,7 +262,7 @@ function getStatusClasses(
 
     case "no_show":
       return "bg-orange-100 text-orange-900";
-    
+
     case "cancelled":
       return "bg-red-100 text-red-800";
 
@@ -666,6 +666,13 @@ export default async function PatientDashboardPage() {
                             Programează din nou
                           </Link>
                         )}
+
+                        <Link
+                          href={`/appointments/${appointment.id}/messages`}
+                          className="romdoc-button romdoc-button-secondary romdoc-button-sm"
+                        >
+                          Mesaje și fișiere
+                        </Link>
                       </div>
 
                       <PatientAppointmentLifecycle

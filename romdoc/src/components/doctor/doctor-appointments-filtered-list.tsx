@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import AppointmentActions from "@/components/admin/appointment-actions";
@@ -674,6 +675,15 @@ export default function DoctorAppointmentsFilteredList({
                           appointment.rescheduleReason
                         }
                       />
+
+                      <div className="mt-6 border-t border-gray-200 pt-5">
+                        <Link
+                          href={`/appointments/${appointment.id}/messages`}
+                          className="inline-flex rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:border-[#036661] hover:text-[#036661]"
+                        >
+                          Mesaje și fișiere
+                        </Link>
+                      </div>
 
                       {appointment.patientProfileId ? (
                         <DoctorPatientFolderManager
