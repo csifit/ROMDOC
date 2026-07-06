@@ -214,7 +214,7 @@ export default async function MedicalFolderPage({
 
   return (
     <main className="min-h-screen bg-[#F0EEE9] px-4 py-8 sm:px-6">
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-7xl">
         <header className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
             <div>

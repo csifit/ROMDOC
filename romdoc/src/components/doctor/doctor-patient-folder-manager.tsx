@@ -14,23 +14,49 @@ export default function DoctorPatientFolderManager({
   appointmentStatus,
   standalone = false,
 }: Props) {
-  return (
-    <>
-      <PatientMedicalProfile
-        appointmentId={appointmentId}
-        editable
-      />
+  if (!standalone) {
+    return (
+      <>
+        <PatientMedicalProfile
+          appointmentId={appointmentId}
+          editable
+        />
 
-      <MedicalFolderManager
-        appointmentId={appointmentId}
-        appointmentStatus={
-          appointmentStatus
-        }
-        apiEndpoint="/api/doctor/patient-folder"
-        downloadEndpoint="/api/doctor/patient-folder/download"
-        pdfEndpoint="/api/medical-folder/pdf"
-        standalone={standalone}
-      />
-    </>
+        <MedicalFolderManager
+          appointmentId={appointmentId}
+          appointmentStatus={
+            appointmentStatus
+          }
+          apiEndpoint="/api/doctor/patient-folder"
+          downloadEndpoint="/api/doctor/patient-folder/download"
+          pdfEndpoint="/api/medical-folder/pdf"
+          standalone={standalone}
+        />
+      </>
+    );
+  }
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.35fr)] lg:items-start">
+      <div className="lg:sticky lg:top-6">
+        <PatientMedicalProfile
+          appointmentId={appointmentId}
+          editable
+        />
+      </div>
+
+      <div>
+        <MedicalFolderManager
+          appointmentId={appointmentId}
+          appointmentStatus={
+            appointmentStatus
+          }
+          apiEndpoint="/api/doctor/patient-folder"
+          downloadEndpoint="/api/doctor/patient-folder/download"
+          pdfEndpoint="/api/medical-folder/pdf"
+          standalone={standalone}
+        />
+      </div>
+    </div>
   );
 }
