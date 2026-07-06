@@ -410,10 +410,23 @@ export default async function PatientDashboardPage() {
         created_at
       )
     `)
-    .eq(
-      "patient_profile_id",
-      user.id
-    )
+    /*
+      Important:
+      Do not filter only by patient_profile_id here.
+
+      Some appointments are created by doctors or staff by phone/email.
+      Those rows can have patient_profile_id = null, especially when
+      the patient account is created later from the invitation link.
+
+      The database RLS policy decides what the authenticated patient
+      can see:
+      - appointments linked by patient_profile_id
+      - appointments matching the verified auth email address
+
+      This keeps past, future, pending, confirmed, completed, cancelled,
+      rescheduled and no-show appointments visible when they belong to
+      the patient.
+    */
     .order(
       "created_at",
       {
@@ -460,8 +473,9 @@ export default async function PatientDashboardPage() {
           </p>
 
           <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-            Vezi istoricul programărilor, notele medicale disponibile
-            și publică o recenzie după finalizarea consultației.
+            Vezi toate programările tale trecute și viitoare, notele
+            medicale disponibile și publică o recenzie după finalizarea
+            consultației.
           </p>
         </header>
 
@@ -478,6 +492,8 @@ export default async function PatientDashboardPage() {
 
               <p className="mt-3 text-sm text-gray-600">
                 Caută un medic și trimite prima solicitare de programare.
+                Dacă ai primit o programare creată de clinică, verifică să
+                folosești același e-mail cu care a fost creată programarea.
               </p>
 
               <Link
