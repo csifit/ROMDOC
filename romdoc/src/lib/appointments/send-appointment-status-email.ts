@@ -49,6 +49,35 @@ function formatTime(time: string | null) {
   return time ? time.slice(0, 5) : "Ora nu este disponibilă";
 }
 
+function getSiteUrl() {
+  const configuredUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    process.env.NEXT_PUBLIC_APP_URL ??
+    process.env.SITE_URL ??
+    process.env.APP_URL ??
+    "";
+
+  if (configuredUrl.trim()) {
+    return configuredUrl.trim().replace(/\/$/, "");
+  }
+
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`.replace(/\/$/, "");
+  }
+
+  return "https://www.romdoc.fit";
+}
+
+function getPatientRegisterUrl(patientEmail: string) {
+  const baseUrl = getSiteUrl();
+  const query = new URLSearchParams({
+    email: patientEmail,
+    role: "patient",
+  });
+
+  return `${baseUrl}/register?${query.toString()}`;
+}
+
 function getContent(status: PatientNotificationStatus) {
   switch (status) {
     case "confirmed":
@@ -138,6 +167,9 @@ export async function sendAppointmentStatusEmail(
 
   const content = getContent(input.status);
   const resend = new Resend(apiKey);
+  const patientRegisterUrl = getPatientRegisterUrl(
+    input.patientEmail
+  );
 
   try {
     const result = await resend.emails.send({
@@ -160,6 +192,23 @@ export async function sendAppointmentStatusEmail(
                   <p><strong>Data:</strong> ${formatDate(input.scheduledDate)}</p>
                   <p><strong>Ora:</strong> ${formatTime(input.scheduledTime)}</p>
                 </div>
+                ${
+                  input.status === "confirmed"
+                    ? `
+                      <div style="margin-top:24px;padding:20px;border-radius:12px;border:1px solid #d1fae5;background:#f0fdf4">
+                        <p style="margin:0 0 10px;font-weight:700;color:#036661">Creează cont de pacient RomDoc</p>
+                        <p style="margin:0;line-height:1.7;color:#374151">
+                          Dacă nu ai încă un cont RomDoc, îl poți crea folosind această adresă de e-mail. Contul te va ajuta să urmărești programările și, pe viitor, documentele medicale disponibile în RomDoc.
+                        </p>
+                        <p style="margin:18px 0 0">
+                          <a href="${escapeHtml(patientRegisterUrl)}" style="display:inline-block;border-radius:10px;background:#036661;color:#ffffff;padding:12px 18px;text-decoration:none;font-weight:700">
+                            Creează cont RomDoc
+                          </a>
+                        </p>
+                      </div>
+                    `
+                    : ""
+                }
                 ${
                   input.status === "rescheduled" &&
                   input.rescheduleReason
