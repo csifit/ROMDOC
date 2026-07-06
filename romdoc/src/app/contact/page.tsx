@@ -1,47 +1,67 @@
-import type {
-  Metadata,
-} from "next";
+import type { Metadata } from "next";
 import Link from "next/link";
 import PublicLayout from "@/components/public/public-layout";
 
 export const metadata: Metadata = {
   title: "Contact",
   description:
-    "Contactează echipa RomDoc pentru suport sau raportarea unei probleme.",
+    "Contactează echipa RomDoc pentru suport, corectări de profil, probleme de programare sau confidențialitate.",
 };
 
 const contactOptions = [
   {
-    id: "suport",
+    id: "suport-pacienti",
     title: "Suport pentru pacienți",
     description:
-      "Întrebări despre cont, programări, anulări sau utilizarea platformei.",
-    email:
-      "support@romdoc.fit",
+      "Cont pacient, autentificare, dashboard, programări care nu apar sau anulări.",
+    email: "support@romdoc.fit",
+    href: "/support?type=patient&category=patient_support",
+    buttonLabel: "Deschide tichet pacient",
   },
   {
     id: "suport-medici",
     title: "Suport pentru medici",
     description:
-      "Întrebări despre profil, abonament, clinici, disponibilitate sau verificare profesională.",
-    email:
-      "medici@romdoc.fit",
+      "Profil medic, abonament, clinici, disponibilitate, verificare profesională sau dashboard medic.",
+    email: "medici@romdoc.fit",
+    href: "/support?type=doctor&category=doctor_support",
+    buttonLabel: "Deschide tichet medic",
   },
   {
-    id: "raporteaza-problema",
-    title: "Raportează o problemă",
+    id: "corectari-profil",
+    title: "Corectări profil / informații publice",
     description:
-      "Semnalează informații incorecte, conținut nepotrivit, un profil suspect sau o eroare tehnică.",
-    email:
-      "support@romdoc.fit",
+      "Semnalează informații incorecte despre un medic, o clinică, adresă, specialitate sau pagină publică.",
+    email: "support@romdoc.fit",
+    href: "/support?type=visitor&category=profile_correction",
+    buttonLabel: "Raportează corectare",
+  },
+  {
+    id: "probleme-programare",
+    title: "Probleme cu programările",
+    description:
+      "Programare lipsă, confirmare lipsă, oră greșită, mesaj de eroare sau problemă la trimiterea solicitării.",
+    email: "support@romdoc.fit",
+    href: "/support?type=patient&category=booking_problem",
+    buttonLabel: "Raportează problemă",
+  },
+  {
+    id: "probleme-tehnice",
+    title: "Probleme tehnice",
+    description:
+      "Erori de pagină, butoane care nu funcționează, formulare care nu se trimit sau probleme de afișare.",
+    email: "support@romdoc.fit",
+    href: "/support?type=visitor&category=technical_problem",
+    buttonLabel: "Raportează eroare tehnică",
   },
   {
     id: "confidentialitate",
-    title: "Confidențialitate",
+    title: "Confidențialitate și date personale",
     description:
-      "Solicitări privind accesul, corectarea sau ștergerea datelor personale.",
-    email:
-      "privacy@romdoc.fit",
+      "Solicitări privind accesul, corectarea, ștergerea datelor personale sau întrebări de confidențialitate.",
+    email: "privacy@romdoc.fit",
+    href: "/support?type=visitor&category=privacy_request",
+    buttonLabel: "Trimite solicitare privacy",
   },
 ];
 
@@ -60,38 +80,45 @@ export default function ContactPage() {
             </h1>
 
             <p className="mt-4 max-w-3xl text-base leading-7 text-gray-600">
-              Alege categoria potrivită pentru a direcționa solicitarea către echipa RomDoc.
+              Alege categoria potrivită pentru a trimite un tichet către echipa RomDoc. Formularul este pentru suport privind platforma, nu pentru sfaturi medicale.
             </p>
 
-            <div className="mt-10 grid gap-5 md:grid-cols-2">
-              {contactOptions.map(
-                (option) => (
-                  <article
-                    key={option.id}
-                    id={option.id}
-                    className="scroll-mt-28 rounded-2xl border border-gray-200 bg-gray-50 p-6"
-                  >
-                    <h2 className="text-xl font-bold text-gray-900">
-                      {option.title}
-                    </h2>
+            <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">
+              Pentru întrebări medicale, diagnostic, tratament sau urgențe, contactează direct medicul, clinica sau serviciile medicale potrivite.
+            </div>
 
-                    <p className="mt-3 text-sm leading-6 text-gray-600">
-                      {option.description}
-                    </p>
+            <div className="mt-10 grid gap-5 md:grid-cols-2">
+              {contactOptions.map((option) => (
+                <article
+                  key={option.id}
+                  id={option.id}
+                  className="scroll-mt-28 rounded-2xl border border-gray-200 bg-gray-50 p-6"
+                >
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {option.title}
+                  </h2>
+
+                  <p className="mt-3 text-sm leading-6 text-gray-600">
+                    {option.description}
+                  </p>
+
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <Link
+                      href={option.href}
+                      className="romdoc-button romdoc-button-primary romdoc-button-sm"
+                    >
+                      {option.buttonLabel}
+                    </Link>
 
                     <a
                       href={`mailto:${option.email}`}
-                      className="romdoc-button romdoc-button-primary mt-6"
+                      className="romdoc-button romdoc-button-secondary romdoc-button-sm"
                     >
                       {option.email}
                     </a>
-                  </article>
-                )
-              )}
-            </div>
-
-            <div className="mt-10 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">
-              Adresele de mai sus sunt propuneri pentru structura publică. Creează căsuțele poștale înainte de publicarea paginii sau înlocuiește-le cu adresele finale.
+                  </div>
+                </article>
+              ))}
             </div>
 
             <div className="mt-8 flex flex-wrap gap-3">
