@@ -1,4 +1,6 @@
 import ClinicManagementActions from "@/components/admin/clinic-management-actions";
+import ClinicEditingPanel from "@/components/clinic/clinic-editing-panel";
+import AdminAccordion from "@/components/ui/admin-accordion";
 
 export default function ManagerClinicsPage() {
   return (
@@ -17,6 +19,17 @@ export default function ManagerClinicsPage() {
           rezervate administratorului rămân protejate de API.
         </p>
       </header>
+
+      <AdminAccordion
+        title="Editează clinici"
+        description="Managerii pot modifica datele publice ale clinicilor, fără acțiunile rezervate exclusiv administratorului."
+      >
+        <ClinicEditingPanel
+          title="Toate clinicile"
+          description="Editează datele de contact, descrierea și adresa verificată a clinicilor din RomDoc. Modificările se aplică tuturor medicilor asociați acelei clinici."
+          emptyMessage="Nu există încă clinici în platformă."
+        />
+      </AdminAccordion>
 
       <ClinicManagementActions />
     </div>
