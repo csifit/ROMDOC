@@ -138,8 +138,8 @@ export default async function DoctorStaffGuidePage({
       ? "SMS confirmations can be sent when an appointment becomes confirmed."
       : "Confirmările SMS pot fi trimise atunci când o programare devine confirmată.",
     isEnglish
-      ? "RomDoc can also send a 24-hour SMS reminder when the platform SMS switch and reminder switch are enabled."
-      : "RomDoc poate trimite și o reamintire SMS cu 24 de ore înainte, atunci când master switch-ul SMS și switch-ul pentru reamintiri sunt activate.",
+      ? "RomDoc can also send a 24-hour SMS reminder for the patient."
+      : "Platforma RomDoc trimite și o reamintire către Pacient un SMS cu 24 de ore înainte.",
     isEnglish
       ? "SMS text should not contain diagnosis, symptoms, medical notes, uploaded document names or investigation results."
       : "Textul SMS nu trebuie să conțină diagnostic, simptome, note medicale, nume de documente încărcate sau rezultate de investigații.",
@@ -259,8 +259,8 @@ export default async function DoctorStaffGuidePage({
             </h2>
             <p className="mt-4 text-sm leading-7 text-gray-700">
               {isEnglish
-                ? "RomDoc can provide SMS notifications as an appointment communication service. The service is controlled by the platform administrator and may be reflected in future subscription pricing because each SMS has a provider cost."
-                : "RomDoc poate oferi notificări SMS ca serviciu de comunicare pentru programări. Serviciul este controlat de administratorul platformei și poate fi reflectat în prețurile viitoare ale abonamentelor, deoarece fiecare SMS are un cost de furnizor."}
+                ? "RomDoc can provide SMS notifications as an appointment communication service."
+                : "RomDoc oferă notificări SMS ca serviciu de comunicare pentru programări. "}
             </p>
             <ul className="mt-5 space-y-3 text-sm leading-7 text-gray-700">
               {smsRules.map((rule) => (
