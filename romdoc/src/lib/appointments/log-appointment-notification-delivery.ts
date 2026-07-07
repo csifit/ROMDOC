@@ -9,6 +9,9 @@ import type {
   AppointmentReminderType,
   SendAppointmentReminderEmailResult,
 } from "@/lib/appointments/send-appointment-reminder-email";
+import {
+  sendAppointmentSms,
+} from "@/lib/appointments/send-appointment-sms";
 
 export type AppointmentNotificationType =
   | PatientNotificationStatus
@@ -36,6 +39,39 @@ export function reminderTypeToNotificationType(
   return reminderType === "48_hours"
     ? "reminder_48_hours"
     : "reminder_24_hours";
+}
+
+async function sendSmsSideEffect({
+  appointmentId,
+  notificationType,
+  triggeredByProfileId,
+}: {
+  appointmentId: string;
+  notificationType: AppointmentNotificationType;
+  triggeredByProfileId: string | null;
+}) {
+  try {
+    if (notificationType === "confirmed") {
+      await sendAppointmentSms({
+        appointmentId,
+        event: "confirmed",
+        triggeredByProfileId,
+      });
+    }
+
+    if (notificationType === "reminder_24_hours") {
+      await sendAppointmentSms({
+        appointmentId,
+        event: "reminder_24_hours",
+        triggeredByProfileId,
+      });
+    }
+  } catch (error) {
+    console.error(
+      "Appointment SMS side-effect failed:",
+      error
+    );
+  }
 }
 
 export async function logAppointmentNotificationDelivery({
@@ -112,6 +148,12 @@ export async function logAppointmentNotificationDelivery({
       duplicate: false,
     };
   }
+
+  await sendSmsSideEffect({
+    appointmentId,
+    notificationType,
+    triggeredByProfileId,
+  });
 
   return {
     logged: true,
