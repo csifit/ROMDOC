@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import ClinicEditingPanel from "@/components/clinic/clinic-editing-panel";
 import DoctorPhotoManager from "@/components/doctor/doctor-photo-manager";
 import DoctorProfileForm from "@/components/doctor/doctor-profile-form";
 import DoctorServicesManager, {
@@ -279,7 +280,7 @@ export default async function DoctorProfilePage() {
 
             <p className="mt-3 max-w-3xl text-gray-600">
               Actualizează informațiile publice, specialitățile,
-              biografia și lista serviciilor medicale.
+              biografia, clinicile și lista serviciilor medicale.
             </p>
 
             {displayName && (
@@ -325,6 +326,12 @@ export default async function DoctorProfilePage() {
             }
             initialTitleRo={translation?.title ?? ""}
             initialBiographyRo={translation?.biography ?? ""}
+          />
+
+          <ClinicEditingPanel
+            title="Clinicile mele"
+            description="Poți modifica datele clinicilor asociate profilului tău de medic. Deoarece o clinică este o entitate comună RomDoc, modificările se vor vedea și pentru ceilalți medici asociați aceleiași clinici."
+            emptyMessage="Nu ai încă nicio clinică asociată profilului tău de medic."
           />
 
           {specialtiesResult.error || doctorSpecialtiesResult.error ? (
