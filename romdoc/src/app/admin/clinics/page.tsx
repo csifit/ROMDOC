@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import AdminClinicCreationForm from "@/components/admin/admin-clinic-creation-form";
 import AdminDoctorClinicAssociations from "@/components/admin/admin-doctor-clinic-associations";
 import ClinicManagementActions from "@/components/admin/clinic-management-actions";
+import ClinicEditingPanel from "@/components/clinic/clinic-editing-panel";
 import AdminAccordion from "@/components/ui/admin-accordion";
 import { createClient } from "@/lib/supabase/server";
 
@@ -66,6 +67,17 @@ export default async function AdminClinicsPage() {
         description="Gestionează relațiile dintre medicii existenți și clinicile aprobate."
       >
         <AdminDoctorClinicAssociations />
+      </AdminAccordion>
+
+      <AdminAccordion
+        title="Editează clinici"
+        description="Administratorii pot modifica toate clinicile din platformă: date de contact, descriere și adresă verificată."
+      >
+        <ClinicEditingPanel
+          title="Toate clinicile"
+          description="Editează datele publice ale oricărei clinici din RomDoc. Modificările se aplică tuturor medicilor asociați acelei clinici."
+          emptyMessage="Nu există încă clinici în platformă."
+        />
       </AdminAccordion>
 
       <ClinicManagementActions />
