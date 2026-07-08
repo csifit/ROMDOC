@@ -207,7 +207,7 @@ async function logSmsDelivery({
       event,
       recipient,
       status,
-      provider: "twilio",
+      provider: "smslink",
       provider_message_id: result.providerMessageId,
       error_code: result.errorCode,
       error_message: result.errorMessage?.slice(0, 2000) ?? null,
@@ -218,62 +218,90 @@ async function logSmsDelivery({
   }
 }
 
-async function sendTwilioSms(to: string, body: string): Promise<SmsSendResult> {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_FROM;
+function parseSmsLinkResponse(responseText: string): SmsSendResult {
+  const trimmedResponse = responseText.trim();
+  const responseParts = trimmedResponse.split(";");
+  const category = responseParts[0];
+  const responseId = responseParts[1] ?? null;
+  const responseDescription = responseParts[2] ?? trimmedResponse;
+  const responseVariables = responseParts[3] ?? "";
 
-  if (!accountSid || !authToken || !from) {
+  if (category === "MESSAGE" && responseId === "1") {
+    const [messageId] = responseVariables
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    return {
+      sent: true,
+      skipped: false,
+      providerMessageId: messageId ?? null,
+      errorCode: null,
+      errorMessage: null,
+    };
+  }
+
+  if (category === "ERROR") {
+    return {
+      sent: false,
+      skipped: false,
+      providerMessageId: null,
+      errorCode: responseId ? `SMSLINK_ERROR_${responseId}` : "SMSLINK_ERROR",
+      errorMessage: responseDescription || "SMSLink returned an error response.",
+    };
+  }
+
+  return {
+    sent: false,
+    skipped: false,
+    providerMessageId: null,
+    errorCode: "UNKNOWN_SMSLINK_RESPONSE",
+    errorMessage: trimmedResponse || "SMSLink returned an empty or unrecognized response.",
+  };
+}
+
+async function sendSmsLinkSms(to: string, body: string): Promise<SmsSendResult> {
+  const connectionId = process.env.SMSLINK_CONNECTION_ID;
+  const password = process.env.SMSLINK_PASSWORD;
+
+  if (!connectionId || !password) {
     return {
       sent: false,
       skipped: true,
       providerMessageId: null,
-      errorCode: "MISSING_TWILIO_CONFIGURATION",
-      errorMessage: "TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN or TWILIO_FROM is missing.",
+      errorCode: "MISSING_SMSLINK_CONFIGURATION",
+      errorMessage: "SMSLINK_CONNECTION_ID or SMSLINK_PASSWORD is missing.",
     };
   }
 
-  const response = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString("base64")}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        To: to,
-        From: from,
-        Body: body,
-      }),
-    }
+  const url = new URL(
+    "https://secure.smslink.ro/sms/gateway/communicate/index.php"
   );
 
-  const payload = (await response.json().catch(() => null)) as
-    | {
-        sid?: string;
-        code?: string | number;
-        message?: string;
-      }
-    | null;
+  url.searchParams.set("connection_id", connectionId);
+  url.searchParams.set("password", password);
+  url.searchParams.set("to", to);
+  url.searchParams.set("message", body);
+
+  const response = await fetch(url, {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  const responseText = await response.text().catch(() => "");
 
   if (!response.ok) {
     return {
       sent: false,
       skipped: false,
       providerMessageId: null,
-      errorCode: payload?.code ? String(payload.code) : `HTTP_${response.status}`,
-      errorMessage: payload?.message ?? "Twilio SMS request failed.",
+      errorCode: `HTTP_${response.status}`,
+      errorMessage:
+        responseText.trim() || "SMSLink HTTP request failed.",
     };
   }
 
-  return {
-    sent: true,
-    skipped: false,
-    providerMessageId: payload?.sid ?? null,
-    errorCode: null,
-    errorMessage: null,
-  };
+  return parseSmsLinkResponse(responseText);
 }
 
 export async function sendAppointmentSms({
@@ -437,7 +465,7 @@ export async function sendAppointmentSms({
     return result;
   }
 
-  const result = await sendTwilioSms(normalizedPhone, message);
+  const result = await sendSmsLinkSms(normalizedPhone, message);
 
   await logSmsDelivery({
     appointmentId,
