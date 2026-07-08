@@ -13,6 +13,9 @@ import {
 
 export const runtime = "nodejs";
 
+const SMS_UNIT_COST_MINOR = 30;
+const SMS_CURRENCY = "RON";
+
 type SmsSettingsBody = {
   smsEnabled?: unknown;
   confirmationSmsEnabled?: unknown;
@@ -35,6 +38,9 @@ type SmsLogRow = {
   doctor_id: string | null;
   event: string;
   status: string;
+  invoice_status: string | null;
+  unit_cost_minor: number | null;
+  currency: string | null;
   created_at: string;
 };
 
@@ -49,6 +55,47 @@ function nameFromSlug(slug: string) {
     .join(" ");
 }
 
+async function requireSmsBillingCapability(
+  role: "admin" | "manager",
+  profileId: string
+) {
+  if (role === "admin") {
+    return null;
+  }
+
+  const admin = createAdminClient();
+
+  const { data, error } = await admin
+    .from("manager_permissions")
+    .select("id")
+    .eq("profile_id", profileId)
+    .eq("permission_key", "accounting")
+    .is("revoked_at", null)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Accounting permission lookup failed:", error);
+  }
+
+  if (data) {
+    return null;
+  }
+
+  return NextResponse.json(
+    {
+      error: "Numai administratorii și managerii cu permisiune de contabilitate pot accesa facturarea SMS.",
+      code: "accounting_permission_required",
+    },
+    {
+      status: 403,
+      headers: {
+        "Cache-Control": "no-store",
+      },
+    }
+  );
+}
+
 export async function GET(): Promise<Response> {
   const authorization = await requirePlatformOperatorAal2Api();
 
@@ -56,13 +103,13 @@ export async function GET(): Promise<Response> {
     return authorization.response;
   }
 
-  const adminOnly = requireAdministratorCapability(
+  const smsBillingOnly = await requireSmsBillingCapability(
     authorization.role,
-    "Numai administratorii pot gestiona serviciul SMS."
+    authorization.profileId
   );
 
-  if (adminOnly) {
-    return adminOnly;
+  if (smsBillingOnly) {
+    return smsBillingOnly;
   }
 
   const admin = createAdminClient();
@@ -85,7 +132,7 @@ export async function GET(): Promise<Response> {
 
     admin
       .from("sms_delivery_logs")
-      .select("doctor_id, event, status, created_at")
+      .select("doctor_id, event, status, invoice_status, unit_cost_minor, currency, created_at")
       .order("created_at", { ascending: false }),
   ]);
 
@@ -149,6 +196,12 @@ export async function GET(): Promise<Response> {
       skipped: number;
       confirmed: number;
       reminder24h: number;
+      invoiced: number;
+      uninvoiced: number;
+      notBillable: number;
+      credited: number;
+      estimatedUninvoicedMinor: number;
+      estimatedInvoicedMinor: number;
       lastSentAt: string | null;
     }
   >();
@@ -165,8 +218,17 @@ export async function GET(): Promise<Response> {
       skipped: 0,
       confirmed: 0,
       reminder24h: 0,
+      invoiced: 0,
+      uninvoiced: 0,
+      notBillable: 0,
+      credited: 0,
+      estimatedUninvoicedMinor: 0,
+      estimatedInvoicedMinor: 0,
       lastSentAt: null,
     };
+
+    const invoiceStatus = log.invoice_status ?? "not_billable";
+    const unitCostMinor = log.unit_cost_minor ?? SMS_UNIT_COST_MINOR;
 
     current.total += 1;
 
@@ -177,6 +239,18 @@ export async function GET(): Promise<Response> {
       current.failed += 1;
     } else if (log.status === "skipped") {
       current.skipped += 1;
+    }
+
+    if (invoiceStatus === "invoiced") {
+      current.invoiced += 1;
+      current.estimatedInvoicedMinor += unitCostMinor;
+    } else if (invoiceStatus === "uninvoiced") {
+      current.uninvoiced += 1;
+      current.estimatedUninvoicedMinor += unitCostMinor;
+    } else if (invoiceStatus === "credited") {
+      current.credited += 1;
+    } else {
+      current.notBillable += 1;
     }
 
     if (log.event === "confirmed") {
@@ -210,6 +284,12 @@ export async function GET(): Promise<Response> {
       skipped: 0,
       confirmed: 0,
       reminder24h: 0,
+      invoiced: 0,
+      uninvoiced: 0,
+      notBillable: 0,
+      credited: 0,
+      estimatedUninvoicedMinor: 0,
+      estimatedInvoicedMinor: 0,
       lastSentAt: null,
     };
 
@@ -231,6 +311,11 @@ export async function GET(): Promise<Response> {
           provider: "smslink",
           updated_at: null,
         },
+      billing: {
+        unitCostMinor: SMS_UNIT_COST_MINOR,
+        currency: SMS_CURRENCY,
+        vatMode: "plus_vat",
+      },
       doctorCounters,
     },
     {
