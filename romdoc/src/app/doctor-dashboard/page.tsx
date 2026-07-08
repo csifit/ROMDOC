@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import DoctorOnboardingChecklist from "@/components/doctor/doctor-onboarding-checklist";
@@ -79,10 +80,30 @@ export default async function DoctorDashboardPage() {
         </header>
 
         <div className="mt-8">
-          <DoctorOnboardingChecklist
-            completion={completion}
-          />
+          <DoctorOnboardingChecklist completion={completion} />
         </div>
+
+        <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">
+                Date de facturare
+              </h2>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
+                Completează datele private necesare pentru facturarea SMS-urilor
+                și a altor servicii RomDoc. Aceste informații nu apar public.
+              </p>
+            </div>
+
+            <Link
+              href="/doctor-dashboard/billing"
+              className="romdoc-focus-ring w-fit rounded-xl bg-[#036661] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#024d49]"
+            >
+              Deschide datele de facturare
+            </Link>
+          </div>
+        </section>
       </div>
     </main>
   );
