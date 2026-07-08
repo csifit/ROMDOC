@@ -44,6 +44,7 @@ type SmsAdminResponse = {
   settings?: SmsSettings;
   billing?: SmsBilling;
   doctorCounters?: DoctorCounter[];
+  updatedCount?: number;
   message?: string;
   error?: string;
 };
@@ -82,6 +83,8 @@ export default function AdminSmsControlPanel() {
   const [settings, setSettings] = useState<SmsSettings | null>(null);
   const [billing, setBilling] = useState<SmsBilling | null>(null);
   const [doctorCounters, setDoctorCounters] = useState<DoctorCounter[]>([]);
+  const [invoiceReferences, setInvoiceReferences] = useState<Record<string, string>>({});
+  const [invoicingDoctorId, setInvoicingDoctorId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
@@ -226,6 +229,60 @@ export default function AdminSmsControlPanel() {
     }
   }
 
+  async function markDoctorSmsAsInvoiced(counter: DoctorCounter) {
+    const invoiceReference = (invoiceReferences[counter.doctorId] ?? "").trim();
+
+    if (!invoiceReference) {
+      setError("Introdu referința facturii înainte de marcare.");
+      setSuccess("");
+      return;
+    }
+
+    setInvoicingDoctorId(counter.doctorId);
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await fetch("/api/admin/sms", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "mark_doctor_sms_invoiced",
+          doctorId: counter.doctorId,
+          invoiceReference,
+        }),
+      });
+
+      const result = (await response.json()) as SmsAdminResponse;
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ?? "SMS-urile nu au putut fi marcate ca facturate."
+        );
+      }
+
+      setSuccess(
+        result.message ??
+          `${counter.uninvoiced} SMS-uri au fost marcate ca facturate.`
+      );
+      setInvoiceReferences((current) => ({
+        ...current,
+        [counter.doctorId]: "",
+      }));
+      await loadData();
+    } catch (invoiceError) {
+      setError(
+        invoiceError instanceof Error
+          ? invoiceError.message
+          : "SMS-urile nu au putut fi marcate ca facturate."
+      );
+    } finally {
+      setInvoicingDoctorId(null);
+    }
+  }
+
   function updateSetting(field: keyof SmsSettings, value: boolean) {
     if (!settings) {
       return;
@@ -274,7 +331,7 @@ export default function AdminSmsControlPanel() {
           <button
             type="button"
             onClick={() => void loadData()}
-            disabled={isSaving}
+            disabled={isSaving || Boolean(invoicingDoctorId)}
             className="romdoc-focus-ring rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Reîncarcă
@@ -443,15 +500,15 @@ export default function AdminSmsControlPanel() {
         </div>
 
         <div className="mt-6 overflow-hidden rounded-2xl border border-gray-200">
-          <div className="hidden grid-cols-[2fr_0.8fr_0.8fr_0.9fr_0.9fr_1.1fr_1fr_1fr] gap-3 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 lg:grid">
+          <div className="hidden grid-cols-[1.8fr_0.7fr_0.7fr_0.85fr_0.85fr_1fr_0.85fr_1.5fr] gap-3 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 lg:grid">
             <span>Medic</span>
             <span>Trimise</span>
             <span>Eșuate</span>
             <span>Nefacturate</span>
             <span>Facturate</span>
-            <span>Valoare nefacturată</span>
-            <span>Confirmări</span>
+            <span>Valoare</span>
             <span>Ultimul SMS</span>
+            <span>Facturare</span>
           </div>
 
           {filteredCounters.length === 0 ? (
@@ -460,26 +517,57 @@ export default function AdminSmsControlPanel() {
             </div>
           ) : (
             <div className="divide-y divide-gray-200">
-              {filteredCounters.map((counter) => (
-                <div
-                  key={counter.doctorId}
-                  className="grid gap-3 px-4 py-4 text-sm text-gray-700 lg:grid-cols-[2fr_0.8fr_0.8fr_0.9fr_0.9fr_1.1fr_1fr_1fr]"
-                >
-                  <div>
-                    <p className="font-semibold text-gray-900">
-                      {counter.doctorName}
-                    </p>
-                    <p className="text-xs text-gray-500">{counter.slug}</p>
+              {filteredCounters.map((counter) => {
+                const isInvoicing = invoicingDoctorId === counter.doctorId;
+                const canMarkInvoiced = counter.uninvoiced > 0 && !isInvoicing;
+
+                return (
+                  <div
+                    key={counter.doctorId}
+                    className="grid gap-3 px-4 py-4 text-sm text-gray-700 lg:grid-cols-[1.8fr_0.7fr_0.7fr_0.85fr_0.85fr_1fr_0.85fr_1.5fr]"
+                  >
+                    <div>
+                      <p className="font-semibold text-gray-900">
+                        {counter.doctorName}
+                      </p>
+                      <p className="text-xs text-gray-500">{counter.slug}</p>
+                    </div>
+                    <p><span className="font-semibold lg:hidden">Trimise: </span>{counter.sent}</p>
+                    <p><span className="font-semibold lg:hidden">Eșuate: </span>{counter.failed}</p>
+                    <p><span className="font-semibold lg:hidden">Nefacturate: </span>{counter.uninvoiced}</p>
+                    <p><span className="font-semibold lg:hidden">Facturate: </span>{counter.invoiced}</p>
+                    <p><span className="font-semibold lg:hidden">Valoare nefacturată: </span>{formatMoney(counter.estimatedUninvoicedMinor, currency)}</p>
+                    <p><span className="font-semibold lg:hidden">Ultimul SMS: </span>{formatDate(counter.lastSentAt)}</p>
+                    <div className="space-y-2">
+                      <label className="sr-only" htmlFor={`invoice-reference-${counter.doctorId}`}>
+                        Referință factură pentru {counter.doctorName}
+                      </label>
+                      <input
+                        id={`invoice-reference-${counter.doctorId}`}
+                        type="text"
+                        value={invoiceReferences[counter.doctorId] ?? ""}
+                        onChange={(event) =>
+                          setInvoiceReferences((current) => ({
+                            ...current,
+                            [counter.doctorId]: event.target.value,
+                          }))
+                        }
+                        disabled={counter.uninvoiced === 0 || isInvoicing}
+                        placeholder="Factura nr."
+                        className="romdoc-focus-ring w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-950 disabled:cursor-not-allowed disabled:bg-gray-100"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void markDoctorSmsAsInvoiced(counter)}
+                        disabled={!canMarkInvoiced}
+                        className="romdoc-focus-ring w-full rounded-lg bg-[#036661] px-3 py-2 text-xs font-semibold text-white hover:bg-[#024d49] disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600"
+                      >
+                        {isInvoicing ? "Se salvează..." : "Marchează facturat"}
+                      </button>
+                    </div>
                   </div>
-                  <p><span className="font-semibold lg:hidden">Trimise: </span>{counter.sent}</p>
-                  <p><span className="font-semibold lg:hidden">Eșuate: </span>{counter.failed}</p>
-                  <p><span className="font-semibold lg:hidden">Nefacturate: </span>{counter.uninvoiced}</p>
-                  <p><span className="font-semibold lg:hidden">Facturate: </span>{counter.invoiced}</p>
-                  <p><span className="font-semibold lg:hidden">Valoare nefacturată: </span>{formatMoney(counter.estimatedUninvoicedMinor, currency)}</p>
-                  <p><span className="font-semibold lg:hidden">Confirmări: </span>{counter.confirmed}</p>
-                  <p><span className="font-semibold lg:hidden">Ultimul SMS: </span>{formatDate(counter.lastSentAt)}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
