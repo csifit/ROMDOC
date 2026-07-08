@@ -75,8 +75,6 @@ function formatMoney(minorAmount: number, currency = "RON") {
 
 function formatPeriod(periodStart: string, periodEnd: string) {
   const startDate = new Date(`${periodStart}T12:00:00Z`);
-  const endDate = new Date(`${periodEnd}T12:00:00Z`);
-  endDate.setUTCDate(endDate.getUTCDate() - 1);
 
   return new Intl.DateTimeFormat("ro-RO", {
     month: "long",
@@ -102,18 +100,7 @@ async function getOrCreatePreviousSmsBill({
 
   const { data: existingBill, error: existingBillError } = await admin
     .from("doctor_sms_billing_periods")
-    .select(`
-      id,
-      period_start,
-      period_end,
-      sms_count,
-      net_amount_minor,
-      vat_amount_minor,
-      gross_amount_minor,
-      currency,
-      payment_status,
-      saga_invoice_status
-    `)
+    .select("id")
     .eq("doctor_id", doctorId)
     .eq("period_start", periodStartDate)
     .eq("period_end", periodEndDate)
@@ -124,7 +111,7 @@ async function getOrCreatePreviousSmsBill({
   }
 
   if (existingBill) {
-    return existingBill as SmsBillingPeriodRow;
+    return;
   }
 
   const { data: billableLogsData, error: billableLogsError } = await admin
@@ -139,13 +126,13 @@ async function getOrCreatePreviousSmsBill({
 
   if (billableLogsError) {
     console.error("Previous SMS bill logs lookup failed:", billableLogsError);
-    return null;
+    return;
   }
 
   const billableLogs = (billableLogsData ?? []) as BillableSmsLogRow[];
 
   if (billableLogs.length === 0) {
-    return null;
+    return;
   }
 
   const netAmountMinor = billableLogs.reduce(
@@ -174,6 +161,36 @@ async function getOrCreatePreviousSmsBill({
       payment_status: "unpaid",
       saga_invoice_status: "not_issued",
     })
+    .select("id")
+    .single();
+
+  if (newBillError || !newBill) {
+    console.error("Previous SMS bill creation failed:", newBillError);
+    return;
+  }
+
+  await admin
+    .from("sms_delivery_logs")
+    .update({
+      sms_billing_period_id: newBill.id,
+    })
+    .in(
+      "id",
+      billableLogs.map((log) => log.id)
+    );
+}
+
+async function getUnpaidSmsBills({
+  doctorId,
+  profileId,
+}: {
+  doctorId: string;
+  profileId: string;
+}) {
+  const admin = createAdminClient();
+
+  const { data, error } = await admin
+    .from("doctor_sms_billing_periods")
     .select(`
       id,
       period_start,
@@ -186,24 +203,18 @@ async function getOrCreatePreviousSmsBill({
       payment_status,
       saga_invoice_status
     `)
-    .single();
+    .eq("doctor_id", doctorId)
+    .eq("profile_id", profileId)
+    .in("payment_status", ["unpaid", "checkout_open", "failed"])
+    .gt("gross_amount_minor", 0)
+    .order("period_start", { ascending: true });
 
-  if (newBillError || !newBill) {
-    console.error("Previous SMS bill creation failed:", newBillError);
-    return null;
+  if (error) {
+    console.error("Unpaid SMS bills query failed:", error);
+    return [];
   }
 
-  await admin
-    .from("sms_delivery_logs")
-    .update({
-      sms_billing_period_id: newBill.id,
-    })
-    .in(
-      "id",
-      billableLogs.map((log) => log.id)
-    );
-
-  return newBill as SmsBillingPeriodRow;
+  return (data ?? []) as SmsBillingPeriodRow[];
 }
 
 export default async function DoctorDashboardPage() {
@@ -218,10 +229,7 @@ export default async function DoctorDashboardPage() {
     redirect("/login?next=/doctor-dashboard");
   }
 
-  const {
-    data: profile,
-    error: profileError,
-  } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(`
       role,
@@ -253,9 +261,8 @@ export default async function DoctorDashboardPage() {
       <main className="px-6 py-12">
         <div className="mx-auto max-w-6xl">
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-amber-900">
-            Contul este activ, dar profilul de medic nu a putut fi
-            găsit. Verifică activarea abonamentului sau contactează
-            suportul RomDoc.
+            Contul este activ, dar profilul de medic nu a putut fi găsit.
+            Verifică activarea abonamentului sau contactează suportul RomDoc.
           </div>
         </div>
       </main>
@@ -265,14 +272,19 @@ export default async function DoctorDashboardPage() {
   const admin = createAdminClient();
   const { monthStartIso, nextMonthStartIso } = getCurrentMonthBounds();
 
-  const [smsLogsResult, previousBill] = await Promise.all([
+  await getOrCreatePreviousSmsBill({
+    doctorId: completion.doctorId,
+    profileId: user.id,
+  });
+
+  const [smsLogsResult, unpaidSmsBills] = await Promise.all([
     admin
       .from("sms_delivery_logs")
       .select("status, invoice_status, unit_cost_minor")
       .eq("doctor_id", completion.doctorId)
       .gte("created_at", monthStartIso)
       .lt("created_at", nextMonthStartIso),
-    getOrCreatePreviousSmsBill({
+    getUnpaidSmsBills({
       doctorId: completion.doctorId,
       profileId: user.id,
     }),
@@ -312,26 +324,36 @@ export default async function DoctorDashboardPage() {
     }
   );
 
-  const showPaymentButton =
-    previousBill &&
-    previousBill.gross_amount_minor > 0 &&
-    previousBill.payment_status !== "paid";
+  const unpaidBalance = unpaidSmsBills.reduce(
+    (total, bill) => ({
+      smsCount: total.smsCount + bill.sms_count,
+      netAmountMinor: total.netAmountMinor + bill.net_amount_minor,
+      vatAmountMinor: total.vatAmountMinor + bill.vat_amount_minor,
+      grossAmountMinor: total.grossAmountMinor + bill.gross_amount_minor,
+      currency: bill.currency || total.currency,
+    }),
+    {
+      smsCount: 0,
+      netAmountMinor: 0,
+      vatAmountMinor: 0,
+      grossAmountMinor: 0,
+      currency: "RON",
+    }
+  );
 
   return (
     <main className="px-6 py-12">
       <div className="mx-auto max-w-6xl">
         <header>
-          <p className="text-sm font-semibold text-[#036661]">
-            Panou medic
-          </p>
+          <p className="text-sm font-semibold text-[#036661]">Panou medic</p>
 
           <h1 className="mt-2 text-4xl font-bold tracking-tight text-gray-900">
             Bun venit în RomDoc
           </h1>
 
           <p className="mt-3 max-w-3xl leading-7 text-gray-600">
-            Urmărește pașii necesari pentru un profil medical complet,
-            clar și pregătit pentru programările pacienților.
+            Urmărește pașii necesari pentru un profil medical complet, clar și
+            pregătit pentru programările pacienților.
           </p>
         </header>
 
@@ -361,34 +383,44 @@ export default async function DoctorDashboardPage() {
           </div>
         </section>
 
-        {previousBill ? (
+        {unpaidSmsBills.length > 0 ? (
           <section className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
-            <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
+            <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-start">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.16em] text-amber-800">
-                  Plată SMS
+                  Sold SMS restant
                 </p>
 
                 <h2 className="mt-2 text-xl font-bold text-amber-950">
-                  Factură SMS pentru {formatPeriod(previousBill.period_start, previousBill.period_end)}
+                  Total de plată: {formatMoney(unpaidBalance.grossAmountMinor, unpaidBalance.currency)}
                 </h2>
 
                 <p className="mt-2 text-sm leading-6 text-amber-900">
-                  {previousBill.sms_count} SMS-uri × 0,30 RON = {formatMoney(previousBill.net_amount_minor, previousBill.currency)} net. TVA: {formatMoney(previousBill.vat_amount_minor, previousBill.currency)}. Total de plată: <strong>{formatMoney(previousBill.gross_amount_minor, previousBill.currency)}</strong>.
+                  Soldul include {unpaidBalance.smsCount} SMS-uri din {unpaidSmsBills.length} perioadă/perioade. Net: {formatMoney(unpaidBalance.netAmountMinor, unpaidBalance.currency)}. TVA 21%: {formatMoney(unpaidBalance.vatAmountMinor, unpaidBalance.currency)}.
                 </p>
 
-                <p className="mt-1 text-xs text-amber-800">
-                  Status plată: {previousBill.payment_status === "paid" ? "Plătit" : "Neplătit"}. Factura fiscală se emite separat în SAGA.
+                <div className="mt-4 space-y-2 text-sm text-amber-950">
+                  {unpaidSmsBills.map((bill) => (
+                    <div
+                      key={bill.id}
+                      className="flex flex-col rounded-xl border border-amber-200 bg-white/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <span className="font-semibold">
+                        {formatPeriod(bill.period_start, bill.period_end)}
+                      </span>
+                      <span>
+                        {bill.sms_count} SMS · {formatMoney(bill.gross_amount_minor, bill.currency)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="mt-3 text-xs text-amber-800">
+                  Plata se face prin Stripe. Factura fiscală se emite separat în SAGA.
                 </p>
               </div>
 
-              {showPaymentButton ? (
-                <DoctorSmsBillingPaymentButton billingPeriodId={previousBill.id} />
-              ) : (
-                <span className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
-                  Plătit
-                </span>
-              )}
+              <DoctorSmsBillingPaymentButton />
             </div>
           </section>
         ) : null}
