@@ -14,6 +14,7 @@ type ManagerRow = {
   last_name: string | null;
   account_status: string;
   created_at: string;
+  permissions: string[];
   auth: {
     email: string | null;
     confirmed: boolean;
@@ -29,6 +30,7 @@ type InvitationRow = {
   status: string;
   expires_at: string;
   created_at: string;
+  permissions: string[];
 };
 
 type ManagersResponse = {
@@ -37,161 +39,95 @@ type ManagersResponse = {
   error?: string;
 };
 
-function displayName(
-  firstName: string | null,
-  lastName: string | null
-) {
-  return (
-    [
-      firstName,
-      lastName,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .trim() ||
-    "Manager"
-  );
+function displayName(firstName: string | null, lastName: string | null) {
+  return [firstName, lastName].filter(Boolean).join(" ").trim() || "Manager";
+}
+
+function hasAccountingPermission(permissions: string[]) {
+  return permissions.includes("accounting");
+}
+
+function managerTypeLabel(permissions: string[]) {
+  return hasAccountingPermission(permissions) ? "Facturare" : "Operațional";
+}
+
+function managerTypeBadgeClass(permissions: string[]) {
+  return hasAccountingPermission(permissions)
+    ? "border-blue-200 bg-blue-50 text-blue-800"
+    : "border-gray-200 bg-gray-50 text-gray-700";
 }
 
 export default function ManagersManagement() {
-  const [
-    isPending,
-    startTransition,
-  ] =
-    useTransition();
+  const [isPending, startTransition] = useTransition();
+  const [managers, setManagers] = useState<ManagerRow[]>([]);
+  const [invitations, setInvitations] = useState<InvitationRow[]>([]);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [managerType, setManagerType] = useState<"operational" | "accounting">("operational");
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
-  const [
-    managers,
-    setManagers,
-  ] =
-    useState<ManagerRow[]>(
-      []
-    );
+  const loadData = useCallback(async () => {
+    setError(null);
 
-  const [
-    invitations,
-    setInvitations,
-  ] =
-    useState<
-      InvitationRow[]
-    >([]);
+    const response = await fetch("/api/admin/managers", {
+      cache: "no-store",
+    });
 
-  const [
-    firstName,
-    setFirstName,
-  ] =
-    useState("");
+    const payload = (await response.json()) as ManagersResponse;
 
-  const [
-    lastName,
-    setLastName,
-  ] =
-    useState("");
+    if (!response.ok) {
+      setError(payload.error ?? "Managerii nu au putut fi încărcați.");
+      return;
+    }
 
-  const [email, setEmail] =
-    useState("");
-
-  const [error, setError] =
-    useState<string | null>(
-      null
-    );
-
-  const [message, setMessage] =
-    useState<string | null>(
-      null
-    );
-
-  const loadData =
-    useCallback(async () => {
-      setError(null);
-
-      const response =
-        await fetch(
-          "/api/admin/managers",
-          {
-            cache:
-              "no-store",
-          }
-        );
-
-      const payload =
-        (await response.json()) as
-          ManagersResponse;
-
-      if (!response.ok) {
-        setError(
-          payload.error ??
-            "Managerii nu au putut fi încărcați."
-        );
-        return;
-      }
-
-      setManagers(
-        payload.managers
-      );
-      setInvitations(
-        payload.invitations
-      );
-    }, []);
+    setManagers(payload.managers);
+    setInvitations(payload.invitations);
+  }, []);
 
   useEffect(() => {
     void loadData();
   }, [loadData]);
 
-  function inviteManager(
-    event:
-      FormEvent<HTMLFormElement>
-  ) {
+  function inviteManager(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     setError(null);
     setMessage(null);
 
-    startTransition(
-      async () => {
-        const response =
-          await fetch(
-            "/api/admin/managers",
-            {
-              method:
-                "POST",
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
-              body:
-                JSON.stringify({
-                  firstName,
-                  lastName,
-                  email,
-                }),
-            }
-          );
+    startTransition(async () => {
+      const response = await fetch("/api/admin/managers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          email,
+          managerType,
+        }),
+      });
 
-        const payload =
-          (await response.json()) as {
-            error?: string;
-          };
+      const payload = (await response.json()) as { error?: string };
 
-        if (!response.ok) {
-          setError(
-            payload.error ??
-              "Invitația nu a putut fi trimisă."
-          );
-          return;
-        }
-
-        setFirstName("");
-        setLastName("");
-        setEmail("");
-
-        setMessage(
-          "Invitația de manager a fost trimisă."
-        );
-
-        await loadData();
+      if (!response.ok) {
+        setError(payload.error ?? "Invitația nu a putut fi trimisă.");
+        return;
       }
-    );
+
+      setFirstName("");
+      setLastName("");
+      setEmail("");
+      setManagerType("operational");
+      setMessage(
+        managerType === "accounting"
+          ? "Invitația de manager Facturare a fost trimisă."
+          : "Invitația de manager operațional a fost trimisă."
+      );
+
+      await loadData();
+    });
   }
 
   function performAction(
@@ -200,68 +136,40 @@ export default function ManagersManagement() {
       profileId?: string;
       invitationId?: string;
     },
-    successMessage =
-      "Modificarea a fost salvată."
+    successMessage = "Modificarea a fost salvată."
   ) {
     setError(null);
     setMessage(null);
 
-    startTransition(
-      async () => {
-        const response =
-          await fetch(
-            "/api/admin/managers",
-            {
-              method:
-                "PATCH",
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
-              body:
-                JSON.stringify(
-                  body
-                ),
-            }
-          );
+    startTransition(async () => {
+      const response = await fetch("/api/admin/managers", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
 
-        const payload =
-          (await response.json()) as {
-            error?: string;
-            message?: string;
-          };
+      const payload = (await response.json()) as {
+        error?: string;
+        message?: string;
+      };
 
-        if (!response.ok) {
-          setError(
-            payload.error ??
-              "Acțiunea nu a putut fi finalizată."
-          );
-          return;
-        }
-
-        setMessage(
-          payload.message ??
-            successMessage
-        );
-
-        await loadData();
+      if (!response.ok) {
+        setError(payload.error ?? "Acțiunea nu a putut fi finalizată.");
+        return;
       }
-    );
+
+      setMessage(payload.message ?? successMessage);
+      await loadData();
+    });
   }
 
-  function deleteManager(
-    manager: ManagerRow
-  ) {
-    const name =
-      displayName(
-        manager.first_name,
-        manager.last_name
-      );
-
-    const confirmed =
-      window.confirm(
-        `Ștergi managerul ${name} din lista de manageri?\n\nContul nu va fi șters fizic din istoricul RomDoc, dar rolul de manager va fi eliminat și accesul operațional va fi blocat.`
-      );
+  function deleteManager(manager: ManagerRow) {
+    const name = displayName(manager.first_name, manager.last_name);
+    const confirmed = window.confirm(
+      `Ștergi managerul ${name} din lista de manageri?\n\nContul nu va fi șters fizic din istoricul RomDoc, dar rolul de manager va fi eliminat și accesul operațional va fi blocat.`
+    );
 
     if (!confirmed) {
       return;
@@ -269,10 +177,8 @@ export default function ManagersManagement() {
 
     performAction(
       {
-        action:
-          "delete_manager",
-        profileId:
-          manager.id,
+        action: "delete_manager",
+        profileId: manager.id,
       },
       "Managerul a fost șters din lista de manageri."
     );
@@ -289,83 +195,89 @@ export default function ManagersManagement() {
           Managerul primește un e-mail de invitație și trebuie să configureze Google Authenticator înainte de accesul la panoul operațional.
         </p>
 
-        <form
-          onSubmit={
-            inviteManager
-          }
-          className="mt-6 grid gap-4 md:grid-cols-2"
-        >
+        <form onSubmit={inviteManager} className="mt-6 grid gap-4 md:grid-cols-2">
           <label>
-            <span className="text-sm font-medium text-gray-700">
-              Prenume
-            </span>
-
+            <span className="text-sm font-medium text-gray-700">Prenume</span>
             <input
-              value={
-                firstName
-              }
-              onChange={(
-                event
-              ) =>
-                setFirstName(
-                  event.target.value
-                )
-              }
+              value={firstName}
+              onChange={(event) => setFirstName(event.target.value)}
               className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
             />
           </label>
 
           <label>
-            <span className="text-sm font-medium text-gray-700">
-              Nume
-            </span>
-
+            <span className="text-sm font-medium text-gray-700">Nume</span>
             <input
-              value={
-                lastName
-              }
-              onChange={(
-                event
-              ) =>
-                setLastName(
-                  event.target.value
-                )
-              }
+              value={lastName}
+              onChange={(event) => setLastName(event.target.value)}
               className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
             />
           </label>
 
           <label className="md:col-span-2">
-            <span className="text-sm font-medium text-gray-700">
-              E-mail
-            </span>
-
+            <span className="text-sm font-medium text-gray-700">E-mail</span>
             <input
               type="email"
               required
               value={email}
-              onChange={(
-                event
-              ) =>
-                setEmail(
-                  event.target.value
-                )
-              }
+              onChange={(event) => setEmail(event.target.value)}
               className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
             />
           </label>
 
+          <fieldset className="md:col-span-2 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+            <legend className="px-1 text-sm font-semibold text-gray-900">
+              Tip manager
+            </legend>
+
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="flex cursor-pointer gap-3 rounded-xl border border-gray-200 bg-white p-4">
+                <input
+                  type="radio"
+                  name="managerType"
+                  value="operational"
+                  checked={managerType === "operational"}
+                  onChange={() => setManagerType("operational")}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block font-semibold text-gray-900">
+                    Operațional
+                  </span>
+                  <span className="mt-1 block text-sm leading-5 text-gray-600">
+                    Acces pentru administrare operațională, fără permisiuni de facturare SMS.
+                  </span>
+                </span>
+              </label>
+
+              <label className="flex cursor-pointer gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4">
+                <input
+                  type="radio"
+                  name="managerType"
+                  value="accounting"
+                  checked={managerType === "accounting"}
+                  onChange={() => setManagerType("accounting")}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block font-semibold text-blue-900">
+                    Facturare
+                  </span>
+                  <span className="mt-1 block text-sm leading-5 text-blue-800">
+                    Acces la facturare SMS, verificare facturi și informații de invoicing.
+                  </span>
+                </span>
+              </label>
+            </div>
+          </fieldset>
+
           <div className="md:col-span-2">
             <button
               type="submit"
-              disabled={
-                isPending
-              }
+              disabled={isPending}
               className="rounded-xl bg-[#036661] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#ff2800] disabled:opacity-60"
             >
-              {isPending
-                ? "Se trimite..."
-                : "Trimite invitația"}
+              {isPending ? "Se trimite..." : "Trimite invitația"}
             </button>
           </div>
         </form>
@@ -392,95 +304,82 @@ export default function ManagersManagement() {
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead>
               <tr className="text-left text-gray-600">
-                <th className="px-3 py-3">
-                  Manager
-                </th>
-                <th className="px-3 py-3">
-                  E-mail
-                </th>
-                <th className="px-3 py-3">
-                  Confirmat
-                </th>
-                <th className="px-3 py-3">
-                  Status
-                </th>
-                <th className="px-3 py-3 text-right">
-                  Acțiuni
-                </th>
+                <th className="px-3 py-3">Manager</th>
+                <th className="px-3 py-3">E-mail</th>
+                <th className="px-3 py-3">Tip</th>
+                <th className="px-3 py-3">Confirmat</th>
+                <th className="px-3 py-3">Status</th>
+                <th className="px-3 py-3 text-right">Acțiuni</th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-gray-100">
-              {managers.map(
-                (manager) => (
-                  <tr
-                    key={
-                      manager.id
-                    }
-                  >
+              {managers.map((manager) => {
+                const isAccounting = hasAccountingPermission(manager.permissions);
+
+                return (
+                  <tr key={manager.id}>
                     <td className="px-3 py-4 font-medium text-gray-900">
-                      {displayName(
-                        manager.first_name,
-                        manager.last_name
-                      )}
+                      {displayName(manager.first_name, manager.last_name)}
                     </td>
 
                     <td className="px-3 py-4 text-gray-600">
-                      {manager.auth
-                        ?.email ??
-                        "—"}
+                      {manager.auth?.email ?? "—"}
                     </td>
 
                     <td className="px-3 py-4">
-                      {manager.auth
-                        ?.confirmed
-                        ? "Da"
-                        : "Nu"}
+                      <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${managerTypeBadgeClass(manager.permissions)}`}>
+                        {managerTypeLabel(manager.permissions)}
+                      </span>
                     </td>
 
                     <td className="px-3 py-4">
-                      {manager.account_status ===
-                      "active"
-                        ? "Activ"
-                        : "Suspendat"}
+                      {manager.auth?.confirmed ? "Da" : "Nu"}
                     </td>
 
                     <td className="px-3 py-4">
-                      <div className="flex justify-end gap-2">
+                      {manager.account_status === "active" ? "Activ" : "Suspendat"}
+                    </td>
+
+                    <td className="px-3 py-4">
+                      <div className="flex flex-wrap justify-end gap-2">
                         <button
                           type="button"
-                          disabled={
-                            isPending
-                          }
+                          disabled={isPending}
                           onClick={() =>
                             performAction({
-                              action:
-                                manager.account_status ===
-                                "active"
-                                  ? "suspend_manager"
-                                  : "activate_manager",
-                              profileId:
-                                manager.id,
+                              action: isAccounting
+                                ? "revoke_accounting_permission"
+                                : "grant_accounting_permission",
+                              profileId: manager.id,
                             })
                           }
-                          className="rounded-lg border border-gray-300 px-3 py-2 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                          className="rounded-lg border border-blue-300 px-3 py-2 font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-60"
                         >
-                          {manager.account_status ===
-                          "active"
-                            ? "Suspendă"
-                            : "Activează"}
+                          {isAccounting ? "Elimină Facturare" : "Acordă Facturare"}
                         </button>
 
                         <button
                           type="button"
-                          disabled={
-                            isPending
-                          }
+                          disabled={isPending}
                           onClick={() =>
-                            deleteManager(
-                              manager
-                            )
+                            performAction({
+                              action:
+                                manager.account_status === "active"
+                                  ? "suspend_manager"
+                                  : "activate_manager",
+                              profileId: manager.id,
+                            })
                           }
+                          className="rounded-lg border border-gray-300 px-3 py-2 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                        >
+                          {manager.account_status === "active" ? "Suspendă" : "Activează"}
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={isPending}
+                          onClick={() => deleteManager(manager)}
                           className="rounded-lg border border-red-300 px-3 py-2 font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
                         >
                           Șterge
@@ -488,16 +387,12 @@ export default function ManagersManagement() {
                       </div>
                     </td>
                   </tr>
-                )
-              )}
+                );
+              })}
 
-              {managers.length ===
-                0 && (
+              {managers.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={5}
-                    className="px-3 py-8 text-center text-gray-500"
-                  >
+                  <td colSpan={6} className="px-3 py-8 text-center text-gray-500">
                     Nu există manageri.
                   </td>
                 </tr>
@@ -508,59 +403,47 @@ export default function ManagersManagement() {
       </section>
 
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-bold text-gray-900">
-          Invitații
-        </h2>
+        <h2 className="text-xl font-bold text-gray-900">Invitații</h2>
 
         <div className="mt-5 space-y-3">
-          {invitations.map(
-            (invitation) => (
-              <div
-                key={
-                  invitation.id
-                }
-                className="flex flex-col gap-3 rounded-xl border border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div>
-                  <p className="font-medium text-gray-900">
-                    {invitation.email}
-                  </p>
-
-                  <p className="mt-1 text-xs text-gray-500">
-                    Status:{" "}
-                    {invitation.status}
-                  </p>
+          {invitations.map((invitation) => (
+            <div
+              key={invitation.id}
+              className="flex flex-col gap-3 rounded-xl border border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium text-gray-900">{invitation.email}</p>
+                  <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${managerTypeBadgeClass(invitation.permissions)}`}>
+                    {managerTypeLabel(invitation.permissions)}
+                  </span>
                 </div>
 
-                {invitation.status ===
-                  "pending" && (
-                  <button
-                    type="button"
-                    disabled={
-                      isPending
-                    }
-                    onClick={() =>
-                      performAction({
-                        action:
-                          "revoke_invitation",
-                        invitationId:
-                          invitation.id,
-                      })
-                    }
-                    className="rounded-lg border border-red-300 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-                  >
-                    Revocă
-                  </button>
-                )}
+                <p className="mt-1 text-xs text-gray-500">
+                  Status: {invitation.status}
+                </p>
               </div>
-            )
-          )}
 
-          {invitations.length ===
-            0 && (
-            <p className="text-sm text-gray-500">
-              Nu există invitații.
-            </p>
+              {invitation.status === "pending" && (
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() =>
+                    performAction({
+                      action: "revoke_invitation",
+                      invitationId: invitation.id,
+                    })
+                  }
+                  className="rounded-lg border border-red-300 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                >
+                  Revocă
+                </button>
+              )}
+            </div>
+          ))}
+
+          {invitations.length === 0 && (
+            <p className="text-sm text-gray-500">Nu există invitații.</p>
           )}
         </div>
       </section>
