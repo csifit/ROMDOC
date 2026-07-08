@@ -16,10 +16,13 @@ export const runtime = "nodejs";
 const SMS_UNIT_COST_MINOR = 30;
 const SMS_CURRENCY = "RON";
 
-type SmsSettingsBody = {
+type SmsPatchBody = {
+  action?: unknown;
   smsEnabled?: unknown;
   confirmationSmsEnabled?: unknown;
   reminder24hSmsEnabled?: unknown;
+  doctorId?: unknown;
+  invoiceReference?: unknown;
 };
 
 type DoctorRow = {
@@ -53,6 +56,10 @@ function nameFromSlug(slug: string) {
     .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function cleanText(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 async function requireSmsBillingCapability(
@@ -335,19 +342,10 @@ export async function PATCH(
     return authorization.response;
   }
 
-  const adminOnly = requireAdministratorCapability(
-    authorization.role,
-    "Numai administratorii pot modifica setările SMS."
-  );
-
-  if (adminOnly) {
-    return adminOnly;
-  }
-
-  let body: SmsSettingsBody;
+  let body: SmsPatchBody;
 
   try {
-    body = (await request.json()) as SmsSettingsBody;
+    body = (await request.json()) as SmsPatchBody;
   } catch {
     return NextResponse.json(
       { error: "Cererea nu conține date JSON valide." },
@@ -356,6 +354,84 @@ export async function PATCH(
   }
 
   const admin = createAdminClient();
+
+  if (body.action === "mark_doctor_sms_invoiced") {
+    const smsBillingOnly = await requireSmsBillingCapability(
+      authorization.role,
+      authorization.profileId
+    );
+
+    if (smsBillingOnly) {
+      return smsBillingOnly;
+    }
+
+    const doctorId = cleanText(body.doctorId);
+    const invoiceReference = cleanText(body.invoiceReference);
+
+    if (!doctorId) {
+      return NextResponse.json(
+        { error: "Medicul nu a fost selectat." },
+        { status: 400 }
+      );
+    }
+
+    if (!invoiceReference) {
+      return NextResponse.json(
+        { error: "Referința facturii este obligatorie." },
+        { status: 400 }
+      );
+    }
+
+    if (invoiceReference.length > 120) {
+      return NextResponse.json(
+        { error: "Referința facturii poate avea maximum 120 de caractere." },
+        { status: 400 }
+      );
+    }
+
+    const { data, error } = await admin
+      .from("sms_delivery_logs")
+      .update({
+        invoice_status: "invoiced",
+        invoice_reference: invoiceReference,
+        invoiced_by_profile_id: authorization.profileId,
+        invoiced_at: new Date().toISOString(),
+      })
+      .eq("doctor_id", doctorId)
+      .eq("status", "sent")
+      .eq("invoice_status", "uninvoiced")
+      .select("id");
+
+    if (error) {
+      console.error("SMS mark as invoiced failed:", error);
+
+      return NextResponse.json(
+        { error: "SMS-urile nu au putut fi marcate ca facturate." },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        message: `${data?.length ?? 0} SMS-uri au fost marcate ca facturate.`,
+        updatedCount: data?.length ?? 0,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
+    );
+  }
+
+  const adminOnly = requireAdministratorCapability(
+    authorization.role,
+    "Numai administratorii pot modifica setările SMS."
+  );
+
+  if (adminOnly) {
+    return adminOnly;
+  }
 
   const { data, error } = await admin
     .from("sms_platform_settings")
