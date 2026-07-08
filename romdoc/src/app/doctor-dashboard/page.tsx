@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import DoctorOnboardingChecklist from "@/components/doctor/doctor-onboarding-checklist";
+import DoctorSmsBillingPaymentButton from "@/components/doctor/doctor-sms-billing-payment-button";
 import { getDoctorProfileCompletion } from "@/lib/doctors/get-doctor-profile-completion";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -12,14 +13,55 @@ type SmsUsageLogRow = {
   unit_cost_minor: number | null;
 };
 
+type BillableSmsLogRow = {
+  id: string;
+  unit_cost_minor: number | null;
+};
+
+type SmsBillingPeriodRow = {
+  id: string;
+  period_start: string;
+  period_end: string;
+  sms_count: number;
+  net_amount_minor: number;
+  vat_amount_minor: number;
+  gross_amount_minor: number;
+  currency: string;
+  payment_status: string;
+  saga_invoice_status: string;
+};
+
+const VAT_RATE_BASIS_POINTS = 2100;
+
 function getCurrentMonthBounds() {
   const now = new Date();
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  const monthStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+  );
+  const nextMonthStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
+  );
 
   return {
     monthStartIso: monthStart.toISOString(),
     nextMonthStartIso: nextMonthStart.toISOString(),
+  };
+}
+
+function getPreviousMonthDateBounds() {
+  const now = new Date();
+  const periodStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)
+  );
+  const periodEnd = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+  );
+
+  return {
+    periodStartDate: periodStart.toISOString().slice(0, 10),
+    periodEndDate: periodEnd.toISOString().slice(0, 10),
+    periodStartIso: periodStart.toISOString(),
+    periodEndIso: periodEnd.toISOString(),
   };
 }
 
@@ -29,6 +71,139 @@ function formatMoney(minorAmount: number, currency = "RON") {
     currency,
     minimumFractionDigits: 2,
   }).format(minorAmount / 100);
+}
+
+function formatPeriod(periodStart: string, periodEnd: string) {
+  const startDate = new Date(`${periodStart}T12:00:00Z`);
+  const endDate = new Date(`${periodEnd}T12:00:00Z`);
+  endDate.setUTCDate(endDate.getUTCDate() - 1);
+
+  return new Intl.DateTimeFormat("ro-RO", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(startDate);
+}
+
+async function getOrCreatePreviousSmsBill({
+  doctorId,
+  profileId,
+}: {
+  doctorId: string;
+  profileId: string;
+}) {
+  const admin = createAdminClient();
+  const {
+    periodStartDate,
+    periodEndDate,
+    periodStartIso,
+    periodEndIso,
+  } = getPreviousMonthDateBounds();
+
+  const { data: existingBill, error: existingBillError } = await admin
+    .from("doctor_sms_billing_periods")
+    .select(`
+      id,
+      period_start,
+      period_end,
+      sms_count,
+      net_amount_minor,
+      vat_amount_minor,
+      gross_amount_minor,
+      currency,
+      payment_status,
+      saga_invoice_status
+    `)
+    .eq("doctor_id", doctorId)
+    .eq("period_start", periodStartDate)
+    .eq("period_end", periodEndDate)
+    .maybeSingle();
+
+  if (existingBillError) {
+    console.error("Previous SMS bill lookup failed:", existingBillError);
+  }
+
+  if (existingBill) {
+    return existingBill as SmsBillingPeriodRow;
+  }
+
+  const { data: billableLogsData, error: billableLogsError } = await admin
+    .from("sms_delivery_logs")
+    .select("id, unit_cost_minor")
+    .eq("doctor_id", doctorId)
+    .eq("status", "sent")
+    .eq("invoice_status", "uninvoiced")
+    .is("sms_billing_period_id", null)
+    .gte("created_at", periodStartIso)
+    .lt("created_at", periodEndIso);
+
+  if (billableLogsError) {
+    console.error("Previous SMS bill logs lookup failed:", billableLogsError);
+    return null;
+  }
+
+  const billableLogs = (billableLogsData ?? []) as BillableSmsLogRow[];
+
+  if (billableLogs.length === 0) {
+    return null;
+  }
+
+  const netAmountMinor = billableLogs.reduce(
+    (total, log) => total + (log.unit_cost_minor ?? 30),
+    0
+  );
+  const vatAmountMinor = Math.round(
+    (netAmountMinor * VAT_RATE_BASIS_POINTS) / 10000
+  );
+  const grossAmountMinor = netAmountMinor + vatAmountMinor;
+
+  const { data: newBill, error: newBillError } = await admin
+    .from("doctor_sms_billing_periods")
+    .insert({
+      doctor_id: doctorId,
+      profile_id: profileId,
+      period_start: periodStartDate,
+      period_end: periodEndDate,
+      sms_count: billableLogs.length,
+      unit_cost_minor: 30,
+      net_amount_minor: netAmountMinor,
+      vat_rate_basis_points: VAT_RATE_BASIS_POINTS,
+      vat_amount_minor: vatAmountMinor,
+      gross_amount_minor: grossAmountMinor,
+      currency: "RON",
+      payment_status: "unpaid",
+      saga_invoice_status: "not_issued",
+    })
+    .select(`
+      id,
+      period_start,
+      period_end,
+      sms_count,
+      net_amount_minor,
+      vat_amount_minor,
+      gross_amount_minor,
+      currency,
+      payment_status,
+      saga_invoice_status
+    `)
+    .single();
+
+  if (newBillError || !newBill) {
+    console.error("Previous SMS bill creation failed:", newBillError);
+    return null;
+  }
+
+  await admin
+    .from("sms_delivery_logs")
+    .update({
+      sms_billing_period_id: newBill.id,
+    })
+    .in(
+      "id",
+      billableLogs.map((log) => log.id)
+    );
+
+  return newBill as SmsBillingPeriodRow;
 }
 
 export default async function DoctorDashboardPage() {
@@ -90,18 +265,24 @@ export default async function DoctorDashboardPage() {
   const admin = createAdminClient();
   const { monthStartIso, nextMonthStartIso } = getCurrentMonthBounds();
 
-  const { data: smsLogsData, error: smsLogsError } = await admin
-    .from("sms_delivery_logs")
-    .select("status, invoice_status, unit_cost_minor")
-    .eq("doctor_id", completion.doctorId)
-    .gte("created_at", monthStartIso)
-    .lt("created_at", nextMonthStartIso);
+  const [smsLogsResult, previousBill] = await Promise.all([
+    admin
+      .from("sms_delivery_logs")
+      .select("status, invoice_status, unit_cost_minor")
+      .eq("doctor_id", completion.doctorId)
+      .gte("created_at", monthStartIso)
+      .lt("created_at", nextMonthStartIso),
+    getOrCreatePreviousSmsBill({
+      doctorId: completion.doctorId,
+      profileId: user.id,
+    }),
+  ]);
 
-  if (smsLogsError) {
-    console.error("Doctor dashboard SMS usage query failed:", smsLogsError);
+  if (smsLogsResult.error) {
+    console.error("Doctor dashboard SMS usage query failed:", smsLogsResult.error);
   }
 
-  const smsLogs = (smsLogsData ?? []) as SmsUsageLogRow[];
+  const smsLogs = (smsLogsResult.data ?? []) as SmsUsageLogRow[];
 
   const smsUsage = smsLogs.reduce(
     (currentUsage, log) => {
@@ -130,6 +311,11 @@ export default async function DoctorDashboardPage() {
       uninvoicedValueMinor: 0,
     }
   );
+
+  const showPaymentButton =
+    previousBill &&
+    previousBill.gross_amount_minor > 0 &&
+    previousBill.payment_status !== "paid";
 
   return (
     <main className="px-6 py-12">
@@ -174,6 +360,38 @@ export default async function DoctorDashboardPage() {
             </Link>
           </div>
         </section>
+
+        {previousBill ? (
+          <section className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
+            <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.16em] text-amber-800">
+                  Plată SMS
+                </p>
+
+                <h2 className="mt-2 text-xl font-bold text-amber-950">
+                  Factură SMS pentru {formatPeriod(previousBill.period_start, previousBill.period_end)}
+                </h2>
+
+                <p className="mt-2 text-sm leading-6 text-amber-900">
+                  {previousBill.sms_count} SMS-uri × 0,30 RON = {formatMoney(previousBill.net_amount_minor, previousBill.currency)} net. TVA: {formatMoney(previousBill.vat_amount_minor, previousBill.currency)}. Total de plată: <strong>{formatMoney(previousBill.gross_amount_minor, previousBill.currency)}</strong>.
+                </p>
+
+                <p className="mt-1 text-xs text-amber-800">
+                  Status plată: {previousBill.payment_status === "paid" ? "Plătit" : "Neplătit"}. Factura fiscală se emite separat în SAGA.
+                </p>
+              </div>
+
+              {showPaymentButton ? (
+                <DoctorSmsBillingPaymentButton billingPeriodId={previousBill.id} />
+              ) : (
+                <span className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+                  Plătit
+                </span>
+              )}
+            </div>
+          </section>
+        ) : null}
 
         <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
