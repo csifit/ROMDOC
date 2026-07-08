@@ -1,4 +1,5 @@
 import {
+  NextRequest,
   NextResponse,
 } from "next/server";
 
@@ -84,6 +85,21 @@ function getDoctorDisplayName(
   return profileName || (doctor ? nameFromSlug(doctor.slug) : "Medic necunoscut");
 }
 
+function cleanDate(value: string | null) {
+  const trimmed = value?.trim() ?? "";
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return "";
+  }
+
+  return trimmed;
+}
+
+function cleanStatus(value: string | null, allowedStatuses: string[]) {
+  const trimmed = value?.trim() ?? "";
+  return allowedStatuses.includes(trimmed) ? trimmed : "all";
+}
+
 async function requireSmsBillingCapability(
   role: "admin" | "manager",
   profileId: string
@@ -125,7 +141,7 @@ async function requireSmsBillingCapability(
   );
 }
 
-export async function GET(): Promise<Response> {
+export async function GET(request: NextRequest): Promise<Response> {
   const authorization = await requirePlatformOperatorAal2Api();
 
   if (authorization.response) {
@@ -141,16 +157,58 @@ export async function GET(): Promise<Response> {
     return smsBillingOnly;
   }
 
+  const searchParams = request.nextUrl.searchParams;
+  const from = cleanDate(searchParams.get("from"));
+  const to = cleanDate(searchParams.get("to"));
+  const paymentStatus = cleanStatus(searchParams.get("paymentStatus"), [
+    "all",
+    "open",
+    "unpaid",
+    "checkout_open",
+    "paid",
+    "failed",
+    "cancelled",
+    "refunded",
+  ]);
+  const sagaStatus = cleanStatus(searchParams.get("sagaStatus"), [
+    "all",
+    "missing",
+    "not_issued",
+    "issued",
+    "cancelled",
+  ]);
+
   const admin = createAdminClient();
+
+  let periodsQuery = admin
+    .from("doctor_sms_billing_periods")
+    .select(
+      "id, doctor_id, profile_id, period_start, period_end, sms_count, net_amount_minor, vat_amount_minor, gross_amount_minor, currency, payment_status, paid_at, saga_invoice_status, saga_invoice_reference, saga_invoice_issued_at"
+    );
+
+  if (from) {
+    periodsQuery = periodsQuery.gte("period_start", from);
+  }
+
+  if (to) {
+    periodsQuery = periodsQuery.lte("period_start", to);
+  }
+
+  if (paymentStatus === "open") {
+    periodsQuery = periodsQuery.neq("payment_status", "paid");
+  } else if (paymentStatus !== "all") {
+    periodsQuery = periodsQuery.eq("payment_status", paymentStatus);
+  }
+
+  if (sagaStatus === "missing") {
+    periodsQuery = periodsQuery.neq("saga_invoice_status", "issued");
+  } else if (sagaStatus !== "all") {
+    periodsQuery = periodsQuery.eq("saga_invoice_status", sagaStatus);
+  }
 
   const [periodsResult, doctorsResult, billingProfilesResult] =
     await Promise.all([
-      admin
-        .from("doctor_sms_billing_periods")
-        .select(
-          "id, doctor_id, profile_id, period_start, period_end, sms_count, net_amount_minor, vat_amount_minor, gross_amount_minor, currency, payment_status, paid_at, saga_invoice_status, saga_invoice_reference, saga_invoice_issued_at"
-        )
-        .order("period_start", { ascending: false }),
+      periodsQuery.order("period_start", { ascending: false }),
 
       admin
         .from("doctors")
@@ -289,7 +347,10 @@ export async function GET(): Promise<Response> {
     .map((row) => row.map(csvCell).join(","))
     .join("\n");
 
-  const fileName = `romdoc-sms-billing-${new Date()
+  const filterSuffix = [from, to, paymentStatus, sagaStatus]
+    .filter(Boolean)
+    .join("-");
+  const fileName = `romdoc-sms-billing-${filterSuffix || new Date()
     .toISOString()
     .slice(0, 10)}.csv`;
 
