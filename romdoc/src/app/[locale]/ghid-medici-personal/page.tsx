@@ -139,13 +139,19 @@ export default async function DoctorStaffGuidePage({
       : "Confirmările SMS pot fi trimise atunci când o programare devine confirmată.",
     isEnglish
       ? "RomDoc can also send a 24-hour SMS reminder for the patient."
-      : "Platforma RomDoc trimite și o reamintire către Pacient un SMS cu 24 de ore înainte.",
+      : "Platforma RomDoc poate trimite și o reamintire SMS către pacient cu 24 de ore înainte.",
+    isEnglish
+      ? "The messaging/SMS service is billed separately from the doctor subscription. Subscription fees do not include SMS provider costs."
+      : "Serviciul de mesagerie/SMS este facturat separat de abonamentul medicului. Costurile SMS nu sunt incluse în abonament.",
+    isEnglish
+      ? "Unpaid SMS costs cumulate from month to month until the outstanding balance is paid."
+      : "Costurile SMS neplătite se cumulează de la o lună la alta până la achitarea soldului restant.",
+    isEnglish
+      ? "The doctor can pay the outstanding SMS balance through RomDoc/Stripe; the fiscal invoice is issued separately through SAGA."
+      : "Medicul poate achita soldul SMS restant prin RomDoc/Stripe; factura fiscală este emisă separat prin SAGA.",
     isEnglish
       ? "SMS text should not contain diagnosis, symptoms, medical notes, uploaded document names or investigation results."
       : "Textul SMS nu trebuie să conțină diagnostic, simptome, note medicale, nume de documente încărcate sau rezultate de investigații.",
-    isEnglish
-      ? "Because SMS creates an additional provider cost, subscription prices may change when this service is included in commercial packages."
-      : "Deoarece SMS-ul generează un cost suplimentar de furnizor, prețurile abonamentelor pot fi ajustate atunci când serviciul este inclus în pachetele comerciale.",
   ];
 
   const creationFields = [
@@ -204,8 +210,8 @@ export default async function DoctorStaffGuidePage({
 
             <p className="mt-5 max-w-3xl text-base leading-8 text-gray-700 sm:text-lg">
               {isEnglish
-                ? "This guide explains how doctors and authorized staff use RomDoc to manage appointments, work with the patient medical folder and understand appointment SMS notifications."
-                : "Acest ghid explică modul în care medicii și personalul autorizat folosesc RomDoc pentru administrarea programărilor, lucrul cu Dosarul medical al pacientului și notificările SMS de programare."}
+                ? "This guide explains how doctors and authorized staff use RomDoc to manage appointments, work with the patient medical folder and understand appointment SMS notifications and separate SMS billing."
+                : "Acest ghid explică modul în care medicii și personalul autorizat folosesc RomDoc pentru administrarea programărilor, lucrul cu Dosarul medical al pacientului, notificările SMS de programare și facturarea separată a serviciului SMS."}
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
@@ -259,8 +265,8 @@ export default async function DoctorStaffGuidePage({
             </h2>
             <p className="mt-4 text-sm leading-7 text-gray-700">
               {isEnglish
-                ? "RomDoc can provide SMS notifications as an appointment communication service."
-                : "RomDoc oferă notificări SMS ca serviciu de comunicare pentru programări. "}
+                ? "RomDoc can provide SMS notifications as an appointment communication service. This service has its own usage cost and is not part of the base doctor subscription."
+                : "RomDoc oferă notificări SMS ca serviciu de comunicare pentru programări. Acest serviciu are cost propriu de utilizare și nu face parte din abonamentul de bază al medicului."}
             </p>
             <ul className="mt-5 space-y-3 text-sm leading-7 text-gray-700">
               {smsRules.map((rule) => (
