@@ -332,7 +332,7 @@ export default function AdminSmsControlPanel() {
         ) : null}
 
         <p className="mt-5 text-xs leading-5 text-gray-500">
-          Provider configurat: Twilio. Pentru producție sunt necesare variabilele de mediu Twilio și un număr/sender aprobat.
+          Provider configurat: SMSLink. Pentru producție sunt necesare variabilele de mediu SMSLINK_CONNECTION_ID și SMSLINK_PASSWORD.
         </p>
       </section>
 
