@@ -3,7 +3,33 @@ import { redirect } from "next/navigation";
 
 import DoctorOnboardingChecklist from "@/components/doctor/doctor-onboarding-checklist";
 import { getDoctorProfileCompletion } from "@/lib/doctors/get-doctor-profile-completion";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+
+type SmsUsageLogRow = {
+  status: string;
+  invoice_status: string | null;
+  unit_cost_minor: number | null;
+};
+
+function getCurrentMonthBounds() {
+  const now = new Date();
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+
+  return {
+    monthStartIso: monthStart.toISOString(),
+    nextMonthStartIso: nextMonthStart.toISOString(),
+  };
+}
+
+function formatMoney(minorAmount: number, currency = "RON") {
+  return new Intl.NumberFormat("ro-RO", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+  }).format(minorAmount / 100);
+}
 
 export default async function DoctorDashboardPage() {
   const supabase = await createClient();
@@ -61,6 +87,50 @@ export default async function DoctorDashboardPage() {
     );
   }
 
+  const admin = createAdminClient();
+  const { monthStartIso, nextMonthStartIso } = getCurrentMonthBounds();
+
+  const { data: smsLogsData, error: smsLogsError } = await admin
+    .from("sms_delivery_logs")
+    .select("status, invoice_status, unit_cost_minor")
+    .eq("doctor_id", completion.doctorId)
+    .gte("created_at", monthStartIso)
+    .lt("created_at", nextMonthStartIso);
+
+  if (smsLogsError) {
+    console.error("Doctor dashboard SMS usage query failed:", smsLogsError);
+  }
+
+  const smsLogs = (smsLogsData ?? []) as SmsUsageLogRow[];
+
+  const smsUsage = smsLogs.reduce(
+    (currentUsage, log) => {
+      const invoiceStatus = log.invoice_status ?? "not_billable";
+      const unitCostMinor = log.unit_cost_minor ?? 30;
+
+      if (log.status === "sent") {
+        currentUsage.sent += 1;
+      }
+
+      if (invoiceStatus === "invoiced") {
+        currentUsage.invoiced += 1;
+      }
+
+      if (invoiceStatus === "uninvoiced") {
+        currentUsage.uninvoiced += 1;
+        currentUsage.uninvoicedValueMinor += unitCostMinor;
+      }
+
+      return currentUsage;
+    },
+    {
+      sent: 0,
+      invoiced: 0,
+      uninvoiced: 0,
+      uninvoicedValueMinor: 0,
+    }
+  );
+
   return (
     <main className="px-6 py-12">
       <div className="mx-auto max-w-6xl">
@@ -102,6 +172,59 @@ export default async function DoctorDashboardPage() {
             >
               Deschide datele de facturare
             </Link>
+          </div>
+        </section>
+
+        <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#036661]">
+                SMS
+              </p>
+
+              <h2 className="mt-2 text-xl font-bold text-gray-900">
+                Utilizare SMS luna aceasta
+              </h2>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
+                Acest contor arată SMS-urile trimise pentru programările tale în
+                luna curentă. Marcarea ca facturat este făcută de Admin sau de
+                managerul Facturare.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+              Valoare nefacturată: {formatMoney(smsUsage.uninvoicedValueMinor)} + TVA
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-xl bg-gray-50 p-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Trimise luna aceasta
+              </p>
+              <p className="mt-2 text-3xl font-bold text-gray-900">
+                {smsUsage.sent}
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-emerald-50 p-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                Facturate
+              </p>
+              <p className="mt-2 text-3xl font-bold text-emerald-900">
+                {smsUsage.invoiced}
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-blue-50 p-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                Nefacturate
+              </p>
+              <p className="mt-2 text-3xl font-bold text-blue-900">
+                {smsUsage.uninvoiced}
+              </p>
+            </div>
           </div>
         </section>
       </div>
