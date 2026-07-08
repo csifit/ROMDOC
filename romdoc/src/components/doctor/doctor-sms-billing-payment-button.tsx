@@ -2,18 +2,12 @@
 
 import { useState } from "react";
 
-type DoctorSmsBillingPaymentButtonProps = {
-  billingPeriodId: string;
-};
-
 type CheckoutResponse = {
   url?: string;
   error?: string;
 };
 
-export default function DoctorSmsBillingPaymentButton({
-  billingPeriodId,
-}: DoctorSmsBillingPaymentButtonProps) {
+export default function DoctorSmsBillingPaymentButton() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -32,7 +26,7 @@ export default function DoctorSmsBillingPaymentButton({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          billingPeriodId,
+          action: "pay_unpaid_sms_balance",
         }),
       });
 
@@ -66,9 +60,7 @@ export default function DoctorSmsBillingPaymentButton({
         {isLoading ? "Se deschide Stripe..." : "Plătește acum"}
       </button>
 
-      {error ? (
-        <p className="mt-2 text-sm text-red-700">{error}</p>
-      ) : null}
+      {error ? <p className="mt-2 text-sm text-red-700">{error}</p> : null}
     </div>
   );
 }
