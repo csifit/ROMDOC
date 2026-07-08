@@ -15,6 +15,12 @@ type SmsSettings = {
   updated_at: string | null;
 };
 
+type SmsBilling = {
+  unitCostMinor: number;
+  currency: string;
+  vatMode: "plus_vat";
+};
+
 type DoctorCounter = {
   doctorId: string;
   doctorName: string;
@@ -25,11 +31,18 @@ type DoctorCounter = {
   skipped: number;
   confirmed: number;
   reminder24h: number;
+  invoiced: number;
+  uninvoiced: number;
+  notBillable: number;
+  credited: number;
+  estimatedUninvoicedMinor: number;
+  estimatedInvoicedMinor: number;
   lastSentAt: string | null;
 };
 
 type SmsAdminResponse = {
   settings?: SmsSettings;
+  billing?: SmsBilling;
   doctorCounters?: DoctorCounter[];
   message?: string;
   error?: string;
@@ -49,6 +62,14 @@ function formatDate(value: string | null) {
   }).format(new Date(value));
 }
 
+function formatMoney(minorAmount: number, currency = "RON") {
+  return new Intl.NumberFormat("ro-RO", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+  }).format(minorAmount / 100);
+}
+
 function normalizeForSearch(value: string) {
   return value
     .normalize("NFD")
@@ -59,6 +80,7 @@ function normalizeForSearch(value: string) {
 
 export default function AdminSmsControlPanel() {
   const [settings, setSettings] = useState<SmsSettings | null>(null);
+  const [billing, setBilling] = useState<SmsBilling | null>(null);
   const [doctorCounters, setDoctorCounters] = useState<DoctorCounter[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -86,6 +108,7 @@ export default function AdminSmsControlPanel() {
       }
 
       setSettings(result.settings ?? null);
+      setBilling(result.billing ?? null);
       setDoctorCounters(result.doctorCounters ?? []);
     } catch (loadError) {
       setError(
@@ -116,6 +139,8 @@ export default function AdminSmsControlPanel() {
         statusFilter === "all" ||
         (statusFilter === "sent" && counter.sent > 0) ||
         (statusFilter === "failed" && counter.failed > 0) ||
+        (statusFilter === "uninvoiced" && counter.uninvoiced > 0) ||
+        (statusFilter === "invoiced" && counter.invoiced > 0) ||
         (statusFilter === "zero" && counter.total === 0);
 
       return searchMatches && statusMatches;
@@ -132,6 +157,16 @@ export default function AdminSmsControlPanel() {
         confirmed: currentTotals.confirmed + counter.confirmed,
         reminder24h:
           currentTotals.reminder24h + counter.reminder24h,
+        invoiced: currentTotals.invoiced + counter.invoiced,
+        uninvoiced: currentTotals.uninvoiced + counter.uninvoiced,
+        notBillable: currentTotals.notBillable + counter.notBillable,
+        credited: currentTotals.credited + counter.credited,
+        estimatedUninvoicedMinor:
+          currentTotals.estimatedUninvoicedMinor +
+          counter.estimatedUninvoicedMinor,
+        estimatedInvoicedMinor:
+          currentTotals.estimatedInvoicedMinor +
+          counter.estimatedInvoicedMinor,
       }),
       {
         total: 0,
@@ -140,6 +175,12 @@ export default function AdminSmsControlPanel() {
         skipped: 0,
         confirmed: 0,
         reminder24h: 0,
+        invoiced: 0,
+        uninvoiced: 0,
+        notBillable: 0,
+        credited: 0,
+        estimatedUninvoicedMinor: 0,
+        estimatedInvoicedMinor: 0,
       }
     );
   }, [doctorCounters]);
@@ -208,6 +249,9 @@ export default function AdminSmsControlPanel() {
       </section>
     );
   }
+
+  const currency = billing?.currency ?? "RON";
+  const unitPrice = billing?.unitCostMinor ?? 30;
 
   return (
     <div className="space-y-8">
@@ -343,7 +387,7 @@ export default function AdminSmsControlPanel() {
               Counter SMS pe medic
             </h2>
             <p className="mt-2 text-sm leading-6 text-gray-600">
-              Fiecare medic apare pe un singur rând. Contorul ajută la estimarea costurilor și la viitoare ajustări de abonament.
+              Preț configurat: {formatMoney(unitPrice, currency)} / SMS trimis + TVA. Doar SMS-urile trimise cu succes sunt marcate ca facturabile.
             </p>
           </div>
 
@@ -363,6 +407,8 @@ export default function AdminSmsControlPanel() {
             >
               <option value="all">Toți medicii</option>
               <option value="sent">Cu SMS trimise</option>
+              <option value="uninvoiced">Cu SMS nefacturate</option>
+              <option value="invoiced">Cu SMS facturate</option>
               <option value="failed">Cu SMS eșuate</option>
               <option value="zero">Fără SMS</option>
             </select>
@@ -378,32 +424,33 @@ export default function AdminSmsControlPanel() {
             <p className="text-xs font-semibold uppercase tracking-wide text-green-700">Trimise</p>
             <p className="mt-1 text-2xl font-bold text-green-900">{totals.sent}</p>
           </div>
+          <div className="rounded-xl bg-blue-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Nefacturate</p>
+            <p className="mt-1 text-2xl font-bold text-blue-900">{totals.uninvoiced}</p>
+          </div>
+          <div className="rounded-xl bg-emerald-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Facturate</p>
+            <p className="mt-1 text-2xl font-bold text-emerald-900">{totals.invoiced}</p>
+          </div>
+          <div className="rounded-xl bg-amber-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Valoare nefacturată</p>
+            <p className="mt-1 text-2xl font-bold text-amber-900">{formatMoney(totals.estimatedUninvoicedMinor, currency)}</p>
+          </div>
           <div className="rounded-xl bg-red-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-red-700">Eșuate</p>
             <p className="mt-1 text-2xl font-bold text-red-900">{totals.failed}</p>
           </div>
-          <div className="rounded-xl bg-amber-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Sărite</p>
-            <p className="mt-1 text-2xl font-bold text-amber-900">{totals.skipped}</p>
-          </div>
-          <div className="rounded-xl bg-blue-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Confirmări</p>
-            <p className="mt-1 text-2xl font-bold text-blue-900">{totals.confirmed}</p>
-          </div>
-          <div className="rounded-xl bg-purple-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-purple-700">24h</p>
-            <p className="mt-1 text-2xl font-bold text-purple-900">{totals.reminder24h}</p>
-          </div>
         </div>
 
         <div className="mt-6 overflow-hidden rounded-2xl border border-gray-200">
-          <div className="hidden grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-3 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 lg:grid">
+          <div className="hidden grid-cols-[2fr_0.8fr_0.8fr_0.9fr_0.9fr_1.1fr_1fr_1fr] gap-3 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 lg:grid">
             <span>Medic</span>
-            <span>Total</span>
             <span>Trimise</span>
             <span>Eșuate</span>
+            <span>Nefacturate</span>
+            <span>Facturate</span>
+            <span>Valoare nefacturată</span>
             <span>Confirmări</span>
-            <span>24h</span>
             <span>Ultimul SMS</span>
           </div>
 
@@ -416,7 +463,7 @@ export default function AdminSmsControlPanel() {
               {filteredCounters.map((counter) => (
                 <div
                   key={counter.doctorId}
-                  className="grid gap-3 px-4 py-4 text-sm text-gray-700 lg:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_1fr]"
+                  className="grid gap-3 px-4 py-4 text-sm text-gray-700 lg:grid-cols-[2fr_0.8fr_0.8fr_0.9fr_0.9fr_1.1fr_1fr_1fr]"
                 >
                   <div>
                     <p className="font-semibold text-gray-900">
@@ -424,11 +471,12 @@ export default function AdminSmsControlPanel() {
                     </p>
                     <p className="text-xs text-gray-500">{counter.slug}</p>
                   </div>
-                  <p><span className="font-semibold lg:hidden">Total: </span>{counter.total}</p>
                   <p><span className="font-semibold lg:hidden">Trimise: </span>{counter.sent}</p>
                   <p><span className="font-semibold lg:hidden">Eșuate: </span>{counter.failed}</p>
+                  <p><span className="font-semibold lg:hidden">Nefacturate: </span>{counter.uninvoiced}</p>
+                  <p><span className="font-semibold lg:hidden">Facturate: </span>{counter.invoiced}</p>
+                  <p><span className="font-semibold lg:hidden">Valoare nefacturată: </span>{formatMoney(counter.estimatedUninvoicedMinor, currency)}</p>
                   <p><span className="font-semibold lg:hidden">Confirmări: </span>{counter.confirmed}</p>
-                  <p><span className="font-semibold lg:hidden">24h: </span>{counter.reminder24h}</p>
                   <p><span className="font-semibold lg:hidden">Ultimul SMS: </span>{formatDate(counter.lastSentAt)}</p>
                 </div>
               ))}
