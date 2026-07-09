@@ -87,14 +87,6 @@ type ClinicRow = {
   clinic_translations: ClinicTranslation[] | null;
 };
 
-type ClinicDoctorRelationshipRow = {
-  organization_id: string;
-  doctor_id: string | null;
-  invitation_status: string;
-  coverage_status: string;
-  payment_responsibility: string;
-};
-
 type AuthUserSummary = {
   email: string | null;
 };
@@ -107,11 +99,35 @@ type ManagerInfo = {
   status: string;
 };
 
+type ClinicDoctorRelationshipRow = {
+  organization_id: string;
+  clinic_id: string | null;
+  doctor_id: string | null;
+  invited_doctor_email: string | null;
+  accepted_account_email: string | null;
+  invitation_status: string;
+  coverage_status: string;
+  payment_responsibility: string;
+};
+
+type ClinicDoctorInfo = {
+  doctorId: string | null;
+  displayName: string;
+  email: string | null;
+  clinicName: string | null;
+  invitationStatus: string;
+  coverageStatus: string;
+};
+
 type OrganizationInvoiceGroup = {
   organization: OrganizationRow;
   billingProfile: OrganizationBillingProfileRow | null;
   managers: ManagerInfo[];
+  clinicDoctors: ClinicDoctorInfo[];
   doctorCount: number;
+  subscriptionSubtotalMinor: number;
+  subscriptionVatMinor: number;
+  subscriptionTotalMinor: number;
   smsLogs: SmsLogRow[];
   sentCount: number;
   uninvoicedCount: number;
@@ -130,7 +146,12 @@ function getMonthRange(monthParam: string | undefined) {
   const year = match ? Number(match[1]) : fallbackYear;
   const month = match ? Number(match[2]) : fallbackMonth;
 
-  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    month < 1 ||
+    month > 12
+  ) {
     return getMonthRange(undefined);
   }
 
@@ -195,13 +216,13 @@ function getFirstRelation<T>(relation: T | T[] | null | undefined): T | null {
     return null;
   }
 
-  return Array.isArray(relation) ? relation[0] ?? null : relation;
+  return Array.isArray(relation) ? (relation[0] ?? null) : relation;
 }
 
 function getDisplayName(
   firstName: string | null | undefined,
   lastName: string | null | undefined,
-  fallback = "Manager clinică"
+  fallback = "Manager clinică",
 ) {
   return [firstName, lastName].filter(Boolean).join(" ").trim() || fallback;
 }
@@ -209,7 +230,7 @@ function getDisplayName(
 function getClinicName(clinic: ClinicRow) {
   return (
     clinic.clinic_translations?.find(
-      (translation) => translation.locale === "ro"
+      (translation) => translation.locale === "ro",
     )?.name ??
     clinic.clinic_translations?.[0]?.name ??
     clinic.slug
@@ -273,15 +294,14 @@ function SummaryBox({
       <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
         {label}
       </p>
-      <p className="mt-3 text-2xl font-bold text-gray-900">
-        {value}
-      </p>
-      <p className="mt-2 text-sm leading-6 text-gray-600">
-        {helper}
-      </p>
+      <p className="mt-3 text-2xl font-bold text-gray-900">{value}</p>
+      <p className="mt-2 text-sm leading-6 text-gray-600">{helper}</p>
     </div>
   );
 }
+
+const DOCTOR_MONTHLY_SUBSCRIPTION_MINOR = 6000;
+const ROMANIA_VAT_RATE = 0.19;
 
 function FieldLine({
   label,
@@ -295,9 +315,7 @@ function FieldLine({
       <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
         {label}
       </dt>
-      <dd className="mt-1 text-sm font-medium text-gray-900">
-        {value || "—"}
-      </dd>
+      <dd className="mt-1 text-sm font-medium text-gray-900">{value || "—"}</dd>
     </div>
   );
 }
@@ -386,9 +404,7 @@ export default async function ManagerClinicSmsPage({
     return (
       <div className="space-y-8">
         <header>
-          <p className="text-sm font-semibold text-[#036661]">
-            Panou manager
-          </p>
+          <p className="text-sm font-semibold text-[#036661]">Panou manager</p>
           <h1 className="mt-2 text-3xl font-bold text-gray-900">
             Facturare SMS clinici
           </h1>
@@ -412,16 +428,16 @@ export default async function ManagerClinicSmsPage({
     organizationsResult,
     billingProfilesResult,
     organizationMembersResult,
-    doctorRelationshipsResult,
+    clinicDoctorRelationshipsResult,
     smsLogsResult,
   ] = await Promise.all([
     admin
       .from("clinic_organizations")
-      .select("id, name, status, contact_name, contact_email, contact_phone, website")
+      .select(
+        "id, name, status, contact_name, contact_email, contact_phone, website",
+      )
       .order("name", { ascending: true }),
-    admin
-      .from("clinic_organization_billing_profiles")
-      .select(`
+    admin.from("clinic_organization_billing_profiles").select(`
         organization_id,
         company_name,
         tax_id,
@@ -436,32 +452,38 @@ export default async function ManagerClinicSmsPage({
       `),
     admin
       .from("clinic_organization_members")
-      .select(`
+      .select(
+        `
         organization_id,
         profile_id,
         member_role,
         status,
-        profiles (
+        profiles!clinic_organization_members_profile_id_fkey (
           first_name,
           last_name
         )
-      `)
+      `,
+      )
       .eq("status", "active"),
     admin
       .from("clinic_doctor_relationships")
-      .select(`
+      .select(
+        `
         organization_id,
+        clinic_id,
         doctor_id,
+        invited_doctor_email,
+        accepted_account_email,
         invitation_status,
         coverage_status,
         payment_responsibility
-      `)
-      .eq("payment_responsibility", "clinic_paid")
-      .eq("invitation_status", "accepted")
-      .eq("coverage_status", "active"),
+      `,
+      )
+      .eq("payment_responsibility", "clinic_paid"),
     admin
       .from("sms_delivery_logs")
-      .select(`
+      .select(
+        `
         id,
         doctor_id,
         clinic_id,
@@ -479,37 +501,36 @@ export default async function ManagerClinicSmsPage({
         invoiced_at,
         payer_type,
         payer_clinic_organization_id
-      `)
+      `,
+      )
       .gte("created_at", monthRange.startIso)
       .lt("created_at", monthRange.endIso)
       .order("created_at", { ascending: false }),
   ]);
 
   const organizations = (organizationsResult.data ?? []) as OrganizationRow[];
-  const billingProfiles =
-    (billingProfilesResult.data ?? []) as OrganizationBillingProfileRow[];
-  const organizationMembers =
-    (organizationMembersResult.data ?? []) as OrganizationMemberRow[];
-  const doctorRelationships =
-    (doctorRelationshipsResult.data ?? []) as ClinicDoctorRelationshipRow[];
+  const billingProfiles = (billingProfilesResult.data ??
+    []) as OrganizationBillingProfileRow[];
+  const organizationMembers = (organizationMembersResult.data ??
+    []) as OrganizationMemberRow[];
+  const clinicDoctorRelationships = (clinicDoctorRelationshipsResult.data ??
+    []) as ClinicDoctorRelationshipRow[];
   const allSmsLogs = (smsLogsResult.data ?? []) as SmsLogRow[];
 
   const clinicSmsLogs = allSmsLogs.filter(
     (log) =>
       log.payer_type === "clinic_organization" ||
-      Boolean(log.payer_clinic_organization_id)
+      Boolean(log.payer_clinic_organization_id),
   );
 
   const billingProfileByOrganizationId = new Map(
-    billingProfiles.map((profile) => [profile.organization_id, profile])
+    billingProfiles.map((profile) => [profile.organization_id, profile]),
   );
 
   const managerProfileIds = Array.from(
     new Set(
-      organizationMembers
-        .map((member) => member.profile_id)
-        .filter(Boolean)
-    )
+      organizationMembers.map((member) => member.profile_id).filter(Boolean),
+    ),
   );
 
   const authUserById = await listAuthUsersById(managerProfileIds);
@@ -523,7 +544,7 @@ export default async function ManagerClinicSmsPage({
       name: getDisplayName(
         memberProfile?.first_name,
         memberProfile?.last_name,
-        "Manager clinică"
+        "Manager clinică",
       ),
       email: authUserById.get(member.profile_id)?.email ?? null,
       role: member.member_role,
@@ -535,48 +556,39 @@ export default async function ManagerClinicSmsPage({
     managersByOrganizationId.set(member.organization_id, existing);
   }
 
-  const doctorIdsByOrganizationId = new Map<string, Set<string>>();
-
-  for (const relationship of doctorRelationships) {
-    if (!relationship.doctor_id) {
-      continue;
-    }
-
-    const existing =
-      doctorIdsByOrganizationId.get(relationship.organization_id) ??
-      new Set<string>();
-
-    existing.add(relationship.doctor_id);
-    doctorIdsByOrganizationId.set(relationship.organization_id, existing);
-  }
-
   const organizationIdsWithSms = new Set(
     clinicSmsLogs
       .map((log) => log.payer_clinic_organization_id)
-      .filter((id): id is string => Boolean(id))
+      .filter((id): id is string => Boolean(id)),
   );
 
   const groupedOrganizations = organizations.filter(
     (organization) =>
       organization.status === "active" ||
       organizationIdsWithSms.has(organization.id) ||
-      billingProfileByOrganizationId.has(organization.id)
+      billingProfileByOrganizationId.has(organization.id),
   );
 
   const doctorIds = Array.from(
     new Set(
-      clinicSmsLogs
-        .map((log) => log.doctor_id)
-        .filter((id): id is string => Boolean(id))
-    )
+      [
+        ...clinicSmsLogs.map((log) => log.doctor_id),
+        ...clinicDoctorRelationships.map(
+          (relationship) => relationship.doctor_id,
+        ),
+      ].filter((id): id is string => Boolean(id)),
+    ),
   );
 
   const clinicIds = Array.from(
     new Set(
-      clinicSmsLogs
-        .map((log) => log.clinic_id)
-        .filter((id): id is string => Boolean(id))
-    )
+      [
+        ...clinicSmsLogs.map((log) => log.clinic_id),
+        ...clinicDoctorRelationships.map(
+          (relationship) => relationship.clinic_id,
+        ),
+      ].filter((id): id is string => Boolean(id)),
+    ),
   );
 
   const [doctorsResult, clinicsResult] = await Promise.all([
@@ -586,14 +598,16 @@ export default async function ManagerClinicSmsPage({
     clinicIds.length > 0
       ? admin
           .from("clinics")
-          .select(`
+          .select(
+            `
             id,
             slug,
             clinic_translations (
               locale,
               name
             )
-          `)
+          `,
+          )
           .in("id", clinicIds)
       : Promise.resolve({ data: [], error: null }),
   ]);
@@ -602,41 +616,89 @@ export default async function ManagerClinicSmsPage({
   const clinics = (clinicsResult.data ?? []) as ClinicRow[];
 
   const doctorSlugById = new Map(
-    doctors.map((doctor) => [doctor.id, doctor.slug])
+    doctors.map((doctor) => [doctor.id, doctor.slug]),
   );
   const clinicNameById = new Map(
-    clinics.map((clinic) => [clinic.id, getClinicName(clinic)])
+    clinics.map((clinic) => [clinic.id, getClinicName(clinic)]),
   );
+
+  const clinicDoctorsByOrganizationId = new Map<string, ClinicDoctorInfo[]>();
+
+  for (const relationship of clinicDoctorRelationships) {
+    const isManagedDoctor =
+      relationship.payment_responsibility === "clinic_paid" &&
+      relationship.invitation_status === "accepted" &&
+      relationship.coverage_status === "active";
+
+    if (!isManagedDoctor) {
+      continue;
+    }
+
+    const doctorLabel = relationship.doctor_id
+      ? (doctorSlugById.get(relationship.doctor_id) ??
+        relationship.doctor_id.slice(0, 8))
+      : (relationship.accepted_account_email ??
+        relationship.invited_doctor_email ??
+        "Medic clinică");
+
+    const doctorInfo: ClinicDoctorInfo = {
+      doctorId: relationship.doctor_id,
+      displayName: doctorLabel,
+      email:
+        relationship.accepted_account_email ??
+        relationship.invited_doctor_email ??
+        null,
+      clinicName: relationship.clinic_id
+        ? (clinicNameById.get(relationship.clinic_id) ??
+          relationship.clinic_id.slice(0, 8))
+        : null,
+      invitationStatus: relationship.invitation_status,
+      coverageStatus: relationship.coverage_status,
+    };
+
+    const existing =
+      clinicDoctorsByOrganizationId.get(relationship.organization_id) ?? [];
+    existing.push(doctorInfo);
+    clinicDoctorsByOrganizationId.set(relationship.organization_id, existing);
+  }
 
   const groups: OrganizationInvoiceGroup[] = groupedOrganizations
     .map((organization) => {
       const smsLogs = clinicSmsLogs.filter(
-        (log) => log.payer_clinic_organization_id === organization.id
+        (log) => log.payer_clinic_organization_id === organization.id,
       );
       const sentCount = smsLogs.filter((row) => row.status === "sent").length;
-      const failedCount = smsLogs.filter((row) => row.status === "failed").length;
+      const failedCount = smsLogs.filter(
+        (row) => row.status === "failed",
+      ).length;
       const uninvoicedRows = smsLogs.filter(
-        (row) => row.invoice_status === "uninvoiced"
+        (row) => row.invoice_status === "uninvoiced",
       );
       const invoicedCount = smsLogs.filter(
-        (row) => row.invoice_status === "invoiced"
+        (row) => row.invoice_status === "invoiced",
       ).length;
       const currency = smsLogs.find((row) => row.currency)?.currency ?? "RON";
-      const smsDoctorCount = new Set(
-        smsLogs
-          .map((row) => row.doctor_id)
-          .filter((doctorId): doctorId is string => Boolean(doctorId))
-      ).size;
+
+      const clinicDoctors =
+        clinicDoctorsByOrganizationId.get(organization.id) ?? [];
+      const doctorCount = clinicDoctors.length;
+      const subscriptionSubtotalMinor =
+        doctorCount * DOCTOR_MONTHLY_SUBSCRIPTION_MINOR;
+      const subscriptionVatMinor = Math.round(
+        subscriptionSubtotalMinor * ROMANIA_VAT_RATE,
+      );
 
       return {
         organization,
         billingProfile:
           billingProfileByOrganizationId.get(organization.id) ?? null,
         managers: managersByOrganizationId.get(organization.id) ?? [],
-        doctorCount: Math.max(
-          doctorIdsByOrganizationId.get(organization.id)?.size ?? 0,
-          smsDoctorCount
-        ),
+        clinicDoctors,
+        doctorCount,
+        subscriptionSubtotalMinor,
+        subscriptionVatMinor,
+        subscriptionTotalMinor:
+          subscriptionSubtotalMinor + subscriptionVatMinor,
         smsLogs,
         sentCount,
         uninvoicedCount: uninvoicedRows.length,
@@ -644,7 +706,7 @@ export default async function ManagerClinicSmsPage({
         failedCount,
         uninvoicedCostMinor: uninvoicedRows.reduce(
           (total, row) => total + (row.unit_cost_minor ?? 0),
-          0
+          0,
         ),
         currency,
       };
@@ -656,22 +718,22 @@ export default async function ManagerClinicSmsPage({
 
       return first.organization.name.localeCompare(
         second.organization.name,
-        "ro"
+        "ro",
       );
     });
 
   const sentRows = clinicSmsLogs.filter((row) => row.status === "sent");
   const failedRows = clinicSmsLogs.filter((row) => row.status === "failed");
   const uninvoicedRows = clinicSmsLogs.filter(
-    (row) => row.invoice_status === "uninvoiced"
+    (row) => row.invoice_status === "uninvoiced",
   );
   const invoicedRows = clinicSmsLogs.filter(
-    (row) => row.invoice_status === "invoiced"
+    (row) => row.invoice_status === "invoiced",
   );
 
   const estimatedUninvoicedCostMinor = uninvoicedRows.reduce(
     (total, row) => total + (row.unit_cost_minor ?? 0),
-    0
+    0,
   );
 
   const currency = clinicSmsLogs.find((row) => row.currency)?.currency ?? "RON";
@@ -679,7 +741,7 @@ export default async function ManagerClinicSmsPage({
     organizationsResult.error?.message ??
     billingProfilesResult.error?.message ??
     organizationMembersResult.error?.message ??
-    doctorRelationshipsResult.error?.message ??
+    clinicDoctorRelationshipsResult.error?.message ??
     smsLogsResult.error?.message ??
     doctorsResult.error?.message ??
     clinicsResult.error?.message ??
@@ -825,11 +887,11 @@ export default async function ManagerClinicSmsPage({
                       <p className="mt-1 text-sm text-gray-600">
                         {group.doctorCount}{" "}
                         {group.doctorCount === 1 ? "medic" : "medici"} ·{" "}
-                        {group.sentCount} SMS trimise ·{" "}
-                        {group.uninvoicedCount} nefacturate ·{" "}
+                        {group.sentCount} SMS trimise · {group.uninvoicedCount}{" "}
+                        nefacturate ·{" "}
                         {formatCurrencyMinor(
                           group.uninvoicedCostMinor,
-                          group.currency
+                          group.currency,
                         )}
                       </p>
                     </div>
@@ -860,11 +922,68 @@ export default async function ManagerClinicSmsPage({
                         label="Cost estimat"
                         value={formatCurrencyMinor(
                           group.uninvoicedCostMinor,
-                          group.currency
+                          group.currency,
                         )}
                         helper="Doar SMS nefacturate."
                       />
                     </div>
+
+                    <section className="mt-6 rounded-2xl border border-[#036661]/20 bg-[#036661]/5 p-5">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                          <h4 className="font-bold text-gray-900">
+                            Abonamente medici gestionați de clinică
+                          </h4>
+                          <p className="mt-2 text-sm leading-6 text-gray-700">
+                            Nr. medici gestionați = {group.doctorCount};{" "}
+                            {group.doctorCount} × 60 lei ={" "}
+                            {formatCurrencyMinor(
+                              group.subscriptionSubtotalMinor,
+                              "RON",
+                            )}{" "}
+                            + TVA.
+                          </p>
+                        </div>
+
+                        <div className="grid gap-3 text-sm sm:grid-cols-3 lg:min-w-[30rem]">
+                          <div className="rounded-xl border border-white/70 bg-white p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                              Subtotal
+                            </p>
+                            <p className="mt-1 text-lg font-bold text-gray-900">
+                              {formatCurrencyMinor(
+                                group.subscriptionSubtotalMinor,
+                                "RON",
+                              )}
+                            </p>
+                          </div>
+
+                          <div className="rounded-xl border border-white/70 bg-white p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                              TVA 19%
+                            </p>
+                            <p className="mt-1 text-lg font-bold text-gray-900">
+                              {formatCurrencyMinor(
+                                group.subscriptionVatMinor,
+                                "RON",
+                              )}
+                            </p>
+                          </div>
+
+                          <div className="rounded-xl border border-white/70 bg-white p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                              Total
+                            </p>
+                            <p className="mt-1 text-lg font-bold text-gray-900">
+                              {formatCurrencyMinor(
+                                group.subscriptionTotalMinor,
+                                "RON",
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </section>
 
                     <div className="mt-6 grid gap-5 lg:grid-cols-3">
                       <section className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
@@ -872,10 +991,22 @@ export default async function ManagerClinicSmsPage({
                           Date organizație
                         </h4>
                         <dl className="mt-4 space-y-4">
-                          <FieldLine label="Contact" value={organization.contact_name} />
-                          <FieldLine label="E-mail contact" value={organization.contact_email} />
-                          <FieldLine label="Telefon" value={organization.contact_phone} />
-                          <FieldLine label="Website" value={organization.website} />
+                          <FieldLine
+                            label="Contact"
+                            value={organization.contact_name}
+                          />
+                          <FieldLine
+                            label="E-mail contact"
+                            value={organization.contact_email}
+                          />
+                          <FieldLine
+                            label="Telefon"
+                            value={organization.contact_phone}
+                          />
+                          <FieldLine
+                            label="Website"
+                            value={organization.website}
+                          />
                         </dl>
                       </section>
 
@@ -885,7 +1016,10 @@ export default async function ManagerClinicSmsPage({
                         </h4>
                         {billing ? (
                           <dl className="mt-4 space-y-4">
-                            <FieldLine label="Firmă" value={billing.company_name} />
+                            <FieldLine
+                              label="Firmă"
+                              value={billing.company_name}
+                            />
                             <FieldLine label="CUI" value={billing.tax_id} />
                             <FieldLine
                               label="Nr. Registrul Comerțului"
@@ -895,8 +1029,14 @@ export default async function ManagerClinicSmsPage({
                               label="Plătitor TVA"
                               value={billing.is_vat_payer ? "Da" : "Nu"}
                             />
-                            <FieldLine label="Cod TVA" value={billing.vat_number} />
-                            <FieldLine label="E-mail facturare" value={billing.billing_email} />
+                            <FieldLine
+                              label="Cod TVA"
+                              value={billing.vat_number}
+                            />
+                            <FieldLine
+                              label="E-mail facturare"
+                              value={billing.billing_email}
+                            />
                             <FieldLine
                               label="Adresă"
                               value={`${billing.billing_address}, ${billing.billing_city}, ${billing.billing_county}, ${billing.billing_country}`}
@@ -917,7 +1057,8 @@ export default async function ManagerClinicSmsPage({
                         </h4>
                         {group.managers.length === 0 ? (
                           <p className="mt-4 text-sm leading-6 text-gray-600">
-                            Nu există manager activ legat de această organizație.
+                            Nu există manager activ legat de această
+                            organizație.
                           </p>
                         ) : (
                           <div className="mt-4 space-y-3">
@@ -933,7 +1074,8 @@ export default async function ManagerClinicSmsPage({
                                   {manager.email ?? "E-mail indisponibil"}
                                 </p>
                                 <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                  {getMemberRoleLabel(manager.role)} · {manager.status}
+                                  {getMemberRoleLabel(manager.role)} ·{" "}
+                                  {manager.status}
                                 </p>
                               </div>
                             ))}
@@ -946,11 +1088,59 @@ export default async function ManagerClinicSmsPage({
                       <div className="flex flex-wrap items-start justify-between gap-4">
                         <div>
                           <h4 className="font-bold text-gray-900">
+                            Medici gestionați de clinică
+                          </h4>
+                          <p className="mt-1 text-sm text-gray-600">
+                            Acești medici sunt conturi clinic-paid acceptate și
+                            active pentru organizația de clinică.
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-[#F0EEE9] px-3 py-1 text-sm font-semibold text-gray-700">
+                          {group.doctorCount}{" "}
+                          {group.doctorCount === 1 ? "medic" : "medici"}
+                        </span>
+                      </div>
+
+                      {group.clinicDoctors.length === 0 ? (
+                        <div className="mt-5 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm leading-6 text-gray-600">
+                          Nu există încă medici clinic-paid activi legați de
+                          această organizație.
+                        </div>
+                      ) : (
+                        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                          {group.clinicDoctors.map((doctor) => (
+                            <div
+                              key={`${organization.id}-${doctor.doctorId ?? doctor.email ?? doctor.displayName}`}
+                              className="rounded-xl border border-gray-200 bg-gray-50 p-4"
+                            >
+                              <p className="font-semibold text-gray-900">
+                                {doctor.displayName}
+                              </p>
+                              <p className="mt-1 text-sm text-gray-600">
+                                {doctor.email ?? "E-mail indisponibil"}
+                              </p>
+                              <p className="mt-1 text-sm text-gray-600">
+                                {doctor.clinicName ?? "Locație neasignată"}
+                              </p>
+                              <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                {doctor.invitationStatus} ·{" "}
+                                {doctor.coverageStatus}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </section>
+
+                    <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                          <h4 className="font-bold text-gray-900">
                             Detalii SMS
                           </h4>
                           <p className="mt-1 text-sm text-gray-600">
-                            Numărul pacientului este mascat. Nu afișăm conținutul
-                            mesajelor.
+                            Numărul pacientului este mascat. Nu afișăm
+                            conținutul mesajelor.
                           </p>
                         </div>
                         <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-semibold text-gray-700">
@@ -987,12 +1177,14 @@ export default async function ManagerClinicSmsPage({
                                     </td>
                                     <td className="px-4 py-3 text-gray-700">
                                       {row.doctor_id
-                                        ? doctorSlugById.get(row.doctor_id) ?? row.doctor_id.slice(0, 8)
+                                        ? (doctorSlugById.get(row.doctor_id) ??
+                                          row.doctor_id.slice(0, 8))
                                         : "—"}
                                     </td>
                                     <td className="px-4 py-3 text-gray-700">
                                       {row.clinic_id
-                                        ? clinicNameById.get(row.clinic_id) ?? row.clinic_id.slice(0, 8)
+                                        ? (clinicNameById.get(row.clinic_id) ??
+                                          row.clinic_id.slice(0, 8))
                                         : "—"}
                                     </td>
                                     <td className="px-4 py-3 text-gray-700">
@@ -1005,7 +1197,9 @@ export default async function ManagerClinicSmsPage({
                                       {maskRecipient(row.recipient)}
                                     </td>
                                     <td className="px-4 py-3 text-gray-700">
-                                      <div>{getInvoiceLabel(row.invoice_status)}</div>
+                                      <div>
+                                        {getInvoiceLabel(row.invoice_status)}
+                                      </div>
                                       {row.invoice_reference ? (
                                         <div className="text-xs text-gray-500">
                                           {row.invoice_reference}
@@ -1015,7 +1209,7 @@ export default async function ManagerClinicSmsPage({
                                     <td className="whitespace-nowrap px-4 py-3 text-right font-medium text-gray-900">
                                       {formatCurrencyMinor(
                                         row.unit_cost_minor ?? 0,
-                                        row.currency ?? group.currency
+                                        row.currency ?? group.currency,
                                       )}
                                     </td>
                                   </tr>
