@@ -13,7 +13,8 @@ import Button from "@/components/ui/button";
 
 type RegistrationType =
   | "patient"
-  | "doctor";
+  | "doctor"
+  | "clinic";
 
 type SelectOption = {
   id: string;
@@ -54,14 +55,27 @@ function getInitialRegistrationType():
     return "patient";
   }
 
-  const type =
+  const searchParams =
     new URLSearchParams(
       window.location.search
-    ).get("type");
+    );
 
-  return type === "doctor"
-    ? "doctor"
-    : "patient";
+  const requestedType =
+    searchParams.get("type") ??
+    searchParams.get("role");
+
+  if (requestedType === "doctor") {
+    return "doctor";
+  }
+
+  if (
+    requestedType === "clinic" ||
+    requestedType === "clinica"
+  ) {
+    return "clinic";
+  }
+
+  return "patient";
 }
 
 function validatePassword(
@@ -132,6 +146,47 @@ export default function RegisterForm({
   const [message, setMessage] =
     useState("");
 
+  const [clinicName, setClinicName] =
+    useState("");
+
+  const [clinicCity, setClinicCity] =
+    useState("");
+
+  const [clinicWebsite, setClinicWebsite] =
+    useState("");
+
+  const [billingCompanyName, setBillingCompanyName] =
+    useState("");
+
+  const [billingTaxId, setBillingTaxId] =
+    useState("");
+
+  const [
+    billingTradeRegisterNumber,
+    setBillingTradeRegisterNumber,
+  ] = useState("");
+
+  const [billingAddress, setBillingAddress] =
+    useState("");
+
+  const [billingCity, setBillingCity] =
+    useState("");
+
+  const [billingCounty, setBillingCounty] =
+    useState("");
+
+  const [billingCountry, setBillingCountry] =
+    useState("România");
+
+  const [billingEmail, setBillingEmail] =
+    useState("");
+
+  const [isVatPayer, setIsVatPayer] =
+    useState(false);
+
+  const [vatNumber, setVatNumber] =
+    useState("");
+
   const [
     acceptedTerms,
     setAcceptedTerms,
@@ -177,6 +232,11 @@ export default function RegisterForm({
         type
       );
 
+      url.searchParams.set(
+        "role",
+        type
+      );
+
       window.history.replaceState(
         {},
         "",
@@ -200,6 +260,12 @@ export default function RegisterForm({
 
     const normalizedEmail =
       email.trim().toLowerCase();
+
+    const normalizedPhone =
+      phone.trim();
+
+    const normalizedBillingEmail =
+      billingEmail.trim().toLowerCase();
 
     if (
       normalizedFirstName.length < 2
@@ -254,7 +320,7 @@ export default function RegisterForm({
     if (
       registrationType === "doctor"
     ) {
-      if (phone.trim().length < 7) {
+      if (normalizedPhone.length < 7) {
         setError(
           "Introdu un număr de telefon valid."
         );
@@ -265,6 +331,86 @@ export default function RegisterForm({
       if (!specialtyId) {
         setError(
           "Selectează specialitatea medicală."
+        );
+
+        return;
+      }
+    }
+
+    if (
+      registrationType === "clinic"
+    ) {
+      if (normalizedPhone.length < 7) {
+        setError(
+          "Introdu un număr de telefon valid pentru persoana de contact."
+        );
+
+        return;
+      }
+
+      if (clinicName.trim().length < 2) {
+        setError(
+          "Introdu denumirea clinicii sau organizației."
+        );
+
+        return;
+      }
+
+      if (clinicCity.trim().length < 2) {
+        setError(
+          "Introdu orașul clinicii."
+        );
+
+        return;
+      }
+
+      if (
+        billingCompanyName.trim().length < 2
+      ) {
+        setError(
+          "Introdu denumirea firmei pentru facturare."
+        );
+
+        return;
+      }
+
+      if (billingTaxId.trim().length < 2) {
+        setError("Introdu CUI-ul firmei.");
+        return;
+      }
+
+      if (
+        billingAddress.trim().length < 5
+      ) {
+        setError(
+          "Introdu adresa de facturare."
+        );
+
+        return;
+      }
+
+      if (billingCity.trim().length < 2) {
+        setError(
+          "Introdu orașul de facturare."
+        );
+
+        return;
+      }
+
+      if (billingCounty.trim().length < 2) {
+        setError(
+          "Introdu județul de facturare."
+        );
+
+        return;
+      }
+
+      if (
+        !normalizedBillingEmail ||
+        !normalizedBillingEmail.includes("@")
+      ) {
+        setError(
+          "Introdu o adresă de e-mail validă pentru facturare."
         );
 
         return;
@@ -287,7 +433,9 @@ export default function RegisterForm({
         const nextPath =
           registrationType === "doctor"
             ? "/doctor-application"
-            : getSafeNextPath();
+            : registrationType === "clinic"
+              ? "/dashboard"
+              : getSafeNextPath();
 
         const confirmationUrl =
           new URL(
@@ -326,8 +474,10 @@ export default function RegisterForm({
 
                 phone:
                   registrationType ===
-                  "doctor"
-                    ? phone.trim()
+                    "doctor" ||
+                  registrationType ===
+                    "clinic"
+                    ? normalizedPhone
                     : null,
 
                 specialty_id:
@@ -344,8 +494,88 @@ export default function RegisterForm({
 
                 message:
                   registrationType ===
-                  "doctor"
+                    "doctor" ||
+                  registrationType ===
+                    "clinic"
                     ? message.trim()
+                    : null,
+
+                clinic_name:
+                  registrationType ===
+                  "clinic"
+                    ? clinicName.trim()
+                    : null,
+
+                clinic_city:
+                  registrationType ===
+                  "clinic"
+                    ? clinicCity.trim()
+                    : null,
+
+                clinic_website:
+                  registrationType ===
+                  "clinic"
+                    ? clinicWebsite.trim()
+                    : null,
+
+                billing_company_name:
+                  registrationType ===
+                  "clinic"
+                    ? billingCompanyName.trim()
+                    : null,
+
+                billing_tax_id:
+                  registrationType ===
+                  "clinic"
+                    ? billingTaxId.trim()
+                    : null,
+
+                billing_trade_register_number:
+                  registrationType ===
+                  "clinic"
+                    ? billingTradeRegisterNumber.trim()
+                    : null,
+
+                billing_address:
+                  registrationType ===
+                  "clinic"
+                    ? billingAddress.trim()
+                    : null,
+
+                billing_city:
+                  registrationType ===
+                  "clinic"
+                    ? billingCity.trim()
+                    : null,
+
+                billing_county:
+                  registrationType ===
+                  "clinic"
+                    ? billingCounty.trim()
+                    : null,
+
+                billing_country:
+                  registrationType ===
+                  "clinic"
+                    ? billingCountry.trim()
+                    : null,
+
+                billing_email:
+                  registrationType ===
+                  "clinic"
+                    ? normalizedBillingEmail
+                    : null,
+
+                is_vat_payer:
+                  registrationType ===
+                  "clinic"
+                    ? isVatPayer
+                    : null,
+
+                vat_number:
+                  registrationType ===
+                  "clinic"
+                    ? vatNumber.trim()
                     : null,
               },
             },
@@ -411,14 +641,12 @@ export default function RegisterForm({
           );
 
           router.refresh();
-
           return;
         }
 
         if (data.session) {
           router.replace(nextPath);
           router.refresh();
-
           return;
         }
 
@@ -441,8 +669,18 @@ export default function RegisterForm({
   const isDoctor =
     registrationType === "doctor";
 
+  const isClinic =
+    registrationType === "clinic";
+
+  const submitLabel =
+    isDoctor
+      ? "Continuă ca medic"
+      : isClinic
+        ? "Trimite cererea clinicii"
+        : "Creează cont de pacient";
+
   return (
-    <div className="w-full max-w-2xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+    <div className="w-full max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
       <header className="text-center">
         <Link
           href="/"
@@ -464,7 +702,7 @@ export default function RegisterForm({
       <div
         role="tablist"
         aria-label="Tip cont"
-        className="mt-8 grid grid-cols-2 rounded-xl bg-[#F0EEE9] p-1"
+        className="mt-8 grid grid-cols-1 gap-1 rounded-xl bg-[#F0EEE9] p-1 sm:grid-cols-3"
       >
         <button
           type="button"
@@ -505,6 +743,24 @@ export default function RegisterForm({
         >
           Sunt medic
         </button>
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={isClinic}
+          onClick={() =>
+            selectRegistrationType(
+              "clinic"
+            )
+          }
+          className={`rounded-lg px-4 py-3 text-sm font-semibold transition ${
+            isClinic
+              ? "bg-white text-gray-900 shadow-sm"
+              : "text-gray-600 hover:text-gray-900"
+          }`}
+        >
+          Suntem clinică
+        </button>
       </div>
 
       <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm leading-6 text-gray-700">
@@ -517,6 +773,14 @@ export default function RegisterForm({
               60 lei/lună + TVA
             </strong>
             .
+          </>
+        ) : isClinic ? (
+          <>
+            Contul de clinică este pentru
+            organizații care doresc să invite
+            medici, să centralizeze abonamentele
+            acoperite de clinică și să urmărească
+            datele de facturare.
           </>
         ) : (
           <>
@@ -531,22 +795,70 @@ export default function RegisterForm({
         onSubmit={handleSubmit}
         className="mt-7 space-y-5"
       >
-        <div className="grid gap-5 sm:grid-cols-2">
+        <section className="space-y-5">
+          <h2 className="text-base font-semibold text-gray-900">
+            Date cont
+          </h2>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-sm font-medium text-gray-700">
+                Prenume
+              </span>
+
+              <input
+                type="text"
+                required
+                minLength={2}
+                maxLength={100}
+                autoComplete="given-name"
+                value={firstName}
+                disabled={isPending}
+                onChange={(event) =>
+                  setFirstName(
+                    event.target.value
+                  )
+                }
+                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-medium text-gray-700">
+                Nume
+              </span>
+
+              <input
+                type="text"
+                required
+                minLength={2}
+                maxLength={100}
+                autoComplete="family-name"
+                value={lastName}
+                disabled={isPending}
+                onChange={(event) =>
+                  setLastName(
+                    event.target.value
+                  )
+                }
+                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+              />
+            </label>
+          </div>
+
           <label className="block">
             <span className="text-sm font-medium text-gray-700">
-              Prenume
+              E-mail
             </span>
 
             <input
-              type="text"
+              type="email"
               required
-              minLength={2}
-              maxLength={100}
-              autoComplete="given-name"
-              value={firstName}
+              autoComplete="email"
+              value={email}
               disabled={isPending}
               onChange={(event) =>
-                setFirstName(
+                setEmail(
                   event.target.value
                 )
               }
@@ -554,51 +866,7 @@ export default function RegisterForm({
             />
           </label>
 
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700">
-              Nume
-            </span>
-
-            <input
-              type="text"
-              required
-              minLength={2}
-              maxLength={100}
-              autoComplete="family-name"
-              value={lastName}
-              disabled={isPending}
-              onChange={(event) =>
-                setLastName(
-                  event.target.value
-                )
-              }
-              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
-            />
-          </label>
-        </div>
-
-        <label className="block">
-          <span className="text-sm font-medium text-gray-700">
-            E-mail
-          </span>
-
-          <input
-            type="email"
-            required
-            autoComplete="email"
-            value={email}
-            disabled={isPending}
-            onChange={(event) =>
-              setEmail(
-                event.target.value
-              )
-            }
-            className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
-          />
-        </label>
-
-        {isDoctor && (
-          <>
+          {(isDoctor || isClinic) && (
             <label className="block">
               <span className="text-sm font-medium text-gray-700">
                 Telefon
@@ -620,6 +888,14 @@ export default function RegisterForm({
                 className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
               />
             </label>
+          )}
+        </section>
+
+        {isDoctor && (
+          <section className="space-y-5 rounded-2xl border border-gray-200 bg-gray-50 p-5">
+            <h2 className="text-base font-semibold text-gray-900">
+              Date medic
+            </h2>
 
             <label className="block">
               <span className="text-sm font-medium text-gray-700">
@@ -658,7 +934,6 @@ export default function RegisterForm({
               <span className="text-sm font-medium text-gray-700">
                 Număr profesional
               </span>
-
               <span className="ml-2 text-xs text-gray-500">
                 Opțional
               </span>
@@ -684,7 +959,6 @@ export default function RegisterForm({
               <span className="text-sm font-medium text-gray-700">
                 Mesaj
               </span>
-
               <span className="ml-2 text-xs text-gray-500">
                 Opțional
               </span>
@@ -703,6 +977,330 @@ export default function RegisterForm({
                 className="mt-2 w-full resize-y rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
               />
             </label>
+          </section>
+        )}
+
+        {isClinic && (
+          <>
+            <section className="space-y-5 rounded-2xl border border-gray-200 bg-gray-50 p-5">
+              <h2 className="text-base font-semibold text-gray-900">
+                Date clinică / organizație
+              </h2>
+
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">
+                  Denumire clinică / organizație
+                </span>
+
+                <input
+                  type="text"
+                  required
+                  minLength={2}
+                  maxLength={180}
+                  value={clinicName}
+                  disabled={isPending}
+                  onChange={(event) =>
+                    setClinicName(
+                      event.target.value
+                    )
+                  }
+                  className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+                />
+              </label>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <label className="block">
+                  <span className="text-sm font-medium text-gray-700">
+                    Oraș
+                  </span>
+
+                  <input
+                    type="text"
+                    required
+                    minLength={2}
+                    maxLength={120}
+                    value={clinicCity}
+                    disabled={isPending}
+                    onChange={(event) =>
+                      setClinicCity(
+                        event.target.value
+                      )
+                    }
+                    className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-sm font-medium text-gray-700">
+                    Website
+                  </span>
+                  <span className="ml-2 text-xs text-gray-500">
+                    Opțional
+                  </span>
+
+                  <input
+                    type="url"
+                    maxLength={250}
+                    value={clinicWebsite}
+                    disabled={isPending}
+                    onChange={(event) =>
+                      setClinicWebsite(
+                        event.target.value
+                      )
+                    }
+                    placeholder="https://clinica.ro"
+                    className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+                  />
+                </label>
+              </div>
+
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">
+                  Mesaj
+                </span>
+                <span className="ml-2 text-xs text-gray-500">
+                  Opțional
+                </span>
+
+                <textarea
+                  rows={4}
+                  maxLength={1000}
+                  value={message}
+                  disabled={isPending}
+                  onChange={(event) =>
+                    setMessage(
+                      event.target.value
+                    )
+                  }
+                  placeholder="Exemplu: numărul aproximativ de medici, orașe sau întrebări despre oferta pentru clinici"
+                  className="mt-2 w-full resize-y rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+                />
+              </label>
+            </section>
+
+            <section className="space-y-5 rounded-2xl border border-gray-200 bg-gray-50 p-5">
+              <h2 className="text-base font-semibold text-gray-900">
+                Date de facturare
+              </h2>
+
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">
+                  Denumire firmă
+                </span>
+
+                <input
+                  type="text"
+                  required
+                  minLength={2}
+                  maxLength={180}
+                  value={billingCompanyName}
+                  disabled={isPending}
+                  onChange={(event) =>
+                    setBillingCompanyName(
+                      event.target.value
+                    )
+                  }
+                  className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+                />
+              </label>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <label className="block">
+                  <span className="text-sm font-medium text-gray-700">
+                    CUI
+                  </span>
+
+                  <input
+                    type="text"
+                    required
+                    maxLength={50}
+                    value={billingTaxId}
+                    disabled={isPending}
+                    onChange={(event) =>
+                      setBillingTaxId(
+                        event.target.value
+                      )
+                    }
+                    className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-sm font-medium text-gray-700">
+                    Nr. Registrul Comerțului
+                  </span>
+                  <span className="ml-2 text-xs text-gray-500">
+                    Opțional
+                  </span>
+
+                  <input
+                    type="text"
+                    maxLength={80}
+                    value={
+                      billingTradeRegisterNumber
+                    }
+                    disabled={isPending}
+                    onChange={(event) =>
+                      setBillingTradeRegisterNumber(
+                        event.target.value
+                      )
+                    }
+                    placeholder="J02/000/2026"
+                    className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+                  />
+                </label>
+              </div>
+
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">
+                  Adresă de facturare
+                </span>
+
+                <input
+                  type="text"
+                  required
+                  minLength={5}
+                  maxLength={250}
+                  value={billingAddress}
+                  disabled={isPending}
+                  onChange={(event) =>
+                    setBillingAddress(
+                      event.target.value
+                    )
+                  }
+                  className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+                />
+              </label>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <label className="block">
+                  <span className="text-sm font-medium text-gray-700">
+                    Oraș facturare
+                  </span>
+
+                  <input
+                    type="text"
+                    required
+                    minLength={2}
+                    maxLength={120}
+                    value={billingCity}
+                    disabled={isPending}
+                    onChange={(event) =>
+                      setBillingCity(
+                        event.target.value
+                      )
+                    }
+                    className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-sm font-medium text-gray-700">
+                    Județ
+                  </span>
+
+                  <input
+                    type="text"
+                    required
+                    minLength={2}
+                    maxLength={120}
+                    value={billingCounty}
+                    disabled={isPending}
+                    onChange={(event) =>
+                      setBillingCounty(
+                        event.target.value
+                      )
+                    }
+                    className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+                  />
+                </label>
+              </div>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <label className="block">
+                  <span className="text-sm font-medium text-gray-700">
+                    Țară
+                  </span>
+
+                  <input
+                    type="text"
+                    required
+                    maxLength={120}
+                    value={billingCountry}
+                    disabled={isPending}
+                    onChange={(event) =>
+                      setBillingCountry(
+                        event.target.value
+                      )
+                    }
+                    className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-sm font-medium text-gray-700">
+                    E-mail facturare
+                  </span>
+
+                  <input
+                    type="email"
+                    required
+                    value={billingEmail}
+                    disabled={isPending}
+                    onChange={(event) =>
+                      setBillingEmail(
+                        event.target.value
+                      )
+                    }
+                    className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+                  />
+                </label>
+              </div>
+
+              <div className="rounded-xl border border-gray-200 bg-white p-4">
+                <label className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={isVatPayer}
+                    disabled={isPending}
+                    onChange={(event) =>
+                      setIsVatPayer(
+                        event.target.checked
+                      )
+                    }
+                    className="mt-1 h-4 w-4 shrink-0"
+                  />
+                  <span className="text-sm leading-6 text-gray-700">
+                    Firma este plătitoare de TVA
+                  </span>
+                </label>
+
+                {isVatPayer && (
+                  <label className="mt-4 block">
+                    <span className="text-sm font-medium text-gray-700">
+                      Cod TVA
+                    </span>
+                    <span className="ml-2 text-xs text-gray-500">
+                      Opțional
+                    </span>
+
+                    <input
+                      type="text"
+                      maxLength={60}
+                      value={vatNumber}
+                      disabled={isPending}
+                      onChange={(event) =>
+                        setVatNumber(
+                          event.target.value
+                        )
+                      }
+                      placeholder="RO12345678"
+                      className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+                    />
+                  </label>
+                )}
+              </div>
+            </section>
           </>
         )}
 
@@ -821,9 +1419,7 @@ export default function RegisterForm({
           isLoading={isPending}
           loadingText="Se creează contul..."
         >
-          {isDoctor
-            ? "Continuă ca medic"
-            : "Creează cont de pacient"}
+          {submitLabel}
         </Button>
       </form>
 
