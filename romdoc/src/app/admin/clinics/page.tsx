@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import AdminClinicCreationForm from "@/components/admin/admin-clinic-creation-form";
 import AdminDoctorClinicAssociations from "@/components/admin/admin-doctor-clinic-associations";
 import ClinicManagementActions from "@/components/admin/clinic-management-actions";
+import ClinicOrganizationsOverview from "@/components/admin/clinic-organizations-overview";
 import ClinicEditingPanel from "@/components/clinic/clinic-editing-panel";
 import AdminAccordion from "@/components/ui/admin-accordion";
 import { createClient } from "@/lib/supabase/server";
@@ -51,9 +52,13 @@ export default async function AdminClinicsPage() {
         </h1>
 
         <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Creează clinici aprobate, asociază medicii existenți cu locațiile lor și verifică propunerile trimise de medici.
+          Creează clinici aprobate, asociază medicii existenți cu locațiile lor,
+          verifică propunerile trimise de medici și urmărește organizațiile de
+          clinică ce pot invita și plăti medici.
         </p>
       </header>
+
+      <ClinicOrganizationsOverview />
 
       <AdminAccordion
         title="Adaugă clinică"
