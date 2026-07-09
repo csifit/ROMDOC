@@ -126,6 +126,13 @@ export default async function PublicFooter() {
           : "Abonament medic",
       },
       {
+        href:
+          "/oferta-clinici",
+        label: isEnglish
+          ? "Clinic offer"
+          : "Ofertă pentru clinici",
+      },
+      {
         href: "/login",
         label: isEnglish
           ? "Doctor sign in"
