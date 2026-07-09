@@ -482,9 +482,9 @@ export async function POST(request: NextRequest): Promise<Response> {
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? request.nextUrl.origin;
-  const passwordPath = "/set-password?mode=invite&next=/dashboard";
-  const redirectTo = new URL("/auth/confirm", siteUrl);
-  redirectTo.searchParams.set("next", passwordPath);
+  const redirectTo = new URL("/set-password", siteUrl);
+  redirectTo.searchParams.set("mode", "invite");
+  redirectTo.searchParams.set("next", "/dashboard");
 
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
     type: "invite",
@@ -610,6 +610,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       manager_type: managerType,
       permissions: managerType === "accounting" ? ["accounting"] : [],
       email_delivery: "resend_custom_manager_invitation",
+      acceptance_redirect: "/set-password",
     },
   });
 
