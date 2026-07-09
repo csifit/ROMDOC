@@ -58,6 +58,8 @@ type DoctorRelationship = {
   organization_id: string;
   clinic_id: string | null;
   doctor_id: string | null;
+  accepted_profile_id: string | null;
+  accepted_account_email: string | null;
   invited_doctor_email: string | null;
   invitation_status: string;
   payment_responsibility: string;
@@ -72,26 +74,23 @@ type OrganizationSummary = {
   pendingClinicCount: number;
   doctorRelationships: DoctorRelationship[];
   activeCoveredDoctorCount: number;
-  pendingCoveredDoctorCount: number;
+  acceptedDoctorCount: number;
   invitedDoctorCount: number;
 };
 
 const DOCTOR_MONTHLY_PRICE_RON = 60;
+const VAT_RATE = 0.19;
 
 function getStatusLabel(status: string) {
   switch (status) {
     case "active":
       return "Activă";
-
     case "suspended":
       return "Suspendată";
-
     case "rejected":
       return "Respinsă";
-
     case "archived":
       return "Arhivată";
-
     default:
       return "În așteptare";
   }
@@ -101,19 +100,23 @@ function getStatusClasses(status: string) {
   switch (status) {
     case "active":
       return "bg-green-100 text-green-800";
-
     case "suspended":
       return "bg-orange-100 text-orange-800";
-
     case "rejected":
       return "bg-red-100 text-red-800";
-
     case "archived":
       return "bg-slate-200 text-slate-900";
-
     default:
       return "bg-amber-100 text-amber-900";
   }
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("ro-RO", {
+    style: "currency",
+    currency: "RON",
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
 function formatDate(value: string | null) {
@@ -162,7 +165,7 @@ function createEmptySummary(): OrganizationSummary {
     pendingClinicCount: 0,
     doctorRelationships: [],
     activeCoveredDoctorCount: 0,
-    pendingCoveredDoctorCount: 0,
+    acceptedDoctorCount: 0,
     invitedDoctorCount: 0,
   };
 }
@@ -193,9 +196,7 @@ export default async function ClinicOrganizationsOverview() {
           approved_at
         `
       )
-      .order("created_at", {
-        ascending: false,
-      }),
+      .order("created_at", { ascending: false }),
 
     admin
       .from("clinic_organization_billing_profiles")
@@ -237,6 +238,8 @@ export default async function ClinicOrganizationsOverview() {
           organization_id,
           clinic_id,
           doctor_id,
+          accepted_profile_id,
+          accepted_account_email,
           invited_doctor_email,
           invitation_status,
           payment_responsibility,
@@ -258,35 +261,19 @@ export default async function ClinicOrganizationsOverview() {
     );
   }
 
-  const organizations =
-    (organizationsResult.data ?? []) as ClinicOrganization[];
-
-  const billingProfiles =
-    (billingProfilesResult.data ?? []) as BillingProfile[];
-
-  const members =
-    (membersResult.data ?? []) as OrganizationMember[];
-
-  const clinicLinks =
-    (clinicLinksResult.data ?? []) as OrganizationClinicLink[];
-
+  const organizations = (organizationsResult.data ?? []) as ClinicOrganization[];
+  const billingProfiles = (billingProfilesResult.data ?? []) as BillingProfile[];
+  const members = (membersResult.data ?? []) as OrganizationMember[];
+  const clinicLinks = (clinicLinksResult.data ?? []) as OrganizationClinicLink[];
   const doctorRelationships =
     (doctorRelationshipsResult.data ?? []) as DoctorRelationship[];
 
   const profileIds = Array.from(
-    new Set(
-      members
-        .map((member) => member.profile_id)
-        .filter(Boolean)
-    )
+    new Set(members.map((member) => member.profile_id).filter(Boolean))
   );
 
   const clinicIds = Array.from(
-    new Set(
-      clinicLinks
-        .map((link) => link.clinic_id)
-        .filter(Boolean)
-    )
+    new Set(clinicLinks.map((link) => link.clinic_id).filter(Boolean))
   );
 
   const [profilesResult, clinicsResult, translationsResult] =
@@ -355,10 +342,7 @@ export default async function ClinicOrganizationsOverview() {
   }
 
   const billingByOrganization = new Map(
-    billingProfiles.map((profile) => [
-      profile.organization_id,
-      profile,
-    ])
+    billingProfiles.map((profile) => [profile.organization_id, profile])
   );
 
   const profilesById = new Map(
@@ -369,10 +353,7 @@ export default async function ClinicOrganizationsOverview() {
   );
 
   const clinicsById = new Map(
-    ((clinicsResult.data ?? []) as Clinic[]).map((clinic) => [
-      clinic.id,
-      clinic,
-    ])
+    ((clinicsResult.data ?? []) as Clinic[]).map((clinic) => [clinic.id, clinic])
   );
 
   const clinicNameById = new Map<string, string>();
@@ -399,9 +380,7 @@ export default async function ClinicOrganizationsOverview() {
     }
 
     summary.activeMembers.push(member);
-    summary.managerNames.push(
-      getProfileName(profilesById.get(member.profile_id))
-    );
+    summary.managerNames.push(getProfileName(profilesById.get(member.profile_id)));
   }
 
   for (const link of clinicLinks) {
@@ -425,9 +404,7 @@ export default async function ClinicOrganizationsOverview() {
   }
 
   for (const relationship of doctorRelationships) {
-    const summary = summaryByOrganization.get(
-      relationship.organization_id
-    );
+    const summary = summaryByOrganization.get(relationship.organization_id);
 
     if (!summary) {
       continue;
@@ -441,16 +418,17 @@ export default async function ClinicOrganizationsOverview() {
 
     if (
       relationship.payment_responsibility === "clinic_paid" &&
-      relationship.coverage_status === "active"
+      relationship.invitation_status === "accepted"
     ) {
-      summary.activeCoveredDoctorCount += 1;
+      summary.acceptedDoctorCount += 1;
     }
 
     if (
       relationship.payment_responsibility === "clinic_paid" &&
-      relationship.coverage_status === "pending_admin_approval"
+      relationship.invitation_status === "accepted" &&
+      relationship.coverage_status === "active"
     ) {
-      summary.pendingCoveredDoctorCount += 1;
+      summary.activeCoveredDoctorCount += 1;
     }
   }
 
@@ -461,11 +439,8 @@ export default async function ClinicOrganizationsOverview() {
   const pendingOrganizations = organizations.filter(
     (organization) => organization.status === "pending"
   ).length;
-  const activeCoveredDoctors = Array.from(
-    summaryByOrganization.values()
-  ).reduce(
-    (total, summary) =>
-      total + summary.activeCoveredDoctorCount,
+  const activeCoveredDoctors = Array.from(summaryByOrganization.values()).reduce(
+    (total, summary) => total + summary.activeCoveredDoctorCount,
     0
   );
 
@@ -482,9 +457,10 @@ export default async function ClinicOrganizationsOverview() {
           </h2>
 
           <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-            Această zonă arată conturile de clinică create pentru fluxul
-            „Suntem clinică”: managerii asociați, clinicile legate, medicii
-            acoperiți de clinică și baza simplă pentru facturarea cumulată.
+            Adminul vede organizațiile de clinică, managerii, clinicile legate,
+            medicii acoperiți de clinică și estimarea de facturare. Nu aprobă
+            fiecare medic invitat; această responsabilitate aparține Clinic
+            Managerului și fluxului de facturare al clinicii.
           </p>
         </div>
       </div>
@@ -519,7 +495,7 @@ export default async function ClinicOrganizationsOverview() {
 
         <div className="rounded-2xl border border-gray-200 bg-[#F0EEE9] p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Medici acoperiți
+            Medici facturați clinicii
           </p>
           <p className="mt-2 text-2xl font-bold text-gray-900">
             {activeCoveredDoctors}
@@ -529,9 +505,8 @@ export default async function ClinicOrganizationsOverview() {
 
       {organizations.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-6 text-sm leading-6 text-gray-600">
-          Nu există încă organizații de clinică. După ce un cont se înscrie
-          prin „Suntem clinică”, organizația și datele de facturare vor apărea
-          aici.
+          Nu există încă organizații de clinică. După ce un cont se înscrie prin
+          „Suntem clinică”, organizația și datele de facturare vor apărea aici.
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-gray-200">
@@ -554,13 +529,11 @@ export default async function ClinicOrganizationsOverview() {
                     summaryByOrganization.get(organization.id) ??
                     createEmptySummary();
 
-                  const billing = billingByOrganization.get(
-                    organization.id
-                  );
-
-                  const estimatedMonthlyTotal =
-                    summary.activeCoveredDoctorCount *
-                    DOCTOR_MONTHLY_PRICE_RON;
+                  const billing = billingByOrganization.get(organization.id);
+                  const estimatedMonthlyNet =
+                    summary.activeCoveredDoctorCount * DOCTOR_MONTHLY_PRICE_RON;
+                  const estimatedMonthlyGross =
+                    estimatedMonthlyNet + estimatedMonthlyNet * VAT_RATE;
 
                   return (
                     <tr key={organization.id} className="align-top">
@@ -608,9 +581,7 @@ export default async function ClinicOrganizationsOverview() {
                       </td>
 
                       <td className="px-4 py-4 text-gray-700">
-                        <p>
-                          Active: {summary.activeClinicNames.length}
-                        </p>
+                        <p>Active: {summary.activeClinicNames.length}</p>
                         <p className="text-xs text-gray-500">
                           În așteptare: {summary.pendingClinicCount}
                         </p>
@@ -626,11 +597,9 @@ export default async function ClinicOrganizationsOverview() {
                       </td>
 
                       <td className="px-4 py-4 text-gray-700">
-                        <p>
-                          Acoperiți activ: {summary.activeCoveredDoctorCount}
-                        </p>
+                        <p>Facturați clinicii: {summary.activeCoveredDoctorCount}</p>
                         <p className="text-xs text-gray-500">
-                          În aprobare: {summary.pendingCoveredDoctorCount}
+                          Înregistrați prin clinică: {summary.acceptedDoctorCount}
                         </p>
                         <p className="text-xs text-gray-500">
                           Invitații deschise: {summary.invitedDoctorCount}
@@ -650,7 +619,7 @@ export default async function ClinicOrganizationsOverview() {
                               {billing.billing_email}
                             </p>
                             <p className="mt-2 text-xs font-semibold text-gray-700">
-                              Estimare abonamente: {estimatedMonthlyTotal} RON/lună + TVA
+                              Estimare: {formatCurrency(estimatedMonthlyGross)} / lună
                             </p>
                           </div>
                         ) : (
@@ -679,9 +648,9 @@ export default async function ClinicOrganizationsOverview() {
       )}
 
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-        Regula simplă de facturare pentru clinici rămâne: medici acoperiți
-        activ de clinică × 60 RON/lună + TVA, iar SMS-urile se vor adăuga
-        separat când logurile SMS sunt conectate la organizații.
+        Regula simplă de facturare: medici invitați de clinică și activi × 60
+        RON/lună + TVA. SMS-urile se vor adăuga separat când logurile SMS sunt
+        conectate la organizații.
       </div>
     </section>
   );

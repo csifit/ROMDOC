@@ -31,10 +31,14 @@ type BillingProfile = {
 type DoctorRelationship = {
   organization_id: string;
   doctor_id: string | null;
+  accepted_profile_id: string | null;
+  accepted_account_email: string | null;
   invited_doctor_email: string | null;
   invitation_status: string;
   payment_responsibility: string;
   coverage_status: string;
+  accepted_at: string | null;
+  expires_at: string | null;
 };
 
 type Doctor = {
@@ -82,39 +86,62 @@ function getOrganizationStatusLabel(status: string) {
   switch (status) {
     case "active":
       return "Activă";
-
     case "suspended":
       return "Suspendată";
-
     case "rejected":
       return "Respinsă";
-
     case "archived":
       return "Arhivată";
-
     default:
       return "În așteptare";
   }
 }
 
-function getRelationshipStatusLabel(relationship: DoctorRelationship) {
-  if (relationship.coverage_status === "active") {
-    return "Acoperire activă";
+function getInvitationStatusLabel(status: string) {
+  switch (status) {
+    case "accepted":
+      return "Acceptată";
+    case "declined":
+      return "Refuzată";
+    case "expired":
+      return "Expirată";
+    case "cancelled":
+      return "Anulată";
+    default:
+      return "Trimisă";
   }
+}
 
-  if (relationship.coverage_status === "pending_admin_approval") {
-    return "Așteaptă aprobarea RomDoc";
+function getCoverageStatusLabel(relationship: DoctorRelationship) {
+  if (
+    relationship.payment_responsibility === "clinic_paid" &&
+    relationship.coverage_status === "active"
+  ) {
+    return "Acoperit de clinică";
   }
 
   if (relationship.coverage_status === "paused") {
     return "Acoperire suspendată";
   }
 
+  if (relationship.coverage_status === "ended") {
+    return "Acoperire încheiată";
+  }
+
   if (relationship.invitation_status === "pending") {
-    return "Invitație trimisă";
+    return "Așteaptă înregistrarea medicului";
   }
 
   return "Neacoperit activ";
+}
+
+function getProfileName(profile: Profile | undefined) {
+  const profileName = [profile?.first_name, profile?.last_name]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  return profileName || null;
 }
 
 function getDoctorDisplayName(
@@ -123,31 +150,43 @@ function getDoctorDisplayName(
   doctorTitlesById: Map<string, string>,
   profilesById: Map<string, Profile>
 ) {
-  if (!relationship.doctor_id) {
-    return relationship.invited_doctor_email ?? "Medic invitat";
+  if (relationship.doctor_id) {
+    const title = doctorTitlesById.get(relationship.doctor_id);
+
+    if (title) {
+      return title;
+    }
+
+    const doctor = doctorsById.get(relationship.doctor_id);
+
+    if (doctor?.profile_id) {
+      const profileName = getProfileName(profilesById.get(doctor.profile_id));
+
+      if (profileName) {
+        return profileName;
+      }
+    }
+
+    if (doctor?.slug) {
+      return doctor.slug;
+    }
   }
 
-  const title = doctorTitlesById.get(relationship.doctor_id);
-
-  if (title) {
-    return title;
-  }
-
-  const doctor = doctorsById.get(relationship.doctor_id);
-
-  if (doctor?.profile_id) {
-    const profile = profilesById.get(doctor.profile_id);
-    const profileName = [profile?.first_name, profile?.last_name]
-      .filter(Boolean)
-      .join(" ")
-      .trim();
+  if (relationship.accepted_profile_id) {
+    const profileName = getProfileName(
+      profilesById.get(relationship.accepted_profile_id)
+    );
 
     if (profileName) {
       return profileName;
     }
   }
 
-  return doctor?.slug ?? relationship.invited_doctor_email ?? "Medic invitat";
+  return (
+    relationship.accepted_account_email ??
+    relationship.invited_doctor_email ??
+    "Medic invitat"
+  );
 }
 
 function DetailRow({
@@ -162,9 +201,7 @@ function DetailRow({
       <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
         {label}
       </dt>
-      <dd className="mt-1 text-sm text-gray-900">
-        {value || "—"}
-      </dd>
+      <dd className="mt-1 text-sm text-gray-900">{value || "—"}</dd>
     </div>
   );
 }
@@ -183,12 +220,8 @@ function SummaryBox({
       <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
         {label}
       </p>
-      <p className="mt-2 text-2xl font-bold text-gray-900">
-        {value}
-      </p>
-      <p className="mt-1 text-xs leading-5 text-gray-600">
-        {helper}
-      </p>
+      <p className="mt-2 text-2xl font-bold text-gray-900">{value}</p>
+      <p className="mt-1 text-xs leading-5 text-gray-600">{helper}</p>
     </div>
   );
 }
@@ -264,10 +297,14 @@ export default async function ClinicManagerBillingPage() {
             `
               organization_id,
               doctor_id,
+              accepted_profile_id,
+              accepted_account_email,
               invited_doctor_email,
               invitation_status,
               payment_responsibility,
-              coverage_status
+              coverage_status,
+              accepted_at,
+              expires_at
             `
           )
           .in("organization_id", organizationIds),
@@ -287,9 +324,17 @@ export default async function ClinicManagerBillingPage() {
     )
   );
 
+  const acceptedProfileIds = Array.from(
+    new Set(
+      doctorRelationships
+        .map((relationship) => relationship.accepted_profile_id)
+        .filter((profileId): profileId is string => Boolean(profileId))
+    )
+  );
+
   let doctors: Doctor[] = [];
   let doctorTranslations: DoctorTranslation[] = [];
-  let doctorProfiles: Profile[] = [];
+  let profiles: Profile[] = [];
 
   if (doctorIds.length > 0) {
     const [doctorsResult, translationsResult] = await Promise.all([
@@ -307,37 +352,31 @@ export default async function ClinicManagerBillingPage() {
     doctors = (doctorsResult.data ?? []) as Doctor[];
     doctorTranslations =
       (translationsResult.data ?? []) as DoctorTranslation[];
+  }
 
-    const profileIds = Array.from(
-      new Set(
-        doctors
-          .map((doctor) => doctor.profile_id)
-          .filter((profileId): profileId is string => Boolean(profileId))
-      )
-    );
+  const doctorProfileIds = doctors
+    .map((doctor) => doctor.profile_id)
+    .filter((profileId): profileId is string => Boolean(profileId));
 
-    if (profileIds.length > 0) {
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, first_name, last_name")
-        .in("id", profileIds);
+  const allProfileIds = Array.from(
+    new Set([...acceptedProfileIds, ...doctorProfileIds])
+  );
 
-      doctorProfiles = (profiles ?? []) as Profile[];
-    }
+  if (allProfileIds.length > 0) {
+    const { data: profilesData } = await supabase
+      .from("profiles")
+      .select("id, first_name, last_name")
+      .in("id", allProfileIds);
+
+    profiles = (profilesData ?? []) as Profile[];
   }
 
   const billingByOrganization = new Map(
     billingProfiles.map((profile) => [profile.organization_id, profile])
   );
 
-  const doctorsById = new Map(
-    doctors.map((doctor) => [doctor.id, doctor])
-  );
-
-  const profilesById = new Map(
-    doctorProfiles.map((profile) => [profile.id, profile])
-  );
-
+  const doctorsById = new Map(doctors.map((doctor) => [doctor.id, doctor]));
+  const profilesById = new Map(profiles.map((profile) => [profile.id, profile]));
   const doctorTitlesById = new Map<string, string>();
 
   for (const translation of doctorTranslations) {
@@ -362,9 +401,10 @@ export default async function ClinicManagerBillingPage() {
           Facturare clinică
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Verifică datele de facturare ale clinicii, medicii acoperiți activ și
-          estimarea lunară simplă. Plata efectivă și marcarea facturilor rămân
-          gestionate de administrator în această etapă.
+          Verifică datele de facturare ale clinicii, medicii invitați și
+          totalul lunar simplu. Medicii invitați prin clinică nu plătesc
+          individual prin Stripe; costul lor intră în factura cumulată a
+          clinicii.
         </p>
       </header>
 
@@ -389,17 +429,18 @@ export default async function ClinicManagerBillingPage() {
             const activeCoveredRelationships = relationships.filter(
               (relationship) =>
                 relationship.payment_responsibility === "clinic_paid" &&
+                relationship.invitation_status === "accepted" &&
                 relationship.coverage_status === "active"
             );
 
-            const pendingCoveredRelationships = relationships.filter(
-              (relationship) =>
-                relationship.payment_responsibility === "clinic_paid" &&
-                relationship.coverage_status === "pending_admin_approval"
+            const pendingInvitations = relationships.filter(
+              (relationship) => relationship.invitation_status === "pending"
             );
 
-            const openInvitations = relationships.filter(
-              (relationship) => relationship.invitation_status === "pending"
+            const registeredClinicPaidDoctors = relationships.filter(
+              (relationship) =>
+                relationship.payment_responsibility === "clinic_paid" &&
+                relationship.invitation_status === "accepted"
             );
 
             const monthlySubscriptionNet =
@@ -431,9 +472,9 @@ export default async function ClinicManagerBillingPage() {
                     </p>
                   </div>
 
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                    Facturarea este momentan manuală. Administratorul confirmă
-                    plata și statusul final.
+                  <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm leading-6 text-green-900">
+                    Clinic Manager invită medicii și clinica plătește cumulat.
+                    Adminul doar poate verifica statusul general și facturarea.
                   </div>
                 </div>
 
@@ -444,14 +485,14 @@ export default async function ClinicManagerBillingPage() {
                     helper="Intră în totalul lunar al clinicii."
                   />
                   <SummaryBox
-                    label="În aprobare"
-                    value={pendingCoveredRelationships.length}
-                    helper="Așteaptă confirmarea RomDoc."
+                    label="Medici înregistrați"
+                    value={registeredClinicPaidDoctors.length}
+                    helper="Au acceptat invitația clinicii."
                   />
                   <SummaryBox
-                    label="Invitații"
-                    value={openInvitations.length}
-                    helper="Invitații încă neacceptate."
+                    label="Invitații deschise"
+                    value={pendingInvitations.length}
+                    helper="Așteaptă crearea contului de medic."
                   />
                   <SummaryBox
                     label="Total estimat"
@@ -468,13 +509,19 @@ export default async function ClinicManagerBillingPage() {
 
                     {billing ? (
                       <dl className="mt-5 grid gap-4 sm:grid-cols-2">
-                        <DetailRow label="Denumire firmă" value={billing.company_name} />
+                        <DetailRow
+                          label="Denumire firmă"
+                          value={billing.company_name}
+                        />
                         <DetailRow label="CUI" value={billing.tax_id} />
                         <DetailRow
                           label="Nr. Registrul Comerțului"
                           value={billing.trade_register_number}
                         />
-                        <DetailRow label="E-mail facturare" value={billing.billing_email} />
+                        <DetailRow
+                          label="E-mail facturare"
+                          value={billing.billing_email}
+                        />
                         <DetailRow label="Adresă" value={billing.billing_address} />
                         <DetailRow label="Oraș" value={billing.billing_city} />
                         <DetailRow label="Județ" value={billing.billing_county} />
@@ -528,15 +575,15 @@ export default async function ClinicManagerBillingPage() {
 
                     <p className="rounded-xl bg-gray-50 p-3 text-xs leading-5 text-gray-600">
                       SMS-urile nu sunt incluse încă în acest total. După
-                      conectarea logurilor SMS la clinică, ele vor apărea într-o
-                      linie separată.
+                      conectarea logurilor SMS la organizația clinicii, ele vor
+                      apărea separat.
                     </p>
                   </aside>
                 </div>
 
                 <div className="rounded-2xl border border-gray-200 p-5">
                   <h3 className="text-lg font-semibold text-gray-900">
-                    Medici acoperiți de clinică
+                    Medici invitați / acoperiți de clinică
                   </h3>
 
                   {relationships.length === 0 ? (
@@ -550,10 +597,10 @@ export default async function ClinicManagerBillingPage() {
                         <table className="min-w-full divide-y divide-gray-200 text-sm">
                           <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                             <tr>
-                              <th className="px-4 py-3">Medic</th>
+                              <th className="px-4 py-3">Medic / cont</th>
                               <th className="px-4 py-3">Invitație</th>
-                              <th className="px-4 py-3">Plată</th>
-                              <th className="px-4 py-3">Status acoperire</th>
+                              <th className="px-4 py-3">Acoperire</th>
+                              <th className="px-4 py-3">Acceptată</th>
                               <th className="px-4 py-3">Cost lunar</th>
                             </tr>
                           </thead>
@@ -562,11 +609,17 @@ export default async function ClinicManagerBillingPage() {
                               const isActiveCovered =
                                 relationship.payment_responsibility ===
                                   "clinic_paid" &&
+                                relationship.invitation_status === "accepted" &&
                                 relationship.coverage_status === "active";
 
                               return (
                                 <tr
-                                  key={`${organization.id}-${relationship.doctor_id ?? relationship.invited_doctor_email ?? index}`}
+                                  key={`${organization.id}-${
+                                    relationship.doctor_id ??
+                                    relationship.accepted_profile_id ??
+                                    relationship.invited_doctor_email ??
+                                    index
+                                  }`}
                                 >
                                   <td className="px-4 py-3 font-medium text-gray-900">
                                     {getDoctorDisplayName(
@@ -575,18 +628,24 @@ export default async function ClinicManagerBillingPage() {
                                       doctorTitlesById,
                                       profilesById
                                     )}
+                                    {(relationship.accepted_account_email ||
+                                      relationship.invited_doctor_email) && (
+                                      <p className="mt-1 text-xs font-normal text-gray-500">
+                                        {relationship.accepted_account_email ??
+                                          relationship.invited_doctor_email}
+                                      </p>
+                                    )}
                                   </td>
                                   <td className="px-4 py-3 text-gray-700">
-                                    {relationship.invitation_status}
+                                    {getInvitationStatusLabel(
+                                      relationship.invitation_status
+                                    )}
                                   </td>
                                   <td className="px-4 py-3 text-gray-700">
-                                    {relationship.payment_responsibility ===
-                                    "clinic_paid"
-                                      ? "Plătit de clinică"
-                                      : "Plătit individual"}
+                                    {getCoverageStatusLabel(relationship)}
                                   </td>
                                   <td className="px-4 py-3 text-gray-700">
-                                    {getRelationshipStatusLabel(relationship)}
+                                    {formatDate(relationship.accepted_at)}
                                   </td>
                                   <td className="px-4 py-3 text-gray-700">
                                     {isActiveCovered
@@ -611,7 +670,7 @@ export default async function ClinicManagerBillingPage() {
                     <p className="mt-2 text-sm leading-6 text-gray-600">
                       Consumul SMS va fi afișat aici după ce logurile SMS vor fi
                       legate de organizația clinicii. Vor fi vizibile doar date
-                      de livrare și facturare, nu dosare medicale.
+                      de livrare și facturare, nu conținut medical.
                     </p>
                   </div>
 
