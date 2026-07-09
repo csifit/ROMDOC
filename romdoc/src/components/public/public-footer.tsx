@@ -110,6 +110,10 @@ export default async function PublicFooter() {
           : "Înscrie-te ca medic",
       },
       {
+        label: "Ofertă pentru clinici",
+        href: "/oferta-clinici",
+      },
+      {
         href: isEnglish
           ? "/en/doctor-staff-guide"
           : "/ro/ghid-medici-personal",
