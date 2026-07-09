@@ -20,6 +20,9 @@ export default async function CheckEmailPage({
   const isDoctor =
     parameters.type === "doctor";
 
+  const isClinic =
+    parameters.type === "clinic";
+
   return (
     <main className="min-h-screen bg-[#F0EEE9] px-6 py-12">
       <div className="mx-auto flex min-h-[calc(100vh-6rem)] max-w-2xl items-center justify-center">
@@ -59,9 +62,20 @@ export default async function CheckEmailPage({
               vei putea continua cu plata
               abonamentului de medic:
               <strong>
-                {" "}50 lei/lună + TVA
+                {" "}60 lei/lună + TVA
               </strong>
               .
+            </div>
+          )}
+
+          {isClinic && (
+            <div className="mt-6 rounded-xl border border-[#D97757]/30 bg-[#F0EEE9] p-4 text-left text-sm leading-6 text-gray-800">
+              După confirmarea e-mailului,
+              cererea clinicii va putea fi
+              verificată de RomDoc. Datele de
+              facturare transmise vor fi folosite
+              pentru configurarea contului de
+              clinică în pașii următori.
             </div>
           )}
 
