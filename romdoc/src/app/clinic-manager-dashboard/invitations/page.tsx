@@ -92,9 +92,10 @@ export default async function ClinicManagerInvitationsPage() {
           Invitații medici
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Invită medici să se asocieze cu organizația clinicii și urmărește
-          statusul invitațiilor. Acoperirea plătită de clinică rămâne în
-          așteptarea aprobării RomDoc.
+          Invită medici să creeze conturi de medic plătite de clinică și
+          urmărește statusul invitațiilor. Medicul devine activ după acceptarea
+          invitației; RomDoc intervine doar pentru verificare profesională,
+          moderare sau suspendare atunci când este necesar.
         </p>
       </header>
 

@@ -140,6 +140,7 @@ export default async function DoctorAppointmentsPage() {
 
   const doctor = doctorData as DoctorAccount | null;
   const isClinicSubAccount = doctor?.account_type === "clinic_sub_account";
+  const isSuspended = doctor?.status === "suspended";
 
   const displayName =
     profile.first_name || profile.last_name
@@ -173,7 +174,7 @@ export default async function DoctorAppointmentsPage() {
             <p className="mt-3 leading-7 text-amber-800">
               Dacă ai fost invitat de o clinică, folosește linkul primit de la
               clinică pentru a crea contul de medic clinică. Dacă ești medic
-              independent, finalizează fluxul de înregistrare al medicilor.
+              independent, finalizează fluxul de înregistrare și plata Stripe.
             </p>
           </section>
         </div>
@@ -338,15 +339,12 @@ export default async function DoctorAppointmentsPage() {
           </div>
         )}
 
-        {!isClinicSubAccount &&
-          doctor.status &&
-          !["active", "published"].includes(doctor.status) && (
-            <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900">
-              Profilul tău de medic are momentan starea{" "}
-              <strong>{doctor.status}</strong>. Poți vedea programările
-              existente, iar publicarea profilului este gestionată separat.
-            </div>
-          )}
+        {isSuspended && (
+          <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900">
+            Contul de medic este suspendat temporar. Poți vedea informațiile
+            existente, dar unele acțiuni pot fi limitate până la reactivare.
+          </div>
+        )}
 
         <CreateAppointmentForm doctorId={doctor.id} clinics={clinicOptions} />
 

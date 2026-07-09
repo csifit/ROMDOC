@@ -70,7 +70,7 @@ function getCoverageStatusLabel(status: string) {
       return "Fără acoperire";
 
     default:
-      return "Așteaptă aprobarea RomDoc";
+      return "Înregistrare în curs";
   }
 }
 
@@ -181,16 +181,17 @@ export default function DoctorInvitationsPanel({
             Invită un medic
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-            Clinica poate invita un medic prin e-mail. Invitația pornește ca
-            acoperire plătită de clinică și rămâne în așteptarea aprobării
-            RomDoc înainte să ofere acces complet prin clinică.
+            Clinica poate invita un medic prin e-mail. După acceptarea invitației,
+            medicul primește cont de medic clinică, iar abonamentul este acoperit
+            de clinică. Nu este necesară aprobarea manuală a contului de medic de
+            către Admin.
           </p>
         </div>
 
         {activeOrganizations.length === 0 ? (
           <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
             Nu există o organizație activă pentru acest cont. Poți invita medici
-            doar după aprobarea organizației de către RomDoc.
+            după ce organizația clinicii este activă.
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
