@@ -232,9 +232,8 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   const baseUrl =
     process.env.NEXT_PUBLIC_SITE_URL ?? request.nextUrl.origin;
-  const inviteUrl = new URL("/register", baseUrl);
-  inviteUrl.searchParams.set("role", "doctor");
-  inviteUrl.searchParams.set("clinic_invite", invitationToken);
+  const inviteUrl = new URL("/clinic-doctor-register", baseUrl);
+  inviteUrl.searchParams.set("token", invitationToken);
   inviteUrl.searchParams.set("email", doctorEmail);
 
   const { data: invitation, error: invitationError } = await admin
