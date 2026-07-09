@@ -13,6 +13,11 @@
 --   - clinic-to-organization links
 --   - clinic doctor invitation and coverage records
 --   - basic helper functions and RLS policies
+--
+-- Note:
+--   The profiles_role_check constraint is added as NOT VALID
+--   because existing production databases may contain legacy role
+--   values. New or updated rows must still use the allowed role list.
 -- =====================================================
 
 create extension if not exists pgcrypto;
@@ -35,10 +40,10 @@ alter table public.profiles
       'clinic_manager',
       'admin'
     )
-  );
+  ) not valid;
 
 comment on column public.profiles.role is
-  'RomDoc application role: patient, doctor, doctor_applicant, staff, clinic_manager, or admin.';
+  'RomDoc application role: patient, doctor, doctor_applicant, staff, clinic_manager, or admin. Constraint is NOT VALID to preserve possible legacy role rows until they are cleaned.';
 
 -- =====================================================
 -- CLINIC ORGANIZATIONS
