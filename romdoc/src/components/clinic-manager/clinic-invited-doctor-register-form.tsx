@@ -20,6 +20,10 @@ type ClinicInvitedDoctorRegisterFormProps = {
 type LinkInviteResponse = {
   message?: string;
   error?: string;
+  doctor?: {
+    id: string;
+    slug: string;
+  };
 };
 
 function validatePassword(password: string) {
@@ -91,7 +95,9 @@ export default function ClinicInvitedDoctorRegisterForm({
     }
 
     if (invitedEmail && normalizedEmail !== invitedEmail.toLowerCase()) {
-      setError("Folosește aceeași adresă de e-mail pe care a fost trimisă invitația clinicii.");
+      setError(
+        "Folosește aceeași adresă de e-mail pe care a fost trimisă invitația clinicii."
+      );
       return;
     }
 
@@ -126,7 +132,7 @@ export default function ClinicInvitedDoctorRegisterForm({
       try {
         const supabase = createClient();
         const confirmationUrl = new URL("/auth/confirm", window.location.origin);
-        confirmationUrl.searchParams.set("next", "/doctor-application");
+        confirmationUrl.searchParams.set("next", "/doctor-dashboard/profile");
 
         const { data, error: signUpError } = await supabase.auth.signUp({
           email: normalizedEmail,
@@ -134,9 +140,10 @@ export default function ClinicInvitedDoctorRegisterForm({
           options: {
             emailRedirectTo: confirmationUrl.toString(),
             data: {
-              registration_type: "doctor",
+              registration_type: "clinic_invited_doctor",
               clinic_invite_token: token,
               clinic_paid: true,
+              doctor_account_type: "clinic_sub_account",
               first_name: normalizedFirstName,
               last_name: normalizedLastName,
               phone: normalizedPhone,
@@ -144,7 +151,7 @@ export default function ClinicInvitedDoctorRegisterForm({
               professional_registration_number:
                 professionalRegistrationNumber.trim() || null,
               message:
-                "Medic invitat de clinică. Abonamentul este acoperit de clinică.",
+                "Medic invitat de clinică. Cont sub clinică. Abonamentul este acoperit de clinică.",
             },
           },
         });
@@ -157,7 +164,7 @@ export default function ClinicInvitedDoctorRegisterForm({
             normalizedMessage.includes("already been registered")
           ) {
             setError(
-              "Există deja un cont pentru această adresă de e-mail. Autentifică-te și contactează clinica sau RomDoc pentru asociere."
+              "Există deja un cont pentru această adresă de e-mail. Pentru un cont clinic separat, folosește o adresă de e-mail diferită."
             );
             return;
           }
@@ -204,7 +211,7 @@ export default function ClinicInvitedDoctorRegisterForm({
         }
 
         if (data.session) {
-          router.replace("/doctor-application");
+          router.replace("/doctor-dashboard/profile");
           router.refresh();
           return;
         }
@@ -212,7 +219,7 @@ export default function ClinicInvitedDoctorRegisterForm({
         const checkEmailParams = new URLSearchParams({
           email: normalizedEmail,
           type: "doctor",
-          next: "/doctor-application",
+          next: "/doctor-dashboard/profile",
         });
 
         router.replace(`/check-email?${checkEmailParams.toString()}`);
@@ -234,18 +241,20 @@ export default function ClinicInvitedDoctorRegisterForm({
           Invitație clinică
         </p>
         <h1 className="mt-2 text-2xl font-bold text-gray-900">
-          Creează contul de medic invitat
+          Creează contul de medic sub clinică
         </h1>
         <p className="mt-3 text-sm leading-6 text-gray-600">
-          Contul tău va fi conectat la clinica care te-a invitat. Abonamentul
-          RomDoc este acoperit de clinică, deci nu trebuie să plătești individual
-          prin Stripe pentru această invitație.
+          Acest cont va fi creat ca sub-cont de medic al clinicii care te-a
+          invitat. Abonamentul RomDoc este acoperit de clinică, deci nu trebuie
+          să plătești individual prin Stripe pentru această invitație.
         </p>
       </header>
 
       <div className="mt-6 rounded-xl border border-green-200 bg-green-50 p-4 text-sm leading-6 text-green-800">
-        Plata abonamentului este responsabilitatea clinicii. Tu trebuie doar să
-        creezi contul și să finalizezi profilul profesional.
+        Plata abonamentului și consumul SMS aferent acestui cont sunt
+        responsabilitatea clinicii. Dacă vrei să lucrezi independent sau pentru
+        altă clinică, folosește o altă adresă de e-mail și creează un cont
+        separat.
       </div>
 
       {error && (
@@ -380,11 +389,17 @@ export default function ClinicInvitedDoctorRegisterForm({
           />
           <span>
             Accept{" "}
-            <Link href="/termeni-si-conditii" className="font-semibold text-[#036661] underline-offset-4 hover:underline">
+            <Link
+              href="/termeni-si-conditii"
+              className="font-semibold text-[#036661] underline-offset-4 hover:underline"
+            >
               Termenii și condițiile
             </Link>{" "}
             și{" "}
-            <Link href="/confidentialitate" className="font-semibold text-[#036661] underline-offset-4 hover:underline">
+            <Link
+              href="/confidentialitate"
+              className="font-semibold text-[#036661] underline-offset-4 hover:underline"
+            >
               Politica de confidențialitate
             </Link>
             .
@@ -396,7 +411,9 @@ export default function ClinicInvitedDoctorRegisterForm({
           disabled={isPending}
           className="romdoc-focus-ring w-full rounded-xl bg-[#036661] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#024d49] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isPending ? "Se creează contul..." : "Creează contul de medic invitat"}
+          {isPending
+            ? "Se creează contul..."
+            : "Creează contul de medic sub clinică"}
         </button>
       </form>
     </div>
