@@ -14,6 +14,7 @@ type ClinicManagerDashboardSidebarProps = {
 
 type NavigationIcon =
   | "overview"
+  | "locations"
   | "doctors"
   | "invitations"
   | "billing"
@@ -31,6 +32,11 @@ const navigationItems: NavigationItem[] = [
     href: "/clinic-manager-dashboard",
     label: "Prezentare generală",
     icon: "overview",
+  },
+  {
+    href: "/clinic-manager-dashboard/locations",
+    label: "Locații",
+    icon: "locations",
   },
   {
     href: "/clinic-manager-dashboard/doctors",
@@ -81,6 +87,18 @@ function NavigationIconView({
           <rect x="14" y="4" width="6" height="6" rx="1" />
           <rect x="4" y="14" width="6" height="6" rx="1" />
           <rect x="14" y="14" width="6" height="6" rx="1" />
+        </svg>
+      );
+
+    case "locations":
+      return (
+        <svg {...commonProps}>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11Z"
+          />
+          <circle cx="12" cy="10" r="2.5" />
         </svg>
       );
 
