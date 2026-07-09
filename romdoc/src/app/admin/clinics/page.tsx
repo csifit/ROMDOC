@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import AdminClinicCreationForm from "@/components/admin/admin-clinic-creation-form";
 import AdminDoctorClinicAssociations from "@/components/admin/admin-doctor-clinic-associations";
 import ClinicManagementActions from "@/components/admin/clinic-management-actions";
+import ClinicOrganizationLocationApprovals from "@/components/admin/clinic-organization-location-approvals";
 import ClinicOrganizationsOverview from "@/components/admin/clinic-organizations-overview";
 import ClinicEditingPanel from "@/components/clinic/clinic-editing-panel";
 import AdminAccordion from "@/components/ui/admin-accordion";
@@ -20,15 +21,14 @@ export default async function AdminClinicsPage() {
     redirect("/login?next=/admin/clinics");
   }
 
-  const {
-    data: profile,
-    error: profileError,
-  } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select(`
-      role,
-      account_status
-    `)
+    .select(
+      `
+        role,
+        account_status
+      `
+    )
     .eq("id", user.id)
     .maybeSingle();
 
@@ -53,12 +53,21 @@ export default async function AdminClinicsPage() {
 
         <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
           Creează clinici aprobate, asociază medicii existenți cu locațiile lor,
-          verifică propunerile trimise de medici și urmărește organizațiile de
-          clinică ce pot invita și plăti medici.
+          verifică propunerile trimise de medici și aprobă punctele de lucru ale
+          organizațiilor de clinică. Locațiile aprobate devin eligibile pentru
+          harta publică RomDoc.
         </p>
       </header>
 
       <ClinicOrganizationsOverview />
+
+      <AdminAccordion
+        title="Aprobă locații organizații"
+        description="Verifică punctele de lucru cerute de Clinic Manager. Aprobarea activează locația pentru organizație și o face eligibilă pentru harta publică."
+        defaultOpen
+      >
+        <ClinicOrganizationLocationApprovals />
+      </AdminAccordion>
 
       <AdminAccordion
         title="Adaugă clinică"
