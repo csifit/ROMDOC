@@ -15,6 +15,7 @@ import {
 type ProfileRole =
   | "admin"
   | "manager"
+  | "clinic_manager"
   | "doctor"
   | "doctor_applicant"
   | "staff"
@@ -179,6 +180,11 @@ export default async function DashboardRouterPage() {
   switch (
     typedProfile.role
   ) {
+    case "clinic_manager":
+      redirect(
+        "/clinic-manager-dashboard"
+      );
+
     case "doctor":
       redirect(
         "/doctor-dashboard/appointments"
