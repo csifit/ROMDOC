@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import AdminClinicCreationForm from "@/components/admin/admin-clinic-creation-form";
 import AdminDoctorClinicAssociations from "@/components/admin/admin-doctor-clinic-associations";
+import ClinicDoctorCoverageApprovals from "@/components/admin/clinic-doctor-coverage-approvals";
 import ClinicManagementActions from "@/components/admin/clinic-management-actions";
 import ClinicOrganizationsOverview from "@/components/admin/clinic-organizations-overview";
 import ClinicEditingPanel from "@/components/clinic/clinic-editing-panel";
@@ -59,6 +60,13 @@ export default async function AdminClinicsPage() {
       </header>
 
       <ClinicOrganizationsOverview />
+
+      <AdminAccordion
+        title="Aprobă acoperirea medicilor"
+        description="Confirmă manual medicii care au acceptat invitația clinicii și pot fi plătiți de clinică."
+      >
+        <ClinicDoctorCoverageApprovals />
+      </AdminAccordion>
 
       <AdminAccordion
         title="Adaugă clinică"
