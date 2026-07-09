@@ -73,6 +73,31 @@ type DoctorBillingProfileRow = {
   invoice_notes: string | null;
 };
 
+type DoctorSubscriptionRow = {
+  id: string;
+  profile_id: string | null;
+  doctor_id: string | null;
+  stripe_subscription_id: string | null;
+  status: string | null;
+  billing_interval: string | null;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean | null;
+  canceled_at: string | null;
+  last_payment_at: string | null;
+};
+
+type AvailabilityRow = {
+  id: string;
+  doctor_id: string;
+  clinic_id: string | null;
+  weekday: number | null;
+  start_time: string | null;
+  end_time: string | null;
+  appointment_duration_minutes: number | null;
+  is_active: boolean | null;
+};
+
 type ClinicTranslation = {
   locale: string;
   name: string;
@@ -92,6 +117,8 @@ type DoctorInvoiceGroup = {
   doctor: DoctorRow;
   profile: ProfileRow | null;
   billingProfile: DoctorBillingProfileRow | null;
+  subscription: DoctorSubscriptionRow | null;
+  availability: AvailabilityRow[];
   title: string | null;
   authEmail: string | null;
   smsLogs: SmsLogRow[];
@@ -101,6 +128,9 @@ type DoctorInvoiceGroup = {
   failedCount: number;
   uninvoicedCostMinor: number;
   currency: string;
+  activeAvailabilityCount: number;
+  inactiveAvailabilityCount: number;
+  availabilityClinicCount: number;
 };
 
 function getMonthRange(monthParam: string | undefined) {
@@ -242,6 +272,58 @@ function getDoctorAccountTypeLabel(value: string | null) {
     default:
       return value ?? "—";
   }
+}
+
+function getSubscriptionStatusLabel(value: string | null | undefined) {
+  switch (value) {
+    case "active":
+      return "Activ";
+    case "trialing":
+      return "Trial";
+    case "past_due":
+      return "Plată întârziată";
+    case "unpaid":
+      return "Neplătit";
+    case "canceled":
+      return "Anulat";
+    case "incomplete":
+      return "Incomplet";
+    case "incomplete_expired":
+      return "Expirat";
+    case "paused":
+      return "Pauzat";
+    default:
+      return value ?? "—";
+  }
+}
+
+function getBillingIntervalLabel(value: string | null | undefined) {
+  switch (value) {
+    case "month":
+    case "monthly":
+      return "Lunar";
+    case "year":
+    case "yearly":
+      return "Anual";
+    default:
+      return value ?? "—";
+  }
+}
+
+function getAvailabilitySummary(group: DoctorInvoiceGroup) {
+  if (group.activeAvailabilityCount === 0 && group.inactiveAvailabilityCount === 0) {
+    return "Fără disponibilitate configurată";
+  }
+
+  return `${group.activeAvailabilityCount} active · ${group.inactiveAvailabilityCount} inactive · ${group.availabilityClinicCount} clinici`;
+}
+
+function getSubscriptionSummary(group: DoctorInvoiceGroup) {
+  if (group.doctor.account_type === "clinic_sub_account") {
+    return "Plătit de clinică";
+  }
+
+  return getSubscriptionStatusLabel(group.subscription?.status);
 }
 
 function SummaryBox({
@@ -393,7 +475,12 @@ export default async function ManagerDoctorSmsPage({
     );
   }
 
-  const [smsLogsResult, billingProfilesResult] = await Promise.all([
+  const [
+    smsLogsResult,
+    billingProfilesResult,
+    subscriptionsResult,
+    availabilityResult,
+  ] = await Promise.all([
     admin
       .from("sms_delivery_logs")
       .select(`
@@ -439,11 +526,42 @@ export default async function ManagerDoctorSmsPage({
         accounting_contact_phone,
         invoice_notes
       `),
+    admin
+      .from("doctor_subscriptions")
+      .select(`
+        id,
+        profile_id,
+        doctor_id,
+        stripe_subscription_id,
+        status,
+        billing_interval,
+        current_period_start,
+        current_period_end,
+        cancel_at_period_end,
+        canceled_at,
+        last_payment_at
+      `),
+    admin
+      .from("availability")
+      .select(`
+        id,
+        doctor_id,
+        clinic_id,
+        weekday,
+        start_time,
+        end_time,
+        appointment_duration_minutes,
+        is_active
+      `),
   ]);
 
   const allSmsLogs = (smsLogsResult.data ?? []) as SmsLogRow[];
   const billingProfiles =
     (billingProfilesResult.data ?? []) as DoctorBillingProfileRow[];
+  const subscriptions =
+    (subscriptionsResult.data ?? []) as DoctorSubscriptionRow[];
+  const availabilityRows =
+    (availabilityResult.data ?? []) as AvailabilityRow[];
 
   const doctorSmsLogs = allSmsLogs.filter(
     (log) =>
@@ -456,12 +574,46 @@ export default async function ManagerDoctorSmsPage({
     billingProfiles.map((profile) => [profile.doctor_id, profile])
   );
 
+  const subscriptionByDoctorId = new Map<string, DoctorSubscriptionRow>();
+
+  for (const subscription of subscriptions) {
+    if (!subscription.doctor_id) {
+      continue;
+    }
+
+    const existing = subscriptionByDoctorId.get(subscription.doctor_id);
+
+    if (!existing) {
+      subscriptionByDoctorId.set(subscription.doctor_id, subscription);
+      continue;
+    }
+
+    const existingDate = existing.current_period_end ?? existing.last_payment_at ?? "";
+    const nextDate = subscription.current_period_end ?? subscription.last_payment_at ?? "";
+
+    if (nextDate > existingDate) {
+      subscriptionByDoctorId.set(subscription.doctor_id, subscription);
+    }
+  }
+
+  const availabilityByDoctorId = new Map<string, AvailabilityRow[]>();
+
+  for (const availability of availabilityRows) {
+    const existing = availabilityByDoctorId.get(availability.doctor_id) ?? [];
+    existing.push(availability);
+    availabilityByDoctorId.set(availability.doctor_id, existing);
+  }
+
   const doctorIds = Array.from(
     new Set([
       ...doctorSmsLogs
         .map((log) => log.doctor_id)
         .filter((id): id is string => Boolean(id)),
       ...billingProfiles.map((profile) => profile.doctor_id),
+      ...subscriptions
+        .map((subscription) => subscription.doctor_id)
+        .filter((id): id is string => Boolean(id)),
+      ...availabilityRows.map((availability) => availability.doctor_id),
     ])
   );
 
@@ -551,10 +703,25 @@ export default async function ManagerDoctorSmsPage({
         ? profileById.get(doctor.profile_id) ?? null
         : null;
 
+      const doctorAvailability = availabilityByDoctorId.get(doctor.id) ?? [];
+      const activeAvailabilityCount = doctorAvailability.filter(
+        (availability) => availability.is_active !== false
+      ).length;
+      const inactiveAvailabilityCount = doctorAvailability.filter(
+        (availability) => availability.is_active === false
+      ).length;
+      const availabilityClinicCount = new Set(
+        doctorAvailability
+          .map((availability) => availability.clinic_id)
+          .filter(Boolean)
+      ).size;
+
       return {
         doctor,
         profile,
         billingProfile: billingProfileByDoctorId.get(doctor.id) ?? null,
+        subscription: subscriptionByDoctorId.get(doctor.id) ?? null,
+        availability: doctorAvailability,
         title: titleByDoctorId.get(doctor.id) ?? null,
         authEmail: doctor.profile_id
           ? authUserById.get(doctor.profile_id)?.email ?? null
@@ -569,12 +736,17 @@ export default async function ManagerDoctorSmsPage({
           0
         ),
         currency,
+        activeAvailabilityCount,
+        inactiveAvailabilityCount,
+        availabilityClinicCount,
       };
     })
     .filter(
       (group) =>
         group.smsLogs.length > 0 ||
-        Boolean(group.billingProfile)
+        Boolean(group.billingProfile) ||
+        Boolean(group.subscription) ||
+        group.availability.length > 0
     )
     .sort((first, second) => {
       if (first.uninvoicedCostMinor !== second.uninvoicedCostMinor) {
@@ -605,6 +777,8 @@ export default async function ManagerDoctorSmsPage({
   const pageError =
     smsLogsResult.error?.message ??
     billingProfilesResult.error?.message ??
+    subscriptionsResult.error?.message ??
+    availabilityResult.error?.message ??
     doctorsResult.error?.message ??
     clinicsResult.error?.message ??
     profilesResult.error?.message ??
@@ -751,7 +925,7 @@ export default async function ManagerDoctorSmsPage({
                         )}
                       </div>
                       <p className="mt-1 text-sm text-gray-600">
-                        {group.sentCount} SMS trimise · {group.uninvoicedCount} nefacturate · {formatCurrencyMinor(
+                        {getSubscriptionSummary(group)} · {getAvailabilitySummary(group)} · {group.sentCount} SMS trimise · {group.uninvoicedCount} nefacturate · {formatCurrencyMinor(
                           group.uninvoicedCostMinor,
                           group.currency
                         )}
@@ -764,7 +938,17 @@ export default async function ManagerDoctorSmsPage({
                   </summary>
 
                   <div className="border-t border-gray-200 px-5 py-5">
-                    <div className="grid gap-4 md:grid-cols-4">
+                    <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+                      <SummaryBox
+                        label="Abonament"
+                        value={getSubscriptionSummary(group)}
+                        helper="Status abonament individual sau plătit de clinică."
+                      />
+                      <SummaryBox
+                        label="Disponibilitate"
+                        value={group.activeAvailabilityCount}
+                        helper="Intervale active configurate."
+                      />
                       <SummaryBox
                         label="SMS trimise"
                         value={group.sentCount}
@@ -805,6 +989,34 @@ export default async function ManagerDoctorSmsPage({
                           <FieldLine
                             label="Status cont"
                             value={group.profile?.account_status}
+                          />
+                          <FieldLine
+                            label="Status abonament"
+                            value={getSubscriptionSummary(group)}
+                          />
+                          <FieldLine
+                            label="Interval facturare"
+                            value={getBillingIntervalLabel(group.subscription?.billing_interval)}
+                          />
+                          <FieldLine
+                            label="Perioadă curentă până la"
+                            value={formatDateTime(group.subscription?.current_period_end ?? null)}
+                          />
+                          <FieldLine
+                            label="Anulare la finalul perioadei"
+                            value={group.subscription?.cancel_at_period_end ? "Da" : "Nu"}
+                          />
+                          <FieldLine
+                            label="Disponibilitate activă"
+                            value={`${group.activeAvailabilityCount} intervale active`}
+                          />
+                          <FieldLine
+                            label="Disponibilitate inactivă"
+                            value={`${group.inactiveAvailabilityCount} intervale inactive`}
+                          />
+                          <FieldLine
+                            label="Clinici cu disponibilitate"
+                            value={`${group.availabilityClinicCount}`}
                           />
                         </dl>
                       </section>
@@ -850,6 +1062,68 @@ export default async function ManagerDoctorSmsPage({
                         )}
                       </section>
                     </div>
+
+
+                    <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                          <h4 className="font-bold text-gray-900">
+                            Disponibilitate
+                          </h4>
+                          <p className="mt-1 text-sm text-gray-600">
+                            Rezumatul programului configurat de medic, util pentru verificarea activității contului.
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-semibold text-gray-700">
+                          {group.availability.length} intervale
+                        </span>
+                      </div>
+
+                      {group.availability.length === 0 ? (
+                        <div className="mt-5 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm leading-6 text-gray-600">
+                          Medicul nu are disponibilitate configurată.
+                        </div>
+                      ) : (
+                        <div className="mt-5 overflow-hidden rounded-xl border border-gray-200">
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200 text-sm">
+                              <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                <tr>
+                                  <th className="px-4 py-3">Zi</th>
+                                  <th className="px-4 py-3">Clinică</th>
+                                  <th className="px-4 py-3">Interval</th>
+                                  <th className="px-4 py-3">Durată</th>
+                                  <th className="px-4 py-3">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100 bg-white">
+                                {group.availability.map((availability) => (
+                                  <tr key={availability.id}>
+                                    <td className="px-4 py-3 text-gray-700">
+                                      {availability.weekday ?? "—"}
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-700">
+                                      {availability.clinic_id
+                                        ? clinicNameById.get(availability.clinic_id) ?? availability.clinic_id.slice(0, 8)
+                                        : "—"}
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-700">
+                                      {availability.start_time ?? "—"} — {availability.end_time ?? "—"}
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-700">
+                                      {availability.appointment_duration_minutes ?? "—"} min
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-700">
+                                      {availability.is_active === false ? "Inactiv" : "Activ"}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </section>
 
                     <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-5">
                       <div className="flex flex-wrap items-start justify-between gap-4">
