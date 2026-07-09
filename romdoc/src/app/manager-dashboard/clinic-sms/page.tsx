@@ -1,12 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import {
-  createAdminClient,
-} from "@/lib/supabase/admin";
-import {
-  createClient,
-} from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 type ClinicSmsPageProps = {
   searchParams?: Promise<{
@@ -18,6 +14,41 @@ type OrganizationRow = {
   id: string;
   name: string;
   status: string;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  website: string | null;
+};
+
+type OrganizationBillingProfileRow = {
+  organization_id: string;
+  company_name: string;
+  tax_id: string;
+  trade_register_number: string | null;
+  billing_address: string;
+  billing_city: string;
+  billing_county: string;
+  billing_country: string;
+  billing_email: string;
+  is_vat_payer: boolean;
+  vat_number: string | null;
+};
+
+type OrganizationMemberRow = {
+  organization_id: string;
+  profile_id: string;
+  member_role: string;
+  status: string;
+  profiles:
+    | {
+        first_name: string | null;
+        last_name: string | null;
+      }
+    | {
+        first_name: string | null;
+        last_name: string | null;
+      }[]
+    | null;
 };
 
 type SmsLogRow = {
@@ -54,6 +85,40 @@ type ClinicRow = {
   id: string;
   slug: string;
   clinic_translations: ClinicTranslation[] | null;
+};
+
+type ClinicDoctorRelationshipRow = {
+  organization_id: string;
+  doctor_id: string | null;
+  invitation_status: string;
+  coverage_status: string;
+  payment_responsibility: string;
+};
+
+type AuthUserSummary = {
+  email: string | null;
+};
+
+type ManagerInfo = {
+  profileId: string;
+  name: string;
+  email: string | null;
+  role: string;
+  status: string;
+};
+
+type OrganizationInvoiceGroup = {
+  organization: OrganizationRow;
+  billingProfile: OrganizationBillingProfileRow | null;
+  managers: ManagerInfo[];
+  doctorCount: number;
+  smsLogs: SmsLogRow[];
+  sentCount: number;
+  uninvoicedCount: number;
+  invoicedCount: number;
+  failedCount: number;
+  uninvoicedCostMinor: number;
+  currency: string;
 };
 
 function getMonthRange(monthParam: string | undefined) {
@@ -125,6 +190,22 @@ function maskRecipient(value: string | null) {
   return `${trimmed.slice(0, 3)}••••${trimmed.slice(-3)}`;
 }
 
+function getFirstRelation<T>(relation: T | T[] | null | undefined): T | null {
+  if (!relation) {
+    return null;
+  }
+
+  return Array.isArray(relation) ? relation[0] ?? null : relation;
+}
+
+function getDisplayName(
+  firstName: string | null | undefined,
+  lastName: string | null | undefined,
+  fallback = "Manager clinică"
+) {
+  return [firstName, lastName].filter(Boolean).join(" ").trim() || fallback;
+}
+
 function getClinicName(clinic: ClinicRow) {
   return (
     clinic.clinic_translations?.find(
@@ -165,6 +246,19 @@ function getInvoiceLabel(status: string | null) {
   }
 }
 
+function getMemberRoleLabel(role: string) {
+  switch (role) {
+    case "owner":
+      return "Owner";
+    case "billing_manager":
+      return "Manager facturare clinică";
+    case "manager":
+      return "Manager clinică";
+    default:
+      return role;
+  }
+}
+
 function SummaryBox({
   label,
   value,
@@ -187,6 +281,65 @@ function SummaryBox({
       </p>
     </div>
   );
+}
+
+function FieldLine({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null | undefined;
+}) {
+  return (
+    <div>
+      <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+        {label}
+      </dt>
+      <dd className="mt-1 text-sm font-medium text-gray-900">
+        {value || "—"}
+      </dd>
+    </div>
+  );
+}
+
+async function listAuthUsersById(profileIds: string[]) {
+  if (profileIds.length === 0) {
+    return new Map<string, AuthUserSummary>();
+  }
+
+  const admin = createAdminClient();
+  const wantedIds = new Set(profileIds);
+  const usersById = new Map<string, AuthUserSummary>();
+  let page = 1;
+  const perPage = 1000;
+
+  while (true) {
+    const { data, error } = await admin.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+
+    if (error) {
+      console.error("Clinic manager auth user lookup failed:", error);
+      return usersById;
+    }
+
+    for (const authUser of data.users) {
+      if (wantedIds.has(authUser.id)) {
+        usersById.set(authUser.id, {
+          email: authUser.email ?? null,
+        });
+      }
+    }
+
+    if (data.users.length < perPage || usersById.size === wantedIds.size) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return usersById;
 }
 
 export default async function ManagerClinicSmsPage({
@@ -255,11 +408,57 @@ export default async function ManagerClinicSmsPage({
     );
   }
 
-  const [organizationsResult, smsLogsResult] = await Promise.all([
+  const [
+    organizationsResult,
+    billingProfilesResult,
+    organizationMembersResult,
+    doctorRelationshipsResult,
+    smsLogsResult,
+  ] = await Promise.all([
     admin
       .from("clinic_organizations")
-      .select("id, name, status")
+      .select("id, name, status, contact_name, contact_email, contact_phone, website")
       .order("name", { ascending: true }),
+    admin
+      .from("clinic_organization_billing_profiles")
+      .select(`
+        organization_id,
+        company_name,
+        tax_id,
+        trade_register_number,
+        billing_address,
+        billing_city,
+        billing_county,
+        billing_country,
+        billing_email,
+        is_vat_payer,
+        vat_number
+      `),
+    admin
+      .from("clinic_organization_members")
+      .select(`
+        organization_id,
+        profile_id,
+        member_role,
+        status,
+        profiles (
+          first_name,
+          last_name
+        )
+      `)
+      .eq("status", "active"),
+    admin
+      .from("clinic_doctor_relationships")
+      .select(`
+        organization_id,
+        doctor_id,
+        invitation_status,
+        coverage_status,
+        payment_responsibility
+      `)
+      .eq("payment_responsibility", "clinic_paid")
+      .eq("invitation_status", "accepted")
+      .eq("coverage_status", "active"),
     admin
       .from("sms_delivery_logs")
       .select(`
@@ -287,15 +486,81 @@ export default async function ManagerClinicSmsPage({
   ]);
 
   const organizations = (organizationsResult.data ?? []) as OrganizationRow[];
-  const organizationNameById = new Map(
-    organizations.map((organization) => [organization.id, organization.name])
-  );
-
+  const billingProfiles =
+    (billingProfilesResult.data ?? []) as OrganizationBillingProfileRow[];
+  const organizationMembers =
+    (organizationMembersResult.data ?? []) as OrganizationMemberRow[];
+  const doctorRelationships =
+    (doctorRelationshipsResult.data ?? []) as ClinicDoctorRelationshipRow[];
   const allSmsLogs = (smsLogsResult.data ?? []) as SmsLogRow[];
+
   const clinicSmsLogs = allSmsLogs.filter(
     (log) =>
       log.payer_type === "clinic_organization" ||
       Boolean(log.payer_clinic_organization_id)
+  );
+
+  const billingProfileByOrganizationId = new Map(
+    billingProfiles.map((profile) => [profile.organization_id, profile])
+  );
+
+  const managerProfileIds = Array.from(
+    new Set(
+      organizationMembers
+        .map((member) => member.profile_id)
+        .filter(Boolean)
+    )
+  );
+
+  const authUserById = await listAuthUsersById(managerProfileIds);
+
+  const managersByOrganizationId = new Map<string, ManagerInfo[]>();
+
+  for (const member of organizationMembers) {
+    const memberProfile = getFirstRelation(member.profiles);
+    const manager: ManagerInfo = {
+      profileId: member.profile_id,
+      name: getDisplayName(
+        memberProfile?.first_name,
+        memberProfile?.last_name,
+        "Manager clinică"
+      ),
+      email: authUserById.get(member.profile_id)?.email ?? null,
+      role: member.member_role,
+      status: member.status,
+    };
+
+    const existing = managersByOrganizationId.get(member.organization_id) ?? [];
+    existing.push(manager);
+    managersByOrganizationId.set(member.organization_id, existing);
+  }
+
+  const doctorIdsByOrganizationId = new Map<string, Set<string>>();
+
+  for (const relationship of doctorRelationships) {
+    if (!relationship.doctor_id) {
+      continue;
+    }
+
+    const existing =
+      doctorIdsByOrganizationId.get(relationship.organization_id) ??
+      new Set<string>();
+
+    existing.add(relationship.doctor_id);
+    doctorIdsByOrganizationId.set(relationship.organization_id, existing);
+  }
+
+  const organizationIdsWithSms = new Set(
+    clinicSmsLogs
+      .map((log) => log.payer_clinic_organization_id)
+      .filter((id): id is string => Boolean(id))
+  );
+
+  const groupedOrganizations = organizations.filter(
+    (organization) =>
+      organization.status === "active" ||
+      organizationIdsWithSms.has(organization.id) ||
+      billingProfileByOrganizationId.has(organization.id)
   );
 
   const doctorIds = Array.from(
@@ -316,10 +581,7 @@ export default async function ManagerClinicSmsPage({
 
   const [doctorsResult, clinicsResult] = await Promise.all([
     doctorIds.length > 0
-      ? admin
-          .from("doctors")
-          .select("id, slug")
-          .in("id", doctorIds)
+      ? admin.from("doctors").select("id, slug").in("id", doctorIds)
       : Promise.resolve({ data: [], error: null }),
     clinicIds.length > 0
       ? admin
@@ -346,6 +608,58 @@ export default async function ManagerClinicSmsPage({
     clinics.map((clinic) => [clinic.id, getClinicName(clinic)])
   );
 
+  const groups: OrganizationInvoiceGroup[] = groupedOrganizations
+    .map((organization) => {
+      const smsLogs = clinicSmsLogs.filter(
+        (log) => log.payer_clinic_organization_id === organization.id
+      );
+      const sentCount = smsLogs.filter((row) => row.status === "sent").length;
+      const failedCount = smsLogs.filter((row) => row.status === "failed").length;
+      const uninvoicedRows = smsLogs.filter(
+        (row) => row.invoice_status === "uninvoiced"
+      );
+      const invoicedCount = smsLogs.filter(
+        (row) => row.invoice_status === "invoiced"
+      ).length;
+      const currency = smsLogs.find((row) => row.currency)?.currency ?? "RON";
+      const smsDoctorCount = new Set(
+        smsLogs
+          .map((row) => row.doctor_id)
+          .filter((doctorId): doctorId is string => Boolean(doctorId))
+      ).size;
+
+      return {
+        organization,
+        billingProfile:
+          billingProfileByOrganizationId.get(organization.id) ?? null,
+        managers: managersByOrganizationId.get(organization.id) ?? [],
+        doctorCount: Math.max(
+          doctorIdsByOrganizationId.get(organization.id)?.size ?? 0,
+          smsDoctorCount
+        ),
+        smsLogs,
+        sentCount,
+        uninvoicedCount: uninvoicedRows.length,
+        invoicedCount,
+        failedCount,
+        uninvoicedCostMinor: uninvoicedRows.reduce(
+          (total, row) => total + (row.unit_cost_minor ?? 0),
+          0
+        ),
+        currency,
+      };
+    })
+    .sort((first, second) => {
+      if (first.uninvoicedCostMinor !== second.uninvoicedCostMinor) {
+        return second.uninvoicedCostMinor - first.uninvoicedCostMinor;
+      }
+
+      return first.organization.name.localeCompare(
+        second.organization.name,
+        "ro"
+      );
+    });
+
   const sentRows = clinicSmsLogs.filter((row) => row.status === "sent");
   const failedRows = clinicSmsLogs.filter((row) => row.status === "failed");
   const uninvoicedRows = clinicSmsLogs.filter(
@@ -361,6 +675,15 @@ export default async function ManagerClinicSmsPage({
   );
 
   const currency = clinicSmsLogs.find((row) => row.currency)?.currency ?? "RON";
+  const pageError =
+    organizationsResult.error?.message ??
+    billingProfilesResult.error?.message ??
+    organizationMembersResult.error?.message ??
+    doctorRelationshipsResult.error?.message ??
+    smsLogsResult.error?.message ??
+    doctorsResult.error?.message ??
+    clinicsResult.error?.message ??
+    null;
 
   return (
     <div className="space-y-8">
@@ -372,9 +695,9 @@ export default async function ManagerClinicSmsPage({
           Facturare SMS clinici
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Vezi consumul SMS al clinicilor pentru perioada selectată. Pagina
-          afișează doar date de facturare și livrare: nu afișează corpul SMS,
-          note medicale sau dosare ale pacienților.
+          Vezi consumul SMS al clinicilor pentru perioada selectată și datele
+          necesare pentru invoicing. Corpul SMS, notele medicale și dosarele
+          pacienților nu sunt afișate.
         </p>
       </header>
 
@@ -385,7 +708,8 @@ export default async function ManagerClinicSmsPage({
               Perioadă: {monthRange.label}
             </h2>
             <p className="mt-1 text-sm text-gray-600">
-              Sunt afișate SMS-urile cu payer clinică pentru luna selectată.
+              Sunt afișate SMS-urile cu payer clinică și organizațiile de
+              clinică care pot necesita facturare.
             </p>
           </div>
 
@@ -406,18 +730,23 @@ export default async function ManagerClinicSmsPage({
         </div>
       </section>
 
-      {organizationsResult.error || smsLogsResult.error ? (
+      {pageError ? (
         <section className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm leading-6 text-red-800 shadow-sm">
           <h2 className="font-semibold">
-            Datele de facturare SMS nu au putut fi încărcate
+            Datele de facturare SMS nu au putut fi încărcate complet
           </h2>
           <pre className="mt-3 overflow-x-auto rounded-xl bg-white p-3 text-xs text-red-900">
-            {organizationsResult.error?.message ?? smsLogsResult.error?.message}
+            {pageError}
           </pre>
         </section>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-5">
+        <SummaryBox
+          label="Organizații"
+          value={groups.length}
+          helper="Organizații active sau cu date de facturare/consum."
+        />
         <SummaryBox
           label="SMS trimise"
           value={sentRows.length}
@@ -444,89 +773,263 @@ export default async function ManagerClinicSmsPage({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="text-xl font-bold text-gray-900">
-              Detalii pentru invoicing
+              Organizații pentru invoicing
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-              Numărul pacientului este mascat. Pentru facturare contează
-              organizația plătitoare, statusul, costul și referința facturii.
+              Fiecare organizație este afișată într-un accordion ca să păstrăm
+              pagina compactă. Deschide organizația pentru datele de facturare,
+              Clinic Manageri și detaliile SMS.
             </p>
           </div>
 
           <span className="rounded-full bg-[#F0EEE9] px-3 py-1 text-sm font-semibold text-gray-700">
-            {clinicSmsLogs.length} loguri
+            {clinicSmsLogs.length} loguri SMS
           </span>
         </div>
 
-        {clinicSmsLogs.length === 0 ? (
+        {groups.length === 0 ? (
           <div className="mt-5 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm leading-6 text-gray-600">
-            Nu există consum SMS de clinică pentru perioada selectată.
+            Nu există organizații de clinică sau consum SMS de clinică pentru
+            perioada selectată.
           </div>
         ) : (
-          <div className="mt-5 overflow-hidden rounded-xl border border-gray-200">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  <tr>
-                    <th className="px-4 py-3">Dată</th>
-                    <th className="px-4 py-3">Organizație</th>
-                    <th className="px-4 py-3">Medic</th>
-                    <th className="px-4 py-3">Clinică</th>
-                    <th className="px-4 py-3">Eveniment</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Destinatar</th>
-                    <th className="px-4 py-3">Facturare</th>
-                    <th className="px-4 py-3 text-right">Cost</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 bg-white">
-                  {clinicSmsLogs.map((row) => (
-                    <tr key={row.id}>
-                      <td className="whitespace-nowrap px-4 py-3 text-gray-700">
-                        {formatDateTime(row.created_at)}
-                      </td>
-                      <td className="px-4 py-3 font-medium text-gray-900">
-                        {row.payer_clinic_organization_id
-                          ? organizationNameById.get(row.payer_clinic_organization_id) ?? "Organizație"
-                          : "Organizație clinică"}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">
-                        {row.doctor_id
-                          ? doctorSlugById.get(row.doctor_id) ?? row.doctor_id.slice(0, 8)
-                          : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">
-                        {row.clinic_id
-                          ? clinicNameById.get(row.clinic_id) ?? row.clinic_id.slice(0, 8)
-                          : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">
-                        {row.event ?? "—"}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">
-                        {getStatusLabel(row.status)}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">
-                        {maskRecipient(row.recipient)}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">
-                        <div>{getInvoiceLabel(row.invoice_status)}</div>
-                        {row.invoice_reference ? (
-                          <div className="text-xs text-gray-500">
-                            {row.invoice_reference}
-                          </div>
-                        ) : null}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right font-medium text-gray-900">
-                        {formatCurrencyMinor(
-                          row.unit_cost_minor ?? 0,
-                          row.currency ?? currency
+          <div className="mt-6 space-y-4">
+            {groups.map((group) => {
+              const billing = group.billingProfile;
+              const organization = group.organization;
+
+              return (
+                <details
+                  key={organization.id}
+                  className="group rounded-2xl border border-gray-200 bg-white shadow-sm open:border-[#036661]/40"
+                >
+                  <summary className="flex cursor-pointer list-none flex-col gap-4 rounded-2xl px-5 py-4 hover:bg-gray-50 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-lg font-bold text-gray-900">
+                          {organization.name}
+                        </h3>
+                        <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700">
+                          {organization.status}
+                        </span>
+                        {billing ? (
+                          <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-800">
+                            Date facturare OK
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                            Lipsesc date facturare
+                          </span>
                         )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                      <p className="mt-1 text-sm text-gray-600">
+                        {group.doctorCount}{" "}
+                        {group.doctorCount === 1 ? "medic" : "medici"} ·{" "}
+                        {group.sentCount} SMS trimise ·{" "}
+                        {group.uninvoicedCount} nefacturate ·{" "}
+                        {formatCurrencyMinor(
+                          group.uninvoicedCostMinor,
+                          group.currency
+                        )}
+                      </p>
+                    </div>
+
+                    <span className="text-sm font-semibold text-[#036661] transition group-open:rotate-180">
+                      Deschide ↓
+                    </span>
+                  </summary>
+
+                  <div className="border-t border-gray-200 px-5 py-5">
+                    <div className="grid gap-4 md:grid-cols-4">
+                      <SummaryBox
+                        label="SMS trimise"
+                        value={group.sentCount}
+                        helper="Pentru această organizație."
+                      />
+                      <SummaryBox
+                        label="Nefacturate"
+                        value={group.uninvoicedCount}
+                        helper="Intră în calculul facturii."
+                      />
+                      <SummaryBox
+                        label="Facturate"
+                        value={group.invoicedCount}
+                        helper="Au referință/status de facturare."
+                      />
+                      <SummaryBox
+                        label="Cost estimat"
+                        value={formatCurrencyMinor(
+                          group.uninvoicedCostMinor,
+                          group.currency
+                        )}
+                        helper="Doar SMS nefacturate."
+                      />
+                    </div>
+
+                    <div className="mt-6 grid gap-5 lg:grid-cols-3">
+                      <section className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+                        <h4 className="font-bold text-gray-900">
+                          Date organizație
+                        </h4>
+                        <dl className="mt-4 space-y-4">
+                          <FieldLine label="Contact" value={organization.contact_name} />
+                          <FieldLine label="E-mail contact" value={organization.contact_email} />
+                          <FieldLine label="Telefon" value={organization.contact_phone} />
+                          <FieldLine label="Website" value={organization.website} />
+                        </dl>
+                      </section>
+
+                      <section className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+                        <h4 className="font-bold text-gray-900">
+                          Date facturare
+                        </h4>
+                        {billing ? (
+                          <dl className="mt-4 space-y-4">
+                            <FieldLine label="Firmă" value={billing.company_name} />
+                            <FieldLine label="CUI" value={billing.tax_id} />
+                            <FieldLine
+                              label="Nr. Registrul Comerțului"
+                              value={billing.trade_register_number}
+                            />
+                            <FieldLine
+                              label="Plătitor TVA"
+                              value={billing.is_vat_payer ? "Da" : "Nu"}
+                            />
+                            <FieldLine label="Cod TVA" value={billing.vat_number} />
+                            <FieldLine label="E-mail facturare" value={billing.billing_email} />
+                            <FieldLine
+                              label="Adresă"
+                              value={`${billing.billing_address}, ${billing.billing_city}, ${billing.billing_county}, ${billing.billing_country}`}
+                            />
+                          </dl>
+                        ) : (
+                          <p className="mt-4 text-sm leading-6 text-amber-800">
+                            Nu există încă profil de facturare pentru această
+                            organizație. Contactează Clinic Managerul înainte de
+                            emiterea facturii.
+                          </p>
+                        )}
+                      </section>
+
+                      <section className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+                        <h4 className="font-bold text-gray-900">
+                          Clinic Manageri
+                        </h4>
+                        {group.managers.length === 0 ? (
+                          <p className="mt-4 text-sm leading-6 text-gray-600">
+                            Nu există manager activ legat de această organizație.
+                          </p>
+                        ) : (
+                          <div className="mt-4 space-y-3">
+                            {group.managers.map((manager) => (
+                              <div
+                                key={`${organization.id}-${manager.profileId}`}
+                                className="rounded-xl border border-gray-200 bg-white p-4"
+                              >
+                                <p className="font-semibold text-gray-900">
+                                  {manager.name}
+                                </p>
+                                <p className="mt-1 text-sm text-gray-600">
+                                  {manager.email ?? "E-mail indisponibil"}
+                                </p>
+                                <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                  {getMemberRoleLabel(manager.role)} · {manager.status}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </section>
+                    </div>
+
+                    <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                          <h4 className="font-bold text-gray-900">
+                            Detalii SMS
+                          </h4>
+                          <p className="mt-1 text-sm text-gray-600">
+                            Numărul pacientului este mascat. Nu afișăm conținutul
+                            mesajelor.
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-semibold text-gray-700">
+                          {group.smsLogs.length} loguri
+                        </span>
+                      </div>
+
+                      {group.smsLogs.length === 0 ? (
+                        <div className="mt-5 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm leading-6 text-gray-600">
+                          Nu există consum SMS pentru această organizație în
+                          perioada selectată.
+                        </div>
+                      ) : (
+                        <div className="mt-5 overflow-hidden rounded-xl border border-gray-200">
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200 text-sm">
+                              <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                <tr>
+                                  <th className="px-4 py-3">Dată</th>
+                                  <th className="px-4 py-3">Medic</th>
+                                  <th className="px-4 py-3">Clinică</th>
+                                  <th className="px-4 py-3">Eveniment</th>
+                                  <th className="px-4 py-3">Status</th>
+                                  <th className="px-4 py-3">Destinatar</th>
+                                  <th className="px-4 py-3">Facturare</th>
+                                  <th className="px-4 py-3 text-right">Cost</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100 bg-white">
+                                {group.smsLogs.map((row) => (
+                                  <tr key={row.id}>
+                                    <td className="whitespace-nowrap px-4 py-3 text-gray-700">
+                                      {formatDateTime(row.created_at)}
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-700">
+                                      {row.doctor_id
+                                        ? doctorSlugById.get(row.doctor_id) ?? row.doctor_id.slice(0, 8)
+                                        : "—"}
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-700">
+                                      {row.clinic_id
+                                        ? clinicNameById.get(row.clinic_id) ?? row.clinic_id.slice(0, 8)
+                                        : "—"}
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-700">
+                                      {row.event ?? "—"}
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-700">
+                                      {getStatusLabel(row.status)}
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-700">
+                                      {maskRecipient(row.recipient)}
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-700">
+                                      <div>{getInvoiceLabel(row.invoice_status)}</div>
+                                      {row.invoice_reference ? (
+                                        <div className="text-xs text-gray-500">
+                                          {row.invoice_reference}
+                                        </div>
+                                      ) : null}
+                                    </td>
+                                    <td className="whitespace-nowrap px-4 py-3 text-right font-medium text-gray-900">
+                                      {formatCurrencyMinor(
+                                        row.unit_cost_minor ?? 0,
+                                        row.currency ?? group.currency
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </section>
+                  </div>
+                </details>
+              );
+            })}
           </div>
         )}
       </section>
