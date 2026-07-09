@@ -8,6 +8,18 @@ type CheckEmailPageProps = {
   }>;
 };
 
+function getSafeLoginHref(nextPath: string | undefined) {
+  if (
+    !nextPath ||
+    !nextPath.startsWith("/") ||
+    nextPath.startsWith("//")
+  ) {
+    return "/login";
+  }
+
+  return `/login?next=${encodeURIComponent(nextPath)}`;
+}
+
 export default async function CheckEmailPage({
   searchParams,
 }: CheckEmailPageProps) {
@@ -22,6 +34,10 @@ export default async function CheckEmailPage({
 
   const isClinic =
     parameters.type === "clinic";
+
+  const loginHref = getSafeLoginHref(
+    parameters.next
+  );
 
   return (
     <main className="min-h-screen bg-[#F0EEE9] px-6 py-12">
@@ -87,7 +103,7 @@ export default async function CheckEmailPage({
 
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
-              href="/login"
+              href={loginHref}
               className="rounded-xl bg-[#D97757] px-5 py-3 text-sm font-semibold text-white"
             >
               Mergi la autentificare
