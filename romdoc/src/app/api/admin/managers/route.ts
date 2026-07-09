@@ -2,6 +2,7 @@ import {
   NextRequest,
   NextResponse,
 } from "next/server";
+import { Resend } from "resend";
 
 import {
   createAdminClient,
@@ -77,6 +78,21 @@ function normalizeManagerType(value: unknown) {
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function getManagerTypeLabel(managerType: string) {
+  return managerType === "accounting"
+    ? "Manager Facturare"
+    : "Manager Operațional";
 }
 
 async function listAuthUsers() {
@@ -163,19 +179,51 @@ async function grantAccountingPermission(
 ) {
   const admin = createAdminClient();
 
-  const { error } = await admin
+  const { data: existingRows, error: existingError } = await admin
     .from("manager_permissions")
-    .upsert(
-      {
-        profile_id: profileId,
-        permission_key: "accounting",
+    .select("profile_id, permission_key, revoked_at")
+    .eq("profile_id", profileId)
+    .eq("permission_key", "accounting");
+
+  if (existingError) {
+    console.error("Accounting permission lookup failed:", existingError);
+    return existingError;
+  }
+
+  const existingActive = (existingRows ?? []).some(
+    (row) => !row.revoked_at
+  );
+
+  if (existingActive) {
+    return null;
+  }
+
+  if ((existingRows ?? []).length > 0) {
+    const { error } = await admin
+      .from("manager_permissions")
+      .update({
         granted_by_profile_id: actorProfileId,
         revoked_at: null,
-      },
-      {
-        onConflict: "profile_id,permission_key",
-      }
-    );
+      })
+      .eq("profile_id", profileId)
+      .eq("permission_key", "accounting");
+
+    if (error) {
+      console.error("Accounting permission restore failed:", error);
+      return error;
+    }
+
+    return null;
+  }
+
+  const { error } = await admin
+    .from("manager_permissions")
+    .insert({
+      profile_id: profileId,
+      permission_key: "accounting",
+      granted_by_profile_id: actorProfileId,
+      revoked_at: null,
+    });
 
   if (error) {
     console.error("Accounting permission grant failed:", error);
@@ -203,6 +251,76 @@ async function revokeAccountingPermission(profileId: string) {
   }
 
   return null;
+}
+
+async function sendManagerInvitationEmail({
+  email,
+  firstName,
+  lastName,
+  managerType,
+  actionLink,
+}: {
+  email: string;
+  firstName: string;
+  lastName: string;
+  managerType: string;
+  actionLink: string;
+}) {
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const resendFromEmail = process.env.RESEND_FROM_EMAIL;
+
+  if (!resendApiKey || !resendFromEmail) {
+    return {
+      sent: false,
+      error: "Resend nu este configurat pentru invitațiile de manager.",
+    };
+  }
+
+  const resend = new Resend(resendApiKey);
+  const managerTypeLabel = getManagerTypeLabel(managerType);
+  const displayName = [firstName, lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim() || "Manager";
+
+  const safeName = escapeHtml(displayName);
+  const safeType = escapeHtml(managerTypeLabel);
+  const safeLink = escapeHtml(actionLink);
+
+  const { error } = await resend.emails.send({
+    from: resendFromEmail,
+    to: email,
+    subject: `Invitație RomDoc — ${managerTypeLabel}`,
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827;max-width:640px;margin:0 auto;">
+        <h1 style="font-size:22px;margin:0 0 16px;">Invitație RomDoc</h1>
+        <p>Bună, ${safeName},</p>
+        <p>Ai fost invitat(ă) să devii <strong>${safeType}</strong> în platforma RomDoc.</p>
+        <p>Apasă butonul de mai jos pentru a confirma invitația și pentru a crea parola contului.</p>
+        <p style="margin:24px 0;">
+          <a href="${safeLink}" style="display:inline-block;background:#036661;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:700;">
+            Acceptă invitația
+          </a>
+        </p>
+        <p style="font-size:13px;color:#4b5563;">Dacă butonul nu funcționează, copiază acest link în browser:</p>
+        <p style="font-size:13px;word-break:break-all;color:#036661;">${safeLink}</p>
+        <p style="font-size:13px;color:#4b5563;">Dacă nu te așteptai la această invitație, poți ignora acest e-mail.</p>
+      </div>
+    `,
+  });
+
+  if (error) {
+    console.error("Manager invitation email failed:", error);
+    return {
+      sent: false,
+      error: "E-mailul de invitație nu a putut fi trimis.",
+    };
+  }
+
+  return {
+    sent: true,
+    error: null,
+  };
 }
 
 export async function GET(): Promise<Response> {
@@ -364,11 +482,14 @@ export async function POST(request: NextRequest): Promise<Response> {
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? request.nextUrl.origin;
+  const passwordPath = "/set-password?mode=invite&next=/dashboard";
   const redirectTo = new URL("/auth/confirm", siteUrl);
-  redirectTo.searchParams.set("next", "/dashboard");
+  redirectTo.searchParams.set("next", passwordPath);
 
-  const { data: inviteData, error: inviteError } =
-    await admin.auth.admin.inviteUserByEmail(email, {
+  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+    type: "invite",
+    email,
+    options: {
       redirectTo: redirectTo.toString(),
       data: {
         role: "manager",
@@ -376,25 +497,27 @@ export async function POST(request: NextRequest): Promise<Response> {
         permissions: managerType === "accounting" ? ["accounting"] : [],
         first_name: firstName || null,
         last_name: lastName || null,
+        password_initialized: false,
       },
-    });
+    },
+  });
 
-  if (inviteError || !inviteData.user) {
-    console.error("Manager invitation auth error:", inviteError);
+  if (linkError || !linkData.user || !linkData.properties?.action_link) {
+    console.error("Manager invitation link error:", linkError);
 
-    const message = inviteError?.message ?? "";
+    const message = linkError?.message ?? "";
 
     return NextResponse.json(
       {
         error: message.toLowerCase().includes("already")
           ? "Adresa aparține deja unui cont. Rolul trebuie acordat printr-un flux administrativ separat."
-          : "Invitația nu a putut fi trimisă.",
+          : "Linkul de invitație nu a putut fi generat.",
       },
       { status: message.toLowerCase().includes("already") ? 409 : 500 }
     );
   }
 
-  const userId = inviteData.user.id;
+  const userId = linkData.user.id;
 
   const { error: profileError } = await admin.from("profiles").upsert(
     {
@@ -433,6 +556,26 @@ export async function POST(request: NextRequest): Promise<Response> {
     }
   }
 
+  const emailResult = await sendManagerInvitationEmail({
+    email,
+    firstName,
+    lastName,
+    managerType,
+    actionLink: linkData.properties.action_link,
+  });
+
+  if (!emailResult.sent) {
+    await admin.auth.admin.deleteUser(userId);
+
+    return NextResponse.json(
+      {
+        error:
+          emailResult.error ?? "E-mailul de invitație nu a putut fi trimis.",
+      },
+      { status: 500 }
+    );
+  }
+
   const { data: invitation, error: invitationError } = await admin
     .from("manager_invitations")
     .insert({
@@ -466,6 +609,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       email,
       manager_type: managerType,
       permissions: managerType === "accounting" ? ["accounting"] : [],
+      email_delivery: "resend_custom_manager_invitation",
     },
   });
 

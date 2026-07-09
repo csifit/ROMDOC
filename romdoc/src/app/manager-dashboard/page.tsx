@@ -32,6 +32,13 @@ const sections = [
   },
   {
     href:
+      "/manager-dashboard/clinic-sms",
+    title: "Facturare SMS clinici",
+    description:
+      "Pentru managerii Facturare: vezi consumul SMS al clinicilor și datele necesare pentru invoicing.",
+  },
+  {
+    href:
       "/manager-dashboard/cities",
     title: "Orașe",
     description:
@@ -105,7 +112,9 @@ export default function ManagerDashboardPage() {
       <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm leading-6 text-blue-950">
         Rolul de manager folosește aceleași API-uri securizate ca zona
         administrativă, însă fiecare acțiune este verificată separat prin
-        capabilitățile atribuite managerului.
+        capabilitățile atribuite managerului. Secțiunea de facturare SMS
+        pentru clinici este vizibilă doar managerilor cu permisiunea
+        <strong> Facturare</strong>.
       </section>
     </div>
   );

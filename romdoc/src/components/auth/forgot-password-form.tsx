@@ -50,13 +50,8 @@ export default function ForgotPasswordForm() {
       const supabase =
         createClient();
 
-      const nextPath =
-        "/set-password?mode=recovery&next=/login";
-
       const redirectTo =
-        `${window.location.origin}/auth/confirm?next=${encodeURIComponent(
-          nextPath
-        )}`;
+        `${window.location.origin}/set-password?mode=recovery&next=/login`;
 
       const {
         error: resetError,
