@@ -1,29 +1,23 @@
 import { NextResponse } from "next/server";
+import {
+  doctorCanUseClinic,
+  isClinicSubAccountDoctor,
+} from "@/lib/doctors/clinic-subaccount-scope";
 import { createClient } from "@/lib/supabase/server";
 
-type CreateResource =
-  | "availability"
-  | "break"
-  | "day_off";
-
-type DeleteResource =
-  | "availability"
-  | "break"
-  | "day_off";
+type CreateResource = "availability" | "break" | "day_off";
+type DeleteResource = "availability" | "break" | "day_off";
 
 type CreateRequestBody = {
   resource?: CreateResource;
-
   clinicId?: string;
   weekday?: number;
   startTime?: string;
   endTime?: string;
   durationMinutes?: number;
   isActive?: boolean;
-
   availabilityId?: string;
   label?: string;
-
   date?: string;
   isAllDay?: boolean;
   reason?: string;
@@ -44,6 +38,13 @@ type DeleteRequestBody = {
   id?: string;
 };
 
+type AuthenticatedDoctor = {
+  id: string;
+  profile_id: string | null;
+  status: string | null;
+  account_type: string | null;
+};
+
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value
@@ -51,38 +52,27 @@ function isUuid(value: string) {
 }
 
 function isTime(value: string) {
-  return /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(
-    value
-  );
+  return /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(value);
 }
 
 function normalizeTime(value: string) {
-  return value.length === 5
-    ? `${value}:00`
-    : value;
+  return value.length === 5 ? `${value}:00` : value;
 }
 
 function timeToMinutes(value: string) {
-  const [hours, minutes] =
-    value.split(":").map(Number);
+  const [hours, minutes] = value.split(":").map(Number);
 
   return hours * 60 + minutes;
 }
 
 function isDate(value: string) {
-  if (
-    !/^\d{4}-\d{2}-\d{2}$/.test(value)
-  ) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return false;
   }
 
-  const parsed = new Date(
-    `${value}T12:00:00`
-  );
+  const parsed = new Date(`${value}T12:00:00`);
 
-  return !Number.isNaN(
-    parsed.getTime()
-  );
+  return !Number.isNaN(parsed.getTime());
 }
 
 async function getAuthenticatedDoctor() {
@@ -98,8 +88,7 @@ async function getAuthenticatedDoctor() {
       supabase,
       errorResponse: NextResponse.json(
         {
-          error:
-            "Trebuie să fii autentificat.",
+          error: "Trebuie să fii autentificat.",
         },
         {
           status: 401,
@@ -108,26 +97,18 @@ async function getAuthenticatedDoctor() {
     };
   }
 
-  const {
-    data: profile,
-    error: profileError,
-  } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (
-    profileError ||
-    !profile ||
-    profile.role !== "doctor"
-  ) {
+  if (profileError || !profile || profile.role !== "doctor") {
     return {
       supabase,
       errorResponse: NextResponse.json(
         {
-          error:
-            "Doar medicii își pot administra disponibilitatea.",
+          error: "Doar medicii își pot administra disponibilitatea.",
         },
         {
           status: 403,
@@ -136,27 +117,34 @@ async function getAuthenticatedDoctor() {
     };
   }
 
-  const {
-    data: doctor,
-    error: doctorError,
-  } = await supabase
+  const { data: doctor, error: doctorError } = await supabase
     .from("doctors")
-    .select("id, profile_id")
+    .select("id, profile_id, status, account_type")
     .eq("profile_id", user.id)
     .maybeSingle();
 
   if (doctorError || !doctor) {
-    console.error(
-      "Availability doctor lookup failed:",
-      doctorError
-    );
+    console.error("Availability doctor lookup failed:", doctorError);
 
     return {
       supabase,
       errorResponse: NextResponse.json(
         {
-          error:
-            "Profilul medicului nu a putut fi verificat.",
+          error: "Profilul medicului nu a putut fi verificat.",
+        },
+        {
+          status: 403,
+        }
+      ),
+    };
+  }
+
+  if (doctor.status === "suspended") {
+    return {
+      supabase,
+      errorResponse: NextResponse.json(
+        {
+          error: "Profilul medicului este suspendat și nu poate administra disponibilitatea.",
         },
         {
           status: 403,
@@ -167,75 +155,121 @@ async function getAuthenticatedDoctor() {
 
   return {
     supabase,
-    doctor,
+    doctor: doctor as AuthenticatedDoctor,
     errorResponse: null,
   };
 }
 
 async function verifyClinic(
-  supabase: Awaited<
-    ReturnType<typeof createClient>
-  >,
-  doctorId: string,
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  doctor: AuthenticatedDoctor,
   clinicId: string
 ) {
-  const {
-    data,
-    error,
-  } = await supabase
-    .from("doctor_clinics")
-    .select("doctor_id, clinic_id")
-    .eq("doctor_id", doctorId)
-    .eq("clinic_id", clinicId)
-    .maybeSingle();
+  try {
+    const valid = await doctorCanUseClinic(supabase, doctor, clinicId);
 
-  return {
-    valid: !error && Boolean(data),
-    error,
-  };
+    return {
+      valid,
+      error: null,
+    };
+  } catch (error) {
+    return {
+      valid: false,
+      error,
+    };
+  }
 }
 
-export async function POST(
-  request: Request
+async function verifyClinicOrReturnResponse(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  doctor: AuthenticatedDoctor,
+  clinicId: string
 ) {
-  try {
-    const body =
-      (await request.json()) as CreateRequestBody;
+  const clinicCheck = await verifyClinic(supabase, doctor, clinicId);
 
-    const {
-      supabase,
-      doctor,
-      errorResponse,
-    } = await getAuthenticatedDoctor();
+  if (clinicCheck.error) {
+    console.error("Availability clinic scope check failed:", clinicCheck.error);
+
+    return NextResponse.json(
+      {
+        error: "Clinica selectată nu a putut fi verificată.",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+
+  if (!clinicCheck.valid) {
+    return NextResponse.json(
+      {
+        error: "Clinica nu este asociată sau atribuită profilului tău.",
+      },
+      {
+        status: 403,
+      }
+    );
+  }
+
+  return null;
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = (await request.json()) as CreateRequestBody;
+    const { supabase, doctor, errorResponse } = await getAuthenticatedDoctor();
 
     if (errorResponse || !doctor) {
       return errorResponse;
     }
 
     if (body.resource === "availability") {
-      const clinicId =
-        body.clinicId?.trim();
+      const clinicId = body.clinicId?.trim();
+      const weekday = Number(body.weekday);
+      const durationMinutes = Number(body.durationMinutes);
+      const rawStartTime = body.startTime?.trim();
+      const rawEndTime = body.endTime?.trim();
 
-      const weekday =
-        Number(body.weekday);
-
-      const durationMinutes =
-        Number(body.durationMinutes);
-
-      const rawStartTime =
-        body.startTime?.trim();
-
-      const rawEndTime =
-        body.endTime?.trim();
-
-      if (
-        !clinicId ||
-        !isUuid(clinicId)
-      ) {
+      if (!clinicId || !isUuid(clinicId)) {
         return NextResponse.json(
           {
-            error:
-              "Clinica selectată nu este validă.",
+            error: "Clinica selectată nu este validă.",
+          },
+          {
+            status: 400,
+          }
+        );
+      }
+
+      if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) {
+        return NextResponse.json(
+          {
+            error: "Ziua săptămânii nu este validă.",
+          },
+          {
+            status: 400,
+          }
+        );
+      }
+
+      if (!rawStartTime || !rawEndTime || !isTime(rawStartTime) || !isTime(rawEndTime)) {
+        return NextResponse.json(
+          {
+            error: "Orele de început și sfârșit nu sunt valide.",
+          },
+          {
+            status: 400,
+          }
+        );
+      }
+
+      const startTime = normalizeTime(rawStartTime);
+      const endTime = normalizeTime(rawEndTime);
+
+      if (timeToMinutes(startTime) >= timeToMinutes(endTime)) {
+        return NextResponse.json(
+          {
+            error: "Ora de sfârșit trebuie să fie după ora de început.",
           },
           {
             status: 400,
@@ -244,70 +278,13 @@ export async function POST(
       }
 
       if (
-        !Number.isInteger(weekday) ||
-        weekday < 0 ||
-        weekday > 6
-      ) {
-        return NextResponse.json(
-          {
-            error:
-              "Ziua săptămânii nu este validă.",
-          },
-          {
-            status: 400,
-          }
-        );
-      }
-
-      if (
-        !rawStartTime ||
-        !rawEndTime ||
-        !isTime(rawStartTime) ||
-        !isTime(rawEndTime)
-      ) {
-        return NextResponse.json(
-          {
-            error:
-              "Orele de început și sfârșit nu sunt valide.",
-          },
-          {
-            status: 400,
-          }
-        );
-      }
-
-      const startTime =
-        normalizeTime(rawStartTime);
-
-      const endTime =
-        normalizeTime(rawEndTime);
-
-      if (
-        timeToMinutes(startTime) >=
-        timeToMinutes(endTime)
-      ) {
-        return NextResponse.json(
-          {
-            error:
-              "Ora de sfârșit trebuie să fie după ora de început.",
-          },
-          {
-            status: 400,
-          }
-        );
-      }
-
-      if (
-        !Number.isInteger(
-          durationMinutes
-        ) ||
+        !Number.isInteger(durationMinutes) ||
         durationMinutes < 5 ||
         durationMinutes > 480
       ) {
         return NextResponse.json(
           {
-            error:
-              "Durata trebuie să fie între 5 și 480 de minute.",
+            error: "Durata trebuie să fie între 5 și 480 de minute.",
           },
           {
             status: 400,
@@ -315,47 +292,29 @@ export async function POST(
         );
       }
 
-      const clinicCheck =
-        await verifyClinic(
-          supabase,
-          doctor.id,
-          clinicId
-        );
+      const clinicErrorResponse = await verifyClinicOrReturnResponse(
+        supabase,
+        doctor,
+        clinicId
+      );
 
-      if (!clinicCheck.valid) {
-        return NextResponse.json(
-          {
-            error:
-              "Clinica nu este asociată profilului tău.",
-          },
-          {
-            status: 403,
-          }
-        );
+      if (clinicErrorResponse) {
+        return clinicErrorResponse;
       }
 
-      const {
-        data: existingIntervals,
-        error: overlapQueryError,
-      } = await supabase
+      const { data: existingIntervals, error: overlapQueryError } = await supabase
         .from("availability")
-        .select(
-          "id, start_time, end_time"
-        )
+        .select("id, start_time, end_time")
         .eq("doctor_id", doctor.id)
         .eq("clinic_id", clinicId)
         .eq("weekday", weekday);
 
       if (overlapQueryError) {
-        console.error(
-          "Availability overlap query failed:",
-          overlapQueryError
-        );
+        console.error("Availability overlap query failed:", overlapQueryError);
 
         return NextResponse.json(
           {
-            error:
-              "Programul existent nu a putut fi verificat.",
+            error: "Programul existent nu a putut fi verificat.",
           },
           {
             status: 500,
@@ -366,21 +325,14 @@ export async function POST(
       const overlaps =
         existingIntervals?.some(
           (interval) =>
-            timeToMinutes(startTime) <
-              timeToMinutes(
-                interval.end_time
-              ) &&
-            timeToMinutes(endTime) >
-              timeToMinutes(
-                interval.start_time
-              )
+            timeToMinutes(startTime) < timeToMinutes(interval.end_time) &&
+            timeToMinutes(endTime) > timeToMinutes(interval.start_time)
         ) ?? false;
 
       if (overlaps) {
         return NextResponse.json(
           {
-            error:
-              "Intervalul se suprapune peste un program existent.",
+            error: "Intervalul se suprapune peste un program existent.",
           },
           {
             status: 409,
@@ -388,34 +340,25 @@ export async function POST(
         );
       }
 
-      const availabilityId =
-        crypto.randomUUID();
+      const availabilityId = crypto.randomUUID();
 
-      const { error } = await supabase
-        .from("availability")
-        .insert({
-          id: availabilityId,
-          doctor_id: doctor.id,
-          clinic_id: clinicId,
-          weekday,
-          start_time: startTime,
-          end_time: endTime,
-          appointment_duration_minutes:
-            durationMinutes,
-          is_active:
-            body.isActive ?? true,
-        });
+      const { error } = await supabase.from("availability").insert({
+        id: availabilityId,
+        doctor_id: doctor.id,
+        clinic_id: clinicId,
+        weekday,
+        start_time: startTime,
+        end_time: endTime,
+        appointment_duration_minutes: durationMinutes,
+        is_active: body.isActive ?? true,
+      });
 
       if (error) {
-        console.error(
-          "Availability insert failed:",
-          error
-        );
+        console.error("Availability insert failed:", error);
 
         return NextResponse.json(
           {
-            error:
-              "Programul nu a putut fi adăugat.",
+            error: "Programul nu a putut fi adăugat.",
           },
           {
             status: 500,
@@ -435,23 +378,14 @@ export async function POST(
     }
 
     if (body.resource === "break") {
-      const availabilityId =
-        body.availabilityId?.trim();
+      const availabilityId = body.availabilityId?.trim();
+      const rawStartTime = body.startTime?.trim();
+      const rawEndTime = body.endTime?.trim();
 
-      const rawStartTime =
-        body.startTime?.trim();
-
-      const rawEndTime =
-        body.endTime?.trim();
-
-      if (
-        !availabilityId ||
-        !isUuid(availabilityId)
-      ) {
+      if (!availabilityId || !isUuid(availabilityId)) {
         return NextResponse.json(
           {
-            error:
-              "Programul selectat nu este valid.",
+            error: "Programul selectat nu este valid.",
           },
           {
             status: 400,
@@ -459,16 +393,10 @@ export async function POST(
         );
       }
 
-      if (
-        !rawStartTime ||
-        !rawEndTime ||
-        !isTime(rawStartTime) ||
-        !isTime(rawEndTime)
-      ) {
+      if (!rawStartTime || !rawEndTime || !isTime(rawStartTime) || !isTime(rawEndTime)) {
         return NextResponse.json(
           {
-            error:
-              "Intervalul pauzei nu este valid.",
+            error: "Intervalul pauzei nu este valid.",
           },
           {
             status: 400,
@@ -476,20 +404,13 @@ export async function POST(
         );
       }
 
-      const startTime =
-        normalizeTime(rawStartTime);
+      const startTime = normalizeTime(rawStartTime);
+      const endTime = normalizeTime(rawEndTime);
 
-      const endTime =
-        normalizeTime(rawEndTime);
-
-      if (
-        timeToMinutes(startTime) >=
-        timeToMinutes(endTime)
-      ) {
+      if (timeToMinutes(startTime) >= timeToMinutes(endTime)) {
         return NextResponse.json(
           {
-            error:
-              "Ora de sfârșit a pauzei trebuie să fie după ora de început.",
+            error: "Ora de sfârșit a pauzei trebuie să fie după ora de început.",
           },
           {
             status: 400,
@@ -497,26 +418,17 @@ export async function POST(
         );
       }
 
-      const {
-        data: availability,
-        error: availabilityError,
-      } = await supabase
+      const { data: availability, error: availabilityError } = await supabase
         .from("availability")
-        .select(
-          "id, doctor_id, start_time, end_time"
-        )
+        .select("id, doctor_id, clinic_id, start_time, end_time")
         .eq("id", availabilityId)
         .eq("doctor_id", doctor.id)
         .maybeSingle();
 
-      if (
-        availabilityError ||
-        !availability
-      ) {
+      if (availabilityError || !availability) {
         return NextResponse.json(
           {
-            error:
-              "Programul nu există sau nu îți aparține.",
+            error: "Programul nu există sau nu îți aparține.",
           },
           {
             status: 404,
@@ -524,20 +436,23 @@ export async function POST(
         );
       }
 
+      const clinicErrorResponse = await verifyClinicOrReturnResponse(
+        supabase,
+        doctor,
+        availability.clinic_id
+      );
+
+      if (clinicErrorResponse) {
+        return clinicErrorResponse;
+      }
+
       if (
-        timeToMinutes(startTime) <
-          timeToMinutes(
-            availability.start_time
-          ) ||
-        timeToMinutes(endTime) >
-          timeToMinutes(
-            availability.end_time
-          )
+        timeToMinutes(startTime) < timeToMinutes(availability.start_time) ||
+        timeToMinutes(endTime) > timeToMinutes(availability.end_time)
       ) {
         return NextResponse.json(
           {
-            error:
-              "Pauza trebuie să fie în interiorul programului de lucru.",
+            error: "Pauza trebuie să fie în interiorul programului de lucru.",
           },
           {
             status: 400,
@@ -545,24 +460,15 @@ export async function POST(
         );
       }
 
-      const {
-        data: existingBreaks,
-        error: breaksError,
-      } = await supabase
+      const { data: existingBreaks, error: breaksError } = await supabase
         .from("availability_breaks")
-        .select(
-          "start_time, end_time"
-        )
-        .eq(
-          "availability_id",
-          availabilityId
-        );
+        .select("start_time, end_time")
+        .eq("availability_id", availabilityId);
 
       if (breaksError) {
         return NextResponse.json(
           {
-            error:
-              "Pauzele existente nu au putut fi verificate.",
+            error: "Pauzele existente nu au putut fi verificate.",
           },
           {
             status: 500,
@@ -573,21 +479,14 @@ export async function POST(
       const overlaps =
         existingBreaks?.some(
           (item) =>
-            timeToMinutes(startTime) <
-              timeToMinutes(
-                item.end_time
-              ) &&
-            timeToMinutes(endTime) >
-              timeToMinutes(
-                item.start_time
-              )
+            timeToMinutes(startTime) < timeToMinutes(item.end_time) &&
+            timeToMinutes(endTime) > timeToMinutes(item.start_time)
         ) ?? false;
 
       if (overlaps) {
         return NextResponse.json(
           {
-            error:
-              "Pauza se suprapune peste o altă pauză.",
+            error: "Pauza se suprapune peste o altă pauză.",
           },
           {
             status: 409,
@@ -595,32 +494,22 @@ export async function POST(
         );
       }
 
-      const breakId =
-        crypto.randomUUID();
+      const breakId = crypto.randomUUID();
 
-      const { error } = await supabase
-        .from("availability_breaks")
-        .insert({
-          id: breakId,
-          availability_id:
-            availabilityId,
-          start_time: startTime,
-          end_time: endTime,
-          label:
-            body.label?.trim() ||
-            null,
-        });
+      const { error } = await supabase.from("availability_breaks").insert({
+        id: breakId,
+        availability_id: availabilityId,
+        start_time: startTime,
+        end_time: endTime,
+        label: body.label?.trim() || null,
+      });
 
       if (error) {
-        console.error(
-          "Availability break insert failed:",
-          error
-        );
+        console.error("Availability break insert failed:", error);
 
         return NextResponse.json(
           {
-            error:
-              "Pauza nu a putut fi adăugată.",
+            error: "Pauza nu a putut fi adăugată.",
           },
           {
             status: 500,
@@ -640,21 +529,14 @@ export async function POST(
     }
 
     if (body.resource === "day_off") {
-      const clinicId =
-        body.clinicId?.trim() ||
-        null;
-
-      const date =
-        body.date?.trim();
-
-      const isAllDay =
-        body.isAllDay ?? true;
+      const clinicId = body.clinicId?.trim() || null;
+      const date = body.date?.trim();
+      const isAllDay = body.isAllDay ?? true;
 
       if (!date || !isDate(date)) {
         return NextResponse.json(
           {
-            error:
-              "Data indisponibilității nu este validă.",
+            error: "Data indisponibilității nu este validă.",
           },
           {
             status: 400,
@@ -662,14 +544,21 @@ export async function POST(
         );
       }
 
-      if (
-        clinicId &&
-        !isUuid(clinicId)
-      ) {
+      if (isClinicSubAccountDoctor(doctor) && !clinicId) {
         return NextResponse.json(
           {
-            error:
-              "Clinica selectată nu este validă.",
+            error: "Selectează locația aprobată pentru indisponibilitate.",
+          },
+          {
+            status: 400,
+          }
+        );
+      }
+
+      if (clinicId && !isUuid(clinicId)) {
+        return NextResponse.json(
+          {
+            error: "Clinica selectată nu este validă.",
           },
           {
             status: 400,
@@ -678,49 +567,28 @@ export async function POST(
       }
 
       if (clinicId) {
-        const clinicCheck =
-          await verifyClinic(
-            supabase,
-            doctor.id,
-            clinicId
-          );
+        const clinicErrorResponse = await verifyClinicOrReturnResponse(
+          supabase,
+          doctor,
+          clinicId
+        );
 
-        if (!clinicCheck.valid) {
-          return NextResponse.json(
-            {
-              error:
-                "Clinica nu este asociată profilului tău.",
-            },
-            {
-              status: 403,
-            }
-          );
+        if (clinicErrorResponse) {
+          return clinicErrorResponse;
         }
       }
 
-      let startTime: string | null =
-        null;
-
-      let endTime: string | null =
-        null;
+      let startTime: string | null = null;
+      let endTime: string | null = null;
 
       if (!isAllDay) {
-        const rawStartTime =
-          body.startTime?.trim();
+        const rawStartTime = body.startTime?.trim();
+        const rawEndTime = body.endTime?.trim();
 
-        const rawEndTime =
-          body.endTime?.trim();
-
-        if (
-          !rawStartTime ||
-          !rawEndTime ||
-          !isTime(rawStartTime) ||
-          !isTime(rawEndTime)
-        ) {
+        if (!rawStartTime || !rawEndTime || !isTime(rawStartTime) || !isTime(rawEndTime)) {
           return NextResponse.json(
             {
-              error:
-                "Orele indisponibilității nu sunt valide.",
+              error: "Orele indisponibilității nu sunt valide.",
             },
             {
               status: 400,
@@ -728,20 +596,13 @@ export async function POST(
           );
         }
 
-        startTime =
-          normalizeTime(rawStartTime);
+        startTime = normalizeTime(rawStartTime);
+        endTime = normalizeTime(rawEndTime);
 
-        endTime =
-          normalizeTime(rawEndTime);
-
-        if (
-          timeToMinutes(startTime) >=
-          timeToMinutes(endTime)
-        ) {
+        if (timeToMinutes(startTime) >= timeToMinutes(endTime)) {
           return NextResponse.json(
             {
-              error:
-                "Ora de sfârșit trebuie să fie după ora de început.",
+              error: "Ora de sfârșit trebuie să fie după ora de început.",
             },
             {
               status: 400,
@@ -750,34 +611,25 @@ export async function POST(
         }
       }
 
-      const dayOffId =
-        crypto.randomUUID();
+      const dayOffId = crypto.randomUUID();
 
-      const { error } = await supabase
-        .from("doctor_days_off")
-        .insert({
-          id: dayOffId,
-          doctor_id: doctor.id,
-          clinic_id: clinicId,
-          date,
-          is_all_day: isAllDay,
-          start_time: startTime,
-          end_time: endTime,
-          reason:
-            body.reason?.trim() ||
-            null,
-        });
+      const { error } = await supabase.from("doctor_days_off").insert({
+        id: dayOffId,
+        doctor_id: doctor.id,
+        clinic_id: clinicId,
+        date,
+        is_all_day: isAllDay,
+        start_time: startTime,
+        end_time: endTime,
+        reason: body.reason?.trim() || null,
+      });
 
       if (error) {
-        console.error(
-          "Doctor day off insert failed:",
-          error
-        );
+        console.error("Doctor day off insert failed:", error);
 
         return NextResponse.json(
           {
-            error:
-              "Indisponibilitatea nu a putut fi adăugată.",
+            error: "Indisponibilitatea nu a putut fi adăugată.",
           },
           {
             status: 500,
@@ -798,23 +650,18 @@ export async function POST(
 
     return NextResponse.json(
       {
-        error:
-          "Tipul resursei nu este valid.",
+        error: "Tipul resursei nu este valid.",
       },
       {
         status: 400,
       }
     );
   } catch (error) {
-    console.error(
-      "Doctor availability creation API failed:",
-      error
-    );
+    console.error("Doctor availability creation API failed:", error);
 
     return NextResponse.json(
       {
-        error:
-          "A apărut o eroare neașteptată.",
+        error: "A apărut o eroare neașteptată.",
       },
       {
         status: 500,
@@ -823,24 +670,15 @@ export async function POST(
   }
 }
 
-export async function PATCH(
-  request: Request
-) {
+export async function PATCH(request: Request) {
   try {
-    const body =
-      (await request.json()) as UpdateRequestBody;
+    const body = (await request.json()) as UpdateRequestBody;
+    const availabilityId = body.availabilityId?.trim();
 
-    const availabilityId =
-      body.availabilityId?.trim();
-
-    if (
-      !availabilityId ||
-      !isUuid(availabilityId)
-    ) {
+    if (!availabilityId || !isUuid(availabilityId)) {
       return NextResponse.json(
         {
-          error:
-            "Programul selectat nu este valid.",
+          error: "Programul selectat nu este valid.",
         },
         {
           status: 400,
@@ -848,22 +686,15 @@ export async function PATCH(
       );
     }
 
-    const {
-      supabase,
-      doctor,
-      errorResponse,
-    } = await getAuthenticatedDoctor();
+    const { supabase, doctor, errorResponse } = await getAuthenticatedDoctor();
 
     if (errorResponse || !doctor) {
       return errorResponse;
     }
 
-    const {
-      data: current,
-      error: currentError,
-    } = await supabase
+    const { data: current, error: currentError } = await supabase
       .from("availability")
-      .select("id, doctor_id")
+      .select("id, doctor_id, clinic_id")
       .eq("id", availabilityId)
       .eq("doctor_id", doctor.id)
       .maybeSingle();
@@ -871,8 +702,7 @@ export async function PATCH(
     if (currentError || !current) {
       return NextResponse.json(
         {
-          error:
-            "Programul nu există sau nu îți aparține.",
+          error: "Programul nu există sau nu îți aparține.",
         },
         {
           status: 404,
@@ -880,20 +710,21 @@ export async function PATCH(
       );
     }
 
-    const clinicId =
-      body.clinicId?.trim();
+    const currentClinicResponse = await verifyClinicOrReturnResponse(
+      supabase,
+      doctor,
+      current.clinic_id
+    );
 
-    const weekday =
-      Number(body.weekday);
+    if (currentClinicResponse) {
+      return currentClinicResponse;
+    }
 
-    const durationMinutes =
-      Number(body.durationMinutes);
-
-    const rawStartTime =
-      body.startTime?.trim();
-
-    const rawEndTime =
-      body.endTime?.trim();
+    const clinicId = body.clinicId?.trim();
+    const weekday = Number(body.weekday);
+    const durationMinutes = Number(body.durationMinutes);
+    const rawStartTime = body.startTime?.trim();
+    const rawEndTime = body.endTime?.trim();
 
     if (
       !clinicId ||
@@ -905,16 +736,13 @@ export async function PATCH(
       !rawEndTime ||
       !isTime(rawStartTime) ||
       !isTime(rawEndTime) ||
-      !Number.isInteger(
-        durationMinutes
-      ) ||
+      !Number.isInteger(durationMinutes) ||
       durationMinutes < 5 ||
       durationMinutes > 480
     ) {
       return NextResponse.json(
         {
-          error:
-            "Datele programului nu sunt valide.",
+          error: "Datele programului nu sunt valide.",
         },
         {
           status: 400,
@@ -922,20 +750,13 @@ export async function PATCH(
       );
     }
 
-    const startTime =
-      normalizeTime(rawStartTime);
+    const startTime = normalizeTime(rawStartTime);
+    const endTime = normalizeTime(rawEndTime);
 
-    const endTime =
-      normalizeTime(rawEndTime);
-
-    if (
-      timeToMinutes(startTime) >=
-      timeToMinutes(endTime)
-    ) {
+    if (timeToMinutes(startTime) >= timeToMinutes(endTime)) {
       return NextResponse.json(
         {
-          error:
-            "Ora de sfârșit trebuie să fie după ora de început.",
+          error: "Ora de sfârșit trebuie să fie după ora de început.",
         },
         {
           status: 400,
@@ -943,33 +764,19 @@ export async function PATCH(
       );
     }
 
-    const clinicCheck =
-      await verifyClinic(
-        supabase,
-        doctor.id,
-        clinicId
-      );
+    const clinicErrorResponse = await verifyClinicOrReturnResponse(
+      supabase,
+      doctor,
+      clinicId
+    );
 
-    if (!clinicCheck.valid) {
-      return NextResponse.json(
-        {
-          error:
-            "Clinica nu este asociată profilului tău.",
-        },
-        {
-          status: 403,
-        }
-      );
+    if (clinicErrorResponse) {
+      return clinicErrorResponse;
     }
 
-    const {
-      data: otherIntervals,
-      error: overlapError,
-    } = await supabase
+    const { data: otherIntervals, error: overlapError } = await supabase
       .from("availability")
-      .select(
-        "id, start_time, end_time"
-      )
+      .select("id, start_time, end_time")
       .eq("doctor_id", doctor.id)
       .eq("clinic_id", clinicId)
       .eq("weekday", weekday)
@@ -978,8 +785,7 @@ export async function PATCH(
     if (overlapError) {
       return NextResponse.json(
         {
-          error:
-            "Programul existent nu a putut fi verificat.",
+          error: "Programul existent nu a putut fi verificat.",
         },
         {
           status: 500,
@@ -990,21 +796,14 @@ export async function PATCH(
     const overlaps =
       otherIntervals?.some(
         (interval) =>
-          timeToMinutes(startTime) <
-            timeToMinutes(
-              interval.end_time
-            ) &&
-          timeToMinutes(endTime) >
-            timeToMinutes(
-              interval.start_time
-            )
+          timeToMinutes(startTime) < timeToMinutes(interval.end_time) &&
+          timeToMinutes(endTime) > timeToMinutes(interval.start_time)
       ) ?? false;
 
     if (overlaps) {
       return NextResponse.json(
         {
-          error:
-            "Intervalul se suprapune peste un program existent.",
+          error: "Intervalul se suprapune peste un program existent.",
         },
         {
           status: 409,
@@ -1019,24 +818,18 @@ export async function PATCH(
         weekday,
         start_time: startTime,
         end_time: endTime,
-        appointment_duration_minutes:
-          durationMinutes,
-        is_active:
-          body.isActive ?? true,
+        appointment_duration_minutes: durationMinutes,
+        is_active: body.isActive ?? true,
       })
       .eq("id", availabilityId)
       .eq("doctor_id", doctor.id);
 
     if (error) {
-      console.error(
-        "Availability update failed:",
-        error
-      );
+      console.error("Availability update failed:", error);
 
       return NextResponse.json(
         {
-          error:
-            "Programul nu a putut fi actualizat.",
+          error: "Programul nu a putut fi actualizat.",
         },
         {
           status: 500,
@@ -1048,15 +841,11 @@ export async function PATCH(
       success: true,
     });
   } catch (error) {
-    console.error(
-      "Doctor availability update API failed:",
-      error
-    );
+    console.error("Doctor availability update API failed:", error);
 
     return NextResponse.json(
       {
-        error:
-          "A apărut o eroare neașteptată.",
+        error: "A apărut o eroare neașteptată.",
       },
       {
         status: 500,
@@ -1065,25 +854,15 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  request: Request
-) {
+export async function DELETE(request: Request) {
   try {
-    const body =
-      (await request.json()) as DeleteRequestBody;
+    const body = (await request.json()) as DeleteRequestBody;
+    const id = body.id?.trim();
 
-    const id =
-      body.id?.trim();
-
-    if (
-      !id ||
-      !isUuid(id) ||
-      !body.resource
-    ) {
+    if (!id || !isUuid(id) || !body.resource) {
       return NextResponse.json(
         {
-          error:
-            "Resursa selectată nu este validă.",
+          error: "Resursa selectată nu este validă.",
         },
         {
           status: 400,
@@ -1091,20 +870,41 @@ export async function DELETE(
       );
     }
 
-    const {
-      supabase,
-      doctor,
-      errorResponse,
-    } = await getAuthenticatedDoctor();
+    const { supabase, doctor, errorResponse } = await getAuthenticatedDoctor();
 
     if (errorResponse || !doctor) {
       return errorResponse;
     }
 
-    if (
-      body.resource ===
-      "availability"
-    ) {
+    if (body.resource === "availability") {
+      const { data: availability, error: lookupError } = await supabase
+        .from("availability")
+        .select("id, clinic_id")
+        .eq("id", id)
+        .eq("doctor_id", doctor.id)
+        .maybeSingle();
+
+      if (lookupError || !availability) {
+        return NextResponse.json(
+          {
+            error: "Programul nu există sau nu îți aparține.",
+          },
+          {
+            status: 404,
+          }
+        );
+      }
+
+      const clinicErrorResponse = await verifyClinicOrReturnResponse(
+        supabase,
+        doctor,
+        availability.clinic_id
+      );
+
+      if (clinicErrorResponse) {
+        return clinicErrorResponse;
+      }
+
       const { error } = await supabase
         .from("availability")
         .delete()
@@ -1114,51 +914,37 @@ export async function DELETE(
       if (error) {
         return NextResponse.json(
           {
-            error:
-              "Programul nu a putut fi șters.",
+            error: "Programul nu a putut fi șters.",
           },
           {
             status: 500,
           }
         );
       }
-    } else if (
-      body.resource === "break"
-    ) {
-      const {
-        data: ownedBreak,
-        error: lookupError,
-      } = await supabase
+    } else if (body.resource === "break") {
+      const { data: ownedBreak, error: lookupError } = await supabase
         .from("availability_breaks")
-        .select(`
-          id,
-          availability (
-            doctor_id
-          )
-        `)
+        .select(
+          `
+            id,
+            availability (
+              doctor_id,
+              clinic_id
+            )
+          `
+        )
         .eq("id", id)
         .maybeSingle();
 
-      const rawAvailability =
-        ownedBreak?.availability;
+      const rawAvailability = ownedBreak?.availability;
+      const availability = Array.isArray(rawAvailability)
+        ? rawAvailability[0]
+        : rawAvailability;
 
-      const availability =
-        Array.isArray(
-          rawAvailability
-        )
-          ? rawAvailability[0]
-          : rawAvailability;
-
-      if (
-        lookupError ||
-        !availability ||
-        availability.doctor_id !==
-          doctor.id
-      ) {
+      if (lookupError || !availability || availability.doctor_id !== doctor.id) {
         return NextResponse.json(
           {
-            error:
-              "Pauza nu există sau nu îți aparține.",
+            error: "Pauza nu există sau nu îți aparține.",
           },
           {
             status: 404,
@@ -1166,25 +952,70 @@ export async function DELETE(
         );
       }
 
-      const { error } = await supabase
-        .from("availability_breaks")
-        .delete()
-        .eq("id", id);
+      const clinicErrorResponse = await verifyClinicOrReturnResponse(
+        supabase,
+        doctor,
+        availability.clinic_id
+      );
+
+      if (clinicErrorResponse) {
+        return clinicErrorResponse;
+      }
+
+      const { error } = await supabase.from("availability_breaks").delete().eq("id", id);
 
       if (error) {
         return NextResponse.json(
           {
-            error:
-              "Pauza nu a putut fi ștearsă.",
+            error: "Pauza nu a putut fi ștearsă.",
           },
           {
             status: 500,
           }
         );
       }
-    } else if (
-      body.resource === "day_off"
-    ) {
+    } else if (body.resource === "day_off") {
+      const { data: dayOff, error: lookupError } = await supabase
+        .from("doctor_days_off")
+        .select("id, clinic_id")
+        .eq("id", id)
+        .eq("doctor_id", doctor.id)
+        .maybeSingle();
+
+      if (lookupError || !dayOff) {
+        return NextResponse.json(
+          {
+            error: "Indisponibilitatea nu există sau nu îți aparține.",
+          },
+          {
+            status: 404,
+          }
+        );
+      }
+
+      if (isClinicSubAccountDoctor(doctor)) {
+        if (!dayOff.clinic_id) {
+          return NextResponse.json(
+            {
+              error: "Indisponibilitatea nu este asociată locației atribuite.",
+            },
+            {
+              status: 403,
+            }
+          );
+        }
+
+        const clinicErrorResponse = await verifyClinicOrReturnResponse(
+          supabase,
+          doctor,
+          dayOff.clinic_id
+        );
+
+        if (clinicErrorResponse) {
+          return clinicErrorResponse;
+        }
+      }
+
       const { error } = await supabase
         .from("doctor_days_off")
         .delete()
@@ -1194,8 +1025,7 @@ export async function DELETE(
       if (error) {
         return NextResponse.json(
           {
-            error:
-              "Indisponibilitatea nu a putut fi ștearsă.",
+            error: "Indisponibilitatea nu a putut fi ștearsă.",
           },
           {
             status: 500,
@@ -1208,15 +1038,11 @@ export async function DELETE(
       success: true,
     });
   } catch (error) {
-    console.error(
-      "Doctor availability deletion API failed:",
-      error
-    );
+    console.error("Doctor availability deletion API failed:", error);
 
     return NextResponse.json(
       {
-        error:
-          "A apărut o eroare neașteptată.",
+        error: "A apărut o eroare neașteptată.",
       },
       {
         status: 500,

@@ -7,6 +7,7 @@ import CreateAppointmentForm from "@/components/doctor/create-appointment-form";
 import DoctorAppointmentsFilteredList, {
   type DoctorAppointmentListItem,
 } from "@/components/doctor/doctor-appointments-filtered-list";
+import { getAllowedClinicIdsForDoctor } from "@/lib/doctors/clinic-subaccount-scope";
 import { createClient } from "@/lib/supabase/server";
 
 type ClinicTranslation = {
@@ -140,7 +141,6 @@ export default async function DoctorAppointmentsPage() {
 
   const doctor = doctorData as DoctorAccount | null;
   const isClinicSubAccount = doctor?.account_type === "clinic_sub_account";
-  const isSuspended = doctor?.status === "suspended";
 
   const displayName =
     profile.first_name || profile.last_name
@@ -167,14 +167,14 @@ export default async function DoctorAppointmentsPage() {
             </h2>
 
             <p className="mt-3 leading-7 text-amber-800">
-              Contul tău are rolul de medic, dar nu este încă asociat unui
-              profil din directorul RomDoc.
+              Contul tău are rolul de medic, dar nu este încă asociat unui profil
+              din directorul RomDoc.
             </p>
 
             <p className="mt-3 leading-7 text-amber-800">
               Dacă ai fost invitat de o clinică, folosește linkul primit de la
               clinică pentru a crea contul de medic clinică. Dacă ești medic
-              independent, finalizează fluxul de înregistrare și plata Stripe.
+              independent, finalizează fluxul de înregistrare al medicilor.
             </p>
           </section>
         </div>
@@ -182,7 +182,16 @@ export default async function DoctorAppointmentsPage() {
     );
   }
 
-  const { data: doctorClinicData, error: doctorClinicsError } = await supabase
+  let allowedClinicIds: string[] | null = null;
+
+  try {
+    allowedClinicIds = await getAllowedClinicIdsForDoctor(supabase, doctor);
+  } catch (scopeError) {
+    console.error("Doctor appointment clinic scope lookup failed:", scopeError);
+    allowedClinicIds = isClinicSubAccount ? [] : null;
+  }
+
+  let doctorClinicQuery = supabase
     .from("doctor_clinics")
     .select(
       `
@@ -198,6 +207,15 @@ export default async function DoctorAppointmentsPage() {
       `
     )
     .eq("doctor_id", doctor.id);
+
+  if (allowedClinicIds) {
+    doctorClinicQuery = allowedClinicIds.length
+      ? doctorClinicQuery.in("clinic_id", allowedClinicIds)
+      : doctorClinicQuery.eq("clinic_id", "00000000-0000-0000-0000-000000000000");
+  }
+
+  const { data: doctorClinicData, error: doctorClinicsError } =
+    await doctorClinicQuery;
 
   if (doctorClinicsError) {
     console.error("Doctor dashboard clinic query failed:", doctorClinicsError);
@@ -224,44 +242,54 @@ export default async function DoctorAppointmentsPage() {
       firstClinic.name.localeCompare(secondClinic.name, "ro")
     );
 
-  const { data: appointmentsData, error: appointmentsError } = await supabase
+  let appointmentsQuery = supabase
     .from("appointments")
-    .select(`
-      id,
-      patient_profile_id,
-      patient_name,
-      patient_email,
-      patient_phone,
-      requested_date,
-      requested_time,
-      scheduled_date,
-      scheduled_time,
-      reschedule_reason,
-      notes,
-      source,
-      status,
-      created_at,
-      updated_at,
-      clinics (
+    .select(
+      `
         id,
-        slug,
-        clinic_translations (
-          locale,
-          name
+        patient_profile_id,
+        patient_name,
+        patient_email,
+        patient_phone,
+        requested_date,
+        requested_time,
+        scheduled_date,
+        scheduled_time,
+        reschedule_reason,
+        notes,
+        source,
+        status,
+        created_at,
+        updated_at,
+        clinics (
+          id,
+          slug,
+          clinic_translations (
+            locale,
+            name
+          )
         )
-      )
-    `)
+      `
+    )
     .eq("doctor_id", doctor.id)
     .order("created_at", {
       ascending: false,
     });
 
+  if (allowedClinicIds) {
+    appointmentsQuery = allowedClinicIds.length
+      ? appointmentsQuery.in("clinic_id", allowedClinicIds)
+      : appointmentsQuery.eq("clinic_id", "00000000-0000-0000-0000-000000000000");
+  }
+
+  const { data: appointmentsData, error: appointmentsError } =
+    await appointmentsQuery;
+
   if (appointmentsError) {
     console.error("Doctor appointments query failed:", appointmentsError);
   }
 
-  const appointments =
-    (appointmentsData as unknown as Appointment[] | null) ?? [];
+  const appointments = (appointmentsData as unknown as Appointment[] | null) ?? [];
 
   const appointmentListItems: DoctorAppointmentListItem[] = appointments.map(
     (appointment: Appointment) => {
@@ -333,16 +361,24 @@ export default async function DoctorAppointmentsPage() {
 
         {isClinicSubAccount && (
           <div className="mt-8 rounded-2xl border border-green-200 bg-green-50 p-5 text-green-900">
-            Acesta este un cont de medic clinică. Abonamentul și costurile SMS
-            sunt gestionate de clinică. Poți administra programările, profilul,
-            serviciile și disponibilitatea pentru clinica asociată.
+            Acesta este un cont de medic clinică. Programările sunt limitate la
+            locația aprobată atribuită de Clinic Manager.
           </div>
         )}
 
-        {isSuspended && (
+        {doctor.status === "suspended" && (
           <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900">
-            Contul de medic este suspendat temporar. Poți vedea informațiile
-            existente, dar unele acțiuni pot fi limitate până la reactivare.
+            Contul de medic este suspendat temporar. Poți consulta informațiile
+            existente, dar nu poți crea sau modifica programări până la
+            reactivare.
+          </div>
+        )}
+
+        {isClinicSubAccount && clinicOptions.length === 0 && (
+          <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900">
+            Clinic Manager nu a atribuit încă o locație aprobată acestui cont de
+            medic. Programările și disponibilitatea devin disponibile după
+            atribuirea locației.
           </div>
         )}
 
@@ -353,8 +389,8 @@ export default async function DoctorAppointmentsPage() {
         <section className="mt-10">
           {appointmentsError ? (
             <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-red-800 shadow-sm">
-              Programările nu au putut fi încărcate. Verifică politicile
-              Supabase și încearcă din nou.
+              Programările nu au putut fi încărcate. Verifică politicile Supabase
+              și încearcă din nou.
             </div>
           ) : (
             <DoctorAppointmentsFilteredList appointments={appointmentListItems} />
