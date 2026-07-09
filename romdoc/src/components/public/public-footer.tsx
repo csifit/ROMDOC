@@ -110,9 +110,12 @@ export default async function PublicFooter() {
           : "Înscrie-te ca medic",
       },
       {
-        label: "Ofertă pentru clinici",
-        href: "/oferta-clinici",
-      },
+        href:
+          "/oferta-clinici",
+        label: isEnglish
+          ? "Clinic offer"
+          : "Ofertă pentru clinici",
+   },
       {
         href: isEnglish
           ? "/en/doctor-staff-guide"
@@ -128,13 +131,6 @@ export default async function PublicFooter() {
         label: isEnglish
           ? "Doctor subscription"
           : "Abonament medic",
-      },
-      {
-        href:
-          "/oferta-clinici",
-        label: isEnglish
-          ? "Clinic offer"
-          : "Ofertă pentru clinici",
       },
       {
         href: "/login",
