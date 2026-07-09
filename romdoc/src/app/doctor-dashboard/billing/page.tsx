@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 type DoctorRow = {
   id: string;
   slug: string;
+  account_type: string | null;
 };
 
 export default async function DoctorBillingPage() {
@@ -39,7 +40,7 @@ export default async function DoctorBillingPage() {
 
   const { data: doctorData, error: doctorError } = await supabase
     .from("doctors")
-    .select("id, slug")
+    .select("id, slug, account_type")
     .eq("profile_id", user.id)
     .maybeSingle();
 
@@ -59,6 +60,10 @@ export default async function DoctorBillingPage() {
         </div>
       </main>
     );
+  }
+
+  if (doctor.account_type === "clinic_sub_account") {
+    redirect("/doctor-dashboard");
   }
 
   const { data: billingProfileData, error: billingProfileError } = await supabase

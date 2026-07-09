@@ -31,6 +31,10 @@ type SmsBillingPeriodRow = {
   saga_invoice_status: string;
 };
 
+type DoctorAccountRow = {
+  account_type: string | null;
+};
+
 const VAT_RATE_BASIS_POINTS = 2100;
 
 function getCurrentMonthBounds() {
@@ -269,77 +273,118 @@ export default async function DoctorDashboardPage() {
     );
   }
 
-  const admin = createAdminClient();
-  const { monthStartIso, nextMonthStartIso } = getCurrentMonthBounds();
+  const { data: doctorAccount, error: doctorAccountError } = await supabase
+    .from("doctors")
+    .select("account_type")
+    .eq("id", completion.doctorId)
+    .maybeSingle();
 
-  await getOrCreatePreviousSmsBill({
-    doctorId: completion.doctorId,
-    profileId: user.id,
-  });
-
-  const [smsLogsResult, unpaidSmsBills] = await Promise.all([
-    admin
-      .from("sms_delivery_logs")
-      .select("status, invoice_status, unit_cost_minor")
-      .eq("doctor_id", completion.doctorId)
-      .gte("created_at", monthStartIso)
-      .lt("created_at", nextMonthStartIso),
-    getUnpaidSmsBills({
-      doctorId: completion.doctorId,
-      profileId: user.id,
-    }),
-  ]);
-
-  if (smsLogsResult.error) {
-    console.error("Doctor dashboard SMS usage query failed:", smsLogsResult.error);
+  if (doctorAccountError) {
+    console.error(
+      "Doctor dashboard account type query failed:",
+      doctorAccountError
+    );
   }
 
-  const smsLogs = (smsLogsResult.data ?? []) as SmsUsageLogRow[];
+  const typedDoctorAccount = doctorAccount as DoctorAccountRow | null;
+  const isClinicSubAccount =
+    typedDoctorAccount?.account_type === "clinic_sub_account";
 
-  const smsUsage = smsLogs.reduce(
-    (currentUsage, log) => {
-      const invoiceStatus = log.invoice_status ?? "not_billable";
-      const unitCostMinor = log.unit_cost_minor ?? 30;
+  let smsUsage = {
+    sent: 0,
+    invoiced: 0,
+    uninvoiced: 0,
+    uninvoicedValueMinor: 0,
+  };
 
-      if (log.status === "sent") {
-        currentUsage.sent += 1;
-      }
+  let unpaidSmsBills: SmsBillingPeriodRow[] = [];
 
-      if (invoiceStatus === "invoiced") {
-        currentUsage.invoiced += 1;
-      }
+  let unpaidBalance = {
+    smsCount: 0,
+    netAmountMinor: 0,
+    vatAmountMinor: 0,
+    grossAmountMinor: 0,
+    currency: "RON",
+  };
 
-      if (invoiceStatus === "uninvoiced") {
-        currentUsage.uninvoiced += 1;
-        currentUsage.uninvoicedValueMinor += unitCostMinor;
-      }
+  if (!isClinicSubAccount) {
+    const admin = createAdminClient();
+    const { monthStartIso, nextMonthStartIso } = getCurrentMonthBounds();
 
-      return currentUsage;
-    },
-    {
-      sent: 0,
-      invoiced: 0,
-      uninvoiced: 0,
-      uninvoicedValueMinor: 0,
+    await getOrCreatePreviousSmsBill({
+      doctorId: completion.doctorId,
+      profileId: user.id,
+    });
+
+    const [smsLogsResult, unpaidBills] = await Promise.all([
+      admin
+        .from("sms_delivery_logs")
+        .select("status, invoice_status, unit_cost_minor")
+        .eq("doctor_id", completion.doctorId)
+        .gte("created_at", monthStartIso)
+        .lt("created_at", nextMonthStartIso),
+      getUnpaidSmsBills({
+        doctorId: completion.doctorId,
+        profileId: user.id,
+      }),
+    ]);
+
+    if (smsLogsResult.error) {
+      console.error(
+        "Doctor dashboard SMS usage query failed:",
+        smsLogsResult.error
+      );
     }
-  );
 
-  const unpaidBalance = unpaidSmsBills.reduce(
-    (total, bill) => ({
-      smsCount: total.smsCount + bill.sms_count,
-      netAmountMinor: total.netAmountMinor + bill.net_amount_minor,
-      vatAmountMinor: total.vatAmountMinor + bill.vat_amount_minor,
-      grossAmountMinor: total.grossAmountMinor + bill.gross_amount_minor,
-      currency: bill.currency || total.currency,
-    }),
-    {
-      smsCount: 0,
-      netAmountMinor: 0,
-      vatAmountMinor: 0,
-      grossAmountMinor: 0,
-      currency: "RON",
-    }
-  );
+    const smsLogs = (smsLogsResult.data ?? []) as SmsUsageLogRow[];
+
+    smsUsage = smsLogs.reduce(
+      (currentUsage, log) => {
+        const invoiceStatus = log.invoice_status ?? "not_billable";
+        const unitCostMinor = log.unit_cost_minor ?? 30;
+
+        if (log.status === "sent") {
+          currentUsage.sent += 1;
+        }
+
+        if (invoiceStatus === "invoiced") {
+          currentUsage.invoiced += 1;
+        }
+
+        if (invoiceStatus === "uninvoiced") {
+          currentUsage.uninvoiced += 1;
+          currentUsage.uninvoicedValueMinor += unitCostMinor;
+        }
+
+        return currentUsage;
+      },
+      {
+        sent: 0,
+        invoiced: 0,
+        uninvoiced: 0,
+        uninvoicedValueMinor: 0,
+      }
+    );
+
+    unpaidSmsBills = unpaidBills;
+
+    unpaidBalance = unpaidSmsBills.reduce(
+      (total, bill) => ({
+        smsCount: total.smsCount + bill.sms_count,
+        netAmountMinor: total.netAmountMinor + bill.net_amount_minor,
+        vatAmountMinor: total.vatAmountMinor + bill.vat_amount_minor,
+        grossAmountMinor: total.grossAmountMinor + bill.gross_amount_minor,
+        currency: bill.currency || total.currency,
+      }),
+      {
+        smsCount: 0,
+        netAmountMinor: 0,
+        vatAmountMinor: 0,
+        grossAmountMinor: 0,
+        currency: "RON",
+      }
+    );
+  }
 
   return (
     <main className="px-6 py-12">
@@ -357,126 +402,166 @@ export default async function DoctorDashboardPage() {
           </p>
         </header>
 
+        {isClinicSubAccount ? (
+          <section className="mt-8 rounded-2xl border border-green-200 bg-green-50 p-6 text-green-900 shadow-sm">
+            <h2 className="text-xl font-bold">
+              Cont de medic gestionat de clinică
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6">
+              Abonamentul, facturarea SMS și datele de facturare sunt gestionate
+              de Clinic Manager. Tu poți administra profilul profesional,
+              serviciile, disponibilitatea și programările pentru locația
+              atribuită.
+            </p>
+          </section>
+        ) : null}
+
         <div className="mt-8">
           <DoctorOnboardingChecklist completion={completion} />
         </div>
 
-        <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">
-                Date de facturare
-              </h2>
+        {!isClinicSubAccount ? (
+          <>
+            <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Date de facturare
+                  </h2>
 
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-                Completează datele private necesare pentru facturarea SMS-urilor
-                și a altor servicii RomDoc. Aceste informații nu apar public.
-              </p>
-            </div>
-
-            <Link
-              href="/doctor-dashboard/billing"
-              className="romdoc-focus-ring w-fit rounded-xl bg-[#036661] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#024d49]"
-            >
-              Deschide datele de facturare
-            </Link>
-          </div>
-        </section>
-
-        {unpaidSmsBills.length > 0 ? (
-          <section className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
-            <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-start">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.16em] text-amber-800">
-                  Sold SMS restant
-                </p>
-
-                <h2 className="mt-2 text-xl font-bold text-amber-950">
-                  Total de plată: {formatMoney(unpaidBalance.grossAmountMinor, unpaidBalance.currency)}
-                </h2>
-
-                <p className="mt-2 text-sm leading-6 text-amber-900">
-                  Soldul include {unpaidBalance.smsCount} SMS-uri din {unpaidSmsBills.length} perioadă/perioade. Net: {formatMoney(unpaidBalance.netAmountMinor, unpaidBalance.currency)}. TVA 21%: {formatMoney(unpaidBalance.vatAmountMinor, unpaidBalance.currency)}.
-                </p>
-
-                <div className="mt-4 space-y-2 text-sm text-amber-950">
-                  {unpaidSmsBills.map((bill) => (
-                    <div
-                      key={bill.id}
-                      className="flex flex-col rounded-xl border border-amber-200 bg-white/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <span className="font-semibold">
-                        {formatPeriod(bill.period_start, bill.period_end)}
-                      </span>
-                      <span>
-                        {bill.sms_count} SMS · {formatMoney(bill.gross_amount_minor, bill.currency)}
-                      </span>
-                    </div>
-                  ))}
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
+                    Completează datele private necesare pentru facturarea
+                    SMS-urilor și a altor servicii RomDoc. Aceste informații nu
+                    apar public.
+                  </p>
                 </div>
 
-                <p className="mt-3 text-xs text-amber-800">
-                  Plata se face prin Stripe. Factura fiscală se emite separat în SAGA.
-                </p>
+                <Link
+                  href="/doctor-dashboard/billing"
+                  className="romdoc-focus-ring w-fit rounded-xl bg-[#036661] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#024d49]"
+                >
+                  Deschide datele de facturare
+                </Link>
+              </div>
+            </section>
+
+            {unpaidSmsBills.length > 0 ? (
+              <section className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
+                <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-start">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.16em] text-amber-800">
+                      Sold SMS restant
+                    </p>
+
+                    <h2 className="mt-2 text-xl font-bold text-amber-950">
+                      Total de plată:{" "}
+                      {formatMoney(
+                        unpaidBalance.grossAmountMinor,
+                        unpaidBalance.currency
+                      )}
+                    </h2>
+
+                    <p className="mt-2 text-sm leading-6 text-amber-900">
+                      Soldul include {unpaidBalance.smsCount} SMS-uri din{" "}
+                      {unpaidSmsBills.length} perioadă/perioade. Net:{" "}
+                      {formatMoney(
+                        unpaidBalance.netAmountMinor,
+                        unpaidBalance.currency
+                      )}
+                      . TVA 21%:{" "}
+                      {formatMoney(
+                        unpaidBalance.vatAmountMinor,
+                        unpaidBalance.currency
+                      )}
+                      .
+                    </p>
+
+                    <div className="mt-4 space-y-2 text-sm text-amber-950">
+                      {unpaidSmsBills.map((bill) => (
+                        <div
+                          key={bill.id}
+                          className="flex flex-col rounded-xl border border-amber-200 bg-white/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <span className="font-semibold">
+                            {formatPeriod(bill.period_start, bill.period_end)}
+                          </span>
+                          <span>
+                            {bill.sms_count} SMS ·{" "}
+                            {formatMoney(
+                              bill.gross_amount_minor,
+                              bill.currency
+                            )}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <p className="mt-3 text-xs text-amber-800">
+                      Plata se face prin Stripe. Factura fiscală se emite separat
+                      în SAGA.
+                    </p>
+                  </div>
+
+                  <DoctorSmsBillingPaymentButton />
+                </div>
+              </section>
+            ) : null}
+
+            <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#036661]">
+                    SMS
+                  </p>
+
+                  <h2 className="mt-2 text-xl font-bold text-gray-900">
+                    Utilizare SMS luna aceasta
+                  </h2>
+
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
+                    Acest contor arată SMS-urile trimise pentru programările tale
+                    în luna curentă. Marcarea ca facturat este făcută de Admin
+                    sau de managerul Facturare.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+                  Valoare nefacturată:{" "}
+                  {formatMoney(smsUsage.uninvoicedValueMinor)} + TVA
+                </div>
               </div>
 
-              <DoctorSmsBillingPaymentButton />
-            </div>
-          </section>
+              <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                <div className="rounded-xl bg-gray-50 p-5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Trimise luna aceasta
+                  </p>
+                  <p className="mt-2 text-3xl font-bold text-gray-900">
+                    {smsUsage.sent}
+                  </p>
+                </div>
+
+                <div className="rounded-xl bg-emerald-50 p-5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                    Facturate
+                  </p>
+                  <p className="mt-2 text-3xl font-bold text-emerald-900">
+                    {smsUsage.invoiced}
+                  </p>
+                </div>
+
+                <div className="rounded-xl bg-blue-50 p-5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                    Nefacturate
+                  </p>
+                  <p className="mt-2 text-3xl font-bold text-blue-900">
+                    {smsUsage.uninvoiced}
+                  </p>
+                </div>
+              </div>
+            </section>
+          </>
         ) : null}
-
-        <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#036661]">
-                SMS
-              </p>
-
-              <h2 className="mt-2 text-xl font-bold text-gray-900">
-                Utilizare SMS luna aceasta
-              </h2>
-
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-                Acest contor arată SMS-urile trimise pentru programările tale în
-                luna curentă. Marcarea ca facturat este făcută de Admin sau de
-                managerul Facturare.
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
-              Valoare nefacturată: {formatMoney(smsUsage.uninvoicedValueMinor)} + TVA
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            <div className="rounded-xl bg-gray-50 p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Trimise luna aceasta
-              </p>
-              <p className="mt-2 text-3xl font-bold text-gray-900">
-                {smsUsage.sent}
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-emerald-50 p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                Facturate
-              </p>
-              <p className="mt-2 text-3xl font-bold text-emerald-900">
-                {smsUsage.invoiced}
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-blue-50 p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                Nefacturate
-              </p>
-              <p className="mt-2 text-3xl font-bold text-blue-900">
-                {smsUsage.uninvoiced}
-              </p>
-            </div>
-          </div>
-        </section>
       </div>
     </main>
   );

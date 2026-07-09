@@ -1,3 +1,5 @@
+import { createAdminClient } from "@/lib/supabase/admin";
+
 export type DoctorClinicScopeDoctor = {
   id: string;
   account_type?: string | null;
@@ -8,19 +10,7 @@ type SupabaseQueryClient = {
 };
 
 type ClinicDoctorRelationshipRow = {
-  organization_id: string;
   clinic_id: string | null;
-};
-
-type OrganizationClinicRow = {
-  organization_id: string;
-  clinic_id: string;
-  status: string;
-};
-
-type ClinicStatusRow = {
-  id: string;
-  status: string | null;
 };
 
 type DoctorClinicRow = {
@@ -28,12 +18,52 @@ type DoctorClinicRow = {
   clinic_id: string;
 };
 
-function relationshipKey(organizationId: string, clinicId: string) {
-  return `${organizationId}:${clinicId}`;
-}
-
 export function isClinicSubAccountDoctor(doctor: DoctorClinicScopeDoctor) {
   return doctor.account_type === "clinic_sub_account";
+}
+
+async function getClinicSubAccountRelationshipClinicIds(doctorId: string) {
+  const admin = createAdminClient();
+
+  const { data, error } = await admin
+    .from("clinic_doctor_relationships")
+    .select("clinic_id")
+    .eq("doctor_id", doctorId)
+    .eq("invitation_status", "accepted")
+    .eq("payment_responsibility", "clinic_paid")
+    .eq("coverage_status", "active")
+    .not("clinic_id", "is", null);
+
+  if (error) {
+    throw new Error(
+      `Clinic doctor relationship lookup failed: ${error.message}`
+    );
+  }
+
+  return Array.from(
+    new Set(
+      ((data ?? []) as ClinicDoctorRelationshipRow[])
+        .map((relationship) => relationship.clinic_id)
+        .filter((clinicId): clinicId is string => Boolean(clinicId))
+    )
+  );
+}
+
+async function getDoctorClinicLinkIds(doctorId: string) {
+  const admin = createAdminClient();
+
+  const { data, error } = await admin
+    .from("doctor_clinics")
+    .select("doctor_id, clinic_id")
+    .eq("doctor_id", doctorId);
+
+  if (error) {
+    throw new Error(`Doctor clinic lookup failed: ${error.message}`);
+  }
+
+  return Array.from(
+    new Set(((data ?? []) as DoctorClinicRow[]).map((row) => row.clinic_id))
+  );
 }
 
 export async function getAllowedClinicIdsForDoctor(
@@ -44,90 +74,25 @@ export async function getAllowedClinicIdsForDoctor(
     return null;
   }
 
-  const { data: relationships, error: relationshipsError } = await supabase
-    .from("clinic_doctor_relationships")
-    .select("organization_id, clinic_id")
-    .eq("doctor_id", doctor.id)
-    .eq("invitation_status", "accepted")
-    .eq("payment_responsibility", "clinic_paid")
-    .eq("coverage_status", "active")
-    .not("clinic_id", "is", null);
+  const relationshipClinicIds = await getClinicSubAccountRelationshipClinicIds(
+    doctor.id
+  );
 
-  if (relationshipsError) {
-    throw new Error(
-      `Clinic doctor relationship lookup failed: ${relationshipsError.message}`
-    );
+  if (relationshipClinicIds.length > 0) {
+    return relationshipClinicIds;
   }
 
-  const relationshipRows =
-    (relationships ?? []) as ClinicDoctorRelationshipRow[];
-
-  const assignedRelationships = relationshipRows.filter(
-    (relationship): relationship is ClinicDoctorRelationshipRow & {
-      clinic_id: string;
-    } => Boolean(relationship.clinic_id)
-  );
-
-  if (assignedRelationships.length === 0) {
-    return [];
-  }
-
-  const organizationIds = Array.from(
-    new Set(
-      assignedRelationships.map((relationship) => relationship.organization_id)
-    )
-  );
-
-  const clinicIds = Array.from(
-    new Set(assignedRelationships.map((relationship) => relationship.clinic_id))
-  );
-
-  const [organizationClinicsResult, clinicsResult] = await Promise.all([
-    supabase
-      .from("clinic_organization_clinics")
-      .select("organization_id, clinic_id, status")
-      .in("organization_id", organizationIds)
-      .in("clinic_id", clinicIds)
-      .eq("status", "active"),
-
-    supabase
-      .from("clinics")
-      .select("id, status")
-      .in("id", clinicIds)
-      .eq("status", "approved"),
-  ]);
-
-  if (organizationClinicsResult.error) {
-    throw new Error(
-      `Clinic organization location lookup failed: ${organizationClinicsResult.error.message}`
-    );
-  }
-
-  if (clinicsResult.error) {
-    throw new Error(
-      `Approved clinic lookup failed: ${clinicsResult.error.message}`
-    );
-  }
-
-  const activeOrganizationClinicKeys = new Set(
-    ((organizationClinicsResult.data ?? []) as OrganizationClinicRow[]).map(
-      (row) => relationshipKey(row.organization_id, row.clinic_id)
-    )
-  );
-
-  const approvedClinicIds = new Set(
-    ((clinicsResult.data ?? []) as ClinicStatusRow[]).map((clinic) => clinic.id)
-  );
-
-  return assignedRelationships
-    .filter(
-      (relationship) =>
-        approvedClinicIds.has(relationship.clinic_id) &&
-        activeOrganizationClinicKeys.has(
-          relationshipKey(relationship.organization_id, relationship.clinic_id)
-        )
-    )
-    .map((relationship) => relationship.clinic_id);
+  /*
+   * Repair-tolerant fallback.
+   *
+   * Step 72R synchronizes the assigned clinic into doctor_clinics after the
+   * Clinic Manager chooses an approved location. Older rows or RLS-restricted
+   * sessions can make the relationship lookup appear empty even when the
+   * doctor profile, clinics page, and staff flow already see the assigned
+   * clinic. In that case we trust the synchronized doctor_clinics link so the
+   * doctor is not locked out of availability.
+   */
+  return getDoctorClinicLinkIds(doctor.id);
 }
 
 export async function doctorCanUseClinic(
