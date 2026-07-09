@@ -30,6 +30,14 @@ type ClinicOption = {
   name: string;
 };
 
+type DoctorAccount = {
+  id: string;
+  slug: string;
+  status: string | null;
+  account_type: string | null;
+  clinic_organization_id: string | null;
+};
+
 type Appointment = {
   id: string;
   patient_profile_id: string | null;
@@ -49,9 +57,7 @@ type Appointment = {
   clinics: ClinicRelation | ClinicRelation[] | null;
 };
 
-function getFirstRelation<T>(
-  relation: T | T[] | null | undefined
-): T | null {
+function getFirstRelation<T>(relation: T | T[] | null | undefined): T | null {
   if (!relation) {
     return null;
   }
@@ -66,9 +72,7 @@ function getFirstRelation<T>(
 function formatDoctorName(slug: string) {
   return slug
     .split("-")
-    .map((part: string) => {
-      return part.charAt(0).toUpperCase() + part.slice(1);
-    })
+    .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 }
 
@@ -78,8 +82,7 @@ function getClinicName(clinic: ClinicRelation | null) {
   }
 
   const romanianTranslation = clinic.clinic_translations?.find(
-    (translation: ClinicTranslation) =>
-      translation.locale === "ro"
+    (translation: ClinicTranslation) => translation.locale === "ro"
   );
 
   const fallbackTranslation = clinic.clinic_translations?.[0];
@@ -103,43 +106,44 @@ export default async function DoctorAppointmentsPage() {
     redirect("/login");
   }
 
-  const { data: profile, error: profileError } =
-    await supabase
-      .from("profiles")
-      .select("role, first_name, last_name")
-      .eq("id", user.id)
-      .maybeSingle();
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role, first_name, last_name")
+    .eq("id", user.id)
+    .maybeSingle();
 
   if (profileError) {
-    console.error(
-      "Doctor dashboard profile query failed:",
-      profileError
-    );
+    console.error("Doctor dashboard profile query failed:", profileError);
   }
 
   if (!profile || profile.role !== "doctor") {
     redirect("/");
   }
 
-  const { data: doctor, error: doctorError } =
-    await supabase
-      .from("doctors")
-      .select("id, slug, status")
-      .eq("profile_id", user.id)
-      .maybeSingle();
+  const { data: doctorData, error: doctorError } = await supabase
+    .from("doctors")
+    .select(
+      `
+        id,
+        slug,
+        status,
+        account_type,
+        clinic_organization_id
+      `
+    )
+    .eq("profile_id", user.id)
+    .maybeSingle();
 
   if (doctorError) {
-    console.error(
-      "Doctor dashboard ownership query failed:",
-      doctorError
-    );
+    console.error("Doctor dashboard ownership query failed:", doctorError);
   }
+
+  const doctor = doctorData as DoctorAccount | null;
+  const isClinicSubAccount = doctor?.account_type === "clinic_sub_account";
 
   const displayName =
     profile.first_name || profile.last_name
-      ? [profile.first_name, profile.last_name]
-          .filter(Boolean)
-          .join(" ")
+      ? [profile.first_name, profile.last_name].filter(Boolean).join(" ")
       : doctor
         ? formatDoctorName(doctor.slug)
         : "Medic";
@@ -149,9 +153,7 @@ export default async function DoctorAppointmentsPage() {
       <main className="min-h-screen bg-gray-50 px-6 py-12">
         <div className="mx-auto max-w-4xl">
           <header>
-            <p className="text-sm font-medium text-gray-500">
-              Panou medic
-            </p>
+            <p className="text-sm font-medium text-gray-500">Panou medic</p>
 
             <h1 className="mt-2 text-4xl font-bold text-gray-900">
               Programările mele
@@ -164,16 +166,14 @@ export default async function DoctorAppointmentsPage() {
             </h2>
 
             <p className="mt-3 leading-7 text-amber-800">
-              Contul tău are rolul de medic, dar nu este încă
-              asociat unui profil din directorul RomDoc.
+              Contul tău are rolul de medic, dar nu este încă asociat unui
+              profil din directorul RomDoc.
             </p>
 
             <p className="mt-3 leading-7 text-amber-800">
-              Un administrator trebuie să completeze câmpul{" "}
-              <code className="rounded bg-amber-100 px-1.5 py-0.5">
-                doctors.profile_id
-              </code>{" "}
-              cu ID-ul profilului tău.
+              Dacă ai fost invitat de o clinică, folosește linkul primit de la
+              clinică pentru a crea contul de medic clinică. Dacă ești medic
+              independent, finalizează fluxul de înregistrare al medicilor.
             </p>
           </section>
         </div>
@@ -181,10 +181,7 @@ export default async function DoctorAppointmentsPage() {
     );
   }
 
-  const {
-    data: doctorClinicData,
-    error: doctorClinicsError,
-  } = await supabase
+  const { data: doctorClinicData, error: doctorClinicsError } = await supabase
     .from("doctor_clinics")
     .select(
       `
@@ -202,57 +199,31 @@ export default async function DoctorAppointmentsPage() {
     .eq("doctor_id", doctor.id);
 
   if (doctorClinicsError) {
-    console.error(
-      "Doctor dashboard clinic query failed:",
-      doctorClinicsError
-    );
+    console.error("Doctor dashboard clinic query failed:", doctorClinicsError);
   }
 
   const doctorClinicRows =
-    (doctorClinicData as unknown as
-      | DoctorClinicRow[]
-      | null) ?? [];
+    (doctorClinicData as unknown as DoctorClinicRow[] | null) ?? [];
 
-  const clinicOptions: ClinicOption[] =
-    doctorClinicRows
-      .map(
-        (
-          doctorClinic: DoctorClinicRow
-        ): ClinicOption | null => {
-          const clinic = getFirstRelation(
-            doctorClinic.clinics
-          );
+  const clinicOptions: ClinicOption[] = doctorClinicRows
+    .map((doctorClinic: DoctorClinicRow): ClinicOption | null => {
+      const clinic = getFirstRelation(doctorClinic.clinics);
 
-          if (!clinic) {
-            return null;
-          }
+      if (!clinic) {
+        return null;
+      }
 
-          return {
-            id: doctorClinic.clinic_id,
-            name: getClinicName(clinic),
-          };
-        }
-      )
-      .filter(
-        (
-          clinic: ClinicOption | null
-        ): clinic is ClinicOption => clinic !== null
-      )
-      .sort(
-        (
-          firstClinic: ClinicOption,
-          secondClinic: ClinicOption
-        ) =>
-          firstClinic.name.localeCompare(
-            secondClinic.name,
-            "ro"
-          )
-      );
+      return {
+        id: doctorClinic.clinic_id,
+        name: getClinicName(clinic),
+      };
+    })
+    .filter((clinic: ClinicOption | null): clinic is ClinicOption => clinic !== null)
+    .sort((firstClinic: ClinicOption, secondClinic: ClinicOption) =>
+      firstClinic.name.localeCompare(secondClinic.name, "ro")
+    );
 
-  const {
-    data: appointmentsData,
-    error: appointmentsError,
-  } = await supabase
+  const { data: appointmentsData, error: appointmentsError } = await supabase
     .from("appointments")
     .select(`
       id,
@@ -285,27 +256,19 @@ export default async function DoctorAppointmentsPage() {
     });
 
   if (appointmentsError) {
-    console.error(
-      "Doctor appointments query failed:",
-      appointmentsError
-    );
+    console.error("Doctor appointments query failed:", appointmentsError);
   }
 
   const appointments =
-    (appointmentsData as unknown as
-      | Appointment[]
-      | null) ?? [];
+    (appointmentsData as unknown as Appointment[] | null) ?? [];
 
-  const appointmentListItems: DoctorAppointmentListItem[] =
-    appointments.map((appointment: Appointment) => {
-      const clinic = getFirstRelation(
-        appointment.clinics
-      );
+  const appointmentListItems: DoctorAppointmentListItem[] = appointments.map(
+    (appointment: Appointment) => {
+      const clinic = getFirstRelation(appointment.clinics);
 
       return {
         id: appointment.id,
-        patientProfileId:
-          appointment.patient_profile_id,
+        patientProfileId: appointment.patient_profile_id,
         patientName: appointment.patient_name,
         patientEmail: appointment.patient_email,
         patientPhone: appointment.patient_phone,
@@ -313,15 +276,15 @@ export default async function DoctorAppointmentsPage() {
         requestedTime: appointment.requested_time,
         scheduledDate: appointment.scheduled_date,
         scheduledTime: appointment.scheduled_time,
-        rescheduleReason:
-          appointment.reschedule_reason,
+        rescheduleReason: appointment.reschedule_reason,
         notes: appointment.notes,
         source: appointment.source,
         status: appointment.status,
         createdAt: appointment.created_at,
         clinicName: getClinicName(clinic),
       };
-    });
+    }
+  );
 
   const confirmedCalendarAppointments: ConfirmedWeeklyAppointment[] =
     appointments.flatMap((appointment: Appointment) => {
@@ -329,21 +292,14 @@ export default async function DoctorAppointmentsPage() {
         return [];
       }
 
-      const date =
-        appointment.scheduled_date ??
-        appointment.requested_date;
-
-      const time =
-        appointment.scheduled_time ??
-        appointment.requested_time;
+      const date = appointment.scheduled_date ?? appointment.requested_date;
+      const time = appointment.scheduled_time ?? appointment.requested_time;
 
       if (!date || !time) {
         return [];
       }
 
-      const clinic = getFirstRelation(
-        appointment.clinics
-      );
+      const clinic = getFirstRelation(appointment.clinics);
 
       return [
         {
@@ -361,7 +317,7 @@ export default async function DoctorAppointmentsPage() {
       <div className="mx-auto max-w-6xl">
         <header>
           <p className="text-sm font-medium text-gray-500">
-            Panou medic
+            {isClinicSubAccount ? "Panou medic clinică" : "Panou medic"}
           </p>
 
           <h1 className="mt-2 text-4xl font-bold text-gray-900">
@@ -369,40 +325,41 @@ export default async function DoctorAppointmentsPage() {
           </h1>
 
           <p className="mt-3 text-gray-600">
-            Bun venit, {displayName}. Aici poți crea, confirma,
-            reprograma, finaliza sau anula programările pacienților
-            tăi.
+            Bun venit, {displayName}. Aici poți crea, confirma, reprograma,
+            finaliza sau anula programările pacienților tăi.
           </p>
         </header>
 
-        {doctor.status !== "active" && (
-          <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900">
-            Profilul tău de medic are momentan starea{" "}
-            <strong>{doctor.status}</strong>. Poți vedea programările
-            existente, dar activarea publică a profilului este
-            gestionată separat de administrator.
+        {isClinicSubAccount && (
+          <div className="mt-8 rounded-2xl border border-green-200 bg-green-50 p-5 text-green-900">
+            Acesta este un cont de medic clinică. Abonamentul și costurile SMS
+            sunt gestionate de clinică. Poți administra programările, profilul,
+            serviciile și disponibilitatea pentru clinica asociată.
           </div>
         )}
 
-        <CreateAppointmentForm
-          doctorId={doctor.id}
-          clinics={clinicOptions}
-        />
+        {!isClinicSubAccount &&
+          doctor.status &&
+          !["active", "published"].includes(doctor.status) && (
+            <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900">
+              Profilul tău de medic are momentan starea{" "}
+              <strong>{doctor.status}</strong>. Poți vedea programările
+              existente, iar publicarea profilului este gestionată separat.
+            </div>
+          )}
 
-        <ConfirmedAppointmentsWeeklyCalendar
-          appointments={confirmedCalendarAppointments}
-        />
+        <CreateAppointmentForm doctorId={doctor.id} clinics={clinicOptions} />
+
+        <ConfirmedAppointmentsWeeklyCalendar appointments={confirmedCalendarAppointments} />
 
         <section className="mt-10">
           {appointmentsError ? (
             <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-red-800 shadow-sm">
-              Programările nu au putut fi încărcate. Verifică
-              politicile Supabase și încearcă din nou.
+              Programările nu au putut fi încărcate. Verifică politicile
+              Supabase și încearcă din nou.
             </div>
           ) : (
-            <DoctorAppointmentsFilteredList
-              appointments={appointmentListItems}
-            />
+            <DoctorAppointmentsFilteredList appointments={appointmentListItems} />
           )}
         </section>
       </div>

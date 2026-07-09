@@ -1,10 +1,15 @@
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
+
 import DoctorDashboardSidebar from "@/components/dashboard/doctor-dashboard-sidebar";
 import { createClient } from "@/lib/supabase/server";
 
 type DoctorDashboardLayoutProps = {
   children: ReactNode;
+};
+
+type DoctorAccount = {
+  account_type: string | null;
 };
 
 export default async function DoctorDashboardLayout({
@@ -21,52 +26,51 @@ export default async function DoctorDashboardLayout({
     redirect("/login");
   }
 
-  const {
-    data: profile,
-    error: profileError,
-  } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select(
-      "role, first_name, last_name"
-    )
+    .select("role, first_name, last_name")
     .eq("id", user.id)
     .maybeSingle();
 
   if (profileError) {
-    console.error(
-      "Doctor dashboard layout profile query failed:",
-      profileError
-    );
+    console.error("Doctor dashboard layout profile query failed:", profileError);
   }
 
-  if (
-    !profile ||
-    profile.role !== "doctor"
-  ) {
+  if (!profile || profile.role !== "doctor") {
     redirect("/");
   }
 
-  const fullName = [
-    profile.first_name,
-    profile.last_name,
-  ]
+  const { data: doctorAccount, error: doctorAccountError } = await supabase
+    .from("doctors")
+    .select("account_type")
+    .eq("profile_id", user.id)
+    .maybeSingle();
+
+  if (doctorAccountError) {
+    console.error(
+      "Doctor dashboard layout account type query failed:",
+      doctorAccountError
+    );
+  }
+
+  const typedDoctorAccount = doctorAccount as DoctorAccount | null;
+  const isClinicSubAccount =
+    typedDoctorAccount?.account_type === "clinic_sub_account";
+
+  const fullName = [profile.first_name, profile.last_name]
     .filter(Boolean)
     .join(" ")
     .trim();
 
-  const userName =
-    fullName ||
-    user.email?.split("@")[0] ||
-    "Medic RomDoc";
-
-  const userEmail =
-    user.email ?? "E-mail indisponibil";
+  const userName = fullName || user.email?.split("@")[0] || "Medic RomDoc";
+  const userEmail = user.email ?? "E-mail indisponibil";
 
   return (
     <DoctorDashboardSidebar
       userName={userName}
       userEmail={userEmail}
-      roleLabel="Medic"
+      roleLabel={isClinicSubAccount ? "Medic clinică" : "Medic"}
+      isClinicSubAccount={isClinicSubAccount}
     >
       {children}
     </DoctorDashboardSidebar>
