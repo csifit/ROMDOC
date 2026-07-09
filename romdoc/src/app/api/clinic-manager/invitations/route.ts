@@ -70,7 +70,9 @@ async function sendInvitationEmail({
       text: [
         `Bună ziua,`,
         ``,
-        `${organizationName} te-a invitat să te alături pe RomDoc ca medic asociat clinicii.`,
+        `${organizationName} te-a invitat să îți creezi cont de medic pe RomDoc.`,
+        ``,
+        `Abonamentul tău RomDoc va fi acoperit de clinică, deci nu trebuie să plătești individual prin Stripe pentru această invitație.`,
         ``,
         `Pentru a continua, deschide linkul de mai jos:`,
         inviteUrl,
@@ -83,10 +85,11 @@ async function sendInvitationEmail({
         <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
           <h1 style="font-size:20px;margin:0 0 16px">Invitație RomDoc</h1>
           <p>Bună ziua,</p>
-          <p><strong>${organizationName}</strong> te-a invitat să te alături pe RomDoc ca medic asociat clinicii.</p>
+          <p><strong>${organizationName}</strong> te-a invitat să îți creezi cont de medic pe RomDoc.</p>
+          <p>Abonamentul tău RomDoc va fi acoperit de clinică, deci nu trebuie să plătești individual prin Stripe pentru această invitație.</p>
           <p>
             <a href="${inviteUrl}" style="display:inline-block;background:#036661;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:700">
-              Deschide invitația
+              Creează contul de medic
             </a>
           </p>
           <p style="font-size:13px;color:#6b7280">Dacă butonul nu funcționează, copiază acest link în browser:</p>
@@ -123,14 +126,7 @@ export async function POST(request: NextRequest): Promise<Response> {
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    return NextResponse.json(
-      {
-        error: "Trebuie să fii autentificat.",
-      },
-      {
-        status: 401,
-      }
-    );
+    return NextResponse.json({ error: "Trebuie să fii autentificat." }, { status: 401 });
   }
 
   const admin = createAdminClient();
@@ -147,14 +143,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     profile.role !== "clinic_manager" ||
     profile.account_status !== "active"
   ) {
-    return NextResponse.json(
-      {
-        error: "Nu ai permisiunea necesară.",
-      },
-      {
-        status: 403,
-      }
-    );
+    return NextResponse.json({ error: "Nu ai permisiunea necesară." }, { status: 403 });
   }
 
   let body: InvitationRequestBody;
@@ -162,39 +151,18 @@ export async function POST(request: NextRequest): Promise<Response> {
   try {
     body = (await request.json()) as InvitationRequestBody;
   } catch {
-    return NextResponse.json(
-      {
-        error: "Cererea nu conține date JSON valide.",
-      },
-      {
-        status: 400,
-      }
-    );
+    return NextResponse.json({ error: "Cererea nu conține date JSON valide." }, { status: 400 });
   }
 
   const organizationId = normalizeString(body.organizationId, 100);
   const doctorEmail = normalizeEmail(body.doctorEmail);
 
   if (!organizationId) {
-    return NextResponse.json(
-      {
-        error: "Selectează organizația clinicii.",
-      },
-      {
-        status: 400,
-      }
-    );
+    return NextResponse.json({ error: "Selectează organizația clinicii." }, { status: 400 });
   }
 
   if (!isValidEmail(doctorEmail)) {
-    return NextResponse.json(
-      {
-        error: "Introdu o adresă de e-mail validă pentru medic.",
-      },
-      {
-        status: 400,
-      }
-    );
+    return NextResponse.json({ error: "Introdu o adresă de e-mail validă pentru medic." }, { status: 400 });
   }
 
   const { data: membership, error: membershipError } = await admin
@@ -206,14 +174,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     .maybeSingle();
 
   if (membershipError || !membership) {
-    return NextResponse.json(
-      {
-        error: "Nu ai acces la această organizație de clinică.",
-      },
-      {
-        status: 403,
-      }
-    );
+    return NextResponse.json({ error: "Nu ai acces la această organizație de clinică." }, { status: 403 });
   }
 
   const { data: organization, error: organizationError } = await admin
@@ -223,25 +184,16 @@ export async function POST(request: NextRequest): Promise<Response> {
     .maybeSingle();
 
   if (organizationError || !organization) {
-    return NextResponse.json(
-      {
-        error: "Organizația clinicii nu a fost găsită.",
-      },
-      {
-        status: 404,
-      }
-    );
+    return NextResponse.json({ error: "Organizația clinicii nu a fost găsită." }, { status: 404 });
   }
 
   if (organization.status !== "active") {
     return NextResponse.json(
       {
         error:
-          "Poți invita medici doar după ce organizația clinicii este aprobată de RomDoc.",
+          "Poți invita medici doar după ce organizația clinicii este activă.",
       },
-      {
-        status: 409,
-      }
+      { status: 409 }
     );
   }
 
@@ -260,14 +212,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       existingInvitationError
     );
 
-    return NextResponse.json(
-      {
-        error: "Invitația nu a putut fi verificată.",
-      },
-      {
-        status: 500,
-      }
-    );
+    return NextResponse.json({ error: "Invitația nu a putut fi verificată." }, { status: 500 });
   }
 
   if (existingInvitation) {
@@ -276,9 +221,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         error:
           "Există deja o invitație activă sau acceptată pentru acest medic în această organizație.",
       },
-      {
-        status: 409,
-      }
+      { status: 409 }
     );
   }
 
@@ -289,8 +232,10 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   const baseUrl =
     process.env.NEXT_PUBLIC_SITE_URL ?? request.nextUrl.origin;
-  const inviteUrl = new URL("/doctor-clinic-invite", baseUrl);
-  inviteUrl.searchParams.set("token", invitationToken);
+  const inviteUrl = new URL("/register", baseUrl);
+  inviteUrl.searchParams.set("role", "doctor");
+  inviteUrl.searchParams.set("clinic_invite", invitationToken);
+  inviteUrl.searchParams.set("email", doctorEmail);
 
   const { data: invitation, error: invitationError } = await admin
     .from("clinic_doctor_relationships")
@@ -300,7 +245,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       invitation_token_hash: invitationTokenHash,
       invitation_status: "pending",
       payment_responsibility: "clinic_paid",
-      coverage_status: "pending_admin_approval",
+      coverage_status: "none",
       invited_by_profile_id: user.id,
       expires_at: expiresAt.toISOString(),
     })
@@ -321,14 +266,7 @@ export async function POST(request: NextRequest): Promise<Response> {
   if (invitationError || !invitation) {
     console.error("Clinic doctor invitation insert failed:", invitationError);
 
-    return NextResponse.json(
-      {
-        error: "Invitația nu a putut fi creată.",
-      },
-      {
-        status: 500,
-      }
-    );
+    return NextResponse.json({ error: "Invitația nu a putut fi creată." }, { status: 500 });
   }
 
   const emailResult = await sendInvitationEmail({
