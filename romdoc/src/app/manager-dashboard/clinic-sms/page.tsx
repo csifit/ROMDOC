@@ -301,7 +301,7 @@ function SummaryBox({
 }
 
 const DOCTOR_MONTHLY_SUBSCRIPTION_MINOR = 6000;
-const ROMANIA_VAT_RATE = 0.19;
+const ROMANIA_VAT_RATE = 0.21;
 
 function FieldLine({
   label,
@@ -960,7 +960,7 @@ export default async function ManagerClinicSmsPage({
 
                           <div className="rounded-xl border border-white/70 bg-white p-4">
                             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                              TVA 19%
+                              TVA 21%
                             </p>
                             <p className="mt-1 text-lg font-bold text-gray-900">
                               {formatCurrencyMinor(
