@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  type FormEvent,
-  useState,
-  useTransition,
-} from "react";
+import { type FormEvent, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import Button from "@/components/ui/button";
@@ -14,151 +10,106 @@ type AdminMfaVerifyFormProps = {
   nextPath: string;
 };
 
-export default function AdminMfaVerifyForm({
-  nextPath,
-}: AdminMfaVerifyFormProps) {
-  const router =
-    useRouter();
+export default function AdminMfaVerifyForm({ nextPath }: AdminMfaVerifyFormProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-  const [
-    isPending,
-    startTransition,
-  ] =
-    useTransition();
+  const copy = useMemo(() => {
+    if (nextPath.startsWith("/clinic-manager-dashboard")) {
+      return {
+        eyebrow: "Verificare Clinic Manager",
+        description:
+          "Introdu codul Google Authenticator pentru a continua către dashboard-ul clinicii.",
+        button: "Continuă în dashboard clinică",
+      };
+    }
 
-  const [code, setCode] =
-    useState("");
+    if (nextPath.startsWith("/manager-dashboard")) {
+      return {
+        eyebrow: "Verificare manager",
+        description:
+          "Accesul la panoul de manager RomDoc necesită o sesiune MFA verificată.",
+        button: "Continuă în panoul manager",
+      };
+    }
 
-  const [error, setError] =
-    useState<string | null>(
-      null
-    );
+    return {
+      eyebrow: "Verificare administrator",
+      description:
+        "Accesul la administrarea RomDoc necesită o sesiune MFA verificată.",
+      button: "Continuă în administrare",
+    };
+  }, [nextPath]);
 
-  function handleSubmit(
-    event:
-      FormEvent<HTMLFormElement>
-  ) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
 
-    const normalizedCode =
-      code
-        .replace(
-          /\D/g,
-          ""
-        )
-        .slice(
-          0,
-          6
-        );
+    const normalizedCode = code.replace(/\D/g, "").slice(0, 6);
 
-    if (
-      !/^\d{6}$/.test(
-        normalizedCode
-      )
-    ) {
-      setError(
-        "Introdu codul de 6 cifre din Google Authenticator."
-      );
+    if (!/^\d{6}$/.test(normalizedCode)) {
+      setError("Introdu codul de 6 cifre din Google Authenticator.");
       return;
     }
 
-    startTransition(
-      async () => {
-        const supabase =
-          createClient();
+    startTransition(async () => {
+      const supabase = createClient();
 
-        const {
-          data: factors,
-          error:
-            factorsError,
-        } =
-          await supabase.auth.mfa
-            .listFactors();
+      const { data: factors, error: factorsError } =
+        await supabase.auth.mfa.listFactors();
 
-        if (factorsError) {
-          console.error(
-            "Admin MFA factors lookup failed:",
-            factorsError
-          );
-
-          setError(
-            "Factorul MFA nu a putut fi verificat."
-          );
-          return;
-        }
-
-        const factor =
-          factors.totp[0];
-
-        if (!factor) {
-          router.replace(
-            `/mfa/admin/setup?next=${encodeURIComponent(
-              nextPath
-            )}`
-          );
-          return;
-        }
-
-        const {
-          error:
-            verifyError,
-        } =
-          await supabase.auth.mfa
-            .challengeAndVerify({
-              factorId:
-                factor.id,
-              code:
-                normalizedCode,
-            });
-
-        if (verifyError) {
-          console.error(
-            "Admin MFA challenge verification failed:",
-            verifyError
-          );
-
-          setError(
-            "Codul nu este valid sau a expirat. Introdu codul curent din Google Authenticator."
-          );
-          return;
-        }
-
-        router.replace(
-          nextPath
-        );
-        router.refresh();
+      if (factorsError) {
+        console.error("MFA factors lookup failed:", factorsError);
+        setError("Factorul MFA nu a putut fi verificat.");
+        return;
       }
-    );
+
+      const factor = factors.totp[0];
+
+      if (!factor) {
+        router.replace(`/mfa/admin/setup?next=${encodeURIComponent(nextPath)}`);
+        return;
+      }
+
+      const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({
+        factorId: factor.id,
+        code: normalizedCode,
+      });
+
+      if (verifyError) {
+        console.error("MFA challenge verification failed:", verifyError);
+        setError(
+          "Codul nu este valid sau a expirat. Introdu codul curent din Google Authenticator."
+        );
+        return;
+      }
+
+      router.replace(nextPath);
+      router.refresh();
+    });
   }
 
   return (
     <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
       <header className="text-center">
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#036661]">
-          Verificare administrator
+          {copy.eyebrow}
         </p>
-
         <h1 className="mt-3 text-2xl font-bold text-gray-900">
           Introdu codul Google Authenticator
         </h1>
-
         <p className="mt-3 text-sm leading-6 text-gray-600">
-          Accesul la administrarea RomDoc necesită o sesiune MFA verificată.
+          {copy.description}
         </p>
       </header>
 
-      <form
-        onSubmit={
-          handleSubmit
-        }
-        className="mt-8 space-y-5"
-      >
+      <form onSubmit={handleSubmit} className="mt-8 space-y-5">
         <label className="block">
           <span className="text-sm font-medium text-gray-700">
             Cod de verificare
           </span>
-
           <input
             type="text"
             inputMode="numeric"
@@ -167,47 +118,31 @@ export default function AdminMfaVerifyForm({
             required
             autoFocus
             value={code}
-            disabled={
-              isPending
-            }
-            onChange={(
-              event
-            ) =>
-              setCode(
-                event.target.value
-                  .replace(
-                    /\D/g,
-                    ""
-                  )
-                  .slice(
-                    0,
-                    6
-                  )
-              )
+            disabled={isPending}
+            onChange={(event) =>
+              setCode(event.target.value.replace(/\D/g, "").slice(0, 6))
             }
             placeholder="123456"
             className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-center text-xl tracking-[0.35em] text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-not-allowed disabled:opacity-60"
           />
         </label>
 
-        {error && (
+        {error ? (
           <div
             role="alert"
             className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
           >
             {error}
           </div>
-        )}
+        ) : null}
 
         <Button
           type="submit"
           fullWidth
-          isLoading={
-            isPending
-          }
+          isLoading={isPending}
           loadingText="Se verifică..."
         >
-          Continuă în administrare
+          {copy.button}
         </Button>
       </form>
     </div>

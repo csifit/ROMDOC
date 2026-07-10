@@ -19,6 +19,7 @@ type NavigationIcon =
   | "invitations"
   | "billing"
   | "sms"
+  | "security"
   | "home";
 
 type NavigationItem = {
@@ -59,17 +60,18 @@ const navigationItems: NavigationItem[] = [
     icon: "sms",
   },
   {
+    href: "/clinic-manager-dashboard/security",
+    label: "Securitate",
+    icon: "security",
+  },
+  {
     href: "/",
     label: "Pagina principală",
     icon: "home",
   },
 ];
 
-function NavigationIconView({
-  type,
-}: {
-  type: NavigationIcon;
-}) {
+function NavigationIconView({ type }: { type: NavigationIcon }) {
   const commonProps = {
     viewBox: "0 0 24 24",
     "aria-hidden": true,
@@ -136,6 +138,22 @@ function NavigationIconView({
         </svg>
       );
 
+    case "security":
+      return (
+        <svg {...commonProps}>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M12 3 19 6v5c0 4.6-2.7 8-7 10-4.3-2-7-5.4-7-10V6l7-3Z"
+          />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9 11V9a3 3 0 0 1 6 0v2M8 11h8v6H8v-6Z"
+          />
+        </svg>
+      );
+
     case "home":
       return (
         <svg {...commonProps}>
@@ -176,11 +194,7 @@ function CloseIcon() {
   );
 }
 
-function CollapseIcon({
-  collapsed,
-}: {
-  collapsed: boolean;
-}) {
+function CollapseIcon({ collapsed }: { collapsed: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
