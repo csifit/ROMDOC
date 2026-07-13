@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   type FormEvent,
@@ -108,23 +108,23 @@ function getCityName(clinic: Clinic) {
     )?.name ??
     city?.city_translations?.[0]?.name ??
     city?.slug ??
-    "Oraș necunoscut"
+    "OraÈ™ necunoscut"
   );
 }
 
 function getStatusLabel(status: string) {
   switch (status) {
     case "approved":
-      return "Aprobată";
+      return "AprobatÄƒ";
 
     case "pending":
-      return "În așteptare";
+      return "ÃŽn aÈ™teptare";
 
     case "rejected":
-      return "Respinsă";
+      return "RespinsÄƒ";
 
     case "blocked":
-      return "Blocată";
+      return "BlocatÄƒ";
 
     default:
       return status;
@@ -199,7 +199,7 @@ export default function ClinicEditingPanel({
 
       if (!response.ok) {
         throw new Error(
-          result.error ?? "Clinicile nu au putut fi încărcate."
+          result.error ?? "Clinicile nu au putut fi Ã®ncÄƒrcate."
         );
       }
 
@@ -208,7 +208,7 @@ export default function ClinicEditingPanel({
       setError(
         loadError instanceof Error
           ? loadError.message
-          : "Clinicile nu au putut fi încărcate."
+          : "Clinicile nu au putut fi Ã®ncÄƒrcate."
       );
       setClinics([]);
     } finally {
@@ -217,7 +217,13 @@ export default function ClinicEditingPanel({
   }, []);
 
   useEffect(() => {
-    void loadClinics();
+    const timerId = window.setTimeout(() => {
+      void loadClinics();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadClinics]);
 
   const visibleClinics = useMemo(() => {
@@ -301,7 +307,7 @@ export default function ClinicEditingPanel({
       const result = (await response.json()) as EditableClinicsResponse;
 
       if (!response.ok || !result.clinic) {
-        throw new Error(result.error ?? "Clinica nu a putut fi salvată.");
+        throw new Error(result.error ?? "Clinica nu a putut fi salvatÄƒ.");
       }
 
       setClinics((currentClinics) =>
@@ -310,13 +316,13 @@ export default function ClinicEditingPanel({
         )
       );
 
-      setSuccess(result.message ?? "Clinica a fost actualizată.");
+      setSuccess(result.message ?? "Clinica a fost actualizatÄƒ.");
       stopEditing();
     } catch (saveError) {
       setError(
         saveError instanceof Error
           ? saveError.message
-          : "Clinica nu a putut fi salvată."
+          : "Clinica nu a putut fi salvatÄƒ."
       );
     } finally {
       setIsSaving(false);
@@ -346,7 +352,7 @@ export default function ClinicEditingPanel({
           disabled={isLoading || isSaving}
           className="romdoc-focus-ring w-fit rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Reîncarcă
+          ReÃ®ncarcÄƒ
         </button>
       </div>
 
@@ -355,7 +361,7 @@ export default function ClinicEditingPanel({
           htmlFor="clinic-editor-search"
           className="text-sm font-medium text-gray-900"
         >
-          Caută clinică
+          CautÄƒ clinicÄƒ
         </label>
 
         <input
@@ -363,7 +369,7 @@ export default function ClinicEditingPanel({
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Nume, oraș, adresă, telefon sau e-mail"
+          placeholder="Nume, oraÈ™, adresÄƒ, telefon sau e-mail"
           className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-950"
         />
       </div>
@@ -388,13 +394,13 @@ export default function ClinicEditingPanel({
 
       {isLoading ? (
         <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-5 text-sm text-gray-600">
-          Se încarcă clinicile...
+          Se Ã®ncarcÄƒ clinicile...
         </div>
       ) : visibleClinics.length === 0 ? (
         <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">
           {clinics.length === 0
             ? emptyMessage
-            : "Nu există clinici care corespund căutării."}
+            : "Nu existÄƒ clinici care corespund cÄƒutÄƒrii."}
         </div>
       ) : (
         <div className="mt-6 space-y-4">
@@ -425,7 +431,7 @@ export default function ClinicEditingPanel({
                     <p className="mt-1 text-sm text-gray-600">
                       {getCityName(clinic)}
                       {clinic.formatted_address
-                        ? ` — ${clinic.formatted_address}`
+                        ? ` â€” ${clinic.formatted_address}`
                         : ""}
                     </p>
                   </div>
@@ -438,7 +444,7 @@ export default function ClinicEditingPanel({
                     disabled={isSaving}
                     className="romdoc-focus-ring w-fit rounded-xl bg-[#036661] px-4 py-2 text-sm font-semibold text-white hover:bg-[#02534f] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {isEditing ? "Închide" : "Editează"}
+                    {isEditing ? "ÃŽnchide" : "EditeazÄƒ"}
                   </button>
                 </div>
 
@@ -447,28 +453,28 @@ export default function ClinicEditingPanel({
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                       Telefon
                     </p>
-                    <p className="mt-1">{clinic.phone || "—"}</p>
+                    <p className="mt-1">{clinic.phone || "â€”"}</p>
                   </div>
 
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                       E-mail
                     </p>
-                    <p className="mt-1 break-all">{clinic.email || "—"}</p>
+                    <p className="mt-1 break-all">{clinic.email || "â€”"}</p>
                   </div>
 
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                       Website
                     </p>
-                    <p className="mt-1 break-all">{clinic.website || "—"}</p>
+                    <p className="mt-1 break-all">{clinic.website || "â€”"}</p>
                   </div>
 
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Detalii adresă
+                      Detalii adresÄƒ
                     </p>
-                    <p className="mt-1">{clinic.address_line_2 || "—"}</p>
+                    <p className="mt-1">{clinic.address_line_2 || "â€”"}</p>
                   </div>
                 </div>
 
@@ -565,7 +571,7 @@ export default function ClinicEditingPanel({
                           htmlFor={`clinic-address-line-2-${clinic.id}`}
                           className="text-sm font-medium text-gray-900"
                         >
-                          Detalii suplimentare adresă
+                          Detalii suplimentare adresÄƒ
                         </label>
                         <input
                           id={`clinic-address-line-2-${clinic.id}`}
@@ -575,7 +581,7 @@ export default function ClinicEditingPanel({
                           onChange={(event) =>
                             updateDraft("addressLine2", event.target.value)
                           }
-                          placeholder="Etaj, cabinet, corp de clădire"
+                          placeholder="Etaj, cabinet, corp de clÄƒdire"
                           disabled={isSaving}
                           className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-950 disabled:cursor-not-allowed disabled:opacity-60"
                         />
@@ -583,7 +589,7 @@ export default function ClinicEditingPanel({
 
                       <div className="lg:col-span-2">
                         <p className="text-sm font-medium text-gray-900">
-                          Schimbă adresa verificată prin Google — opțional
+                          SchimbÄƒ adresa verificatÄƒ prin Google â€” opÈ›ional
                         </p>
                         <div className="mt-2">
                           <GooglePlaceAutocomplete
@@ -596,14 +602,14 @@ export default function ClinicEditingPanel({
 
                         {selectedAddress ? (
                           <div className="mt-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-                            <p className="font-semibold">Adresă nouă selectată</p>
+                            <p className="font-semibold">AdresÄƒ nouÄƒ selectatÄƒ</p>
                             <p className="mt-1">
                               {selectedAddress.formattedAddress}
                             </p>
                           </div>
                         ) : (
                           <p className="mt-2 text-xs leading-5 text-gray-500">
-                            Lasă acest câmp gol dacă adresa principală rămâne neschimbată.
+                            LasÄƒ acest cÃ¢mp gol dacÄƒ adresa principalÄƒ rÄƒmÃ¢ne neschimbatÄƒ.
                           </p>
                         )}
                       </div>
@@ -635,7 +641,7 @@ export default function ClinicEditingPanel({
                         disabled={isSaving}
                         className="romdoc-focus-ring rounded-xl bg-[#036661] px-5 py-3 text-sm font-semibold text-white hover:bg-[#02534f] disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        {isSaving ? "Se salvează..." : "Salvează clinica"}
+                        {isSaving ? "Se salveazÄƒ..." : "SalveazÄƒ clinica"}
                       </button>
 
                       <button
@@ -644,7 +650,7 @@ export default function ClinicEditingPanel({
                         disabled={isSaving}
                         className="romdoc-focus-ring rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        Anulează
+                        AnuleazÄƒ
                       </button>
                     </div>
                   </form>
@@ -657,3 +663,4 @@ export default function ClinicEditingPanel({
     </section>
   );
 }
+

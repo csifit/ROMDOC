@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   useCallback,
@@ -67,7 +67,7 @@ function fullValue(
           </p>
 
           <p className="text-sm text-gray-500">
-            Vârsta este calculată automat.
+            VÃ¢rsta este calculatÄƒ automat.
           </p>
         </div>
       );
@@ -84,7 +84,7 @@ function fullValue(
 
     case "blood_group": {
       const group =
-        value.group || "Necunoscută";
+        value.group || "NecunoscutÄƒ";
       const rh =
         value.rh === "positive"
           ? "Pozitiv"
@@ -100,7 +100,7 @@ function fullValue(
             </dt>
             <dd className="mt-1 text-gray-900">
               {group === "unknown"
-                ? "Necunoscută"
+                ? "NecunoscutÄƒ"
                 : group}
             </dd>
           </div>
@@ -133,7 +133,7 @@ function fullValue(
 
           <div>
             <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Relație
+              RelaÈ›ie
             </dt>
             <dd className="mt-1 text-gray-900">
               {textOrEmpty(
@@ -171,7 +171,7 @@ function fullValue(
 
           <div>
             <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Cabinet / clinică
+              Cabinet / clinicÄƒ
             </dt>
             <dd className="mt-1 text-gray-900">
               {textOrEmpty(
@@ -230,7 +230,7 @@ function FieldEditor({
       return (
         <label className="block">
           <span className="text-sm font-semibold text-gray-700">
-            Data nașterii
+            Data naÈ™terii
           </span>
           <input
             type="date"
@@ -285,7 +285,7 @@ function FieldEditor({
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
             <span className="text-sm font-semibold text-gray-700">
-              Grupa sanguină
+              Grupa sanguinÄƒ
             </span>
             <select
               value={
@@ -300,7 +300,7 @@ function FieldEditor({
               className={inputClasses}
             >
               <option value="">
-                Necompletată
+                NecompletatÄƒ
               </option>
               <option value="A">
                 A
@@ -315,7 +315,7 @@ function FieldEditor({
                 O
               </option>
               <option value="unknown">
-                Necunoscută
+                NecunoscutÄƒ
               </option>
             </select>
           </label>
@@ -376,7 +376,7 @@ function FieldEditor({
 
           <label className="block">
             <span className="text-sm font-semibold text-gray-700">
-              Relație
+              RelaÈ›ie
             </span>
             <input
               type="text"
@@ -442,7 +442,7 @@ function FieldEditor({
 
           <label className="block">
             <span className="text-sm font-semibold text-gray-700">
-              Cabinet / clinică
+              Cabinet / clinicÄƒ
             </span>
             <input
               type="text"
@@ -500,7 +500,7 @@ function FieldEditor({
             }
             rows={5}
             maxLength={5000}
-            placeholder="Câte un element pe rând, dacă este cazul."
+            placeholder="CÃ¢te un element pe rÃ¢nd, dacÄƒ este cazul."
             className={`${inputClasses} resize-y`}
           />
         </label>
@@ -583,7 +583,7 @@ export default function PatientMedicalProfile({
         if (!response.ok) {
           throw new Error(
             payload.error ??
-              "Profilul medical nu a putut fi încărcat."
+              "Profilul medical nu a putut fi Ã®ncÄƒrcat."
           );
         }
 
@@ -594,7 +594,7 @@ export default function PatientMedicalProfile({
         setError(
           loadError instanceof Error
             ? loadError.message
-            : "Profilul medical nu a putut fi încărcat."
+            : "Profilul medical nu a putut fi Ã®ncÄƒrcat."
         );
       } finally {
         setIsLoading(false);
@@ -602,7 +602,13 @@ export default function PatientMedicalProfile({
     }, [endpoint]);
 
   useEffect(() => {
-    void loadProfile();
+    const timerId = window.setTimeout(() => {
+      void loadProfile();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadProfile]);
 
   function startEditing(
@@ -655,7 +661,7 @@ export default function PatientMedicalProfile({
       if (!response.ok) {
         throw new Error(
           payload.error ??
-            "Informația medicală nu a putut fi salvată."
+            "InformaÈ›ia medicalÄƒ nu a putut fi salvatÄƒ."
         );
       }
 
@@ -668,7 +674,7 @@ export default function PatientMedicalProfile({
       setError(
         saveError instanceof Error
           ? saveError.message
-          : "Informația medicală nu a putut fi salvată."
+          : "InformaÈ›ia medicalÄƒ nu a putut fi salvatÄƒ."
       );
     } finally {
       setSavingField(null);
@@ -679,7 +685,7 @@ export default function PatientMedicalProfile({
     <section className="mt-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
       <div className="border-b border-gray-200 p-5 sm:p-6">
         <p className="text-sm font-semibold text-[#036661]">
-          Informații esențiale
+          InformaÈ›ii esenÈ›iale
         </p>
 
         <h2 className="mt-1 text-2xl font-bold text-gray-900">
@@ -687,9 +693,9 @@ export default function PatientMedicalProfile({
         </h2>
 
         <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-          Deschide fiecare secțiune pentru a vedea informațiile complete.
+          Deschide fiecare secÈ›iune pentru a vedea informaÈ›iile complete.
           {editable
-            ? " Poți modifica fiecare secțiune separat."
+            ? " PoÈ›i modifica fiecare secÈ›iune separat."
             : ""}
         </p>
       </div>
@@ -705,7 +711,7 @@ export default function PatientMedicalProfile({
 
       {isLoading ? (
         <div className="p-6 text-sm text-gray-600">
-          Se încarcă profilul medical...
+          Se Ã®ncarcÄƒ profilul medical...
         </div>
       ) : (
         <div className="divide-y divide-gray-200">
@@ -799,8 +805,8 @@ export default function PatientMedicalProfile({
                           >
                             {savingField ===
                             field.key
-                              ? "Se salvează..."
-                              : "Salvează"}
+                              ? "Se salveazÄƒ..."
+                              : "SalveazÄƒ"}
                           </button>
 
                           <button
@@ -820,7 +826,7 @@ export default function PatientMedicalProfile({
                             }
                             className="romdoc-button romdoc-button-secondary romdoc-button-sm"
                           >
-                            Renunță
+                            RenunÈ›Äƒ
                           </button>
                         </div>
                       </div>
@@ -838,7 +844,7 @@ export default function PatientMedicalProfile({
                               ? `Ultima modificare de ${entry.lastModifiedByDoctor}, la ${formatAuditDate(
                                   entry.lastModifiedAt
                                 )}.`
-                              : "Nu există încă modificări înregistrate."}
+                              : "Nu existÄƒ Ã®ncÄƒ modificÄƒri Ã®nregistrate."}
                           </p>
 
                           {editable && (
@@ -851,7 +857,7 @@ export default function PatientMedicalProfile({
                               }
                               className="w-fit text-sm font-semibold text-[#036661] underline-offset-4 hover:underline"
                             >
-                              Editează
+                              EditeazÄƒ
                             </button>
                           )}
                         </div>
@@ -867,3 +873,4 @@ export default function PatientMedicalProfile({
     </section>
   );
 }
+

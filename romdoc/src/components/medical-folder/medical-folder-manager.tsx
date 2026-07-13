@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   type FormEvent,
@@ -41,13 +41,13 @@ type MedicalFolderManagerProps = {
 };
 
 const typeLabels: Record<string, string> = {
-  consultation_note: "Notă de consultație",
-  prescription: "Rețetă",
+  consultation_note: "NotÄƒ de consultaÈ›ie",
+  prescription: "ReÈ›etÄƒ",
   laboratory_result: "Rezultat de laborator",
   imaging_result: "Rezultat imagistic",
   referral: "Trimitere",
-  medical_certificate: "Adeverință medicală",
-  discharge_summary: "Scrisoare medicală",
+  medical_certificate: "AdeverinÈ›Äƒ medicalÄƒ",
+  discharge_summary: "Scrisoare medicalÄƒ",
   other: "Alt document",
 };
 
@@ -167,7 +167,7 @@ export default function MedicalFolderManager({
         if (!response.ok) {
           throw new Error(
             result.error ??
-              "Dosarul nu a putut fi încărcat."
+              "Dosarul nu a putut fi Ã®ncÄƒrcat."
           );
         }
 
@@ -178,7 +178,7 @@ export default function MedicalFolderManager({
         setError(
           loadError instanceof Error
             ? loadError.message
-            : "Dosarul nu a putut fi încărcat."
+            : "Dosarul nu a putut fi Ã®ncÄƒrcat."
         );
       } finally {
         setIsLoading(false);
@@ -191,7 +191,13 @@ export default function MedicalFolderManager({
     ]);
 
   useEffect(() => {
-    void loadDocuments();
+    const timerId = window.setTimeout(() => {
+      void loadDocuments();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadDocuments]);
 
   function resetForm() {
@@ -214,7 +220,7 @@ export default function MedicalFolderManager({
 
     if (!canEdit) {
       setError(
-        "Programarea este finalizată. Dosarul medical este disponibil numai pentru consultare."
+        "Programarea este finalizatÄƒ. Dosarul medical este disponibil numai pentru consultare."
       );
       return;
     }
@@ -231,7 +237,7 @@ export default function MedicalFolderManager({
       )
     ) {
       setError(
-        "Completează câmpurile obligatorii."
+        "CompleteazÄƒ cÃ¢mpurile obligatorii."
       );
       return;
     }
@@ -300,8 +306,8 @@ export default function MedicalFolderManager({
 
       setMessage(
         mode === "text"
-          ? "Nota medicală a fost salvată."
-          : "Documentul a fost încărcat."
+          ? "Nota medicalÄƒ a fost salvatÄƒ."
+          : "Documentul a fost Ã®ncÄƒrcat."
       );
 
       resetForm();
@@ -426,7 +432,7 @@ export default function MedicalFolderManager({
       ) {
         throw new Error(
           result.error ??
-            "Documentul nu a putut fi descărcat."
+            "Documentul nu a putut fi descÄƒrcat."
         );
       }
 
@@ -450,7 +456,7 @@ export default function MedicalFolderManager({
       setError(
         downloadError instanceof Error
           ? downloadError.message
-          : "Documentul nu a putut fi descărcat."
+          : "Documentul nu a putut fi descÄƒrcat."
       );
     } finally {
       setDownloadingDocumentId(
@@ -464,14 +470,14 @@ export default function MedicalFolderManager({
   ) {
     if (!canEdit) {
       setError(
-        "Documentele unei programări finalizate nu mai pot fi șterse."
+        "Documentele unei programÄƒri finalizate nu mai pot fi È™terse."
       );
       return;
     }
 
     if (
       !window.confirm(
-        "Ștergi acest document din Dosarul medical?"
+        "È˜tergi acest document din Dosarul medical?"
       )
     ) {
       return;
@@ -504,12 +510,12 @@ export default function MedicalFolderManager({
       if (!response.ok) {
         throw new Error(
           result.error ??
-            "Documentul nu a putut fi șters."
+            "Documentul nu a putut fi È™ters."
         );
       }
 
       setMessage(
-        "Documentul a fost șters."
+        "Documentul a fost È™ters."
       );
 
       await loadDocuments();
@@ -517,7 +523,7 @@ export default function MedicalFolderManager({
       setError(
         removeError instanceof Error
           ? removeError.message
-          : "Documentul nu a putut fi șters."
+          : "Documentul nu a putut fi È™ters."
       );
     }
   }
@@ -525,7 +531,7 @@ export default function MedicalFolderManager({
   if (!canView) {
     return standalone ? (
       <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
-        Dosarul medical este disponibil numai pentru programările confirmate, reprogramate sau finalizate.
+        Dosarul medical este disponibil numai pentru programÄƒrile confirmate, reprogramate sau finalizate.
       </section>
     ) : null;
   }
@@ -541,8 +547,8 @@ export default function MedicalFolderManager({
 
             <p className="mt-1 text-sm leading-6 text-gray-600">
               {canEdit
-                ? "Adaugă note și documente înainte de finalizarea programării."
-                : "Programarea este finalizată. Dosarul este disponibil numai pentru consultare."}
+                ? "AdaugÄƒ note È™i documente Ã®nainte de finalizarea programÄƒrii."
+                : "Programarea este finalizatÄƒ. Dosarul este disponibil numai pentru consultare."}
             </p>
           </div>
 
@@ -557,7 +563,7 @@ export default function MedicalFolderManager({
               aria-hidden="true"
               className="ml-1"
             >
-              ↗
+              â†—
             </span>
           </a>
         </div>
@@ -575,8 +581,8 @@ export default function MedicalFolderManager({
 
           <p className="mt-2 text-sm leading-6 text-gray-600">
             {canEdit
-              ? "Adaugă note medicale și documente înainte de închiderea programării."
-              : "Poți consulta și descărca documentele existente."}
+              ? "AdaugÄƒ note medicale È™i documente Ã®nainte de Ã®nchiderea programÄƒrii."
+              : "PoÈ›i consulta È™i descÄƒrca documentele existente."}
           </p>
         </div>
 
@@ -595,7 +601,7 @@ export default function MedicalFolderManager({
 
       {!canEdit && (
         <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-          Programarea este finalizată. Nu mai pot fi adăugate, modificate sau șterse note și documente. Conținutul existent rămâne disponibil pentru consultare, descărcare și generare PDF.
+          Programarea este finalizatÄƒ. Nu mai pot fi adÄƒugate, modificate sau È™terse note È™i documente. ConÈ›inutul existent rÄƒmÃ¢ne disponibil pentru consultare, descÄƒrcare È™i generare PDF.
         </div>
       )}
 
@@ -616,7 +622,7 @@ export default function MedicalFolderManager({
                   : "romdoc-button romdoc-button-secondary romdoc-button-sm"
               }
             >
-              Notă medicală
+              NotÄƒ medicalÄƒ
             </button>
 
             <button
@@ -630,7 +636,7 @@ export default function MedicalFolderManager({
                   : "romdoc-button romdoc-button-secondary romdoc-button-sm"
               }
             >
-              Încarcă document
+              ÃŽncarcÄƒ document
             </button>
           </div>
 
@@ -689,7 +695,7 @@ export default function MedicalFolderManager({
             }
             maxLength={5000}
             rows={2}
-            placeholder="Descriere opțională"
+            placeholder="Descriere opÈ›ionalÄƒ"
             className="romdoc-focus-ring w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm"
           />
 
@@ -703,7 +709,7 @@ export default function MedicalFolderManager({
               }
               maxLength={20000}
               rows={6}
-              placeholder="Conținutul notei medicale"
+              placeholder="ConÈ›inutul notei medicale"
               className="romdoc-focus-ring w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm"
             />
           ) : (
@@ -747,10 +753,10 @@ export default function MedicalFolderManager({
             className="romdoc-button romdoc-button-primary"
           >
             {isSaving
-              ? "Se salvează..."
+              ? "Se salveazÄƒ..."
               : mode === "text"
-                ? "Salvează nota"
-                : "Încarcă documentul"}
+                ? "SalveazÄƒ nota"
+                : "ÃŽncarcÄƒ documentul"}
           </button>
         </form>
       )}
@@ -780,12 +786,12 @@ export default function MedicalFolderManager({
 
         {isLoading ? (
           <p className="mt-3 text-sm text-gray-600">
-            Se încarcă...
+            Se Ã®ncarcÄƒ...
           </p>
         ) : documents.length ===
           0 ? (
           <p className="mt-3 text-sm text-gray-600">
-            Nu există încă documente.
+            Nu existÄƒ Ã®ncÄƒ documente.
           </p>
         ) : (
           <div className="mt-3 space-y-3">
@@ -834,7 +840,7 @@ export default function MedicalFolderManager({
                           }
                           className="text-sm font-semibold text-red-700 hover:underline"
                         >
-                          Șterge
+                          È˜terge
                         </button>
                       )}
                   </div>
@@ -867,8 +873,8 @@ export default function MedicalFolderManager({
                     >
                       {generatingPdfId ===
                       medicalDocument.id
-                        ? "Se generează..."
-                        : "Descarcă PDF"}
+                        ? "Se genereazÄƒ..."
+                        : "DescarcÄƒ PDF"}
                     </button>
                   )}
 
@@ -896,8 +902,8 @@ export default function MedicalFolderManager({
                       >
                         {downloadingDocumentId ===
                         medicalDocument.id
-                          ? "Se pregătește..."
-                          : "Descarcă"}
+                          ? "Se pregÄƒteÈ™te..."
+                          : "DescarcÄƒ"}
                       </button>
                     </div>
                   )}
@@ -910,3 +916,4 @@ export default function MedicalFolderManager({
     </section>
   );
 }
+

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   ChangeEvent,
@@ -68,16 +68,16 @@ function formatFileSize(bytes: number) {
 
 function validateFiles(files: File[]) {
   if (files.length > MAX_FILES) {
-    return `Poți atașa maximum ${MAX_FILES} fișiere la un mesaj.`;
+    return `PoÈ›i ataÈ™a maximum ${MAX_FILES} fiÈ™iere la un mesaj.`;
   }
 
   for (const file of files) {
     if (!ALLOWED_FILE_TYPES.has(file.type)) {
-      return "Poți atașa doar PDF, JPG, PNG sau WEBP.";
+      return "PoÈ›i ataÈ™a doar PDF, JPG, PNG sau WEBP.";
     }
 
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      return "Fiecare fișier poate avea maximum 10 MB.";
+      return "Fiecare fiÈ™ier poate avea maximum 10 MB.";
     }
   }
 
@@ -126,7 +126,7 @@ export default function AppointmentMessages({
       if (!response.ok) {
         throw new Error(
           result.error ??
-            "Mesajele nu au putut fi încărcate."
+            "Mesajele nu au putut fi Ã®ncÄƒrcate."
         );
       }
 
@@ -136,7 +136,7 @@ export default function AppointmentMessages({
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Mesajele nu au putut fi încărcate."
+          : "Mesajele nu au putut fi Ã®ncÄƒrcate."
       );
     } finally {
       setIsLoading(false);
@@ -144,8 +144,13 @@ export default function AppointmentMessages({
   }
 
   useEffect(() => {
-    void loadMessages();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const timerId = window.setTimeout(() => {
+      void loadMessages();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [endpoint]);
 
   function handleFileChange(
@@ -181,7 +186,7 @@ export default function AppointmentMessages({
       files.length === 0
     ) {
       setErrorMessage(
-        "Scrie un mesaj sau atașează cel puțin un fișier."
+        "Scrie un mesaj sau ataÈ™eazÄƒ cel puÈ›in un fiÈ™ier."
       );
       return;
     }
@@ -252,11 +257,11 @@ export default function AppointmentMessages({
         </p>
 
         <h2 className="mt-1 text-2xl font-bold text-gray-900">
-          Discuție legată de această programare
+          DiscuÈ›ie legatÄƒ de aceastÄƒ programare
         </h2>
 
         <p className="mt-2 text-sm leading-6 text-gray-600">
-          Folosește acest spațiu doar pentru informații legate de programarea selectată. Nu este un chat medical deschis.
+          FoloseÈ™te acest spaÈ›iu doar pentru informaÈ›ii legate de programarea selectatÄƒ. Nu este un chat medical deschis.
         </p>
       </div>
 
@@ -266,7 +271,7 @@ export default function AppointmentMessages({
       >
         {isLoading ? (
           <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-            Se încarcă mesajele...
+            Se Ã®ncarcÄƒ mesajele...
           </div>
         ) : errorMessage ? (
           <div
@@ -282,12 +287,12 @@ export default function AppointmentMessages({
               }
               className="mt-3 rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-semibold text-red-800 transition hover:bg-red-100"
             >
-              Reîncarcă mesajele
+              ReÃ®ncarcÄƒ mesajele
             </button>
           </div>
         ) : messages.length === 0 ? (
           <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600">
-            Nu există încă mesaje pentru această programare.
+            Nu existÄƒ Ã®ncÄƒ mesaje pentru aceastÄƒ programare.
           </div>
         ) : (
           <div className="space-y-4">
@@ -303,7 +308,7 @@ export default function AppointmentMessages({
                     </p>
 
                     <p className="text-xs text-gray-500">
-                      {message.senderRoleLabel} · {formatDateTime(message.createdAt)}
+                      {message.senderRoleLabel} Â· {formatDateTime(message.createdAt)}
                     </p>
                   </div>
                 </div>
@@ -376,14 +381,14 @@ export default function AppointmentMessages({
               setBody(event.target.value);
               setSuccessMessage("");
             }}
-            placeholder="Scrie un mesaj legat de această programare..."
+            placeholder="Scrie un mesaj legat de aceastÄƒ programare..."
             className="mt-2 w-full resize-y rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
           />
         </label>
 
         <label className="mt-4 block">
           <span className="text-sm font-semibold text-gray-700">
-            Atașamente opționale
+            AtaÈ™amente opÈ›ionale
           </span>
 
           <input
@@ -397,14 +402,14 @@ export default function AppointmentMessages({
         </label>
 
         <p className="mt-2 text-xs leading-5 text-gray-500">
-          Poți atașa maximum 5 fișiere: PDF, JPG, PNG sau WEBP. Fiecare fișier poate avea maximum 10 MB.
+          PoÈ›i ataÈ™a maximum 5 fiÈ™iere: PDF, JPG, PNG sau WEBP. Fiecare fiÈ™ier poate avea maximum 10 MB.
         </p>
 
         {files.length > 0 && (
           <ul className="mt-3 space-y-1 text-sm text-gray-600">
             {files.map((file) => (
               <li key={`${file.name}-${file.size}`}>
-                {file.name} · {formatFileSize(file.size)}
+                {file.name} Â· {formatFileSize(file.size)}
               </li>
             ))}
           </ul>
@@ -447,10 +452,11 @@ export default function AppointmentMessages({
             }
             className="rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition hover:border-[#036661] hover:text-[#036661] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Reîncarcă
+            ReÃ®ncarcÄƒ
           </button>
         </div>
       </form>
     </section>
   );
 }
+

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Button from "@/components/ui/button";
 
@@ -86,7 +86,7 @@ function getClinicName(
     | null
 ) {
   if (!clinic) {
-    return "Clinică";
+    return "ClinicÄƒ";
   }
 
   return (
@@ -235,7 +235,7 @@ export default function DoctorStaffManager() {
         if (!response.ok) {
           throw new Error(
             result.error ??
-              "Personalul nu a putut fi încărcat."
+              "Personalul nu a putut fi Ã®ncÄƒrcat."
           );
         }
 
@@ -259,7 +259,7 @@ export default function DoctorStaffManager() {
         setError(
           loadError instanceof Error
             ? loadError.message
-            : "Personalul nu a putut fi încărcat."
+            : "Personalul nu a putut fi Ã®ncÄƒrcat."
         );
       } finally {
         setIsLoading(false);
@@ -267,7 +267,13 @@ export default function DoctorStaffManager() {
     }, [clinicId]);
 
   useEffect(() => {
-    void loadStaff();
+    const timerId = window.setTimeout(() => {
+      void loadStaff();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadStaff]);
 
   function handleInvite(
@@ -286,7 +292,7 @@ export default function DoctorStaffManager() {
       !normalizedEmail.includes("@")
     ) {
       setError(
-        "Introdu o adresă de e-mail validă."
+        "Introdu o adresÄƒ de e-mail validÄƒ."
       );
 
       return;
@@ -294,7 +300,7 @@ export default function DoctorStaffManager() {
 
     if (!clinicId) {
       setError(
-        "Selectează clinica."
+        "SelecteazÄƒ clinica."
       );
 
       return;
@@ -330,13 +336,13 @@ export default function DoctorStaffManager() {
         if (!response.ok) {
           throw new Error(
             result.error ??
-              "Invitația nu a putut fi trimisă."
+              "InvitaÈ›ia nu a putut fi trimisÄƒ."
           );
         }
 
         setSuccess(
           result.message ??
-            "Invitația a fost trimisă."
+            "InvitaÈ›ia a fost trimisÄƒ."
         );
 
         setEmail("");
@@ -346,7 +352,7 @@ export default function DoctorStaffManager() {
         setError(
           inviteError instanceof Error
             ? inviteError.message
-            : "Invitația nu a putut fi trimisă."
+            : "InvitaÈ›ia nu a putut fi trimisÄƒ."
         );
       }
     });
@@ -425,8 +431,8 @@ export default function DoctorStaffManager() {
 
         <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
           Personalul poate administra numai
-          programările tale din clinica
-          selectată. Nu primește acces la
+          programÄƒrile tale din clinica
+          selectatÄƒ. Nu primeÈ™te acces la
           profil, servicii, disponibilitate,
           clinici sau facturare.
         </p>
@@ -434,8 +440,8 @@ export default function DoctorStaffManager() {
         {clinics.length === 0 ? (
           <div className="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">
             Pentru a invita personal trebuie
-            să ai cel puțin o clinică aprobată
-            asociată profilului tău.
+            sÄƒ ai cel puÈ›in o clinicÄƒ aprobatÄƒ
+            asociatÄƒ profilului tÄƒu.
           </div>
         ) : (
           <form
@@ -506,8 +512,8 @@ export default function DoctorStaffManager() {
               }
             >
               {isSubmitting
-                ? "Se trimite invitația..."
-                : "Invită membru al personalului"}
+                ? "Se trimite invitaÈ›ia..."
+                : "InvitÄƒ membru al personalului"}
             </Button>
           </form>
         )}
@@ -538,12 +544,12 @@ export default function DoctorStaffManager() {
 
         {isLoading ? (
           <p className="mt-5 text-sm text-gray-500">
-            Se încarcă personalul...
+            Se Ã®ncarcÄƒ personalul...
           </p>
         ) : assignments.length ===
           0 ? (
           <p className="mt-5 text-sm text-gray-600">
-            Nu ai invitat încă niciun membru
+            Nu ai invitat Ã®ncÄƒ niciun membru
             al personalului.
           </p>
         ) : (
@@ -582,7 +588,7 @@ export default function DoctorStaffManager() {
 
                         <p className="mt-2 text-sm text-gray-600">
                           <span className="font-medium">
-                            Clinică:
+                            ClinicÄƒ:
                           </span>{" "}
                           {getClinicName(
                             clinic
@@ -624,7 +630,7 @@ export default function DoctorStaffManager() {
                           }
             size="sm"
                         >
-                          Activează accesul
+                          ActiveazÄƒ accesul
                         </Button>
                       )}
 
@@ -644,7 +650,7 @@ export default function DoctorStaffManager() {
             variant="secondary"
             size="sm"
                         >
-                          Suspendă
+                          SuspendÄƒ
                         </Button>
                       )}
 
@@ -662,7 +668,7 @@ export default function DoctorStaffManager() {
             variant="danger-outline"
             size="sm"
                       >
-                        Revocă
+                        RevocÄƒ
                       </Button>
                     </div>
                   </article>

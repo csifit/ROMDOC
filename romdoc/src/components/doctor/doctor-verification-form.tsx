@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   type ChangeEvent,
@@ -67,7 +67,7 @@ const documentTypeLabels: Record<
   membership_certificate:
     "Certificat de membru",
   practice_authorization:
-    "Autorizație de liberă practică",
+    "AutorizaÈ›ie de liberÄƒ practicÄƒ",
   other: "Alt document",
 };
 
@@ -75,13 +75,13 @@ const statusLabels: Record<
   SubmissionStatus,
   string
 > = {
-  draft: "Ciornă",
-  submitted: "Trimisă",
-  under_review: "În verificare",
-  verified: "Verificată",
-  rejected: "Respinsă",
-  expired: "Expirată",
-  withdrawn: "Retrasă",
+  draft: "CiornÄƒ",
+  submitted: "TrimisÄƒ",
+  under_review: "ÃŽn verificare",
+  verified: "VerificatÄƒ",
+  rejected: "RespinsÄƒ",
+  expired: "ExpiratÄƒ",
+  withdrawn: "RetrasÄƒ",
 };
 
 function formatFileSize(bytes: number) {
@@ -103,7 +103,7 @@ function formatFileSize(bytes: number) {
 
 function formatDate(value: string | null) {
   if (!value) {
-    return "—";
+    return "â€”";
   }
 
   return new Intl.DateTimeFormat(
@@ -215,7 +215,7 @@ export default function DoctorVerificationForm() {
       if (!response.ok) {
         throw new Error(
           result.error ??
-            "Verificarea nu a putut fi încărcată."
+            "Verificarea nu a putut fi Ã®ncÄƒrcatÄƒ."
         );
       }
 
@@ -224,7 +224,7 @@ export default function DoctorVerificationForm() {
       setError(
         loadError instanceof Error
           ? loadError.message
-          : "Verificarea nu a putut fi încărcată."
+          : "Verificarea nu a putut fi Ã®ncÄƒrcatÄƒ."
       );
     } finally {
       setIsLoading(false);
@@ -232,8 +232,14 @@ export default function DoctorVerificationForm() {
   }
 
   useEffect(() => {
-    void loadVerification();
-  }, []);
+    const timerId = window.setTimeout(() => {
+      void loadVerification();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [loadVerification]);
 
   function saveSubmission(
     action: "save" | "submit"
@@ -270,13 +276,13 @@ export default function DoctorVerificationForm() {
         if (!response.ok) {
           throw new Error(
             result.error ??
-              "Cererea nu a putut fi salvată."
+              "Cererea nu a putut fi salvatÄƒ."
           );
         }
 
         setMessage(
           result.message ??
-            "Cererea a fost salvată."
+            "Cererea a fost salvatÄƒ."
         );
 
         await loadVerification();
@@ -284,7 +290,7 @@ export default function DoctorVerificationForm() {
         setError(
           submitError instanceof Error
             ? submitError.message
-            : "Cererea nu a putut fi salvată."
+            : "Cererea nu a putut fi salvatÄƒ."
         );
       }
     });
@@ -300,7 +306,7 @@ export default function DoctorVerificationForm() {
   async function handleUpload() {
     if (!selectedFile) {
       setError(
-        "Selectează un document pentru încărcare."
+        "SelecteazÄƒ un document pentru Ã®ncÄƒrcare."
       );
       return;
     }
@@ -331,7 +337,7 @@ export default function DoctorVerificationForm() {
       if (!response.ok) {
         throw new Error(
           result.error ??
-            "Documentul nu a putut fi încărcat."
+            "Documentul nu a putut fi Ã®ncÄƒrcat."
         );
       }
 
@@ -341,14 +347,14 @@ export default function DoctorVerificationForm() {
       }
 
       setMessage(
-        "Documentul a fost încărcat."
+        "Documentul a fost Ã®ncÄƒrcat."
       );
       await loadVerification();
     } catch (uploadError) {
       setError(
         uploadError instanceof Error
           ? uploadError.message
-          : "Documentul nu a putut fi încărcat."
+          : "Documentul nu a putut fi Ã®ncÄƒrcat."
       );
     } finally {
       setIsUploading(false);
@@ -383,17 +389,17 @@ export default function DoctorVerificationForm() {
       if (!response.ok) {
         throw new Error(
           result.error ??
-            "Documentul nu a putut fi șters."
+            "Documentul nu a putut fi È™ters."
         );
       }
 
-      setMessage("Documentul a fost șters.");
+      setMessage("Documentul a fost È™ters.");
       await loadVerification();
     } catch (deleteError) {
       setError(
         deleteError instanceof Error
           ? deleteError.message
-          : "Documentul nu a putut fi șters."
+          : "Documentul nu a putut fi È™ters."
       );
     } finally {
       setIsDeletingId(null);
@@ -412,7 +418,7 @@ export default function DoctorVerificationForm() {
     return (
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <p className="text-sm text-gray-600">
-          Se încarcă verificarea profesională...
+          Se Ã®ncarcÄƒ verificarea profesionalÄƒ...
         </p>
       </div>
     );
@@ -424,28 +430,28 @@ export default function DoctorVerificationForm() {
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div>
             <p className="text-sm font-medium text-gray-500">
-              Starea verificării
+              Starea verificÄƒrii
             </p>
             <h2 className="mt-1 text-2xl font-bold text-gray-900">
               {submission
                 ? statusLabels[submission.status]
-                : "Netrimisă"}
+                : "NetrimisÄƒ"}
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
-              Verificarea profesională este separată de abonamentul RomDoc. Ea controlează numai afișarea insignei publice „Medic verificat de RomDoc”.
+              Verificarea profesionalÄƒ este separatÄƒ de abonamentul RomDoc. Ea controleazÄƒ numai afiÈ™area insignei publice â€žMedic verificat de RomDocâ€.
             </p>
           </div>
 
           <span className="inline-flex w-fit rounded-full bg-[#036661]/10 px-3 py-1 text-sm font-semibold text-[#036661]">
             {verificationStatus === "verified"
               ? "Medic verificat"
-              : "Fără insignă publică"}
+              : "FÄƒrÄƒ insignÄƒ publicÄƒ"}
           </span>
         </div>
 
         {submission?.submitted_at && (
           <p className="mt-4 text-sm text-gray-600">
-            Trimisă la: {formatDate(submission.submitted_at)}
+            TrimisÄƒ la: {formatDate(submission.submitted_at)}
           </p>
         )}
 
@@ -463,17 +469,17 @@ export default function DoctorVerificationForm() {
       >
         <div>
           <h2 className="text-2xl font-bold text-gray-900">
-            Informații profesionale
+            InformaÈ›ii profesionale
           </h2>
           <p className="mt-2 text-sm leading-6 text-gray-600">
-            Poți salva o ciornă incompletă. Numărul de înregistrare și autoritatea emitentă devin obligatorii când trimiți cererea.
+            PoÈ›i salva o ciornÄƒ incompletÄƒ. NumÄƒrul de Ã®nregistrare È™i autoritatea emitentÄƒ devin obligatorii cÃ¢nd trimiÈ›i cererea.
           </p>
         </div>
 
         <div className="mt-6 grid gap-5 sm:grid-cols-2">
           <label className="block">
             <span className="text-sm font-medium text-gray-700">
-              Număr de înregistrare profesională
+              NumÄƒr de Ã®nregistrare profesionalÄƒ
             </span>
             <input
               type="text"
@@ -489,7 +495,7 @@ export default function DoctorVerificationForm() {
 
           <label className="block">
             <span className="text-sm font-medium text-gray-700">
-              Autoritate emitentă
+              Autoritate emitentÄƒ
             </span>
             <input
               type="text"
@@ -499,7 +505,7 @@ export default function DoctorVerificationForm() {
               }
               disabled={!isEditable || isPending}
               maxLength={250}
-              placeholder="Colegiul Medicilor din România"
+              placeholder="Colegiul Medicilor din RomÃ¢nia"
               className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:bg-gray-100 disabled:opacity-70"
             />
           </label>
@@ -523,7 +529,7 @@ export default function DoctorVerificationForm() {
 
           <label className="block">
             <span className="text-sm font-medium text-gray-700">
-              Țara înregistrării
+              Èšara Ã®nregistrÄƒrii
             </span>
             <input
               type="text"
@@ -542,7 +548,7 @@ export default function DoctorVerificationForm() {
 
           <label className="block sm:col-span-2">
             <span className="text-sm font-medium text-gray-700">
-              Data expirării documentului profesional
+              Data expirÄƒrii documentului profesional
             </span>
             <input
               type="date"
@@ -564,8 +570,8 @@ export default function DoctorVerificationForm() {
               className="rounded-xl border border-[#036661] px-5 py-3 font-semibold text-[#036661] transition hover:bg-[#036661]/5 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isPending
-                ? "Se salvează..."
-                : "Salvează ciorna"}
+                ? "Se salveazÄƒ..."
+                : "SalveazÄƒ ciorna"}
             </button>
 
             <button
@@ -588,7 +594,7 @@ export default function DoctorVerificationForm() {
             Documente justificative
           </h2>
           <p className="mt-2 text-sm leading-6 text-gray-600">
-            Fișierele sunt private. Sunt acceptate PDF, JPEG, PNG și WebP, cu maximum 10 MB fiecare.
+            FiÈ™ierele sunt private. Sunt acceptate PDF, JPEG, PNG È™i WebP, cu maximum 10 MB fiecare.
           </p>
         </div>
 
@@ -618,7 +624,7 @@ export default function DoctorVerificationForm() {
 
             <label className="block">
               <span className="text-sm font-medium text-gray-700">
-                Fișier
+                FiÈ™ier
               </span>
               <input
                 ref={fileInputRef}
@@ -639,22 +645,22 @@ export default function DoctorVerificationForm() {
               className="rounded-xl bg-[#036661] px-5 py-3 font-semibold text-white transition-colors hover:bg-[#ff2800] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isUploading
-                ? "Se încarcă..."
-                : "Încarcă"}
+                ? "Se Ã®ncarcÄƒ..."
+                : "ÃŽncarcÄƒ"}
             </button>
           </div>
         )}
 
         {isEditable && !submission && (
           <p className="mt-3 text-sm text-amber-700">
-            Salvează mai întâi ciorna pentru a putea încărca documente.
+            SalveazÄƒ mai Ã®ntÃ¢i ciorna pentru a putea Ã®ncÄƒrca documente.
           </p>
         )}
 
         <div className="mt-6 space-y-3">
           {documents.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-300 p-5 text-sm text-gray-600">
-              Nu ai încărcat încă documente.
+              Nu ai Ã®ncÄƒrcat Ã®ncÄƒ documente.
             </div>
           ) : (
             documents.map((document) => (
@@ -668,9 +674,9 @@ export default function DoctorVerificationForm() {
                   </p>
                   <p className="mt-1 text-sm text-gray-500">
                     {documentTypeLabels[document.document_type] ?? "Document"}
-                    {" · "}
+                    {" Â· "}
                     {formatFileSize(document.file_size_bytes)}
-                    {" · "}
+                    {" Â· "}
                     {formatDate(document.created_at)}
                   </p>
                 </div>
@@ -685,8 +691,8 @@ export default function DoctorVerificationForm() {
                     className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-60"
                   >
                     {isDeletingId === document.id
-                      ? "Se șterge..."
-                      : "Șterge"}
+                      ? "Se È™terge..."
+                      : "È˜terge"}
                   </button>
                 )}
               </div>
@@ -715,3 +721,4 @@ export default function DoctorVerificationForm() {
     </div>
   );
 }
+

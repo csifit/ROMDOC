@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   type FormEvent,
@@ -136,7 +136,7 @@ export default function DoctorSecuritySettings() {
         );
 
         setError(
-          "Starea autentificării în doi pași nu a putut fi verificată."
+          "Starea autentificÄƒrii Ã®n doi paÈ™i nu a putut fi verificatÄƒ."
         );
         setViewState(
           "error"
@@ -175,7 +175,13 @@ export default function DoctorSecuritySettings() {
     }, []);
 
   useEffect(() => {
-    void loadStatus();
+    const timerId = window.setTimeout(() => {
+      void loadStatus();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadStatus]);
 
   function beginEnrollment() {
@@ -212,7 +218,7 @@ export default function DoctorSecuritySettings() {
 
           setError(
             enrollError?.message ??
-              "Configurarea Google Authenticator nu a putut fi începută."
+              "Configurarea Google Authenticator nu a putut fi Ã®nceputÄƒ."
           );
           return;
         }
@@ -266,7 +272,7 @@ export default function DoctorSecuritySettings() {
 
     if (!enrollment) {
       setError(
-        "Configurarea Google Authenticator nu este disponibilă."
+        "Configurarea Google Authenticator nu este disponibilÄƒ."
       );
       return;
     }
@@ -303,7 +309,7 @@ export default function DoctorSecuritySettings() {
         }
 
         setMessage(
-          "Google Authenticator a fost activat pentru contul tău."
+          "Google Authenticator a fost activat pentru contul tÄƒu."
         );
 
         setCode("");
@@ -417,7 +423,7 @@ export default function DoctorSecuritySettings() {
       !disableConfirmed
     ) {
       setError(
-        "Confirmă că înțelegi că autentificarea în doi pași va fi dezactivată."
+        "ConfirmÄƒ cÄƒ Ã®nÈ›elegi cÄƒ autentificarea Ã®n doi paÈ™i va fi dezactivatÄƒ."
       );
       return;
     }
@@ -485,7 +491,7 @@ export default function DoctorSecuritySettings() {
           );
 
           setError(
-            "Google Authenticator nu a putut fi dezactivat. Încearcă din nou."
+            "Google Authenticator nu a putut fi dezactivat. ÃŽncearcÄƒ din nou."
           );
           return;
         }
@@ -498,7 +504,7 @@ export default function DoctorSecuritySettings() {
           false
         );
         setMessage(
-          "Google Authenticator a fost dezactivat. Viitoarele autentificări vor folosi doar parola."
+          "Google Authenticator a fost dezactivat. Viitoarele autentificÄƒri vor folosi doar parola."
         );
         setViewState(
           "disabled"
@@ -513,7 +519,7 @@ export default function DoctorSecuritySettings() {
   ) {
     return (
       <div className="rounded-xl border border-gray-200 bg-gray-50 px-5 py-6 text-sm text-gray-600">
-        Se verifică setările de securitate...
+        Se verificÄƒ setÄƒrile de securitate...
       </div>
     );
   }
@@ -537,7 +543,7 @@ export default function DoctorSecuritySettings() {
             void loadStatus()
           }
         >
-          Încearcă din nou
+          ÃŽncearcÄƒ din nou
         </Button>
       </div>
     );
@@ -582,8 +588,8 @@ export default function DoctorSecuritySettings() {
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-green-800">
-              Contul are un factor TOTP verificat. În pasul 66E-2C,
-              viitoarele autentificări vor solicita codul generat de
+              Contul are un factor TOTP verificat. ÃŽn pasul 66E-2C,
+              viitoarele autentificÄƒri vor solicita codul generat de
               Google Authenticator.
             </p>
 
@@ -605,8 +611,8 @@ export default function DoctorSecuritySettings() {
         )}
 
         <div className="mt-6 rounded-xl border border-green-200 bg-white px-4 py-4 text-sm leading-6 text-gray-700">
-          Poți dezactiva Google Authenticator numai după verificarea
-          codului curent. După dezactivare, viitoarele autentificări vor
+          PoÈ›i dezactiva Google Authenticator numai dupÄƒ verificarea
+          codului curent. DupÄƒ dezactivare, viitoarele autentificÄƒri vor
           folosi doar parola.
         </div>
 
@@ -618,7 +624,7 @@ export default function DoctorSecuritySettings() {
             }
             className="rounded-xl border border-red-300 bg-white px-5 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-50"
           >
-            Dezactivează Google Authenticator
+            DezactiveazÄƒ Google Authenticator
           </button>
         </div>
       </section>
@@ -633,12 +639,12 @@ export default function DoctorSecuritySettings() {
     return (
       <section className="rounded-2xl border border-red-200 bg-red-50 p-6">
         <h2 className="text-xl font-bold text-red-900">
-          Dezactivează Google Authenticator
+          DezactiveazÄƒ Google Authenticator
         </h2>
 
         <p className="mt-3 text-sm leading-6 text-red-800">
-          Această acțiune elimină autentificarea în doi pași din cont.
-          După confirmare, parola va fi singura protecție la autentificare.
+          AceastÄƒ acÈ›iune eliminÄƒ autentificarea Ã®n doi paÈ™i din cont.
+          DupÄƒ confirmare, parola va fi singura protecÈ›ie la autentificare.
         </p>
 
         <form
@@ -703,8 +709,8 @@ export default function DoctorSecuritySettings() {
             />
 
             <span className="text-sm leading-6 text-gray-700">
-              Înțeleg că autentificarea în doi pași va fi dezactivată și
-              că viitoarele autentificări vor solicita doar parola.
+              ÃŽnÈ›eleg cÄƒ autentificarea Ã®n doi paÈ™i va fi dezactivatÄƒ È™i
+              cÄƒ viitoarele autentificÄƒri vor solicita doar parola.
             </span>
           </label>
 
@@ -726,8 +732,8 @@ export default function DoctorSecuritySettings() {
               className="rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isPending
-                ? "Se dezactivează..."
-                : "Confirmă dezactivarea"}
+                ? "Se dezactiveazÄƒ..."
+                : "ConfirmÄƒ dezactivarea"}
             </button>
 
             <button
@@ -740,7 +746,7 @@ export default function DoctorSecuritySettings() {
               }
               className="rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Anulează
+              AnuleazÄƒ
             </button>
           </div>
         </form>
@@ -756,7 +762,7 @@ export default function DoctorSecuritySettings() {
     return (
       <section className="rounded-2xl border border-gray-200 bg-gray-50 p-6">
         <h2 className="text-xl font-bold text-gray-900">
-          Conectează Google Authenticator
+          ConecteazÄƒ Google Authenticator
         </h2>
 
         <ol className="mt-4 space-y-2 text-sm leading-6 text-gray-700">
@@ -766,11 +772,11 @@ export default function DoctorSecuritySettings() {
           </li>
           <li>
             <strong>2.</strong>{" "}
-            Apasă „+” și alege scanarea unui cod QR.
+            ApasÄƒ â€ž+â€ È™i alege scanarea unui cod QR.
           </li>
           <li>
             <strong>3.</strong>{" "}
-            Scanează codul de mai jos.
+            ScaneazÄƒ codul de mai jos.
           </li>
           <li>
             <strong>4.</strong>{" "}
@@ -796,11 +802,11 @@ export default function DoctorSecuritySettings() {
 
         <details className="mt-5 rounded-xl border border-gray-200 bg-white p-4">
           <summary className="cursor-pointer text-sm font-semibold text-gray-800">
-            Nu poți scana codul QR?
+            Nu poÈ›i scana codul QR?
           </summary>
 
           <p className="mt-3 text-sm text-gray-600">
-            Adaugă manual această cheie în Google Authenticator:
+            AdaugÄƒ manual aceastÄƒ cheie Ã®n Google Authenticator:
           </p>
 
           <code className="mt-2 block break-all rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-900">
@@ -864,9 +870,9 @@ export default function DoctorSecuritySettings() {
               isLoading={
                 isPending
               }
-              loadingText="Se verifică..."
+              loadingText="Se verificÄƒ..."
             >
-              Activează Google Authenticator
+              ActiveazÄƒ Google Authenticator
             </Button>
 
             <button
@@ -879,7 +885,7 @@ export default function DoctorSecuritySettings() {
               }
               className="rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Anulează
+              AnuleazÄƒ
             </button>
           </div>
         </form>
@@ -920,19 +926,19 @@ export default function DoctorSecuritySettings() {
           </h2>
 
           <p className="mt-2 text-sm leading-6 text-gray-600">
-            Activarea este opțională. Poți continua să folosești
-            platforma fără MFA până la activare.
+            Activarea este opÈ›ionalÄƒ. PoÈ›i continua sÄƒ foloseÈ™ti
+            platforma fÄƒrÄƒ MFA pÃ¢nÄƒ la activare.
           </p>
 
           <ul className="mt-4 space-y-2 text-sm leading-6 text-gray-700">
             <li>
-              • reduce riscul accesului neautorizat dacă parola este compromisă;
+              â€¢ reduce riscul accesului neautorizat dacÄƒ parola este compromisÄƒ;
             </li>
             <li>
-              • codurile sunt generate local pe telefon;
+              â€¢ codurile sunt generate local pe telefon;
             </li>
             <li>
-              • RomDoc nu stochează codurile de 6 cifre sau secretul TOTP în tabelele aplicației.
+              â€¢ RomDoc nu stocheazÄƒ codurile de 6 cifre sau secretul TOTP Ã®n tabelele aplicaÈ›iei.
             </li>
           </ul>
 
@@ -963,9 +969,9 @@ export default function DoctorSecuritySettings() {
               isLoading={
                 isPending
               }
-              loadingText="Se pregătește..."
+              loadingText="Se pregÄƒteÈ™te..."
             >
-              Activează Google Authenticator
+              ActiveazÄƒ Google Authenticator
             </Button>
           </div>
         </div>
@@ -973,3 +979,4 @@ export default function DoctorSecuritySettings() {
     </section>
   );
 }
+
