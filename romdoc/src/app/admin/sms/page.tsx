@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import AdminSmsControlPanel from "@/components/admin/admin-sms-control-panel";
@@ -87,12 +88,12 @@ export default async function AdminSmsPage() {
             </p>
           </div>
 
-          <a
+          <Link
             href="/api/admin/sms/export"
             className="romdoc-focus-ring w-fit rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-semibold text-gray-800 transition hover:bg-gray-50"
           >
             Export fără filtre
-          </a>
+          </Link>
         </div>
 
         <form

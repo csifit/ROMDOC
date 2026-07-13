@@ -16,6 +16,10 @@ import {
 export const dynamic =
   "force-dynamic";
 
+function getCurrentTimestamp() {
+  return new Date().getTime();
+}
+
 export default async function DoctorInvitationPage() {
   const supabase =
     await createClient();
@@ -114,12 +118,15 @@ export default async function DoctorInvitationPage() {
     );
   }
 
+  const currentTimestamp =
+    getCurrentTimestamp();
+
   if (
     invitation.expires_at &&
     new Date(
       invitation.expires_at
     ).getTime() <=
-      Date.now()
+      currentTimestamp
   ) {
     redirect(
       "/login?error=doctor-invitation-expired"
