@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -184,7 +184,7 @@ function formatCurrencyMinor(valueMinor: number, currency = "RON") {
 
 function formatDateTime(value: string | null) {
   if (!value) {
-    return "—";
+    return "â€”";
   }
 
   return new Intl.DateTimeFormat("ro-RO", {
@@ -199,16 +199,16 @@ function formatDateTime(value: string | null) {
 
 function maskRecipient(value: string | null) {
   if (!value) {
-    return "—";
+    return "â€”";
   }
 
   const trimmed = value.trim();
 
   if (trimmed.length <= 4) {
-    return "••••";
+    return "â€¢â€¢â€¢â€¢";
   }
 
-  return `${trimmed.slice(0, 3)}••••${trimmed.slice(-3)}`;
+  return `${trimmed.slice(0, 3)}â€¢â€¢â€¢â€¢${trimmed.slice(-3)}`;
 }
 
 function getFirstRelation<T>(relation: T | T[] | null | undefined): T | null {
@@ -222,7 +222,7 @@ function getFirstRelation<T>(relation: T | T[] | null | undefined): T | null {
 function getDisplayName(
   firstName: string | null | undefined,
   lastName: string | null | undefined,
-  fallback = "Manager clinică",
+  fallback = "Manager clinicÄƒ",
 ) {
   return [firstName, lastName].filter(Boolean).join(" ").trim() || fallback;
 }
@@ -242,13 +242,13 @@ function getStatusLabel(status: string | null) {
     case "sent":
       return "Trimis";
     case "failed":
-      return "Eșuat";
+      return "EÈ™uat";
     case "skipped":
-      return "Sărit";
+      return "SÄƒrit";
     case "queued":
-      return "În coadă";
+      return "ÃŽn coadÄƒ";
     default:
-      return status ?? "—";
+      return status ?? "â€”";
   }
 }
 
@@ -263,7 +263,7 @@ function getInvoiceLabel(status: string | null) {
     case "not_billable":
       return "Nefacturabil";
     default:
-      return status ?? "—";
+      return status ?? "â€”";
   }
 }
 
@@ -272,9 +272,9 @@ function getMemberRoleLabel(role: string) {
     case "owner":
       return "Owner";
     case "billing_manager":
-      return "Manager facturare clinică";
+      return "Manager facturare clinicÄƒ";
     case "manager":
-      return "Manager clinică";
+      return "Manager clinicÄƒ";
     default:
       return role;
   }
@@ -315,7 +315,7 @@ function FieldLine({
       <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
         {label}
       </dt>
-      <dd className="mt-1 text-sm font-medium text-gray-900">{value || "—"}</dd>
+      <dd className="mt-1 text-sm font-medium text-gray-900">{value || "â€”"}</dd>
     </div>
   );
 }
@@ -412,12 +412,12 @@ export default async function ManagerClinicSmsPage({
 
         <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-950">
           <h2 className="text-lg font-bold">
-            Permisiunea Facturare este necesară
+            Permisiunea Facturare este necesarÄƒ
           </h2>
           <p className="mt-2 text-sm leading-6">
-            Această pagină este disponibilă doar managerilor RomDoc cu
-            permisiunea Facturare. Administratorul poate acorda această
-            permisiune din pagina Admin → Manageri RomDoc.
+            AceastÄƒ paginÄƒ este disponibilÄƒ doar managerilor RomDoc cu
+            permisiunea Facturare. Administratorul poate acorda aceastÄƒ
+            permisiune din pagina Admin â†’ Manageri RomDoc.
           </p>
         </section>
       </div>
@@ -544,7 +544,7 @@ export default async function ManagerClinicSmsPage({
       name: getDisplayName(
         memberProfile?.first_name,
         memberProfile?.last_name,
-        "Manager clinică",
+        "Manager clinicÄƒ",
       ),
       email: authUserById.get(member.profile_id)?.email ?? null,
       role: member.member_role,
@@ -639,7 +639,7 @@ export default async function ManagerClinicSmsPage({
         relationship.doctor_id.slice(0, 8))
       : (relationship.accepted_account_email ??
         relationship.invited_doctor_email ??
-        "Medic clinică");
+        "Medic clinicÄƒ");
 
     const doctorInfo: ClinicDoctorInfo = {
       doctorId: relationship.doctor_id,
@@ -723,7 +723,6 @@ export default async function ManagerClinicSmsPage({
     });
 
   const sentRows = clinicSmsLogs.filter((row) => row.status === "sent");
-  const failedRows = clinicSmsLogs.filter((row) => row.status === "failed");
   const uninvoicedRows = clinicSmsLogs.filter(
     (row) => row.invoice_status === "uninvoiced",
   );
@@ -757,9 +756,9 @@ export default async function ManagerClinicSmsPage({
           Facturare SMS clinici
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Vezi consumul SMS al clinicilor pentru perioada selectată și datele
-          necesare pentru invoicing. Corpul SMS, notele medicale și dosarele
-          pacienților nu sunt afișate.
+          Vezi consumul SMS al clinicilor pentru perioada selectatÄƒ È™i datele
+          necesare pentru invoicing. Corpul SMS, notele medicale È™i dosarele
+          pacienÈ›ilor nu sunt afiÈ™ate.
         </p>
       </header>
 
@@ -767,11 +766,11 @@ export default async function ManagerClinicSmsPage({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-xl font-bold text-gray-900">
-              Perioadă: {monthRange.label}
+              PerioadÄƒ: {monthRange.label}
             </h2>
             <p className="mt-1 text-sm text-gray-600">
-              Sunt afișate SMS-urile cu payer clinică și organizațiile de
-              clinică care pot necesita facturare.
+              Sunt afiÈ™ate SMS-urile cu payer clinicÄƒ È™i organizaÈ›iile de
+              clinicÄƒ care pot necesita facturare.
             </p>
           </div>
 
@@ -780,13 +779,13 @@ export default async function ManagerClinicSmsPage({
               href={`/manager-dashboard/clinic-sms?month=${monthRange.previousMonth}`}
               className="romdoc-focus-ring rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             >
-              Luna anterioară
+              Luna anterioarÄƒ
             </Link>
             <Link
               href={`/manager-dashboard/clinic-sms?month=${monthRange.nextMonth}`}
               className="romdoc-focus-ring rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             >
-              Luna următoare
+              Luna urmÄƒtoare
             </Link>
           </div>
         </div>
@@ -795,7 +794,7 @@ export default async function ManagerClinicSmsPage({
       {pageError ? (
         <section className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm leading-6 text-red-800 shadow-sm">
           <h2 className="font-semibold">
-            Datele de facturare SMS nu au putut fi încărcate complet
+            Datele de facturare SMS nu au putut fi Ã®ncÄƒrcate complet
           </h2>
           <pre className="mt-3 overflow-x-auto rounded-xl bg-white p-3 text-xs text-red-900">
             {pageError}
@@ -805,9 +804,9 @@ export default async function ManagerClinicSmsPage({
 
       <div className="grid gap-4 md:grid-cols-5">
         <SummaryBox
-          label="Organizații"
+          label="OrganizaÈ›ii"
           value={groups.length}
-          helper="Organizații active sau cu date de facturare/consum."
+          helper="OrganizaÈ›ii active sau cu date de facturare/consum."
         />
         <SummaryBox
           label="SMS trimise"
@@ -817,7 +816,7 @@ export default async function ManagerClinicSmsPage({
         <SummaryBox
           label="Nefacturate"
           value={uninvoicedRows.length}
-          helper="SMS care pot intra în factura clinicii."
+          helper="SMS care pot intra Ã®n factura clinicii."
         />
         <SummaryBox
           label="Facturate"
@@ -835,12 +834,12 @@ export default async function ManagerClinicSmsPage({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="text-xl font-bold text-gray-900">
-              Organizații pentru invoicing
+              OrganizaÈ›ii pentru invoicing
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-              Fiecare organizație este afișată într-un accordion ca să păstrăm
-              pagina compactă. Deschide organizația pentru datele de facturare,
-              Clinic Manageri și detaliile SMS.
+              Fiecare organizaÈ›ie este afiÈ™atÄƒ Ã®ntr-un accordion ca sÄƒ pÄƒstrÄƒm
+              pagina compactÄƒ. Deschide organizaÈ›ia pentru datele de facturare,
+              Clinic Manageri È™i detaliile SMS.
             </p>
           </div>
 
@@ -851,8 +850,8 @@ export default async function ManagerClinicSmsPage({
 
         {groups.length === 0 ? (
           <div className="mt-5 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm leading-6 text-gray-600">
-            Nu există organizații de clinică sau consum SMS de clinică pentru
-            perioada selectată.
+            Nu existÄƒ organizaÈ›ii de clinicÄƒ sau consum SMS de clinicÄƒ pentru
+            perioada selectatÄƒ.
           </div>
         ) : (
           <div className="mt-6 space-y-4">
@@ -886,9 +885,9 @@ export default async function ManagerClinicSmsPage({
                       </div>
                       <p className="mt-1 text-sm text-gray-600">
                         {group.doctorCount}{" "}
-                        {group.doctorCount === 1 ? "medic" : "medici"} ·{" "}
-                        {group.sentCount} SMS trimise · {group.uninvoicedCount}{" "}
-                        nefacturate ·{" "}
+                        {group.doctorCount === 1 ? "medic" : "medici"} Â·{" "}
+                        {group.sentCount} SMS trimise Â· {group.uninvoicedCount}{" "}
+                        nefacturate Â·{" "}
                         {formatCurrencyMinor(
                           group.uninvoicedCostMinor,
                           group.currency,
@@ -897,7 +896,7 @@ export default async function ManagerClinicSmsPage({
                     </div>
 
                     <span className="text-sm font-semibold text-[#036661] transition group-open:rotate-180">
-                      Deschide ↓
+                      Deschide â†“
                     </span>
                   </summary>
 
@@ -906,17 +905,17 @@ export default async function ManagerClinicSmsPage({
                       <SummaryBox
                         label="SMS trimise"
                         value={group.sentCount}
-                        helper="Pentru această organizație."
+                        helper="Pentru aceastÄƒ organizaÈ›ie."
                       />
                       <SummaryBox
                         label="Nefacturate"
                         value={group.uninvoicedCount}
-                        helper="Intră în calculul facturii."
+                        helper="IntrÄƒ Ã®n calculul facturii."
                       />
                       <SummaryBox
                         label="Facturate"
                         value={group.invoicedCount}
-                        helper="Au referință/status de facturare."
+                        helper="Au referinÈ›Äƒ/status de facturare."
                       />
                       <SummaryBox
                         label="Cost estimat"
@@ -932,11 +931,11 @@ export default async function ManagerClinicSmsPage({
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>
                           <h4 className="font-bold text-gray-900">
-                            Abonamente medici gestionați de clinică
+                            Abonamente medici gestionaÈ›i de clinicÄƒ
                           </h4>
                           <p className="mt-2 text-sm leading-6 text-gray-700">
-                            Nr. medici gestionați = {group.doctorCount};{" "}
-                            {group.doctorCount} × 60 lei ={" "}
+                            Nr. medici gestionaÈ›i = {group.doctorCount};{" "}
+                            {group.doctorCount} Ã— 60 lei ={" "}
                             {formatCurrencyMinor(
                               group.subscriptionSubtotalMinor,
                               "RON",
@@ -988,7 +987,7 @@ export default async function ManagerClinicSmsPage({
                     <div className="mt-6 grid gap-5 lg:grid-cols-3">
                       <section className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
                         <h4 className="font-bold text-gray-900">
-                          Date organizație
+                          Date organizaÈ›ie
                         </h4>
                         <dl className="mt-4 space-y-4">
                           <FieldLine
@@ -1017,16 +1016,16 @@ export default async function ManagerClinicSmsPage({
                         {billing ? (
                           <dl className="mt-4 space-y-4">
                             <FieldLine
-                              label="Firmă"
+                              label="FirmÄƒ"
                               value={billing.company_name}
                             />
                             <FieldLine label="CUI" value={billing.tax_id} />
                             <FieldLine
-                              label="Nr. Registrul Comerțului"
+                              label="Nr. Registrul ComerÈ›ului"
                               value={billing.trade_register_number}
                             />
                             <FieldLine
-                              label="Plătitor TVA"
+                              label="PlÄƒtitor TVA"
                               value={billing.is_vat_payer ? "Da" : "Nu"}
                             />
                             <FieldLine
@@ -1038,14 +1037,14 @@ export default async function ManagerClinicSmsPage({
                               value={billing.billing_email}
                             />
                             <FieldLine
-                              label="Adresă"
+                              label="AdresÄƒ"
                               value={`${billing.billing_address}, ${billing.billing_city}, ${billing.billing_county}, ${billing.billing_country}`}
                             />
                           </dl>
                         ) : (
                           <p className="mt-4 text-sm leading-6 text-amber-800">
-                            Nu există încă profil de facturare pentru această
-                            organizație. Contactează Clinic Managerul înainte de
+                            Nu existÄƒ Ã®ncÄƒ profil de facturare pentru aceastÄƒ
+                            organizaÈ›ie. ContacteazÄƒ Clinic Managerul Ã®nainte de
                             emiterea facturii.
                           </p>
                         )}
@@ -1057,8 +1056,8 @@ export default async function ManagerClinicSmsPage({
                         </h4>
                         {group.managers.length === 0 ? (
                           <p className="mt-4 text-sm leading-6 text-gray-600">
-                            Nu există manager activ legat de această
-                            organizație.
+                            Nu existÄƒ manager activ legat de aceastÄƒ
+                            organizaÈ›ie.
                           </p>
                         ) : (
                           <div className="mt-4 space-y-3">
@@ -1074,7 +1073,7 @@ export default async function ManagerClinicSmsPage({
                                   {manager.email ?? "E-mail indisponibil"}
                                 </p>
                                 <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                  {getMemberRoleLabel(manager.role)} ·{" "}
+                                  {getMemberRoleLabel(manager.role)} Â·{" "}
                                   {manager.status}
                                 </p>
                               </div>
@@ -1088,11 +1087,11 @@ export default async function ManagerClinicSmsPage({
                       <div className="flex flex-wrap items-start justify-between gap-4">
                         <div>
                           <h4 className="font-bold text-gray-900">
-                            Medici gestionați de clinică
+                            Medici gestionaÈ›i de clinicÄƒ
                           </h4>
                           <p className="mt-1 text-sm text-gray-600">
-                            Acești medici sunt conturi clinic-paid acceptate și
-                            active pentru organizația de clinică.
+                            AceÈ™ti medici sunt conturi clinic-paid acceptate È™i
+                            active pentru organizaÈ›ia de clinicÄƒ.
                           </p>
                         </div>
                         <span className="rounded-full bg-[#F0EEE9] px-3 py-1 text-sm font-semibold text-gray-700">
@@ -1103,8 +1102,8 @@ export default async function ManagerClinicSmsPage({
 
                       {group.clinicDoctors.length === 0 ? (
                         <div className="mt-5 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm leading-6 text-gray-600">
-                          Nu există încă medici clinic-paid activi legați de
-                          această organizație.
+                          Nu existÄƒ Ã®ncÄƒ medici clinic-paid activi legaÈ›i de
+                          aceastÄƒ organizaÈ›ie.
                         </div>
                       ) : (
                         <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -1120,10 +1119,10 @@ export default async function ManagerClinicSmsPage({
                                 {doctor.email ?? "E-mail indisponibil"}
                               </p>
                               <p className="mt-1 text-sm text-gray-600">
-                                {doctor.clinicName ?? "Locație neasignată"}
+                                {doctor.clinicName ?? "LocaÈ›ie neasignatÄƒ"}
                               </p>
                               <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                {doctor.invitationStatus} ·{" "}
+                                {doctor.invitationStatus} Â·{" "}
                                 {doctor.coverageStatus}
                               </p>
                             </div>
@@ -1139,8 +1138,8 @@ export default async function ManagerClinicSmsPage({
                             Detalii SMS
                           </h4>
                           <p className="mt-1 text-sm text-gray-600">
-                            Numărul pacientului este mascat. Nu afișăm
-                            conținutul mesajelor.
+                            NumÄƒrul pacientului este mascat. Nu afiÈ™Äƒm
+                            conÈ›inutul mesajelor.
                           </p>
                         </div>
                         <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-semibold text-gray-700">
@@ -1150,8 +1149,8 @@ export default async function ManagerClinicSmsPage({
 
                       {group.smsLogs.length === 0 ? (
                         <div className="mt-5 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm leading-6 text-gray-600">
-                          Nu există consum SMS pentru această organizație în
-                          perioada selectată.
+                          Nu existÄƒ consum SMS pentru aceastÄƒ organizaÈ›ie Ã®n
+                          perioada selectatÄƒ.
                         </div>
                       ) : (
                         <div className="mt-5 overflow-hidden rounded-xl border border-gray-200">
@@ -1159,9 +1158,9 @@ export default async function ManagerClinicSmsPage({
                             <table className="min-w-full divide-y divide-gray-200 text-sm">
                               <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                                 <tr>
-                                  <th className="px-4 py-3">Dată</th>
+                                  <th className="px-4 py-3">DatÄƒ</th>
                                   <th className="px-4 py-3">Medic</th>
-                                  <th className="px-4 py-3">Clinică</th>
+                                  <th className="px-4 py-3">ClinicÄƒ</th>
                                   <th className="px-4 py-3">Eveniment</th>
                                   <th className="px-4 py-3">Status</th>
                                   <th className="px-4 py-3">Destinatar</th>
@@ -1179,16 +1178,16 @@ export default async function ManagerClinicSmsPage({
                                       {row.doctor_id
                                         ? (doctorSlugById.get(row.doctor_id) ??
                                           row.doctor_id.slice(0, 8))
-                                        : "—"}
+                                        : "â€”"}
                                     </td>
                                     <td className="px-4 py-3 text-gray-700">
                                       {row.clinic_id
                                         ? (clinicNameById.get(row.clinic_id) ??
                                           row.clinic_id.slice(0, 8))
-                                        : "—"}
+                                        : "â€”"}
                                     </td>
                                     <td className="px-4 py-3 text-gray-700">
-                                      {row.event ?? "—"}
+                                      {row.event ?? "â€”"}
                                     </td>
                                     <td className="px-4 py-3 text-gray-700">
                                       {getStatusLabel(row.status)}
@@ -1230,3 +1229,4 @@ export default async function ManagerClinicSmsPage({
     </div>
   );
 }
+

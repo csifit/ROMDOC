@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import DoctorOnboardingChecklist from "@/components/doctor/doctor-onboarding-checklist";
@@ -78,6 +78,7 @@ function formatMoney(minorAmount: number, currency = "RON") {
 }
 
 function formatPeriod(periodStart: string, periodEnd: string) {
+  void periodEnd;
   const startDate = new Date(`${periodStart}T12:00:00Z`);
 
   return new Intl.DateTimeFormat("ro-RO", {
@@ -265,8 +266,8 @@ export default async function DoctorDashboardPage() {
       <main className="px-6 py-12">
         <div className="mx-auto max-w-6xl">
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-amber-900">
-            Contul este activ, dar profilul de medic nu a putut fi găsit.
-            Verifică activarea abonamentului sau contactează suportul RomDoc.
+            Contul este activ, dar profilul de medic nu a putut fi gÄƒsit.
+            VerificÄƒ activarea abonamentului sau contacteazÄƒ suportul RomDoc.
           </div>
         </div>
       </main>
@@ -393,25 +394,25 @@ export default async function DoctorDashboardPage() {
           <p className="text-sm font-semibold text-[#036661]">Panou medic</p>
 
           <h1 className="mt-2 text-4xl font-bold tracking-tight text-gray-900">
-            Bun venit în RomDoc
+            Bun venit Ã®n RomDoc
           </h1>
 
           <p className="mt-3 max-w-3xl leading-7 text-gray-600">
-            Urmărește pașii necesari pentru un profil medical complet, clar și
-            pregătit pentru programările pacienților.
+            UrmÄƒreÈ™te paÈ™ii necesari pentru un profil medical complet, clar È™i
+            pregÄƒtit pentru programÄƒrile pacienÈ›ilor.
           </p>
         </header>
 
         {isClinicSubAccount ? (
           <section className="mt-8 rounded-2xl border border-green-200 bg-green-50 p-6 text-green-900 shadow-sm">
             <h2 className="text-xl font-bold">
-              Cont de medic gestionat de clinică
+              Cont de medic gestionat de clinicÄƒ
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-6">
-              Abonamentul, facturarea SMS și datele de facturare sunt gestionate
-              de Clinic Manager. Tu poți administra profilul profesional,
-              serviciile, disponibilitatea și programările pentru locația
-              atribuită.
+              Abonamentul, facturarea SMS È™i datele de facturare sunt gestionate
+              de Clinic Manager. Tu poÈ›i administra profilul profesional,
+              serviciile, disponibilitatea È™i programÄƒrile pentru locaÈ›ia
+              atribuitÄƒ.
             </p>
           </section>
         ) : null}
@@ -430,8 +431,8 @@ export default async function DoctorDashboardPage() {
                   </h2>
 
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-                    Completează datele private necesare pentru facturarea
-                    SMS-urilor și a altor servicii RomDoc. Aceste informații nu
+                    CompleteazÄƒ datele private necesare pentru facturarea
+                    SMS-urilor È™i a altor servicii RomDoc. Aceste informaÈ›ii nu
                     apar public.
                   </p>
                 </div>
@@ -454,7 +455,7 @@ export default async function DoctorDashboardPage() {
                     </p>
 
                     <h2 className="mt-2 text-xl font-bold text-amber-950">
-                      Total de plată:{" "}
+                      Total de platÄƒ:{" "}
                       {formatMoney(
                         unpaidBalance.grossAmountMinor,
                         unpaidBalance.currency
@@ -463,7 +464,7 @@ export default async function DoctorDashboardPage() {
 
                     <p className="mt-2 text-sm leading-6 text-amber-900">
                       Soldul include {unpaidBalance.smsCount} SMS-uri din{" "}
-                      {unpaidSmsBills.length} perioadă/perioade. Net:{" "}
+                      {unpaidSmsBills.length} perioadÄƒ/perioade. Net:{" "}
                       {formatMoney(
                         unpaidBalance.netAmountMinor,
                         unpaidBalance.currency
@@ -486,7 +487,7 @@ export default async function DoctorDashboardPage() {
                             {formatPeriod(bill.period_start, bill.period_end)}
                           </span>
                           <span>
-                            {bill.sms_count} SMS ·{" "}
+                            {bill.sms_count} SMS Â·{" "}
                             {formatMoney(
                               bill.gross_amount_minor,
                               bill.currency
@@ -497,8 +498,8 @@ export default async function DoctorDashboardPage() {
                     </div>
 
                     <p className="mt-3 text-xs text-amber-800">
-                      Plata se face prin Stripe. Factura fiscală se emite separat
-                      în SAGA.
+                      Plata se face prin Stripe. Factura fiscalÄƒ se emite separat
+                      Ã®n SAGA.
                     </p>
                   </div>
 
@@ -519,14 +520,14 @@ export default async function DoctorDashboardPage() {
                   </h2>
 
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-                    Acest contor arată SMS-urile trimise pentru programările tale
-                    în luna curentă. Marcarea ca facturat este făcută de Admin
+                    Acest contor aratÄƒ SMS-urile trimise pentru programÄƒrile tale
+                    Ã®n luna curentÄƒ. Marcarea ca facturat este fÄƒcutÄƒ de Admin
                     sau de managerul Facturare.
                   </p>
                 </div>
 
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
-                  Valoare nefacturată:{" "}
+                  Valoare nefacturatÄƒ:{" "}
                   {formatMoney(smsUsage.uninvoicedValueMinor)} + TVA
                 </div>
               </div>
@@ -566,3 +567,4 @@ export default async function DoctorDashboardPage() {
     </main>
   );
 }
+
