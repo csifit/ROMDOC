@@ -56,6 +56,111 @@ const publicEntryPaths = [
 type PublicEntryPath =
   (typeof publicEntryPaths)[number];
 
+const canonicalSegments = {
+  ro: {
+    directory: "medici",
+    doctor: "doctor",
+    specialties: "specialitati",
+    patientGuide: "ghid-pacienti",
+    doctorStaffGuide:
+      "ghid-medici-personal",
+    terms: "termeni-si-conditii",
+    privacy: "confidentialitate",
+    cookies: "cookies",
+    legal: "informatii-legale",
+    contact: "contact",
+    clinicOffer: "oferta-clinici",
+  },
+  en: {
+    directory: "doctors",
+    doctor: "doctor",
+    specialties: "specialties",
+    patientGuide: "patient-guide",
+    doctorStaffGuide:
+      "doctor-staff-guide",
+    terms: "terms-and-conditions",
+    privacy: "privacy-policy",
+    cookies: "cookie-policy",
+    legal: "legal-information",
+    contact: "contact",
+    clinicOffer: "clinic-offer",
+  },
+  de: {
+    directory: "aerzte",
+    doctor: "arzt",
+    specialties: "fachrichtungen",
+    patientGuide:
+      "patientenratgeber",
+    doctorStaffGuide:
+      "ratgeber-aerzte-personal",
+    terms:
+      "allgemeine-geschaeftsbedingungen",
+    privacy: "datenschutz",
+    cookies: "cookie-richtlinie",
+    legal:
+      "rechtliche-informationen",
+    contact: "kontakt",
+    clinicOffer:
+      "angebot-fuer-kliniken",
+  },
+} as const;
+
+type CanonicalRouteKey =
+  keyof (typeof canonicalSegments)["ro"];
+
+const segmentRouteKeys: Record<
+  string,
+  CanonicalRouteKey
+> = {
+  medici: "directory",
+  doctors: "directory",
+  aerzte: "directory",
+
+  doctor: "doctor",
+  arzt: "doctor",
+
+  specialitati: "specialties",
+  specialties: "specialties",
+  fachrichtungen: "specialties",
+
+  "ghid-pacienti": "patientGuide",
+  "patient-guide": "patientGuide",
+  patientenratgeber: "patientGuide",
+
+  "ghid-medici-personal":
+    "doctorStaffGuide",
+  "doctor-staff-guide":
+    "doctorStaffGuide",
+  "ratgeber-aerzte-personal":
+    "doctorStaffGuide",
+
+  "termeni-si-conditii": "terms",
+  "terms-and-conditions": "terms",
+  "allgemeine-geschaeftsbedingungen":
+    "terms",
+
+  confidentialitate: "privacy",
+  "privacy-policy": "privacy",
+  datenschutz: "privacy",
+
+  cookies: "cookies",
+  "cookie-policy": "cookies",
+  "cookie-richtlinie": "cookies",
+
+  "informatii-legale": "legal",
+  "legal-information": "legal",
+  "rechtliche-informationen":
+    "legal",
+
+  contact: "contact",
+  kontakt: "contact",
+
+  "oferta-clinici": "clinicOffer",
+  "clinic-offer": "clinicOffer",
+  "angebot-fuer-kliniken":
+    "clinicOffer",
+};
+
 function isLocaleNeutralPath(
   pathname: string
 ) {
@@ -76,6 +181,14 @@ function isPublicEntryPath(
   );
 }
 
+function isAppLocale(
+  value: string | undefined
+): value is AppLocale {
+  return routing.locales.includes(
+    value as AppLocale
+  );
+}
+
 function getPreferredLocale(
   request: NextRequest
 ): AppLocale {
@@ -84,12 +197,8 @@ function getPreferredLocale(
       "NEXT_LOCALE"
     )?.value;
 
-  if (
-    routing.locales.includes(
-      cookieLocale as AppLocale
-    )
-  ) {
-    return cookieLocale as AppLocale;
+  if (isAppLocale(cookieLocale)) {
+    return cookieLocale;
   }
 
   return routing.defaultLocale;
@@ -119,6 +228,66 @@ function redirectPublicEntry(
   );
 }
 
+function getCanonicalRedirectPath(
+  pathname: string
+) {
+  const segments =
+    pathname.split("/");
+
+  const locale = segments[1];
+  const firstPublicSegment =
+    segments[2];
+
+  if (
+    !isAppLocale(locale) ||
+    !firstPublicSegment
+  ) {
+    return null;
+  }
+
+  const routeKey =
+    segmentRouteKeys[
+      firstPublicSegment
+    ];
+
+  if (!routeKey) {
+    return null;
+  }
+
+  const canonicalSegment =
+    canonicalSegments[locale][
+      routeKey
+    ];
+
+  if (
+    firstPublicSegment ===
+    canonicalSegment
+  ) {
+    return null;
+  }
+
+  segments[2] =
+    canonicalSegment;
+
+  return segments.join("/");
+}
+
+function redirectLegacyLocalizedPath(
+  request: NextRequest,
+  canonicalPathname: string
+) {
+  const redirectUrl =
+    request.nextUrl.clone();
+
+  redirectUrl.pathname =
+    canonicalPathname;
+
+  return NextResponse.redirect(
+    redirectUrl,
+    308
+  );
+}
+
 export default function proxy(
   request: NextRequest
 ) {
@@ -130,6 +299,18 @@ export default function proxy(
     isLocaleNeutralPath(pathname)
   ) {
     return NextResponse.next();
+  }
+
+  const canonicalRedirectPath =
+    getCanonicalRedirectPath(
+      pathname
+    );
+
+  if (canonicalRedirectPath) {
+    return redirectLegacyLocalizedPath(
+      request,
+      canonicalRedirectPath
+    );
   }
 
   if (
