@@ -151,7 +151,7 @@ export default function AppointmentMessages({
     return () => {
       window.clearTimeout(timerId);
     };
-  }, [endpoint]);
+  }, [loadMessages]);
 
   function handleFileChange(
     event: ChangeEvent<HTMLInputElement>
@@ -459,4 +459,5 @@ export default function AppointmentMessages({
     </section>
   );
 }
+
 

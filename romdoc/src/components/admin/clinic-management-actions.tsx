@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   useCallback,
@@ -168,7 +168,7 @@ function getCityName(
     city?.city_translations?.[0]
       ?.name ??
     city?.slug ??
-    "Oraș necunoscut"
+    "OraÈ™ necunoscut"
   );
 }
 
@@ -212,16 +212,16 @@ function getStatusLabel(
 ) {
   switch (status) {
     case "approved":
-      return "Aprobată";
+      return "AprobatÄƒ";
 
     case "rejected":
-      return "Respinsă";
+      return "RespinsÄƒ";
 
     case "blocked":
-      return "Blocată";
+      return "BlocatÄƒ";
 
     default:
-      return "În așteptare";
+      return "ÃŽn aÈ™teptare";
   }
 }
 
@@ -247,7 +247,7 @@ function formatDate(
   value: string | null
 ) {
   if (!value) {
-    return "—";
+    return "â€”";
   }
 
   return new Intl.DateTimeFormat(
@@ -284,7 +284,7 @@ const statusFilters = [
     value:
       "pending",
     label:
-      "În așteptare",
+      "ÃŽn aÈ™teptare",
   },
   {
     value:
@@ -404,7 +404,7 @@ export default function ClinicManagementActions() {
         if (!response.ok) {
           throw new Error(
             result.error ??
-              "Clinicile nu au putut fi încărcate."
+              "Clinicile nu au putut fi Ã®ncÄƒrcate."
           );
         }
 
@@ -434,7 +434,7 @@ export default function ClinicManagementActions() {
           loadError instanceof
             Error
             ? loadError.message
-            : "Clinicile nu au putut fi încărcate."
+            : "Clinicile nu au putut fi Ã®ncÄƒrcate."
         );
 
         setClinics([]);
@@ -444,17 +444,31 @@ export default function ClinicManagementActions() {
     }, [selectedStatus]);
 
   useEffect(() => {
-    void loadClinics();
+    const timerId = window.setTimeout(() => {
+      void loadClinics();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadClinics]);
 
   useEffect(() => {
     if (
-      selectedStatus !==
+      selectedStatus ===
       "approved"
     ) {
+      return;
+    }
+
+    const timerId = window.setTimeout(() => {
       setNameFilter("");
       setCityFilter("");
-    }
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [selectedStatus]);
 
   const cityOptions =
@@ -569,7 +583,7 @@ export default function ClinicManagementActions() {
     if (action === "block") {
       const enteredReason =
         window.prompt(
-          "Introdu motivul blocării clinicii:"
+          "Introdu motivul blocÄƒrii clinicii:"
         );
 
       if (
@@ -582,7 +596,7 @@ export default function ClinicManagementActions() {
 
       const confirmed =
         window.confirm(
-          "Blochezi această clinică? Nu va mai apărea în zonele publice RomDoc."
+          "Blochezi aceastÄƒ clinicÄƒ? Nu va mai apÄƒrea Ã®n zonele publice RomDoc."
         );
 
       if (!confirmed) {
@@ -598,7 +612,7 @@ export default function ClinicManagementActions() {
     ) {
       const confirmed =
         window.confirm(
-          "Aprobi această clinică și o asociezi medicului care a propus-o?"
+          "Aprobi aceastÄƒ clinicÄƒ È™i o asociezi medicului care a propus-o?"
         );
 
       if (!confirmed) {
@@ -611,7 +625,7 @@ export default function ClinicManagementActions() {
     ) {
       const confirmed =
         window.confirm(
-          "Reactivezi această clinică? Va reveni la statutul Aprobată."
+          "Reactivezi aceastÄƒ clinicÄƒ? Va reveni la statutul AprobatÄƒ."
         );
 
       if (!confirmed) {
@@ -652,13 +666,13 @@ export default function ClinicManagementActions() {
       if (!response.ok) {
         throw new Error(
           result.error ??
-            "Clinica nu a putut fi actualizată."
+            "Clinica nu a putut fi actualizatÄƒ."
         );
       }
 
       setSuccess(
         result.message ??
-          "Clinica a fost actualizată."
+          "Clinica a fost actualizatÄƒ."
       );
 
       await loadClinics();
@@ -667,7 +681,7 @@ export default function ClinicManagementActions() {
         actionError instanceof
           Error
           ? actionError.message
-          : "Clinica nu a putut fi actualizată."
+          : "Clinica nu a putut fi actualizatÄƒ."
       );
     } finally {
       setActionClinicId(
@@ -726,14 +740,14 @@ export default function ClinicManagementActions() {
                       .value
                   )
                 }
-                placeholder="Caută după nume"
+                placeholder="CautÄƒ dupÄƒ nume"
                 className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900"
               />
             </label>
 
             <label className="block">
               <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Oraș
+                OraÈ™
               </span>
 
               <select
@@ -751,7 +765,7 @@ export default function ClinicManagementActions() {
                 className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900"
               >
                 <option value="">
-                  Toate orașele
+                  Toate oraÈ™ele
                 </option>
 
                 {cityOptions.map(
@@ -777,20 +791,20 @@ export default function ClinicManagementActions() {
               }
               className="romdoc-focus-ring min-h-11 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Resetează
+              ReseteazÄƒ
             </button>
           </div>
         )}
 
         <p className="mt-4 text-sm text-gray-500">
           {isLoading
-            ? "Se încarcă..."
+            ? "Se Ã®ncarcÄƒ..."
             : `${visibleClinics.length} ${
                 visibleClinics.length ===
                 1
-                  ? "clinică"
+                  ? "clinicÄƒ"
                   : "clinici"
-              } afișate`}
+              } afiÈ™ate`}
         </p>
       </section>
 
@@ -815,25 +829,25 @@ export default function ClinicManagementActions() {
       {isLoading ? (
         <section className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
           <p className="text-sm text-gray-600">
-            Se încarcă clinicile...
+            Se Ã®ncarcÄƒ clinicile...
           </p>
         </section>
       ) : clinics.length ===
         0 ? (
         <section className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
           <p className="text-sm text-gray-600">
-            Nu există clinici în această categorie.
+            Nu existÄƒ clinici Ã®n aceastÄƒ categorie.
           </p>
         </section>
       ) : visibleClinics.length ===
         0 ? (
         <section className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900">
-            Nu am găsit clinici
+            Nu am gÄƒsit clinici
           </h2>
 
           <p className="mt-2 text-sm text-gray-600">
-            Modifică numele căutat sau selectează alt oraș.
+            ModificÄƒ numele cÄƒutat sau selecteazÄƒ alt oraÈ™.
           </p>
 
           <button
@@ -843,7 +857,7 @@ export default function ClinicManagementActions() {
             }
             className="romdoc-focus-ring mt-4 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
           >
-            Șterge filtrele
+            È˜terge filtrele
           </button>
         </section>
       ) : (
@@ -896,10 +910,10 @@ export default function ClinicManagementActions() {
 
                       <p className="mt-1 truncate text-sm text-gray-600">
                         {cityName}
-                        {" · "}
+                        {" Â· "}
                         {clinic.formatted_address ??
                           clinic.street_address ??
-                          "Adresă indisponibilă"}
+                          "AdresÄƒ indisponibilÄƒ"}
                       </p>
                     </div>
 
@@ -923,7 +937,7 @@ export default function ClinicManagementActions() {
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
                         <p className="text-sm text-gray-600">
-                          Propusă de{" "}
+                          PropusÄƒ de{" "}
                           <span className="font-semibold text-gray-900">
                             {getProposerName(
                               clinic
@@ -932,7 +946,7 @@ export default function ClinicManagementActions() {
                         </p>
 
                         <p className="mt-1 text-xs text-gray-500">
-                          Trimisă la{" "}
+                          TrimisÄƒ la{" "}
                           {formatDate(
                             clinic.created_at
                           )}
@@ -943,7 +957,7 @@ export default function ClinicManagementActions() {
                         "approved" &&
                         clinic.approved_at && (
                         <p className="text-xs text-gray-500">
-                          Aprobată la{" "}
+                          AprobatÄƒ la{" "}
                           {formatDate(
                             clinic.approved_at
                           )}
@@ -954,13 +968,13 @@ export default function ClinicManagementActions() {
                     <dl className="mt-6 grid gap-5 text-sm sm:grid-cols-2 lg:grid-cols-3">
                       <div className="sm:col-span-2">
                         <dt className="font-semibold text-gray-500">
-                          Adresă verificată
+                          AdresÄƒ verificatÄƒ
                         </dt>
 
                         <dd className="mt-1 text-gray-900">
                           {clinic.formatted_address ??
                             clinic.street_address ??
-                            "Adresă indisponibilă"}
+                            "AdresÄƒ indisponibilÄƒ"}
                         </dd>
 
                         {clinic.address_line_2 && (
@@ -974,7 +988,7 @@ export default function ClinicManagementActions() {
 
                       <div>
                         <dt className="font-semibold text-gray-500">
-                          Oraș intern RomDoc
+                          OraÈ™ intern RomDoc
                         </dt>
 
                         <dd className="mt-1 text-gray-900">
@@ -984,23 +998,23 @@ export default function ClinicManagementActions() {
 
                       <div>
                         <dt className="font-semibold text-gray-500">
-                          Județ
+                          JudeÈ›
                         </dt>
 
                         <dd className="mt-1 text-gray-900">
                           {clinic.county_name ??
-                            "—"}
+                            "â€”"}
                         </dd>
                       </div>
 
                       <div>
                         <dt className="font-semibold text-gray-500">
-                          Cod poștal
+                          Cod poÈ™tal
                         </dt>
 
                         <dd className="mt-1 text-gray-900">
                           {clinic.postal_code ??
-                            "—"}
+                            "â€”"}
                         </dd>
                       </div>
 
@@ -1011,7 +1025,7 @@ export default function ClinicManagementActions() {
 
                         <dd className="mt-1 text-gray-900">
                           {clinic.phone ??
-                            "—"}
+                            "â€”"}
                         </dd>
                       </div>
 
@@ -1022,7 +1036,7 @@ export default function ClinicManagementActions() {
 
                         <dd className="mt-1 break-all text-gray-900">
                           {clinic.email ??
-                            "—"}
+                            "â€”"}
                         </dd>
                       </div>
 
@@ -1044,14 +1058,14 @@ export default function ClinicManagementActions() {
                               Deschide website
                             </a>
                           ) : (
-                            "—"
+                            "â€”"
                           )}
                         </dd>
                       </div>
 
                       <div>
                         <dt className="font-semibold text-gray-500">
-                          Adresă verificată la
+                          AdresÄƒ verificatÄƒ la
                         </dt>
 
                         <dd className="mt-1 text-gray-900">
@@ -1077,7 +1091,7 @@ export default function ClinicManagementActions() {
                         rel="noreferrer"
                         className="mt-5 inline-flex rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50"
                       >
-                        Deschide în Google Maps
+                        Deschide Ã®n Google Maps
                       </a>
                     )}
 
@@ -1099,14 +1113,14 @@ export default function ClinicManagementActions() {
                       <div className="mt-5 rounded-xl border border-slate-300 bg-slate-100 p-4 text-sm text-slate-900">
                         <p>
                           <span className="font-semibold">
-                            Motivul blocării:
+                            Motivul blocÄƒrii:
                           </span>{" "}
                           {clinic.blocked_reason ??
                             "Motiv indisponibil"}
                         </p>
 
                         <p className="mt-2 text-xs text-slate-600">
-                          Blocată la{" "}
+                          BlocatÄƒ la{" "}
                           {formatDate(
                             clinic.blocked_at
                           )}
@@ -1132,8 +1146,8 @@ export default function ClinicManagementActions() {
                           size="sm"
                         >
                           {isUpdating
-                            ? "Se actualizează..."
-                            : "Aprobă clinica"}
+                            ? "Se actualizeazÄƒ..."
+                            : "AprobÄƒ clinica"}
                         </Button>
 
                         <Button
@@ -1174,8 +1188,8 @@ export default function ClinicManagementActions() {
                           size="sm"
                         >
                           {isUpdating
-                            ? "Se blochează..."
-                            : "Blochează clinica"}
+                            ? "Se blocheazÄƒ..."
+                            : "BlocheazÄƒ clinica"}
                         </Button>
                       </div>
                     )}
@@ -1198,8 +1212,8 @@ export default function ClinicManagementActions() {
                           size="sm"
                         >
                           {isUpdating
-                            ? "Se reactivează..."
-                            : "Reactivează clinica"}
+                            ? "Se reactiveazÄƒ..."
+                            : "ReactiveazÄƒ clinica"}
                         </Button>
                       </div>
                     )}
@@ -1213,3 +1227,4 @@ export default function ClinicManagementActions() {
     </div>
   );
 }
+

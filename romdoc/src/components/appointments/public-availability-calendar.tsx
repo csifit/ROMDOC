@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   useEffect,
@@ -45,7 +45,7 @@ const WEEKDAY_LABELS = [
   "Mi",
   "Jo",
   "Vi",
-  "Sâ",
+  "SÃ¢",
   "Du",
 ];
 
@@ -238,19 +238,30 @@ export default function PublicAvailabilityCalendar({
       return;
     }
 
-    setVisibleMonth(
-      getMonthStart(
-        parseDate(selectedDate)
-      )
-    );
+    const timerId = window.setTimeout(() => {
+      setVisibleMonth(
+        getMonthStart(
+          parseDate(selectedDate)
+        )
+      );
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [selectedDate]);
 
   useEffect(() => {
     if (!clinicId) {
-      setAvailability([]);
-      setHasLoadedAvailability(false);
-      setLoadError(null);
-      return;
+      const timerId = window.setTimeout(() => {
+        setAvailability([]);
+        setHasLoadedAvailability(false);
+        setLoadError(null);
+      }, 0);
+
+      return () => {
+        window.clearTimeout(timerId);
+      };
     }
 
     const range = getDateRangeForMonth(
@@ -260,10 +271,15 @@ export default function PublicAvailabilityCalendar({
     );
 
     if (!range) {
-      setAvailability([]);
-      setHasLoadedAvailability(true);
-      setLoadError(null);
-      return;
+      const timerId = window.setTimeout(() => {
+        setAvailability([]);
+        setHasLoadedAvailability(true);
+        setLoadError(null);
+      }, 0);
+
+      return () => {
+        window.clearTimeout(timerId);
+      };
     }
 
     const { from, to } = range;
@@ -296,7 +312,7 @@ export default function PublicAvailabilityCalendar({
         if (!response.ok) {
           throw new Error(
             result.error ??
-              "Disponibilitatea nu a putut fi încărcată."
+              "Disponibilitatea nu a putut fi Ã®ncÄƒrcatÄƒ."
           );
         }
 
@@ -317,7 +333,7 @@ export default function PublicAvailabilityCalendar({
         setLoadError(
           error instanceof Error
             ? error.message
-            : "Disponibilitatea nu a putut fi încărcată."
+            : "Disponibilitatea nu a putut fi Ã®ncÄƒrcatÄƒ."
         );
       } finally {
         if (!controller.signal.aborted) {
@@ -457,17 +473,17 @@ export default function PublicAvailabilityCalendar({
           id="availability-calendar-title"
           className="text-base font-semibold text-gray-900"
         >
-          Selectează data și ora
+          SelecteazÄƒ data È™i ora
         </h3>
 
         <p className="mt-1 text-sm leading-6 text-gray-600">
-          Datele verzi au cel puțin un interval disponibil. Programarea online se trimite după alegerea unei date și a unei ore.
+          Datele verzi au cel puÈ›in un interval disponibil. Programarea online se trimite dupÄƒ alegerea unei date È™i a unei ore.
         </p>
       </div>
 
       {!clinicId ? (
         <div className="mt-4 rounded-xl border border-dashed border-gray-300 bg-white px-4 py-6 text-center text-sm text-gray-600">
-          Selectează mai întâi clinica pentru a vedea calendarul disponibil.
+          SelecteazÄƒ mai Ã®ntÃ¢i clinica pentru a vedea calendarul disponibil.
         </div>
       ) : (
         <>
@@ -475,7 +491,7 @@ export default function PublicAvailabilityCalendar({
             <div className="flex items-center justify-between gap-3">
               <button
                 type="button"
-                aria-label="Luna precedentă"
+                aria-label="Luna precedentÄƒ"
                 disabled={
                   disabled ||
                   isLoading ||
@@ -488,7 +504,7 @@ export default function PublicAvailabilityCalendar({
                 }
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 text-xl text-gray-700 transition hover:border-[#036661] hover:text-[#036661] disabled:cursor-not-allowed disabled:opacity-35"
               >
-                ‹
+                â€¹
               </button>
 
               <p className="text-center font-semibold capitalize text-gray-900">
@@ -499,7 +515,7 @@ export default function PublicAvailabilityCalendar({
 
               <button
                 type="button"
-                aria-label="Luna următoare"
+                aria-label="Luna urmÄƒtoare"
                 disabled={
                   disabled ||
                   isLoading ||
@@ -510,7 +526,7 @@ export default function PublicAvailabilityCalendar({
                 }
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 text-xl text-gray-700 transition hover:border-[#036661] hover:text-[#036661] disabled:cursor-not-allowed disabled:opacity-35"
               >
-                ›
+                â€º
               </button>
             </div>
 
@@ -623,7 +639,7 @@ export default function PublicAvailabilityCalendar({
           >
             {isLoading && (
               <div className="rounded-xl border border-gray-200 bg-white px-4 py-5 text-sm text-gray-600">
-                Se încarcă disponibilitatea...
+                Se Ã®ncarcÄƒ disponibilitatea...
               </div>
             )}
 
@@ -640,7 +656,7 @@ export default function PublicAvailabilityCalendar({
                   onClick={retryLoadingAvailability}
                   className="mt-3 rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-semibold text-red-800 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Încearcă din nou
+                  ÃŽncearcÄƒ din nou
                 </button>
               </div>
             )}
@@ -651,11 +667,11 @@ export default function PublicAvailabilityCalendar({
               !hasAnyAvailableSlot && (
                 <div className="rounded-xl border border-gray-200 bg-white px-4 py-5 text-sm text-gray-600">
                   <p className="font-medium text-gray-900">
-                    Nu există intervale libere afișate pentru această lună.
+                    Nu existÄƒ intervale libere afiÈ™ate pentru aceastÄƒ lunÄƒ.
                   </p>
 
                   <p className="mt-2 leading-6">
-                    Poți verifica o altă lună disponibilă în calendar. Programarea online rămâne disponibilă doar după alegerea unei date și a unei ore libere.
+                    PoÈ›i verifica o altÄƒ lunÄƒ disponibilÄƒ Ã®n calendar. Programarea online rÄƒmÃ¢ne disponibilÄƒ doar dupÄƒ alegerea unei date È™i a unei ore libere.
                   </p>
                 </div>
               )}
@@ -712,11 +728,11 @@ export default function PublicAvailabilityCalendar({
 
           <div className="mt-4 rounded-xl border border-dashed border-gray-300 bg-white px-4 py-4 text-sm text-gray-600">
             <p className="font-medium text-gray-900">
-              Nu găsești o oră potrivită?
+              Nu gÄƒseÈ™ti o orÄƒ potrivitÄƒ?
             </p>
 
             <p className="mt-1 leading-6">
-              Momentan, RomDoc trimite programarea online doar după selectarea unui interval disponibil. Într-un pas următor, aici poate apărea o opțiune de solicitare generală, astfel încât clinica să te poată contacta.
+              Momentan, RomDoc trimite programarea online doar dupÄƒ selectarea unui interval disponibil. ÃŽntr-un pas urmÄƒtor, aici poate apÄƒrea o opÈ›iune de solicitare generalÄƒ, astfel Ã®ncÃ¢t clinica sÄƒ te poatÄƒ contacta.
             </p>
           </div>
         </>
@@ -724,3 +740,4 @@ export default function PublicAvailabilityCalendar({
     </section>
   );
 }
+

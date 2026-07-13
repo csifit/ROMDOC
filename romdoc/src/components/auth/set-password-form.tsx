@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   type FormEvent,
@@ -87,6 +87,7 @@ export default function SetPasswordForm() {
     );
 
   useEffect(() => {
+    const timerId = window.setTimeout(() => {
     const searchParams =
       new URLSearchParams(
         window.location.search
@@ -121,7 +122,7 @@ export default function SetPasswordForm() {
           !data.user
         ) {
           setError(
-            "Linkul nu este valid sau a expirat. Solicită un link nou."
+            "Linkul nu este valid sau a expirat. SolicitÄƒ un link nou."
           );
           return;
         }
@@ -137,12 +138,17 @@ export default function SetPasswordForm() {
         );
 
         setError(
-          "Sesiunea nu a putut fi verificată. Solicită un link nou."
+          "Sesiunea nu a putut fi verificatÄƒ. SolicitÄƒ un link nou."
         );
       })
       .finally(() => {
         setIsCheckingSession(false);
       });
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, []);
 
   async function handleSubmit(
@@ -156,7 +162,7 @@ export default function SetPasswordForm() {
 
     if (!currentUser) {
       setError(
-        "Sesiunea nu este disponibilă. Solicită un link nou."
+        "Sesiunea nu este disponibilÄƒ. SolicitÄƒ un link nou."
       );
       return;
     }
@@ -165,7 +171,7 @@ export default function SetPasswordForm() {
       password.length < 8
     ) {
       setError(
-        "Parola trebuie să conțină cel puțin 8 caractere."
+        "Parola trebuie sÄƒ conÈ›inÄƒ cel puÈ›in 8 caractere."
       );
       return;
     }
@@ -207,7 +213,7 @@ export default function SetPasswordForm() {
         mode === "recovery"
       ) {
         setMessage(
-          "Parola a fost actualizată."
+          "Parola a fost actualizatÄƒ."
         );
 
         await supabase.auth
@@ -221,7 +227,7 @@ export default function SetPasswordForm() {
       }
 
       setMessage(
-        "Parola a fost creată. Vei fi redirecționat către contul tău."
+        "Parola a fost creatÄƒ. Vei fi redirecÈ›ionat cÄƒtre contul tÄƒu."
       );
 
       router.replace(
@@ -239,7 +245,7 @@ export default function SetPasswordForm() {
       setError(
         updateError instanceof Error
           ? updateError.message
-          : "Parola nu a putut fi salvată."
+          : "Parola nu a putut fi salvatÄƒ."
       );
     } finally {
       setIsSaving(false);
@@ -258,20 +264,20 @@ export default function SetPasswordForm() {
 
         <h1 className="mt-6 text-2xl font-bold text-gray-900">
           {mode === "recovery"
-            ? "Alege o parolă nouă"
-            : "Creează parola contului"}
+            ? "Alege o parolÄƒ nouÄƒ"
+            : "CreeazÄƒ parola contului"}
         </h1>
 
         <p className="mt-2 text-sm leading-6 text-gray-600">
           {mode === "recovery"
-            ? "Introdu și confirmă noua parolă pentru contul tău."
-            : "Invitația a fost confirmată. Creează acum parola pe care o vei folosi la autentificare."}
+            ? "Introdu È™i confirmÄƒ noua parolÄƒ pentru contul tÄƒu."
+            : "InvitaÈ›ia a fost confirmatÄƒ. CreeazÄƒ acum parola pe care o vei folosi la autentificare."}
         </p>
       </header>
 
       {isCheckingSession ? (
         <div className="mt-8 rounded-xl border border-gray-200 bg-gray-50 px-4 py-5 text-center text-sm text-gray-600">
-          Se verifică linkul securizat...
+          Se verificÄƒ linkul securizat...
         </div>
       ) : (
         <form
@@ -282,7 +288,7 @@ export default function SetPasswordForm() {
         >
           <label className="block">
             <span className="text-sm font-medium text-gray-700">
-              Parolă nouă
+              ParolÄƒ nouÄƒ
             </span>
 
             <input
@@ -309,7 +315,7 @@ export default function SetPasswordForm() {
 
           <label className="block">
             <span className="text-sm font-medium text-gray-700">
-              Confirmă parola
+              ConfirmÄƒ parola
             </span>
 
             <input
@@ -331,13 +337,13 @@ export default function SetPasswordForm() {
                   event.target.value
                 )
               }
-              placeholder="Repetă parola"
+              placeholder="RepetÄƒ parola"
               className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-not-allowed disabled:opacity-60"
             />
           </label>
 
           <p className="text-xs leading-5 text-gray-500">
-            Folosește minimum 8 caractere și evită parolele utilizate pe alte servicii.
+            FoloseÈ™te minimum 8 caractere È™i evitÄƒ parolele utilizate pe alte servicii.
           </p>
 
           {message && (
@@ -367,9 +373,9 @@ export default function SetPasswordForm() {
             isLoading={
               isSaving
             }
-            loadingText="Se salvează..."
+            loadingText="Se salveazÄƒ..."
           >
-            Salvează parola
+            SalveazÄƒ parola
           </Button>
         </form>
       )}
@@ -386,11 +392,12 @@ export default function SetPasswordForm() {
               className="text-sm font-semibold text-[#036661] underline-offset-4 hover:underline"
             >
               {mode === "recovery"
-                ? "Solicită un link nou"
-                : "Înapoi la autentificare"}
+                ? "SolicitÄƒ un link nou"
+                : "ÃŽnapoi la autentificare"}
             </Link>
           </div>
         )}
     </div>
   );
 }
+

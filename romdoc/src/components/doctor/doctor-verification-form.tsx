@@ -4,6 +4,7 @@ import {
   type ChangeEvent,
   type FormEvent,
   useEffect,
+  useCallback,
   useRef,
   useState,
   useTransition,
@@ -161,15 +162,16 @@ export default function DoctorVerificationForm() {
   const isEditable =
     !submission || submission.status === "draft";
 
-  function applyResponse(
+  const applyResponse = useCallback((
     result: VerificationResponse
-  ) {
+  ) => {
     const nextSubmission =
       result.submission ?? null;
 
     setVerificationStatus(
-      result.verificationStatus ??
-        verificationStatus
+      (currentStatus) =>
+        result.verificationStatus ??
+        currentStatus
     );
     setSubmission(nextSubmission);
     setDocuments(result.documents ?? []);
@@ -194,9 +196,9 @@ export default function DoctorVerificationForm() {
           ""
       );
     }
-  }
+  }, []);
 
-  async function loadVerification() {
+  const loadVerification = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -229,7 +231,7 @@ export default function DoctorVerificationForm() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [applyResponse]);
 
   useEffect(() => {
     const timerId = window.setTimeout(() => {
@@ -721,4 +723,6 @@ export default function DoctorVerificationForm() {
     </div>
   );
 }
+
+
 
