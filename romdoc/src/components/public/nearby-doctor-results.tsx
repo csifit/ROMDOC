@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import Link from "next/link";
+import Link from "@/components/public/localized-public-link";
 import {
   useEffect,
   useMemo,
@@ -159,7 +159,7 @@ export default function NearbyDoctorResults({
         if (!response.ok) {
           throw new Error(
             result.error ??
-              "Medicii nu au putut fi încărcați."
+              "Medicii nu au putut fi Ã®ncÄƒrcaÈ›i."
           );
         }
 
@@ -181,7 +181,7 @@ export default function NearbyDoctorResults({
         setError(
           loadError instanceof Error
             ? loadError.message
-            : "Medicii nu au putut fi încărcați."
+            : "Medicii nu au putut fi Ã®ncÄƒrcaÈ›i."
         );
       } finally {
         if (!controller.signal.aborted) {
@@ -201,11 +201,11 @@ export default function NearbyDoctorResults({
     <div className="space-y-6">
       <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#036661]">
-          Căutare geografică
+          CÄƒutare geograficÄƒ
         </p>
 
         <h1 className="mt-3 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-          Medici în apropiere
+          Medici Ã®n apropiere
         </h1>
 
         <p className="mt-4 max-w-3xl text-base leading-7 text-gray-600">
@@ -226,18 +226,18 @@ export default function NearbyDoctorResults({
 
         <div className="mt-5 flex flex-wrap gap-2">
           <span className="rounded-full bg-[#036661]/10 px-3 py-1.5 text-xs font-semibold text-[#036661]">
-            Rază {radius} km
+            RazÄƒ {radius} km
           </span>
 
           {verifiedOnly && (
             <span className="rounded-full bg-[#036661]/10 px-3 py-1.5 text-xs font-semibold text-[#036661]">
-              Doar medici verificați
+              Doar medici verificaÈ›i
             </span>
           )}
 
           {onlineOnly && (
             <span className="rounded-full bg-[#036661]/10 px-3 py-1.5 text-xs font-semibold text-[#036661]">
-              Programări online
+              ProgramÄƒri online
             </span>
           )}
         </div>
@@ -247,7 +247,7 @@ export default function NearbyDoctorResults({
             href="/#doctor-filters"
             className="romdoc-button romdoc-button-secondary"
           >
-            Modifică filtrele
+            ModificÄƒ filtrele
           </Link>
         </div>
       </section>
@@ -260,7 +260,7 @@ export default function NearbyDoctorResults({
           />
 
           <p className="mt-4 text-sm font-medium text-gray-700">
-            Se caută medicii din apropiere...
+            Se cautÄƒ medicii din apropiere...
           </p>
         </section>
       )}
@@ -268,7 +268,7 @@ export default function NearbyDoctorResults({
       {!isLoading && error && (
         <section className="rounded-3xl border border-red-200 bg-white p-8 text-center shadow-sm">
           <h2 className="text-xl font-semibold text-gray-900">
-            Căutarea nu a putut fi finalizată
+            CÄƒutarea nu a putut fi finalizatÄƒ
           </h2>
 
           <p className="mt-3 text-sm leading-6 text-red-700">
@@ -279,7 +279,7 @@ export default function NearbyDoctorResults({
             href="/#doctor-filters"
             className="romdoc-button romdoc-button-primary mt-6"
           >
-            Încearcă din nou
+            ÃŽncearcÄƒ din nou
           </Link>
         </section>
       )}
@@ -289,19 +289,19 @@ export default function NearbyDoctorResults({
         doctors.length === 0 && (
           <section className="rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-sm">
             <h2 className="text-2xl font-bold tracking-tight text-gray-900">
-              Nu am găsit medici în această zonă
+              Nu am gÄƒsit medici Ã®n aceastÄƒ zonÄƒ
             </h2>
 
             <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-gray-600">
-              Încearcă o rază de 50 km, elimină filtrele
-              opționale sau alege o altă locație.
+              ÃŽncearcÄƒ o razÄƒ de 50 km, eliminÄƒ filtrele
+              opÈ›ionale sau alege o altÄƒ locaÈ›ie.
             </p>
 
             <Link
               href="/#doctor-filters"
               className="romdoc-button romdoc-button-primary mt-6"
             >
-              Schimbă căutarea
+              SchimbÄƒ cÄƒutarea
             </Link>
           </section>
         )}
@@ -320,15 +320,15 @@ export default function NearbyDoctorResults({
                   className="text-2xl font-bold tracking-tight text-gray-900"
                 >
                   {doctors.length === 1
-                    ? "1 medic găsit"
-                    : `${doctors.length} medici găsiți`}
+                    ? "1 medic gÄƒsit"
+                    : `${doctors.length} medici gÄƒsiÈ›i`}
                 </h2>
 
                 {meta && (
                   <p className="mt-2 text-sm text-gray-600">
                     {meta.clinicCount === 1
-                      ? "1 clinică aprobată în raza selectată"
-                      : `${meta.clinicCount} clinici aprobate în raza selectată`}
+                      ? "1 clinicÄƒ aprobatÄƒ Ã®n raza selectatÄƒ"
+                      : `${meta.clinicCount} clinici aprobate Ã®n raza selectatÄƒ`}
                   </p>
                 )}
               </div>
@@ -388,7 +388,7 @@ export default function NearbyDoctorResults({
 
                             <div>
                               <p className="font-medium text-gray-900">
-                                Locație
+                                LocaÈ›ie
                               </p>
                               <p className="mt-1">
                                 {doctor.clinic.cityName}
@@ -400,7 +400,7 @@ export default function NearbyDoctorResults({
 
                             <div>
                               <p className="font-medium text-gray-900">
-                                Distanță
+                                DistanÈ›Äƒ
                               </p>
                               <p className="mt-1">
                                 {doctor.clinic.distanceKilometres.toFixed(
@@ -439,7 +439,7 @@ export default function NearbyDoctorResults({
                               null && (
                               <span>
                                 {doctor.yearsExperience} ani
-                                experiență
+                                experienÈ›Äƒ
                               </span>
                             )}
 
@@ -456,7 +456,7 @@ export default function NearbyDoctorResults({
 
                             {doctor.hasOnlineAvailability && (
                               <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                                Programări online disponibile
+                                ProgramÄƒri online disponibile
                               </span>
                             )}
                           </div>
@@ -475,7 +475,7 @@ export default function NearbyDoctorResults({
                           href={`${profileHref}#programare`}
                           className="romdoc-button romdoc-button-primary romdoc-button-full"
                         >
-                          Programează-te
+                          ProgrameazÄƒ-te
                         </Link>
 
                         {doctor.clinic.googleMapsUri && (
@@ -487,7 +487,7 @@ export default function NearbyDoctorResults({
                             rel="noreferrer"
                             className="romdoc-button romdoc-button-muted romdoc-button-full"
                           >
-                            Vezi pe hartă
+                            Vezi pe hartÄƒ
                           </a>
                         )}
                       </div>
@@ -501,3 +501,4 @@ export default function NearbyDoctorResults({
     </div>
   );
 }
+

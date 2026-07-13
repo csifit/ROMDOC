@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import Link from "next/link";
+import Link from "@/components/public/localized-public-link";
 import {
   useCallback,
   useEffect,
@@ -675,4 +675,5 @@ PublicVoiceAssistantShell({
     </div>
   );
 }
+
 

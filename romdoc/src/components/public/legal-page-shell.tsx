@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "@/components/public/localized-public-link";
 import type {
   ReactNode,
 } from "react";
@@ -65,7 +65,7 @@ export default function LegalPageShell({
                     href="/contact"
                     className="romdoc-button romdoc-button-secondary romdoc-button-full"
                   >
-                    Contactează RomDoc
+                    ContacteazÄƒ RomDoc
                   </Link>
                 </div>
               </div>
@@ -156,7 +156,7 @@ export default function LegalPageShell({
                   )
                 ) : (
                   <p className="text-base leading-7 text-gray-700">
-                    Conținutul acestui document va fi publicat în curând.
+                    ConÈ›inutul acestui document va fi publicat Ã®n curÃ¢nd.
                   </p>
                 )}
               </div>
@@ -167,3 +167,4 @@ export default function LegalPageShell({
     </PublicLayout>
   );
 }
+

@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "@/components/public/localized-public-link";
 import HomepageDoctorCard, {
   type HomepageDoctorCardData,
 } from "@/components/public/homepage-doctor-card";
@@ -15,11 +15,11 @@ export default function HomepageDoctorResults({
       <section className="px-4 pb-14 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl rounded-3xl border border-gray-200 bg-white p-6 text-center shadow-sm sm:p-8">
           <h2 className="text-2xl font-bold tracking-tight text-gray-900">
-            Medicii vor apărea aici
+            Medicii vor apÄƒrea aici
           </h2>
 
           <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-gray-600">
-            Nu există încă medici activi cu o clinică aprobată și date publice complete.
+            Nu existÄƒ Ã®ncÄƒ medici activi cu o clinicÄƒ aprobatÄƒ È™i date publice complete.
           </p>
 
           <Link
@@ -49,11 +49,11 @@ export default function HomepageDoctorResults({
               id="homepage-doctors-title"
               className="mt-2 text-3xl font-bold tracking-tight text-gray-900"
             >
-              Medici disponibili pe platformă
+              Medici disponibili pe platformÄƒ
             </h2>
 
             <p className="mt-3 max-w-2xl text-gray-600">
-              Descoperă medici activi, clinici aprobate și opțiuni de programare online.
+              DescoperÄƒ medici activi, clinici aprobate È™i opÈ›iuni de programare online.
             </p>
           </div>
 
@@ -61,7 +61,7 @@ export default function HomepageDoctorResults({
             href="/medici"
             className="romdoc-button romdoc-button-secondary"
           >
-            Vezi toți medicii
+            Vezi toÈ›i medicii
           </Link>
         </div>
 
@@ -79,3 +79,4 @@ export default function HomepageDoctorResults({
     </section>
   );
 }
+

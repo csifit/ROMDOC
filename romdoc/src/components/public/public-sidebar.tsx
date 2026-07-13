@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import Link from "next/link";
+import Link from "@/components/public/localized-public-link";
 import {
   usePathname,
   useRouter,
@@ -28,19 +28,19 @@ type NavigationItem = {
 const publicNavigation: NavigationItem[] = [
   {
     href: "/",
-    label: "Acasă",
+    label: "AcasÄƒ",
   },
   {
     href: "/medici",
-    label: "Găsește un medic",
+    label: "GÄƒseÈ™te un medic",
   },
   {
     href: "/#specialitati",
-    label: "Specializări",
+    label: "SpecializÄƒri",
   },
   {
     href: "/#orase",
-    label: "Orașe",
+    label: "OraÈ™e",
   },
 ];
 
@@ -329,7 +329,7 @@ export default function PublicSidebar({
     <div className="fixed inset-0 z-50">
       <button
         type="button"
-        aria-label="Închide meniul"
+        aria-label="ÃŽnchide meniul"
         onClick={onClose}
         className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
       />
@@ -352,7 +352,7 @@ export default function PublicSidebar({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Închide meniul"
+            aria-label="ÃŽnchide meniul"
             className="romdoc-focus-ring rounded-lg p-2 text-gray-600 transition hover:bg-gray-100 hover:text-gray-900"
           >
             <CloseIcon />
@@ -374,7 +374,7 @@ export default function PublicSidebar({
         )}
 
         <nav
-          aria-label="Navigare publică"
+          aria-label="Navigare publicÄƒ"
           className="flex-1 space-y-1 overflow-y-auto p-4"
         >
           {publicNavigation.map(
@@ -426,7 +426,7 @@ export default function PublicSidebar({
               <LogoutIcon />
               <span>
                 {isSigningOut
-                  ? "Se deconectează..."
+                  ? "Se deconecteazÄƒ..."
                   : "Deconectare"}
               </span>
             </button>
@@ -445,7 +445,7 @@ export default function PublicSidebar({
                 onClick={onClose}
                 className="romdoc-button romdoc-button-primary romdoc-button-full"
               >
-                Creează cont
+                CreeazÄƒ cont
               </Link>
             </div>
           )}
@@ -454,3 +454,4 @@ export default function PublicSidebar({
     </div>
   );
 }
+

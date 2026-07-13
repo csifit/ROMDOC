@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "@/components/public/localized-public-link";
 import {
   getLocale,
 } from "next-intl/server";
@@ -60,7 +60,7 @@ export default async function PublicFooter() {
         href: homeHref,
         label: isEnglish
           ? "Home"
-          : "Acasă",
+          : "AcasÄƒ",
       },
       {
         href: isEnglish
@@ -76,7 +76,7 @@ export default async function PublicFooter() {
           : "/ro/specialitati",
         label: isEnglish
           ? "Specialties"
-          : "Specializări",
+          : "SpecializÄƒri",
       },
       {
         href: isEnglish
@@ -84,13 +84,13 @@ export default async function PublicFooter() {
           : "/ro/ghid-pacienti",
         label: isEnglish
           ? "Patient guide"
-          : "Ghid pentru pacienți",
+          : "Ghid pentru pacienÈ›i",
       },
       {
         href: "/register",
         label: isEnglish
           ? "Create account"
-          : "Creează cont",
+          : "CreeazÄƒ cont",
       },
       {
         href: "/login",
@@ -107,14 +107,14 @@ export default async function PublicFooter() {
           "/register?role=doctor",
         label: isEnglish
           ? "Join as a doctor"
-          : "Înscrie-te ca medic",
+          : "ÃŽnscrie-te ca medic",
       },
       {
         href:
           "/oferta-clinici",
         label: isEnglish
           ? "Clinic offer"
-          : "Ofertă pentru clinici",
+          : "OfertÄƒ pentru clinici",
    },
       {
         href: isEnglish
@@ -122,7 +122,7 @@ export default async function PublicFooter() {
           : "/ro/ghid-medici-personal",
         label: isEnglish
           ? "Guide for doctors and staff"
-          : "Ghid pentru medici și personal",
+          : "Ghid pentru medici È™i personal",
       },
       {
         href: isEnglish
@@ -143,7 +143,7 @@ export default async function PublicFooter() {
           "/informatii-legale#verificare-profesionala",
         label: isEnglish
           ? "Professional verification"
-          : "Verificare profesională",
+          : "Verificare profesionalÄƒ",
       },
     ];
 
@@ -154,14 +154,14 @@ export default async function PublicFooter() {
           "/termeni-si-conditii",
         label: isEnglish
           ? "Terms and conditions"
-          : "Termeni și condiții",
+          : "Termeni È™i condiÈ›ii",
       },
       {
         href:
           "/confidentialitate",
         label: isEnglish
           ? "Privacy policy"
-          : "Politica de confidențialitate",
+          : "Politica de confidenÈ›ialitate",
       },
       {
         href: "/cookies",
@@ -174,7 +174,7 @@ export default async function PublicFooter() {
           "/informatii-legale",
         label: isEnglish
           ? "Legal information"
-          : "Informații legale",
+          : "InformaÈ›ii legale",
       },
     ];
 
@@ -196,7 +196,7 @@ export default async function PublicFooter() {
           "/contact#raporteaza-problema",
         label: isEnglish
           ? "Report a problem"
-          : "Raportează o problemă",
+          : "RaporteazÄƒ o problemÄƒ",
       },
     ];
 
@@ -215,13 +215,13 @@ export default async function PublicFooter() {
             <p className="mt-4 max-w-sm text-sm leading-6 text-gray-600">
               {isEnglish
                 ? "Multilingual platform for finding doctors, clinics and medical appointments in Romania."
-                : "Platformă pentru descoperirea medicilor, clinicilor și gestionarea programărilor medicale în România."}
+                : "PlatformÄƒ pentru descoperirea medicilor, clinicilor È™i gestionarea programÄƒrilor medicale Ã®n RomÃ¢nia."}
             </p>
 
             <p className="mt-4 max-w-sm text-xs leading-5 text-gray-500">
               {isEnglish
                 ? "RomDoc supports medical discovery and appointment requests. Published information does not replace medical consultation, diagnosis or treatment."
-                : "RomDoc facilitează căutarea și programarea. Informațiile publicate nu înlocuiesc consultația, diagnosticul sau tratamentul medical."}
+                : "RomDoc faciliteazÄƒ cÄƒutarea È™i programarea. InformaÈ›iile publicate nu Ã®nlocuiesc consultaÈ›ia, diagnosticul sau tratamentul medical."}
             </p>
           </div>
 
@@ -229,7 +229,7 @@ export default async function PublicFooter() {
             title={
               isEnglish
                 ? "Platform"
-                : "Platformă"
+                : "PlatformÄƒ"
             }
             links={
               platformLinks
@@ -256,7 +256,7 @@ export default async function PublicFooter() {
                 label={
                   isEnglish
                     ? "Cookie and privacy information"
-                    : "Informare cookie și confidențialitate"
+                    : "Informare cookie È™i confidenÈ›ialitate"
                 }
               />
             </div>
@@ -270,7 +270,7 @@ export default async function PublicFooter() {
 
         <div className="mt-10 flex flex-col gap-3 border-t border-gray-200 pt-6 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between">
           <p>
-            © 2026 RomDoc.{" "}
+            Â© 2026 RomDoc.{" "}
             {isEnglish
               ? "All rights reserved."
               : "Toate drepturile rezervate."}
@@ -279,10 +279,11 @@ export default async function PublicFooter() {
           <p>
             {isEnglish
               ? "Digital service for facilitating medical appointments."
-              : "Serviciu digital de intermediere a programărilor medicale."}
+              : "Serviciu digital de intermediere a programÄƒrilor medicale."}
           </p>
         </div>
       </div>
     </footer>
   );
 }
+

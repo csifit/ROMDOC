@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import Link from "next/link";
+import Link from "@/components/public/localized-public-link";
 import {
   useEffect,
   useState,
@@ -135,4 +135,5 @@ export default function CookieInformationBanner({
     </section>
   );
 }
+
 
