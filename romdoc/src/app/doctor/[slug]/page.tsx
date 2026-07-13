@@ -1,3 +1,4 @@
+﻿import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import AuthenticatedAppointmentRequest from "@/components/appointments/authenticated-appointment-request";
@@ -257,7 +258,7 @@ export default async function DoctorPage({ params }: Props) {
       return [
         {
           id: clinic.id,
-          name: clinicTranslation?.name ?? "Clinică medicală",
+          name: clinicTranslation?.name ?? "ClinicÄƒ medicalÄƒ",
           address: getClinicAddress(clinic),
         },
       ];
@@ -312,12 +313,15 @@ export default async function DoctorPage({ params }: Props) {
 
             <div className="mt-4 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-                <div className="h-32 w-32 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-[#F0EEE9]">
+                <div className="relative h-32 w-32 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-[#F0EEE9]">
                   {doctor.photo_url ? (
-                    <img
+                    <Image
                       src={doctor.photo_url}
                       alt={`Fotografie de profil pentru ${doctorName}`}
-                      className="h-full w-full object-cover"
+                      fill
+                      sizes="128px"
+                      unoptimized
+                      className="object-cover"
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-4xl font-bold text-[#036661]">
@@ -342,9 +346,9 @@ export default async function DoctorPage({ params }: Props) {
 
             {isVerified && (
               <p className="mt-4 max-w-3xl text-sm leading-6 text-gray-600">
-                RomDoc a verificat informațiile profesionale și documentele
-                transmise de acest medic. Insigna nu înseamnă că RomDoc a emis
-                licența medicală.
+                RomDoc a verificat informaÈ›iile profesionale È™i documentele
+                transmise de acest medic. Insigna nu Ã®nseamnÄƒ cÄƒ RomDoc a emis
+                licenÈ›a medicalÄƒ.
               </p>
             )}
 
@@ -367,7 +371,7 @@ export default async function DoctorPage({ params }: Props) {
               </div>
 
               {doctor.years_experience !== null && (
-                <span>{doctor.years_experience} ani experiență</span>
+                <span>{doctor.years_experience} ani experienÈ›Äƒ</span>
               )}
 
               {consultationPrice !== null && (
@@ -383,7 +387,7 @@ export default async function DoctorPage({ params }: Props) {
 
             <p className="mt-4 whitespace-pre-line leading-7 text-gray-700">
               {translation?.biography ??
-                "Informațiile despre acest medic vor fi disponibile în curând."}
+                "InformaÈ›iile despre acest medic vor fi disponibile Ã®n curÃ¢nd."}
             </p>
           </section>
 
@@ -429,7 +433,7 @@ export default async function DoctorPage({ params }: Props) {
 
           <section className="mt-10">
             <h2 className="text-2xl font-semibold text-gray-900">
-              Servicii și tarife
+              Servicii È™i tarife
             </h2>
 
             <div className="mt-5">
@@ -439,7 +443,7 @@ export default async function DoctorPage({ params }: Props) {
 
           <section className="mt-10">
             <h2 className="text-2xl font-semibold text-gray-900">
-              Locații
+              LocaÈ›ii
             </h2>
 
             {approvedClinicRelations.length > 0 ? (
@@ -460,7 +464,7 @@ export default async function DoctorPage({ params }: Props) {
                       className="rounded-xl border border-gray-200 bg-white p-6"
                     >
                       <h3 className="text-xl font-semibold text-gray-900">
-                        {clinicTranslation?.name ?? "Clinică medicală"}
+                        {clinicTranslation?.name ?? "ClinicÄƒ medicalÄƒ"}
                       </h3>
 
                       {clinicTranslation?.description && (
@@ -471,7 +475,7 @@ export default async function DoctorPage({ params }: Props) {
 
                       {address && (
                         <p className="mt-4 text-gray-700">
-                          <span className="font-medium">Adresă:</span> {address}
+                          <span className="font-medium">AdresÄƒ:</span> {address}
                         </p>
                       )}
 
@@ -495,7 +499,7 @@ export default async function DoctorPage({ params }: Props) {
                             rel="noreferrer"
                             className="romdoc-button romdoc-button-secondary romdoc-button-sm"
                           >
-                            Website clinică
+                            Website clinicÄƒ
                           </a>
                         )}
 
@@ -506,7 +510,7 @@ export default async function DoctorPage({ params }: Props) {
                             rel="noreferrer"
                             className="romdoc-button romdoc-button-secondary romdoc-button-sm"
                           >
-                            Deschide în Google Maps
+                            Deschide Ã®n Google Maps
                           </a>
                         )}
                       </div>
@@ -516,7 +520,7 @@ export default async function DoctorPage({ params }: Props) {
               </div>
             ) : (
               <div className="mt-5 rounded-xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
-                Locațiile aprobate ale acestui medic nu sunt încă disponibile.
+                LocaÈ›iile aprobate ale acestui medic nu sunt Ã®ncÄƒ disponibile.
               </div>
             )}
           </section>
@@ -538,3 +542,4 @@ export default async function DoctorPage({ params }: Props) {
     </main>
   );
 }
+

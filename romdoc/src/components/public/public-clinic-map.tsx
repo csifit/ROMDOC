@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -208,7 +209,7 @@ function createInfoWindowContent(
   const specialtyLabel =
     clinic.specialtyCount === 1
       ? "1 specialitate"
-      : `${clinic.specialtyCount} specialități`;
+      : `${clinic.specialtyCount} specialitÄƒÈ›i`;
 
   const doctorsHref =
     clinic.citySlug
@@ -399,10 +400,17 @@ export default function PublicClinicMap() {
       null
     );
 
-  function clearRenderedSearch() {
-    searchMarkerRef.current &&
-      (searchMarkerRef.current.map =
-        null);
+  const activeSearchRef =
+    useRef<HomepageMapSearchDetail>(
+      null
+    );
+
+  const clearRenderedSearch =
+    useCallback(() => {
+    if (searchMarkerRef.current) {
+      searchMarkerRef.current.map =
+        null;
+    }
 
     searchMarkerRef.current =
       null;
@@ -413,9 +421,10 @@ export default function PublicClinicMap() {
 
     radiusCircleRef.current =
       null;
-  }
+    }, []);
 
-  function clearClinicMarkers() {
+  const clearClinicMarkers =
+    useCallback(() => {
     for (
       const listener of
         markerListenersRef.current
@@ -437,12 +446,13 @@ export default function PublicClinicMap() {
       [];
 
     infoWindowRef.current?.close();
-  }
+    }, []);
 
-  function renderMap(
-    search:
-      HomepageMapSearchDetail
-  ) {
+  const renderMap = useCallback(
+    (
+      search:
+        HomepageMapSearchDetail
+    ) => {
     const map =
       mapRef.current;
 
@@ -654,7 +664,12 @@ export default function PublicClinicMap() {
         ROMANIA_ZOOM
       );
     }
-  }
+    },
+    [
+      clearClinicMarkers,
+      clearRenderedSearch,
+    ]
+  );
 
   useEffect(() => {
     function handleSearchChange(
@@ -667,6 +682,8 @@ export default function PublicClinicMap() {
       setActiveSearch(
         customEvent.detail
       );
+      activeSearchRef.current =
+        customEvent.detail;
 
       renderMap(
         customEvent.detail
@@ -684,7 +701,7 @@ export default function PublicClinicMap() {
         handleSearchChange
       );
     };
-  }, []);
+  }, [renderMap]);
 
   useEffect(() => {
     let isActive = true;
@@ -713,7 +730,7 @@ export default function PublicClinicMap() {
         if (!response.ok) {
           throw new Error(
             result.error ??
-              "Clinicile nu au putut fi încărcate."
+              "Clinicile nu au putut fi Ã®ncÄƒrcate."
           );
         }
 
@@ -815,7 +832,7 @@ export default function PublicClinicMap() {
             .InfoWindow();
 
         renderMap(
-          activeSearch
+          activeSearchRef.current
         );
 
         if (isActive) {
@@ -837,7 +854,7 @@ export default function PublicClinicMap() {
           initializationError instanceof
             Error
             ? initializationError.message
-            : "Harta clinicilor nu a putut fi încărcată."
+            : "Harta clinicilor nu a putut fi Ã®ncÄƒrcatÄƒ."
         );
 
         setIsLoading(false);
@@ -866,7 +883,11 @@ export default function PublicClinicMap() {
       markerLibraryRef.current =
         null;
     };
-  }, []);
+  }, [
+    clearClinicMarkers,
+    clearRenderedSearch,
+    renderMap,
+  ]);
 
   return (
     <section
@@ -887,7 +908,7 @@ export default function PublicClinicMap() {
             />
 
             <p className="mt-3 text-sm font-medium text-gray-700">
-              Se încarcă harta clinicilor...
+              Se Ã®ncarcÄƒ harta clinicilor...
             </p>
           </div>
         </div>
@@ -898,7 +919,7 @@ export default function PublicClinicMap() {
           <div className="absolute inset-0 flex items-center justify-center bg-[#F0EEE9] px-4">
             <div className="max-w-md rounded-2xl border border-red-200 bg-white p-6 text-center shadow-sm">
               <h2 className="text-lg font-semibold text-gray-900">
-                Harta nu este disponibilă
+                Harta nu este disponibilÄƒ
               </h2>
 
               <p className="mt-2 text-sm leading-6 text-red-700">
@@ -923,18 +944,18 @@ export default function PublicClinicMap() {
                 {activeSearch
                   ? `${visibleClinicCount} ${
                       visibleClinicCount === 1
-                        ? "clinică aprobată"
+                        ? "clinicÄƒ aprobatÄƒ"
                         : "clinici aprobate"
-                    } în raza de ${activeSearch.radius} km`
+                    } Ã®n raza de ${activeSearch.radius} km`
                   : visibleClinicCount === 1
-                    ? "1 clinică aprobată"
+                    ? "1 clinicÄƒ aprobatÄƒ"
                     : `${visibleClinicCount} clinici aprobate`}
               </p>
 
               {activeSearch && (
                 <p className="mt-1 truncate text-xs text-gray-600">
                   {activeSearch.formattedAddress}
-                  {" · "}
+                  {" Â· "}
                   {activeSearch.countryCode}
                 </p>
               )}
@@ -947,8 +968,10 @@ export default function PublicClinicMap() {
         onClick={scrollToFilters}
         className="romdoc-button romdoc-button-primary absolute bottom-5 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap shadow-xl sm:bottom-7"
       >
-        Caută medici
+        CautÄƒ medici
       </button>
     </section>
   );
 }
+
+

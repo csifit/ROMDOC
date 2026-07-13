@@ -1,4 +1,6 @@
-"use client";
+﻿"use client";
+
+import Image from "next/image";
 
 import { ChangeEvent, useRef, useState } from "react";
 import Button from "@/components/ui/button";
@@ -43,13 +45,13 @@ export default function DoctorPhotoManager({
       "image/png",
       "image/webp",
     ].includes(file.type)) {
-      setError("Fotografia trebuie să fie JPG, PNG sau WebP.");
+      setError("Fotografia trebuie sÄƒ fie JPG, PNG sau WebP.");
       event.target.value = "";
       return;
     }
 
     if (file.size > 2 * 1024 * 1024) {
-      setError("Fotografia trebuie să aibă cel mult 5 MB.");
+      setError("Fotografia trebuie sÄƒ aibÄƒ cel mult 5 MB.");
       event.target.value = "";
       return;
     }
@@ -60,7 +62,7 @@ export default function DoctorPhotoManager({
 
   async function uploadPhoto() {
     if (!selectedFile) {
-      setError("Selectează o fotografie.");
+      setError("SelecteazÄƒ o fotografie.");
       return;
     }
 
@@ -81,14 +83,14 @@ export default function DoctorPhotoManager({
 
       if (!response.ok || !payload.photoUrl) {
         throw new Error(
-          payload.error ?? "Fotografia nu a putut fi salvată."
+          payload.error ?? "Fotografia nu a putut fi salvatÄƒ."
         );
       }
 
       setPhotoUrl(payload.photoUrl);
       setSelectedFile(null);
       setPreviewUrl(null);
-      setMessage("Fotografia de profil a fost actualizată.");
+      setMessage("Fotografia de profil a fost actualizatÄƒ.");
 
       if (inputRef.current) {
         inputRef.current.value = "";
@@ -97,7 +99,7 @@ export default function DoctorPhotoManager({
       setError(
         uploadError instanceof Error
           ? uploadError.message
-          : "Fotografia nu a putut fi salvată."
+          : "Fotografia nu a putut fi salvatÄƒ."
       );
     } finally {
       setIsSaving(false);
@@ -109,7 +111,7 @@ export default function DoctorPhotoManager({
       return;
     }
 
-    if (!window.confirm("Elimini fotografia publică de profil?")) {
+    if (!window.confirm("Elimini fotografia publicÄƒ de profil?")) {
       return;
     }
 
@@ -126,19 +128,19 @@ export default function DoctorPhotoManager({
 
       if (!response.ok) {
         throw new Error(
-          payload.error ?? "Fotografia nu a putut fi eliminată."
+          payload.error ?? "Fotografia nu a putut fi eliminatÄƒ."
         );
       }
 
       setPhotoUrl(null);
       setSelectedFile(null);
       setPreviewUrl(null);
-      setMessage("Fotografia de profil a fost eliminată.");
+      setMessage("Fotografia de profil a fost eliminatÄƒ.");
     } catch (deleteError) {
       setError(
         deleteError instanceof Error
           ? deleteError.message
-          : "Fotografia nu a putut fi eliminată."
+          : "Fotografia nu a putut fi eliminatÄƒ."
       );
     } finally {
       setIsSaving(false);
@@ -150,12 +152,15 @@ export default function DoctorPhotoManager({
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
       <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
-        <div className="h-32 w-32 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-[#F0EEE9]">
+        <div className="relative h-32 w-32 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-[#F0EEE9]">
           {displayedPhoto ? (
-            <img
+            <Image
               src={displayedPhoto}
               alt={`Fotografie de profil pentru ${doctorName}`}
-              className="h-full w-full object-cover"
+              fill
+              sizes="128px"
+              unoptimized
+              className="object-cover"
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-4xl font-bold text-[#036661]">
@@ -166,7 +171,7 @@ export default function DoctorPhotoManager({
 
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-[#036661]">
-            Imagine publică
+            Imagine publicÄƒ
           </p>
 
           <h2 className="mt-2 text-2xl font-bold text-gray-900">
@@ -174,8 +179,8 @@ export default function DoctorPhotoManager({
           </h2>
 
           <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-600">
-            Folosește o fotografie profesională, clară și recentă. Sunt
-            acceptate fișiere JPG, PNG și WebP de cel mult 5 MB.
+            FoloseÈ™te o fotografie profesionalÄƒ, clarÄƒ È™i recentÄƒ. Sunt
+            acceptate fiÈ™iere JPG, PNG È™i WebP de cel mult 5 MB.
           </p>
 
           <input
@@ -210,7 +215,7 @@ export default function DoctorPhotoManager({
               onClick={() => void uploadPhoto()}
               disabled={!selectedFile || isSaving}
             >
-              {isSaving ? "Se salvează..." : "Publică fotografia"}
+              {isSaving ? "Se salveazÄƒ..." : "PublicÄƒ fotografia"}
             </Button>
 
             {photoUrl && (
@@ -220,7 +225,7 @@ export default function DoctorPhotoManager({
                 disabled={isSaving}
                 className="romdoc-focus-ring rounded-xl border border-red-300 px-5 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-60"
               >
-                Elimină fotografia
+                EliminÄƒ fotografia
               </button>
             )}
           </div>
@@ -229,3 +234,4 @@ export default function DoctorPhotoManager({
     </section>
   );
 }
+
