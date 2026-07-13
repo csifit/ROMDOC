@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+﻿import { createClient } from "@/lib/supabase/server";
 
 type OrganizationMember = {
   organization_id: string;
@@ -74,7 +74,7 @@ function formatCurrencyMinor(valueMinor: number, currency = "RON") {
 
 function formatDateTime(value: string | null) {
   if (!value) {
-    return "—";
+    return "â€”";
   }
 
   return new Intl.DateTimeFormat("ro-RO", {
@@ -92,16 +92,16 @@ function getDeliveryLabel(status: string | null) {
       return "Trimis";
 
     case "failed":
-      return "Eșuat";
+      return "EÈ™uat";
 
     case "skipped":
-      return "Sărit";
+      return "SÄƒrit";
 
     case "queued":
-      return "În coadă";
+      return "ÃŽn coadÄƒ";
 
     default:
-      return status ?? "—";
+      return status ?? "â€”";
   }
 }
 
@@ -120,7 +120,7 @@ function getInvoiceLabel(status: string | null) {
       return "Nefacturabil";
 
     default:
-      return status ?? "—";
+      return status ?? "â€”";
   }
 }
 
@@ -221,8 +221,7 @@ export default async function ClinicManagerSmsPage({
   );
 
   const sentRows = usageRows.filter((row) => row.delivery_status === "sent");
-  const failedRows = usageRows.filter((row) => row.delivery_status === "failed");
-  const uninvoicedRows = usageRows.filter(
+const uninvoicedRows = usageRows.filter(
     (row) => row.invoice_status === "uninvoiced"
   );
   const invoicedRows = usageRows.filter(
@@ -241,12 +240,12 @@ export default async function ClinicManagerSmsPage({
       <header>
         <p className="text-sm font-semibold text-[#9A4F35]">Clinic Manager</p>
         <h1 className="mt-2 text-3xl font-bold text-gray-900">
-          Consum SMS clinică
+          Consum SMS clinicÄƒ
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Vezi consumul SMS al clinicii pentru perioada selectată. Pagina afișează
-          doar metadate de livrare și facturare: nu afișează conținutul SMS,
-          note medicale sau dosare ale pacienților.
+          Vezi consumul SMS al clinicii pentru perioada selectatÄƒ. Pagina afiÈ™eazÄƒ
+          doar metadate de livrare È™i facturare: nu afiÈ™eazÄƒ conÈ›inutul SMS,
+          note medicale sau dosare ale pacienÈ›ilor.
         </p>
       </header>
 
@@ -254,10 +253,10 @@ export default async function ClinicManagerSmsPage({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-xl font-bold text-gray-900">
-              Perioadă: {monthRange.label}
+              PerioadÄƒ: {monthRange.label}
             </h2>
             <p className="mt-1 text-sm text-gray-600">
-              Interval calculat: {monthRange.startDate} — {monthRange.endDate}
+              Interval calculat: {monthRange.startDate} â€” {monthRange.endDate}
             </p>
           </div>
 
@@ -266,13 +265,13 @@ export default async function ClinicManagerSmsPage({
               href={`/clinic-manager-dashboard/sms?month=${monthRange.previousMonth}`}
               className="romdoc-focus-ring rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             >
-              Luna anterioară
+              Luna anterioarÄƒ
             </a>
             <a
               href={`/clinic-manager-dashboard/sms?month=${monthRange.nextMonth}`}
               className="romdoc-focus-ring rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             >
-              Luna următoare
+              Luna urmÄƒtoare
             </a>
           </div>
         </div>
@@ -282,8 +281,8 @@ export default async function ClinicManagerSmsPage({
         <section className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm leading-6 text-red-800 shadow-sm">
           <h2 className="font-semibold">Consum SMS indisponibil</h2>
           <p className="mt-2">
-            Verifică dacă migrarea SQL pentru Step 72J a fost aplicată și dacă
-            tabelul sms_delivery_logs are coloanele așteptate.
+            VerificÄƒ dacÄƒ migrarea SQL pentru Step 72J a fost aplicatÄƒ È™i dacÄƒ
+            tabelul sms_delivery_logs are coloanele aÈ™teptate.
           </p>
           <pre className="mt-3 overflow-x-auto rounded-xl bg-white p-3 text-xs text-red-900">
             {usageErrors.join("\n")}
@@ -294,11 +293,11 @@ export default async function ClinicManagerSmsPage({
       {organizations.length === 0 ? (
         <section className="rounded-2xl border border-dashed border-gray-300 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900">
-            Nu există încă o organizație de clinică asociată contului tău
+            Nu existÄƒ Ã®ncÄƒ o organizaÈ›ie de clinicÄƒ asociatÄƒ contului tÄƒu
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-            După ce RomDoc asociază contul tău unei organizații active, consumul
-            SMS va fi afișat aici.
+            DupÄƒ ce RomDoc asociazÄƒ contul tÄƒu unei organizaÈ›ii active, consumul
+            SMS va fi afiÈ™at aici.
           </p>
         </section>
       ) : (
@@ -312,7 +311,7 @@ export default async function ClinicManagerSmsPage({
             <SummaryBox
               label="Nefacturate"
               value={uninvoicedRows.length}
-              helper="SMS trimise care pot intra în factura clinicii."
+              helper="SMS trimise care pot intra Ã®n factura clinicii."
             />
             <SummaryBox
               label="Facturate"
@@ -322,7 +321,7 @@ export default async function ClinicManagerSmsPage({
             <SummaryBox
               label="Cost estimat"
               value={formatCurrencyMinor(estimatedUninvoicedCostMinor, currency)}
-              helper="Estimare pentru SMS nefacturate, fără alte servicii."
+              helper="Estimare pentru SMS nefacturate, fÄƒrÄƒ alte servicii."
             />
           </div>
 
@@ -333,8 +332,8 @@ export default async function ClinicManagerSmsPage({
                   Detalii SMS
                 </h2>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-                  Numărul pacientului este mascat. Corpul mesajului SMS nu este
-                  afișat implicit pentru Clinic Manager.
+                  NumÄƒrul pacientului este mascat. Corpul mesajului SMS nu este
+                  afiÈ™at implicit pentru Clinic Manager.
                 </p>
               </div>
 
@@ -345,7 +344,7 @@ export default async function ClinicManagerSmsPage({
 
             {usageRows.length === 0 ? (
               <div className="mt-5 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm leading-6 text-gray-600">
-                Nu există consum SMS pentru perioada selectată.
+                Nu existÄƒ consum SMS pentru perioada selectatÄƒ.
               </div>
             ) : (
               <div className="mt-5 overflow-hidden rounded-xl border border-gray-200">
@@ -353,8 +352,8 @@ export default async function ClinicManagerSmsPage({
                   <table className="min-w-full divide-y divide-gray-200 text-sm">
                     <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                       <tr>
-                        <th className="px-4 py-3">Dată</th>
-                        <th className="px-4 py-3">Organizație</th>
+                        <th className="px-4 py-3">DatÄƒ</th>
+                        <th className="px-4 py-3">OrganizaÈ›ie</th>
                         <th className="px-4 py-3">Eveniment</th>
                         <th className="px-4 py-3">Status</th>
                         <th className="px-4 py-3">Facturare</th>
@@ -370,10 +369,10 @@ export default async function ClinicManagerSmsPage({
                             {formatDateTime(row.sent_at ?? row.created_at)}
                           </td>
                           <td className="px-4 py-3 text-gray-700">
-                            {organizationNameById.get(row.organization_id) ?? "—"}
+                            {organizationNameById.get(row.organization_id) ?? "â€”"}
                           </td>
                           <td className="px-4 py-3 text-gray-700">
-                            {row.event_type ?? "—"}
+                            {row.event_type ?? "â€”"}
                           </td>
                           <td className="px-4 py-3 text-gray-700">
                             {getDeliveryLabel(row.delivery_status)}
@@ -382,7 +381,7 @@ export default async function ClinicManagerSmsPage({
                             {getInvoiceLabel(row.invoice_status)}
                           </td>
                           <td className="px-4 py-3 font-mono text-gray-700">
-                            {row.masked_recipient ?? "—"}
+                            {row.masked_recipient ?? "â€”"}
                           </td>
                           <td className="px-4 py-3 text-gray-700">
                             {formatCurrencyMinor(
@@ -400,12 +399,12 @@ export default async function ClinicManagerSmsPage({
           </section>
 
           <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900 shadow-sm">
-            <h2 className="font-semibold">Limită de vizibilitate</h2>
+            <h2 className="font-semibold">LimitÄƒ de vizibilitate</h2>
             <p className="mt-2">
-              Clinic Manager vede doar informații necesare pentru cost și
-              facturare: dată, tip eveniment, status, telefon mascat și cost.
+              Clinic Manager vede doar informaÈ›ii necesare pentru cost È™i
+              facturare: datÄƒ, tip eveniment, status, telefon mascat È™i cost.
               Pentru audit detaliat, administratorul poate consulta logurile
-              complete în zona de administrare, conform politicilor interne.
+              complete Ã®n zona de administrare, conform politicilor interne.
             </p>
           </section>
         </>
@@ -413,3 +412,4 @@ export default async function ClinicManagerSmsPage({
     </div>
   );
 }
+

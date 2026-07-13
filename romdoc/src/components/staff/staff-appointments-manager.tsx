@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   useCallback,
@@ -109,7 +109,7 @@ function getClinicName(
     clinic?.clinic_translations?.[0]
       ?.name ??
     clinic?.slug ??
-    "Clinică"
+    "ClinicÄƒ"
   );
 }
 
@@ -144,7 +144,7 @@ function getDoctorName(
     .join(" ");
 
   return translatedTitle
-    ? `${name} — ${translatedTitle}`
+    ? `${name} â€” ${translatedTitle}`
     : name;
 }
 
@@ -189,7 +189,7 @@ export default function StaffAppointmentsManager() {
         if (!response.ok) {
           throw new Error(
             result.error ??
-              "Programările nu au putut fi încărcate."
+              "ProgramÄƒrile nu au putut fi Ã®ncÄƒrcate."
           );
         }
 
@@ -204,7 +204,7 @@ export default function StaffAppointmentsManager() {
         setError(
           loadError instanceof Error
             ? loadError.message
-            : "Programările nu au putut fi încărcate."
+            : "ProgramÄƒrile nu au putut fi Ã®ncÄƒrcate."
         );
       } finally {
         setIsLoading(false);
@@ -212,7 +212,13 @@ export default function StaffAppointmentsManager() {
     }, []);
 
   useEffect(() => {
-    void loadAppointments();
+    const timerId = window.setTimeout(() => {
+      void loadAppointments();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadAppointments]);
 
   const appointmentListItems =
@@ -316,7 +322,7 @@ export default function StaffAppointmentsManager() {
     return (
       <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
         <p className="text-sm text-gray-600">
-          Se încarcă programările...
+          Se Ã®ncarcÄƒ programÄƒrile...
         </p>
       </div>
     );
@@ -330,11 +336,11 @@ export default function StaffAppointmentsManager() {
         </p>
 
         <h1 className="mt-2 text-3xl font-bold text-gray-900">
-          Programările medicului
+          ProgramÄƒrile medicului
         </h1>
 
         <p className="mt-3 text-sm leading-6 text-gray-600">
-          Ai acces la toate programările și poți crea, confirma, reprograma, finaliza, marca drept neprezentare sau anula programări pentru medicii pe care îi gestionezi.
+          Ai acces la toate programÄƒrile È™i poÈ›i crea, confirma, reprograma, finaliza, marca drept neprezentare sau anula programÄƒri pentru medicii pe care Ã®i gestionezi.
         </p>
       </section>
 
@@ -375,3 +381,4 @@ export default function StaffAppointmentsManager() {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   type FormEvent,
@@ -82,6 +82,7 @@ export default function LoginForm({
     );
 
   useEffect(() => {
+    const timerId = window.setTimeout(() => {
     const searchParams =
       new URLSearchParams(
         window.location.search
@@ -93,7 +94,7 @@ export default function LoginForm({
       ) === "1"
     ) {
       setMessage(
-        "Parola a fost actualizată. Te poți autentifica folosind noua parolă."
+        "Parola a fost actualizatÄƒ. Te poÈ›i autentifica folosind noua parolÄƒ."
       );
     }
 
@@ -102,9 +103,14 @@ export default function LoginForm({
       "confirmation_failed"
     ) {
       setError(
-        "Linkul de autentificare nu este valid sau a expirat. Solicită un link nou."
+        "Linkul de autentificare nu este valid sau a expirat. SolicitÄƒ un link nou."
       );
     }
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, []);
 
   function handleSubmit(
@@ -159,13 +165,13 @@ export default function LoginForm({
             ) {
               case "invalid login credentials":
                 setError(
-                  "Adresa de e-mail sau parola este incorectă."
+                  "Adresa de e-mail sau parola este incorectÄƒ."
                 );
                 return;
 
               case "email not confirmed":
                 setError(
-                  "Adresa de e-mail nu a fost confirmată."
+                  "Adresa de e-mail nu a fost confirmatÄƒ."
                 );
                 return;
 
@@ -195,7 +201,7 @@ export default function LoginForm({
             );
 
             setError(
-              "Starea autentificării în doi pași nu a putut fi verificată."
+              "Starea autentificÄƒrii Ã®n doi paÈ™i nu a putut fi verificatÄƒ."
             );
             return;
           }
@@ -226,7 +232,7 @@ export default function LoginForm({
           );
 
           setError(
-            "Autentificarea nu a putut fi finalizată. Încearcă din nou."
+            "Autentificarea nu a putut fi finalizatÄƒ. ÃŽncearcÄƒ din nou."
           );
         }
       }
@@ -248,7 +254,7 @@ export default function LoginForm({
         </h1>
 
         <p className="mt-2 text-sm leading-6 text-gray-600">
-          Introdu adresa de e-mail și parola pentru a accesa contul.
+          Introdu adresa de e-mail È™i parola pentru a accesa contul.
         </p>
       </header>
 
@@ -286,7 +292,7 @@ export default function LoginForm({
         <label className="block">
           <span className="flex items-center justify-between gap-3">
             <span className="text-sm font-medium text-gray-700">
-              Parolă
+              ParolÄƒ
             </span>
 
             <Link
@@ -341,22 +347,23 @@ export default function LoginForm({
           isLoading={
             isPending
           }
-          loadingText="Se autentifică..."
+          loadingText="Se autentificÄƒ..."
         >
           Autentificare
         </Button>
       </form>
 
       <div className="mt-6 text-center text-sm text-gray-600">
-        Nu ai încă un cont?{" "}
+        Nu ai Ã®ncÄƒ un cont?{" "}
 
         <Link
           href="/register"
           className="romdoc-link underline-offset-4 hover:underline"
         >
-          Creează cont
+          CreeazÄƒ cont
         </Link>
       </div>
     </div>
   );
 }
+

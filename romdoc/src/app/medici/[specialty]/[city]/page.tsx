@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "@/components/public/localized-public-link";
 import { notFound } from "next/navigation";
 
 import PublicLayout from "@/components/public/public-layout";
@@ -48,13 +48,13 @@ function formatDoctorName(slug: string) {
 
 function formatPrice(value: number | string | null) {
   if (value === null) {
-    return "—";
+    return "â€”";
   }
 
   const parsed = Number(value);
 
   if (!Number.isFinite(parsed)) {
-    return "—";
+    return "â€”";
   }
 
   return new Intl.NumberFormat("ro-RO", {
@@ -209,14 +209,14 @@ export default async function SpecialtyCityPage({
             </p>
 
             <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              {specialtyTranslation?.name} în{" "}
+              {specialtyTranslation?.name} Ã®n{" "}
               {cityTranslation?.name}
             </h1>
 
             <p className="mt-4 max-w-3xl leading-7 text-gray-600">
-              Găsește medici pentru{" "}
-              {specialtyTranslation?.name?.toLowerCase()} în{" "}
-              {cityTranslation?.name} și trimite o cerere de
+              GÄƒseÈ™te medici pentru{" "}
+              {specialtyTranslation?.name?.toLowerCase()} Ã®n{" "}
+              {cityTranslation?.name} È™i trimite o cerere de
               programare online.
             </p>
 
@@ -228,7 +228,7 @@ export default async function SpecialtyCityPage({
 
                 {onlineOnly && (
                   <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
-                    Programări online disponibile
+                    ProgramÄƒri online disponibile
                   </span>
                 )}
 
@@ -236,7 +236,7 @@ export default async function SpecialtyCityPage({
                   href={clearFiltersHref}
                   className="romdoc-focus-ring rounded-md text-sm font-semibold text-[#036661] underline-offset-4 hover:underline"
                 >
-                  Elimină filtrele
+                  EliminÄƒ filtrele
                 </Link>
               </div>
             )}
@@ -298,7 +298,7 @@ export default async function SpecialtyCityPage({
 
                       {doctor.years_experience !== null && (
                         <span>
-                          {doctor.years_experience} ani experiență
+                          {doctor.years_experience} ani experienÈ›Äƒ
                         </span>
                       )}
 
@@ -306,7 +306,7 @@ export default async function SpecialtyCityPage({
                         {formatPrice(
                           doctor.consultation_price
                         )}{" "}
-                        RON consultație
+                        RON consultaÈ›ie
                       </span>
                     </div>
 
@@ -323,7 +323,7 @@ export default async function SpecialtyCityPage({
               })
             ) : (
               <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center text-gray-600">
-                Nu există încă medici pentru această combinație de
+                Nu existÄƒ Ã®ncÄƒ medici pentru aceastÄƒ combinaÈ›ie de
                 filtre.
               </div>
             )}
@@ -333,3 +333,4 @@ export default async function SpecialtyCityPage({
     </PublicLayout>
   );
 }
+

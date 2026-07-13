@@ -1,3 +1,5 @@
+﻿import Image from "next/image";
+
 type PublicDoctorPhotoProps = {
   photoUrl: string | null;
   doctorName: string;
@@ -22,19 +24,26 @@ export default function PublicDoctorPhoto({
 
   return (
     <div
-      className={`shrink-0 overflow-hidden border border-gray-200 bg-[#F0EEE9] ${sizeClasses[size]} ${className}`.trim()}
+      className={`relative shrink-0 overflow-hidden border border-gray-200 bg-[#F0EEE9] ${sizeClasses[size]} ${className}`.trim()}
     >
       {photoUrl ? (
-        <img
+        <Image
           src={photoUrl}
           alt={`Fotografie de profil pentru ${doctorName}`}
-          loading="lazy"
-          decoding="async"
-          className="h-full w-full object-cover"
+          fill
+          sizes={
+            size === "small"
+              ? "64px"
+              : size === "large"
+                ? "128px"
+                : "96px"
+          }
+          unoptimized
+          className="object-cover"
         />
       ) : (
         <div
-          aria-label={`Fotografie indisponibilă pentru ${doctorName}`}
+          aria-label={`Fotografie indisponibilÄƒ pentru ${doctorName}`}
           className="flex h-full w-full items-center justify-center font-bold text-[#036661]"
         >
           {initial}
@@ -43,3 +52,4 @@ export default function PublicDoctorPhoto({
     </div>
   );
 }
+

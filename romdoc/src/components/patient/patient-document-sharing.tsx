@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import {
   useEffect,
+  useCallback,
   useState,
 } from "react";
 
@@ -55,12 +56,12 @@ const eventLabels:
     created: "Document creat",
     shared: "Document partajat",
     share_revoked:
-      "Partajare revocată",
+      "Partajare revocatÄƒ",
     viewed: "Document consultat",
     downloaded:
-      "Document descărcat",
+      "Document descÄƒrcat",
     soft_deleted:
-      "Document șters",
+      "Document È™ters",
   };
 
 export default function PatientDocumentSharing({
@@ -85,7 +86,7 @@ export default function PatientDocumentSharing({
   const [isSaving, setIsSaving] =
     useState(false);
 
-  async function load() {
+  const load = useCallback(async () => {
     setError("");
 
     const [shareResponse, auditResponse] =
@@ -108,7 +109,7 @@ export default function PatientDocumentSharing({
     if (!shareResponse.ok) {
       setError(
         sharePayload.error ??
-          "Partajările nu au putut fi încărcate."
+          "PartajÄƒrile nu au putut fi Ã®ncÄƒrcate."
       );
       return;
     }
@@ -125,18 +126,26 @@ export default function PatientDocumentSharing({
         auditPayload.events ?? []
       );
     }
-  }
+  }, [documentId]);
 
   useEffect(() => {
-    if (open) {
-      void load();
+    if (!open) {
+      return;
     }
-  }, [open]);
+
+    const timerId = window.setTimeout(() => {
+      void load();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [load, open]);
 
   async function createShare() {
     if (!doctorId) {
       setError(
-        "Selectează un medic."
+        "SelecteazÄƒ un medic."
       );
       return;
     }
@@ -211,7 +220,7 @@ export default function PatientDocumentSharing({
     if (!response.ok) {
       setError(
         payload.error ??
-          "Partajarea nu a putut fi revocată."
+          "Partajarea nu a putut fi revocatÄƒ."
       );
     } else {
       await load();
@@ -231,18 +240,18 @@ export default function PatientDocumentSharing({
       >
         {open
           ? "Ascunde accesul"
-          : "Partajare și istoric"}
+          : "Partajare È™i istoric"}
       </button>
 
       {open && (
         <div className="mt-4 space-y-5">
           <div className="rounded-xl bg-gray-50 p-4">
             <h3 className="font-semibold text-gray-900">
-              Partajează cu un medic
+              PartajeazÄƒ cu un medic
             </h3>
 
             <p className="mt-1 text-xs leading-5 text-gray-600">
-              Poți selecta numai medici asociați consultațiilor din contul tău.
+              PoÈ›i selecta numai medici asociaÈ›i consultaÈ›iilor din contul tÄƒu.
             </p>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -256,7 +265,7 @@ export default function PatientDocumentSharing({
                 className="romdoc-focus-ring rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm"
               >
                 <option value="">
-                  Selectează medicul
+                  SelecteazÄƒ medicul
                 </option>
 
                 {doctors.map(
@@ -299,7 +308,7 @@ export default function PatientDocumentSharing({
               }
               className="romdoc-button romdoc-button-primary romdoc-button-sm mt-3"
             >
-              Partajează documentul
+              PartajeazÄƒ documentul
             </button>
           </div>
 
@@ -314,7 +323,7 @@ export default function PatientDocumentSharing({
                   share.active
               ).length === 0 ? (
                 <p className="text-sm text-gray-600">
-                  Documentul nu este partajat cu alți medici.
+                  Documentul nu este partajat cu alÈ›i medici.
                 </p>
               ) : (
                 shares
@@ -336,10 +345,10 @@ export default function PatientDocumentSharing({
 
                         <p className="mt-1 text-xs text-gray-500">
                           {share.expires_at
-                            ? `Expiră la ${formatDate(
+                            ? `ExpirÄƒ la ${formatDate(
                                 share.expires_at
                               )}`
-                            : "Fără dată de expirare"}
+                            : "FÄƒrÄƒ datÄƒ de expirare"}
                         </p>
                       </div>
 
@@ -355,7 +364,7 @@ export default function PatientDocumentSharing({
                         }
                         className="text-sm font-semibold text-red-700 hover:underline"
                       >
-                        Revocă
+                        RevocÄƒ
                       </button>
                     </div>
                   ))
@@ -388,7 +397,7 @@ export default function PatientDocumentSharing({
                       {formatDate(
                         event.created_at
                       )}
-                      {" · "}
+                      {" Â· "}
                       {event.actor_role}
                     </p>
 
@@ -421,3 +430,5 @@ export default function PatientDocumentSharing({
     </div>
   );
 }
+
+

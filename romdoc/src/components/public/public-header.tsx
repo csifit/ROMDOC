@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import Link from "next/link";
+import Link from "@/components/public/localized-public-link";
 import {
   useState,
 } from "react";
@@ -68,7 +68,7 @@ export default function PublicHeader({
           </div>
 
           <nav
-            aria-label="Acțiuni cont"
+            aria-label="AcÈ›iuni cont"
             className="flex items-center gap-2"
           >
             {isAuthenticated ? (
@@ -91,7 +91,7 @@ export default function PublicHeader({
                   href="/register"
                   className="romdoc-button romdoc-button-primary romdoc-button-sm"
                 >
-                  Creează cont
+                  CreeazÄƒ cont
                 </Link>
               </>
             )}
@@ -113,3 +113,4 @@ export default function PublicHeader({
     </>
   );
 }
+

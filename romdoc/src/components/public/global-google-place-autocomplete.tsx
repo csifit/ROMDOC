@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   useCallback,
@@ -117,6 +117,8 @@ export default function GlobalGooglePlaceAutocomplete({
     );
 
   useEffect(() => {
+    const hostElement = containerRef.current;
+
     let isActive = true;
 
     let autocomplete:
@@ -165,7 +167,7 @@ export default function GlobalGooglePlaceAutocomplete({
             .PlaceAutocompleteElement();
 
         autocomplete.placeholder =
-          "Introdu o adresă, localitate sau punct de reper";
+          "Introdu o adresÄƒ, localitate sau punct de reper";
 
         autocomplete.style.width =
           "100%";
@@ -235,7 +237,7 @@ export default function GlobalGooglePlaceAutocomplete({
               ) {
                 throw new Error(
                   result.error ??
-                    "Locația nu a putut fi verificată."
+                    "LocaÈ›ia nu a putut fi verificatÄƒ."
                 );
               }
 
@@ -270,7 +272,7 @@ export default function GlobalGooglePlaceAutocomplete({
                 selectionError instanceof
                   Error
                   ? selectionError.message
-                  : "Locația nu a putut fi verificată."
+                  : "LocaÈ›ia nu a putut fi verificatÄƒ."
               );
             } finally {
               if (isActive) {
@@ -305,7 +307,7 @@ export default function GlobalGooglePlaceAutocomplete({
           initializationError instanceof
             Error
             ? initializationError.message
-            : "Google Places nu a putut fi încărcat."
+            : "Google Places nu a putut fi Ã®ncÄƒrcat."
         );
 
         setIsLoading(false);
@@ -328,8 +330,7 @@ export default function GlobalGooglePlaceAutocomplete({
           );
       }
 
-      const hostElement =
-        containerRef.current;
+      
 
       if (
         autocomplete &&
@@ -367,7 +368,7 @@ export default function GlobalGooglePlaceAutocomplete({
     <div className="space-y-3">
       <div>
         <span className="text-sm font-semibold text-gray-800">
-          Adresă sau localitate
+          AdresÄƒ sau localitate
         </span>
 
         <div className="mt-2">
@@ -378,7 +379,7 @@ export default function GlobalGooglePlaceAutocomplete({
 
           {isLoading && (
             <p className="mt-2 text-sm text-gray-500">
-              Se încarcă Google Places...
+              Se Ã®ncarcÄƒ Google Places...
             </p>
           )}
         </div>
@@ -386,7 +387,7 @@ export default function GlobalGooglePlaceAutocomplete({
 
       {isResolving && (
         <p className="text-sm text-gray-600">
-          Locația este verificată...
+          LocaÈ›ia este verificatÄƒ...
         </p>
       )}
 
@@ -395,7 +396,7 @@ export default function GlobalGooglePlaceAutocomplete({
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-emerald-950">
-                Locație selectată
+                LocaÈ›ie selectatÄƒ
               </p>
 
               <p className="mt-1 text-sm leading-6 text-emerald-900">
@@ -410,7 +411,7 @@ export default function GlobalGooglePlaceAutocomplete({
                   selectedAddress
                     .cityName
                 }
-                {" · "}
+                {" Â· "}
                 {
                   selectedAddress
                     .countryCode
@@ -423,7 +424,7 @@ export default function GlobalGooglePlaceAutocomplete({
               onClick={clearSelection}
               className="romdoc-focus-ring rounded-lg px-2 py-1 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100"
             >
-              Schimbă
+              SchimbÄƒ
             </button>
           </div>
         </div>
@@ -440,3 +441,4 @@ export default function GlobalGooglePlaceAutocomplete({
     </div>
   );
 }
+

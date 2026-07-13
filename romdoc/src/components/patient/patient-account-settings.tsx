@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import {
@@ -96,7 +96,7 @@ export default function PatientAccountSettings() {
           ) {
             throw new Error(
               payload.error ??
-                "Starea solicitării nu a putut fi încărcată."
+                "Starea solicitÄƒrii nu a putut fi Ã®ncÄƒrcatÄƒ."
             );
           }
 
@@ -111,7 +111,7 @@ export default function PatientAccountSettings() {
             loadError instanceof
               Error
               ? loadError.message
-              : "Starea solicitării nu a putut fi încărcată."
+              : "Starea solicitÄƒrii nu a putut fi Ã®ncÄƒrcatÄƒ."
           );
         } finally {
           setIsLoading(
@@ -123,13 +123,19 @@ export default function PatientAccountSettings() {
     );
 
   useEffect(() => {
-    void loadStatus();
+    const timerId = window.setTimeout(() => {
+      void loadStatus();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadStatus]);
 
   async function requestClosure() {
     const confirmed =
       window.confirm(
-        "Trimiți administratorului solicitarea de închidere a contului?"
+        "TrimiÈ›i administratorului solicitarea de Ã®nchidere a contului?"
       );
 
     if (!confirmed) {
@@ -159,7 +165,7 @@ export default function PatientAccountSettings() {
       ) {
         throw new Error(
           payload.error ??
-            "Solicitarea nu a putut fi trimisă."
+            "Solicitarea nu a putut fi trimisÄƒ."
         );
       }
 
@@ -170,7 +176,7 @@ export default function PatientAccountSettings() {
 
       setMessage(
         payload.message ??
-          "Solicitarea a fost trimisă."
+          "Solicitarea a fost trimisÄƒ."
       );
     } catch (
       requestError
@@ -179,7 +185,7 @@ export default function PatientAccountSettings() {
         requestError instanceof
           Error
           ? requestError.message
-          : "Solicitarea nu a putut fi trimisă."
+          : "Solicitarea nu a putut fi trimisÄƒ."
       );
     } finally {
       setIsSubmitting(
@@ -191,7 +197,7 @@ export default function PatientAccountSettings() {
   async function cancelRequest() {
     const confirmed =
       window.confirm(
-        "Anulezi solicitarea de închidere a contului?"
+        "Anulezi solicitarea de Ã®nchidere a contului?"
       );
 
     if (!confirmed) {
@@ -221,7 +227,7 @@ export default function PatientAccountSettings() {
       ) {
         throw new Error(
           payload.error ??
-            "Solicitarea nu a putut fi anulată."
+            "Solicitarea nu a putut fi anulatÄƒ."
         );
       }
 
@@ -231,7 +237,7 @@ export default function PatientAccountSettings() {
 
       setMessage(
         payload.message ??
-          "Solicitarea a fost anulată."
+          "Solicitarea a fost anulatÄƒ."
       );
     } catch (
       cancelError
@@ -240,7 +246,7 @@ export default function PatientAccountSettings() {
         cancelError instanceof
           Error
           ? cancelError.message
-          : "Solicitarea nu a putut fi anulată."
+          : "Solicitarea nu a putut fi anulatÄƒ."
       );
     } finally {
       setIsSubmitting(
@@ -257,21 +263,21 @@ export default function PatientAccountSettings() {
         </p>
 
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
-          Cont și confidențialitate
+          Cont È™i confidenÈ›ialitate
         </h1>
 
         <p className="mt-4 max-w-3xl text-sm leading-6 text-gray-600">
-          Poți solicita închiderea contului. Administratorul va analiza solicitarea și va bloca accesul la cont.
+          PoÈ›i solicita Ã®nchiderea contului. Administratorul va analiza solicitarea È™i va bloca accesul la cont.
         </p>
 
         <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Înregistrările care trebuie păstrate din motive medicale, contabile sau legale nu sunt șterse automat.
+          ÃŽnregistrÄƒrile care trebuie pÄƒstrate din motive medicale, contabile sau legale nu sunt È™terse automat.
           {" "}
           <Link
             href="/confidentialitate"
             className="font-semibold text-[#036661] underline underline-offset-4"
           >
-            Politica de confidențialitate
+            Politica de confidenÈ›ialitate
           </Link>
         </p>
       </section>
@@ -296,29 +302,29 @@ export default function PatientAccountSettings() {
 
       <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
         <h2 className="text-xl font-bold text-gray-900">
-          Închiderea contului
+          ÃŽnchiderea contului
         </h2>
 
         {isLoading ? (
           <p className="mt-4 text-sm text-gray-600">
-            Se încarcă...
+            Se Ã®ncarcÄƒ...
           </p>
         ) : requestedAt ? (
           <>
             <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5">
               <p className="font-semibold text-amber-950">
-                Închidere solicitată
+                ÃŽnchidere solicitatÄƒ
               </p>
 
               <p className="mt-2 text-sm text-amber-900">
-                Solicitarea a fost trimisă la{" "}
+                Solicitarea a fost trimisÄƒ la{" "}
                 {formatDate(
                   requestedAt
                 )}.
               </p>
 
               <p className="mt-2 text-sm text-amber-900">
-                Contul rămâne activ până când administratorul îl blochează.
+                Contul rÄƒmÃ¢ne activ pÃ¢nÄƒ cÃ¢nd administratorul Ã®l blocheazÄƒ.
               </p>
             </div>
 
@@ -333,14 +339,14 @@ export default function PatientAccountSettings() {
               className="mt-5 rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-800 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting
-                ? "Se procesează..."
-                : "Anulează solicitarea"}
+                ? "Se proceseazÄƒ..."
+                : "AnuleazÄƒ solicitarea"}
             </button>
           </>
         ) : (
           <>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-              După trimitere, administratorul va vedea solicitarea în pagina Utilizatori și va folosi acțiunea existentă de blocare a contului.
+              DupÄƒ trimitere, administratorul va vedea solicitarea Ã®n pagina Utilizatori È™i va folosi acÈ›iunea existentÄƒ de blocare a contului.
             </p>
 
             <button
@@ -355,7 +361,7 @@ export default function PatientAccountSettings() {
             >
               {isSubmitting
                 ? "Se trimite..."
-                : "Solicită închiderea contului"}
+                : "SolicitÄƒ Ã®nchiderea contului"}
             </button>
           </>
         )}
@@ -363,3 +369,4 @@ export default function PatientAccountSettings() {
     </div>
   );
 }
+

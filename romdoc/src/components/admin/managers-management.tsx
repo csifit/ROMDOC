@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   type FormEvent,
@@ -48,7 +48,7 @@ function hasAccountingPermission(permissions: string[]) {
 }
 
 function managerTypeLabel(permissions: string[]) {
-  return hasAccountingPermission(permissions) ? "Facturare" : "Operațional";
+  return hasAccountingPermission(permissions) ? "Facturare" : "OperaÈ›ional";
 }
 
 function managerTypeBadgeClass(permissions: string[]) {
@@ -78,7 +78,7 @@ export default function ManagersManagement() {
     const payload = (await response.json()) as ManagersResponse;
 
     if (!response.ok) {
-      setError(payload.error ?? "Managerii nu au putut fi încărcați.");
+      setError(payload.error ?? "Managerii nu au putut fi Ã®ncÄƒrcaÈ›i.");
       return;
     }
 
@@ -87,7 +87,13 @@ export default function ManagersManagement() {
   }, []);
 
   useEffect(() => {
-    void loadData();
+    const timerId = window.setTimeout(() => {
+      void loadData();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadData]);
 
   function inviteManager(event: FormEvent<HTMLFormElement>) {
@@ -112,7 +118,7 @@ export default function ManagersManagement() {
       const payload = (await response.json()) as { error?: string };
 
       if (!response.ok) {
-        setError(payload.error ?? "Invitația nu a putut fi trimisă.");
+        setError(payload.error ?? "InvitaÈ›ia nu a putut fi trimisÄƒ.");
         return;
       }
 
@@ -122,8 +128,8 @@ export default function ManagersManagement() {
       setManagerType("operational");
       setMessage(
         managerType === "accounting"
-          ? "Invitația de manager Facturare a fost trimisă."
-          : "Invitația de manager operațional a fost trimisă."
+          ? "InvitaÈ›ia de manager Facturare a fost trimisÄƒ."
+          : "InvitaÈ›ia de manager operaÈ›ional a fost trimisÄƒ."
       );
 
       await loadData();
@@ -136,7 +142,7 @@ export default function ManagersManagement() {
       profileId?: string;
       invitationId?: string;
     },
-    successMessage = "Modificarea a fost salvată."
+    successMessage = "Modificarea a fost salvatÄƒ."
   ) {
     setError(null);
     setMessage(null);
@@ -156,7 +162,7 @@ export default function ManagersManagement() {
       };
 
       if (!response.ok) {
-        setError(payload.error ?? "Acțiunea nu a putut fi finalizată.");
+        setError(payload.error ?? "AcÈ›iunea nu a putut fi finalizatÄƒ.");
         return;
       }
 
@@ -168,7 +174,7 @@ export default function ManagersManagement() {
   function deleteManager(manager: ManagerRow) {
     const name = displayName(manager.first_name, manager.last_name);
     const confirmed = window.confirm(
-      `Ștergi managerul ${name} din lista de manageri?\n\nContul nu va fi șters fizic din istoricul RomDoc, dar rolul de manager va fi eliminat și accesul operațional va fi blocat.`
+      `È˜tergi managerul ${name} din lista de manageri?\n\nContul nu va fi È™ters fizic din istoricul RomDoc, dar rolul de manager va fi eliminat È™i accesul operaÈ›ional va fi blocat.`
     );
 
     if (!confirmed) {
@@ -180,7 +186,7 @@ export default function ManagersManagement() {
         action: "delete_manager",
         profileId: manager.id,
       },
-      "Managerul a fost șters din lista de manageri."
+      "Managerul a fost È™ters din lista de manageri."
     );
   }
 
@@ -188,11 +194,11 @@ export default function ManagersManagement() {
     <div className="space-y-8">
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <h2 className="text-xl font-bold text-gray-900">
-          Invită un manager
+          InvitÄƒ un manager
         </h2>
 
         <p className="mt-2 text-sm leading-6 text-gray-600">
-          Managerul primește un e-mail de invitație și trebuie să configureze Google Authenticator înainte de accesul la panoul operațional.
+          Managerul primeÈ™te un e-mail de invitaÈ›ie È™i trebuie sÄƒ configureze Google Authenticator Ã®nainte de accesul la panoul operaÈ›ional.
         </p>
 
         <form onSubmit={inviteManager} className="mt-6 grid gap-4 md:grid-cols-2">
@@ -242,10 +248,10 @@ export default function ManagersManagement() {
                 />
                 <span>
                   <span className="block font-semibold text-gray-900">
-                    Operațional
+                    OperaÈ›ional
                   </span>
                   <span className="mt-1 block text-sm leading-5 text-gray-600">
-                    Acces pentru administrare operațională, fără permisiuni de facturare SMS.
+                    Acces pentru administrare operaÈ›ionalÄƒ, fÄƒrÄƒ permisiuni de facturare SMS.
                   </span>
                 </span>
               </label>
@@ -264,7 +270,7 @@ export default function ManagersManagement() {
                     Facturare
                   </span>
                   <span className="mt-1 block text-sm leading-5 text-blue-800">
-                    Acces la facturare SMS, verificare facturi și informații de invoicing.
+                    Acces la facturare SMS, verificare facturi È™i informaÈ›ii de invoicing.
                   </span>
                 </span>
               </label>
@@ -277,7 +283,7 @@ export default function ManagersManagement() {
               disabled={isPending}
               className="rounded-xl bg-[#036661] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#ff2800] disabled:opacity-60"
             >
-              {isPending ? "Se trimite..." : "Trimite invitația"}
+              {isPending ? "Se trimite..." : "Trimite invitaÈ›ia"}
             </button>
           </div>
         </form>
@@ -297,7 +303,7 @@ export default function ManagersManagement() {
 
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <h2 className="text-xl font-bold text-gray-900">
-          Manageri activi și suspendați
+          Manageri activi È™i suspendaÈ›i
         </h2>
 
         <div className="mt-5 overflow-x-auto">
@@ -309,7 +315,7 @@ export default function ManagersManagement() {
                 <th className="px-3 py-3">Tip</th>
                 <th className="px-3 py-3">Confirmat</th>
                 <th className="px-3 py-3">Status</th>
-                <th className="px-3 py-3 text-right">Acțiuni</th>
+                <th className="px-3 py-3 text-right">AcÈ›iuni</th>
               </tr>
             </thead>
 
@@ -324,7 +330,7 @@ export default function ManagersManagement() {
                     </td>
 
                     <td className="px-3 py-4 text-gray-600">
-                      {manager.auth?.email ?? "—"}
+                      {manager.auth?.email ?? "â€”"}
                     </td>
 
                     <td className="px-3 py-4">
@@ -356,7 +362,7 @@ export default function ManagersManagement() {
                           }
                           className="rounded-lg border border-blue-300 px-3 py-2 font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-60"
                         >
-                          {isAccounting ? "Elimină Facturare" : "Acordă Facturare"}
+                          {isAccounting ? "EliminÄƒ Facturare" : "AcordÄƒ Facturare"}
                         </button>
 
                         <button
@@ -373,7 +379,7 @@ export default function ManagersManagement() {
                           }
                           className="rounded-lg border border-gray-300 px-3 py-2 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                         >
-                          {manager.account_status === "active" ? "Suspendă" : "Activează"}
+                          {manager.account_status === "active" ? "SuspendÄƒ" : "ActiveazÄƒ"}
                         </button>
 
                         <button
@@ -382,7 +388,7 @@ export default function ManagersManagement() {
                           onClick={() => deleteManager(manager)}
                           className="rounded-lg border border-red-300 px-3 py-2 font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
                         >
-                          Șterge
+                          È˜terge
                         </button>
                       </div>
                     </td>
@@ -393,7 +399,7 @@ export default function ManagersManagement() {
               {managers.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-3 py-8 text-center text-gray-500">
-                    Nu există manageri.
+                    Nu existÄƒ manageri.
                   </td>
                 </tr>
               )}
@@ -403,7 +409,7 @@ export default function ManagersManagement() {
       </section>
 
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-bold text-gray-900">Invitații</h2>
+        <h2 className="text-xl font-bold text-gray-900">InvitaÈ›ii</h2>
 
         <div className="mt-5 space-y-3">
           {invitations.map((invitation) => (
@@ -436,17 +442,18 @@ export default function ManagersManagement() {
                   }
                   className="rounded-lg border border-red-300 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
                 >
-                  Revocă
+                  RevocÄƒ
                 </button>
               )}
             </div>
           ))}
 
           {invitations.length === 0 && (
-            <p className="text-sm text-gray-500">Nu există invitații.</p>
+            <p className="text-sm text-gray-500">Nu existÄƒ invitaÈ›ii.</p>
           )}
         </div>
       </section>
     </div>
   );
 }
+

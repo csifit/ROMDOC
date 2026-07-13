@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import Link from "next/link";
+import Link from "@/components/public/localized-public-link";
 import {
   useEffect,
   useState,
@@ -24,9 +24,11 @@ export default function CookieInformationBanner({
   const isEnglish = locale === "en";
 
   useEffect(() => {
-    setIsOpen(
-      !hasAcknowledgedCookieNotice()
-    );
+    const timerId = window.setTimeout(() => {
+      setIsOpen(
+        !hasAcknowledgedCookieNotice()
+      );
+    }, 0);
 
     function handleOpenNotice() {
       setIsOpen(true);
@@ -38,6 +40,7 @@ export default function CookieInformationBanner({
     );
 
     return () => {
+      window.clearTimeout(timerId);
       window.removeEventListener(
         COOKIE_NOTICE_OPEN_EVENT,
         handleOpenNotice
@@ -59,7 +62,7 @@ export default function CookieInformationBanner({
       aria-label={
         isEnglish
           ? "Cookie and privacy information"
-          : "Informare privind cookie-urile și confidențialitatea"
+          : "Informare privind cookie-urile È™i confidenÈ›ialitatea"
       }
       aria-live="polite"
       className="fixed inset-x-0 bottom-0 z-[100] border-t border-gray-200 bg-white shadow-[0_-12px_40px_rgba(15,23,42,0.16)]"
@@ -71,13 +74,13 @@ export default function CookieInformationBanner({
               <h2 className="text-base font-semibold text-gray-950 sm:text-lg">
                 {isEnglish
                   ? "Cookies, external services and medical-data privacy"
-                  : "Cookie-uri, servicii externe și confidențialitatea datelor medicale"}
+                  : "Cookie-uri, servicii externe È™i confidenÈ›ialitatea datelor medicale"}
               </h2>
 
               <p className="mt-2 text-sm leading-6 text-gray-700">
                 {isEnglish
                   ? "RomDoc uses technologies required for authentication, security and appointment functionality. The platform also integrates Google Maps, an important component for locating clinics and geographic search. When the map loads, your browser connects to Google services, which may process technical information about your device and connection."
-                  : "RomDoc utilizează tehnologii necesare pentru autentificare, securitate și funcționarea programărilor. Platforma integrează și Google Maps, o componentă importantă pentru localizarea clinicilor și căutarea geografică. La încărcarea hărții, browserul dumneavoastră se conectează la serviciile Google, care pot prelucra informații tehnice despre dispozitiv și conexiune."}
+                  : "RomDoc utilizeazÄƒ tehnologii necesare pentru autentificare, securitate È™i funcÈ›ionarea programÄƒrilor. Platforma integreazÄƒ È™i Google Maps, o componentÄƒ importantÄƒ pentru localizarea clinicilor È™i cÄƒutarea geograficÄƒ. La Ã®ncÄƒrcarea hÄƒrÈ›ii, browserul dumneavoastrÄƒ se conecteazÄƒ la serviciile Google, care pot prelucra informaÈ›ii tehnice despre dispozitiv È™i conexiune."}
               </p>
             </div>
 
@@ -85,14 +88,14 @@ export default function CookieInformationBanner({
               <p className="text-sm leading-6 text-gray-800">
                 {isEnglish
                   ? "A patient's Medical Profile and Medical Folder may contain information entered by doctors who have an authorized medical relationship with that patient. Platform administrators and managers do not have routine access to medical content. Patients may view their information, manage sharing permissions and request account closure under the conditions described in the Privacy Policy."
-                  : "Profilul medical și Dosarul medical al pacientului pot conține informații introduse de medicii care au o relație medicală autorizată cu pacientul. Administratorii și managerii platformei nu au acces obișnuit la conținutul medical. Pacientul poate consulta informațiile, administra permisiunile de partajare și poate solicita închiderea contului, în condițiile descrise în Politica de confidențialitate."}
+                  : "Profilul medical È™i Dosarul medical al pacientului pot conÈ›ine informaÈ›ii introduse de medicii care au o relaÈ›ie medicalÄƒ autorizatÄƒ cu pacientul. Administratorii È™i managerii platformei nu au acces obiÈ™nuit la conÈ›inutul medical. Pacientul poate consulta informaÈ›iile, administra permisiunile de partajare È™i poate solicita Ã®nchiderea contului, Ã®n condiÈ›iile descrise Ã®n Politica de confidenÈ›ialitate."}
               </p>
             </div>
 
             <p className="text-xs leading-5 text-gray-500">
               {isEnglish
                 ? "By continuing to use the platform, you confirm that you have read this information. This acknowledgement is not consent to optional advertising or analytics technologies."
-                : "Prin continuarea utilizării platformei confirmați că ați luat la cunoștință aceste informații. Această confirmare nu reprezintă consimțământ pentru tehnologii opționale de publicitate sau analiză."}
+                : "Prin continuarea utilizÄƒrii platformei confirmaÈ›i cÄƒ aÈ›i luat la cunoÈ™tinÈ›Äƒ aceste informaÈ›ii. AceastÄƒ confirmare nu reprezintÄƒ consimÈ›ÄƒmÃ¢nt pentru tehnologii opÈ›ionale de publicitate sau analizÄƒ."}
             </p>
           </div>
 
@@ -104,7 +107,7 @@ export default function CookieInformationBanner({
             >
               {isEnglish
                 ? "I understand"
-                : "Am înțeles"}
+                : "Am Ã®nÈ›eles"}
             </button>
 
             <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
@@ -123,7 +126,7 @@ export default function CookieInformationBanner({
               >
                 {isEnglish
                   ? "Privacy policy"
-                  : "Politica de confidențialitate"}
+                  : "Politica de confidenÈ›ialitate"}
               </Link>
             </div>
           </div>
@@ -132,3 +135,5 @@ export default function CookieInformationBanner({
     </section>
   );
 }
+
+

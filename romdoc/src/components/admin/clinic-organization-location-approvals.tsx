@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -67,7 +67,7 @@ type LocationAction = "approve" | "reject";
 const statusFilters: Array<{ value: LocationStatus; label: string }> = [
   {
     value: "pending",
-    label: "În verificare",
+    label: "ÃŽn verificare",
   },
   {
     value: "active",
@@ -91,7 +91,7 @@ function getClinicName(location: ClinicOrganizationLocation) {
   const clinic = location.clinics;
 
   if (!clinic) {
-    return "Locație indisponibilă";
+    return "LocaÈ›ie indisponibilÄƒ";
   }
 
   return getRomanianName(clinic.clinic_translations) ?? clinic.slug;
@@ -101,38 +101,38 @@ function getCityName(location: ClinicOrganizationLocation) {
   const city = location.clinics?.cities;
 
   if (!city) {
-    return "Oraș indisponibil";
+    return "OraÈ™ indisponibil";
   }
 
-  return getRomanianName(city.city_translations) ?? city.slug ?? "Oraș indisponibil";
+  return getRomanianName(city.city_translations) ?? city.slug ?? "OraÈ™ indisponibil";
 }
 
 function getLocationStatusLabel(status: string) {
   switch (status) {
     case "active":
-      return "Aprobată pentru organizație";
+      return "AprobatÄƒ pentru organizaÈ›ie";
 
     case "removed":
-      return "Respinsă / eliminată";
+      return "RespinsÄƒ / eliminatÄƒ";
 
     default:
-      return "În verificare";
+      return "ÃŽn verificare";
   }
 }
 
 function getClinicPublicStatusLabel(status: string) {
   switch (status) {
     case "approved":
-      return "Apare pe hartă";
+      return "Apare pe hartÄƒ";
 
     case "blocked":
-      return "Blocată";
+      return "BlocatÄƒ";
 
     case "rejected":
-      return "Respinsă";
+      return "RespinsÄƒ";
 
     default:
-      return "Nu apare încă pe hartă";
+      return "Nu apare Ã®ncÄƒ pe hartÄƒ";
   }
 }
 
@@ -154,7 +154,7 @@ function getStatusClasses(status: string) {
 
 function formatDate(value: string | null) {
   if (!value) {
-    return "—";
+    return "â€”";
   }
 
   return new Intl.DateTimeFormat("ro-RO", {
@@ -205,7 +205,7 @@ export default function ClinicOrganizationLocationApprovals() {
 
       if (!response.ok) {
         throw new Error(
-          result.error ?? "Locațiile organizațiilor nu au putut fi încărcate."
+          result.error ?? "LocaÈ›iile organizaÈ›iilor nu au putut fi Ã®ncÄƒrcate."
         );
       }
 
@@ -214,7 +214,7 @@ export default function ClinicOrganizationLocationApprovals() {
       setError(
         loadError instanceof Error
           ? loadError.message
-          : "Locațiile organizațiilor nu au putut fi încărcate."
+          : "LocaÈ›iile organizaÈ›iilor nu au putut fi Ã®ncÄƒrcate."
       );
       setLocations([]);
     } finally {
@@ -223,7 +223,13 @@ export default function ClinicOrganizationLocationApprovals() {
   }, [selectedStatus]);
 
   useEffect(() => {
-    void loadLocations();
+    const timerId = window.setTimeout(() => {
+      void loadLocations();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadLocations]);
 
   async function handleAction(
@@ -236,8 +242,8 @@ export default function ClinicOrganizationLocationApprovals() {
 
     const confirmation =
       action === "approve"
-        ? "Aprobi această locație pentru organizația clinicii? Clinica va deveni eligibilă pentru harta publică dacă are coordonate valide."
-        : "Respinge această locație pentru organizația clinicii?";
+        ? "Aprobi aceastÄƒ locaÈ›ie pentru organizaÈ›ia clinicii? Clinica va deveni eligibilÄƒ pentru harta publicÄƒ dacÄƒ are coordonate valide."
+        : "Respinge aceastÄƒ locaÈ›ie pentru organizaÈ›ia clinicii?";
 
     if (!window.confirm(confirmation)) {
       return;
@@ -262,16 +268,16 @@ export default function ClinicOrganizationLocationApprovals() {
       const result = (await response.json()) as ActionResponse;
 
       if (!response.ok) {
-        throw new Error(result.error ?? "Acțiunea nu a putut fi finalizată.");
+        throw new Error(result.error ?? "AcÈ›iunea nu a putut fi finalizatÄƒ.");
       }
 
-      setSuccess(result.message ?? "Acțiunea a fost finalizată.");
+      setSuccess(result.message ?? "AcÈ›iunea a fost finalizatÄƒ.");
       await loadLocations();
     } catch (actionError) {
       setError(
         actionError instanceof Error
           ? actionError.message
-          : "Acțiunea nu a putut fi finalizată."
+          : "AcÈ›iunea nu a putut fi finalizatÄƒ."
       );
     } finally {
       setActionLocationId(null);
@@ -302,31 +308,31 @@ export default function ClinicOrganizationLocationApprovals() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-gray-900">
-            Locații organizații clinică
+            LocaÈ›ii organizaÈ›ii clinicÄƒ
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-            Aprobă punctele de lucru cerute de Clinic Manager. După aprobare,
-            locația aparține organizației, poate fi folosită la asocierea
-            medicilor clinicii și devine eligibilă pentru afișarea pe harta
-            publică RomDoc.
+            AprobÄƒ punctele de lucru cerute de Clinic Manager. DupÄƒ aprobare,
+            locaÈ›ia aparÈ›ine organizaÈ›iei, poate fi folositÄƒ la asocierea
+            medicilor clinicii È™i devine eligibilÄƒ pentru afiÈ™area pe harta
+            publicÄƒ RomDoc.
           </p>
         </div>
 
         <span className="rounded-full bg-[#F0EEE9] px-3 py-1 text-sm font-semibold text-gray-700">
-          {locations.length} locații
+          {locations.length} locaÈ›ii
         </span>
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
         <label className="block">
           <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Caută
+            CautÄƒ
           </span>
           <input
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Caută clinică, organizație, oraș sau adresă"
+            placeholder="CautÄƒ clinicÄƒ, organizaÈ›ie, oraÈ™ sau adresÄƒ"
             className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900"
           />
         </label>
@@ -363,11 +369,11 @@ export default function ClinicOrganizationLocationApprovals() {
 
       {isLoading ? (
         <div className="mt-6 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-6 text-sm text-gray-600">
-          Se încarcă locațiile...
+          Se Ã®ncarcÄƒ locaÈ›iile...
         </div>
       ) : visibleLocations.length === 0 ? (
         <div className="mt-6 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-6 text-sm leading-6 text-gray-600">
-          Nu există locații în această categorie.
+          Nu existÄƒ locaÈ›ii Ã®n aceastÄƒ categorie.
         </div>
       ) : (
         <div className="mt-6 overflow-hidden rounded-xl border border-gray-200">
@@ -375,12 +381,12 @@ export default function ClinicOrganizationLocationApprovals() {
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                 <tr>
-                  <th className="px-4 py-3">Locație</th>
-                  <th className="px-4 py-3">Organizație</th>
+                  <th className="px-4 py-3">LocaÈ›ie</th>
+                  <th className="px-4 py-3">OrganizaÈ›ie</th>
                   <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Hartă publică</th>
-                  <th className="px-4 py-3">Cerută</th>
-                  <th className="px-4 py-3 text-right">Acțiuni</th>
+                  <th className="px-4 py-3">HartÄƒ publicÄƒ</th>
+                  <th className="px-4 py-3">CerutÄƒ</th>
+                  <th className="px-4 py-3 text-right">AcÈ›iuni</th>
                 </tr>
               </thead>
 
@@ -401,7 +407,7 @@ export default function ClinicOrganizationLocationApprovals() {
                         </p>
                         <p className="mt-1 text-gray-600">{getCityName(location)}</p>
                         <p className="mt-1 max-w-xs text-xs leading-5 text-gray-500">
-                          {clinic?.formatted_address ?? "Adresă indisponibilă"}
+                          {clinic?.formatted_address ?? "AdresÄƒ indisponibilÄƒ"}
                         </p>
                         {clinic?.google_maps_uri && (
                           <a
@@ -410,14 +416,14 @@ export default function ClinicOrganizationLocationApprovals() {
                             rel="noreferrer"
                             className="mt-2 inline-flex text-xs font-semibold text-[#036661] hover:underline"
                           >
-                            Deschide în Google Maps
+                            Deschide Ã®n Google Maps
                           </a>
                         )}
                       </td>
 
                       <td className="px-4 py-4 align-top">
                         <p className="font-medium text-gray-900">
-                          {organization?.name ?? "Organizație indisponibilă"}
+                          {organization?.name ?? "OrganizaÈ›ie indisponibilÄƒ"}
                         </p>
                         <p className="mt-1 text-xs text-gray-500">
                           {organization?.contact_email ?? "E-mail indisponibil"}
@@ -436,7 +442,7 @@ export default function ClinicOrganizationLocationApprovals() {
                           {getLocationStatusLabel(location.status)}
                         </span>
                         <p className="mt-2 text-xs text-gray-500">
-                          Aprobată: {formatDate(location.approved_at)}
+                          AprobatÄƒ: {formatDate(location.approved_at)}
                         </p>
                       </td>
 
@@ -451,7 +457,7 @@ export default function ClinicOrganizationLocationApprovals() {
                         <p className="mt-2 text-xs text-gray-500">
                           {clinicCoordinates
                             ? "Coordonate disponibile"
-                            : "Coordonate lipsă"}
+                            : "Coordonate lipsÄƒ"}
                         </p>
                       </td>
 
@@ -469,19 +475,19 @@ export default function ClinicOrganizationLocationApprovals() {
                               variant="secondary"
                               className="border-red-200 text-red-700 hover:bg-red-50"
                             >
-                              {isActionRunning ? "Se procesează..." : "Respinge"}
+                              {isActionRunning ? "Se proceseazÄƒ..." : "Respinge"}
                             </Button>
                             <Button
                               type="button"
                               onClick={() => handleAction(location.id, "approve")}
                               disabled={Boolean(actionLocationId)}
                             >
-                              {isActionRunning ? "Se procesează..." : "Aprobă"}
+                              {isActionRunning ? "Se proceseazÄƒ..." : "AprobÄƒ"}
                             </Button>
                           </div>
                         ) : (
                           <p className="text-right text-xs text-gray-500">
-                            Fără acțiuni
+                            FÄƒrÄƒ acÈ›iuni
                           </p>
                         )}
                       </td>
@@ -496,3 +502,4 @@ export default function ClinicOrganizationLocationApprovals() {
     </section>
   );
 }
+

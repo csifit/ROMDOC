@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -86,6 +85,8 @@ export default function PatientAppointmentLifecycle({
 }: PatientAppointmentLifecycleProps) {
   const router = useRouter();
 
+  const [currentTimestamp] =
+    useState(() => Date.now());
   const [timeline, setTimeline] =
     useState<TimelineEvent[]>([]);
   const [timelineOpen, setTimelineOpen] =
@@ -121,12 +122,13 @@ export default function PatientAppointmentLifecycle({
 
     return (
       !Number.isNaN(start.getTime()) &&
-      start.getTime() > Date.now()
+      start.getTime() > currentTimestamp
     );
   }, [
     status,
     appointmentDate,
     appointmentTime,
+    currentTimestamp,
   ]);
 
   async function loadTimeline() {
@@ -172,11 +174,16 @@ export default function PatientAppointmentLifecycle({
     }
   }
 
-  useEffect(() => {
-    if (timelineOpen) {
+  function toggleTimeline() {
+    const nextOpen =
+      !timelineOpen;
+
+    setTimelineOpen(nextOpen);
+
+    if (nextOpen) {
       void loadTimeline();
     }
-  }, [timelineOpen]);
+  }
 
   async function cancelAppointment() {
     if (!canCancel || isCancelling) {
@@ -232,9 +239,7 @@ export default function PatientAppointmentLifecycle({
       <div className="flex flex-wrap gap-3">
         <button
           type="button"
-          onClick={() =>
-            setTimelineOpen((current) => !current)
-          }
+          onClick={toggleTimeline}
           className="romdoc-button romdoc-button-secondary romdoc-button-sm"
         >
           {timelineOpen

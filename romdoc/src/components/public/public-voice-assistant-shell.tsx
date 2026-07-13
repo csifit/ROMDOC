@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import Link from "next/link";
+import Link from "@/components/public/localized-public-link";
 import {
   useCallback,
   useEffect,
@@ -108,9 +108,9 @@ function capabilityItems(
       key:
         "voice-search",
       label:
-        "Căutare de medici",
+        "CÄƒutare de medici",
       description:
-        "Căutare după specialitate, oraș și alte criterii.",
+        "CÄƒutare dupÄƒ specialitate, oraÈ™ È™i alte criterii.",
       enabled:
         capabilities
           .voiceSearch,
@@ -119,9 +119,9 @@ function capabilityItems(
       key:
         "appointment-draft",
       label:
-        "Pregătirea programării",
+        "PregÄƒtirea programÄƒrii",
       description:
-        "Completarea unei propuneri înainte de confirmarea finală.",
+        "Completarea unei propuneri Ã®nainte de confirmarea finalÄƒ.",
       enabled:
         capabilities
           .appointmentDraft,
@@ -130,9 +130,9 @@ function capabilityItems(
       key:
         "appointment-confirmation",
       label:
-        "Confirmarea programării",
+        "Confirmarea programÄƒrii",
       description:
-        "Confirmarea va necesita întotdeauna acordul explicit al pacientului.",
+        "Confirmarea va necesita Ã®ntotdeauna acordul explicit al pacientului.",
       enabled:
         capabilities
           .appointmentConfirmation,
@@ -221,10 +221,15 @@ PublicVoiceAssistantShell({
 
   useEffect(() => {
     if (!isAuthenticated) {
-      setAccessData(
-        null
-      );
-      return;
+      const timerId = window.setTimeout(() => {
+        setAccessData(
+          null
+        );
+      }, 0);
+
+      return () => {
+        window.clearTimeout(timerId);
+      };
     }
 
     async function
@@ -460,7 +465,7 @@ PublicVoiceAssistantShell({
     >
       <button
         type="button"
-        aria-label="Închide asistentul vocal"
+        aria-label="ÃŽnchide asistentul vocal"
         onClick={
           closeShell
         }
@@ -499,7 +504,7 @@ PublicVoiceAssistantShell({
                 </h2>
 
                 <span className="mt-2 inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">
-                  Interfață pregătită — conexiune vocală inactivă
+                  InterfaÈ›Äƒ pregÄƒtitÄƒ â€” conexiune vocalÄƒ inactivÄƒ
                 </span>
               </div>
             </div>
@@ -509,7 +514,7 @@ PublicVoiceAssistantShell({
               onClick={
                 closeShell
               }
-              aria-label="Închide asistentul vocal"
+              aria-label="ÃŽnchide asistentul vocal"
               className="romdoc-focus-ring rounded-xl p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
             >
               <CloseIcon />
@@ -521,14 +526,14 @@ PublicVoiceAssistantShell({
               id="romdoc-voice-assistant-description"
               className="text-sm leading-6 text-gray-600"
             >
-              Această interfață pregătește experiența viitorului
-              asistent vocal RomDoc. În etapa curentă nu
-              înregistrează, nu transmite și nu procesează sunet.
+              AceastÄƒ interfaÈ›Äƒ pregÄƒteÈ™te experienÈ›a viitorului
+              asistent vocal RomDoc. ÃŽn etapa curentÄƒ nu
+              Ã®nregistreazÄƒ, nu transmite È™i nu proceseazÄƒ sunet.
             </p>
 
             <section className="mt-6 rounded-2xl border border-[#036661]/20 bg-[#036661]/5 p-5">
               <h3 className="text-lg font-bold text-gray-900">
-                Funcții permise de configurarea curentă
+                FuncÈ›ii permise de configurarea curentÄƒ
               </h3>
 
               <ul className="mt-4 space-y-3">
@@ -560,7 +565,7 @@ PublicVoiceAssistantShell({
             <section className="mt-5 grid gap-4 sm:grid-cols-2">
               <article className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Durată maximă viitoare
+                  DuratÄƒ maximÄƒ viitoare
                 </p>
 
                 <p className="mt-2 text-2xl font-bold text-gray-900">
@@ -573,8 +578,8 @@ PublicVoiceAssistantShell({
                 </p>
 
                 <p className="mt-2 text-sm leading-6 text-gray-600">
-                  Limita este pregătită pentru controlul costurilor,
-                  dar nu este consumată în această etapă.
+                  Limita este pregÄƒtitÄƒ pentru controlul costurilor,
+                  dar nu este consumatÄƒ Ã®n aceastÄƒ etapÄƒ.
                 </p>
               </article>
 
@@ -593,7 +598,7 @@ PublicVoiceAssistantShell({
                 </p>
 
                 <p className="mt-2 text-sm leading-6 text-gray-600">
-                  Limita va fi aplicată înaintea oricărei sesiuni
+                  Limita va fi aplicatÄƒ Ã®naintea oricÄƒrei sesiuni
                   vocale reale.
                 </p>
               </article>
@@ -607,23 +612,23 @@ PublicVoiceAssistantShell({
 
                 <div>
                   <h3 className="font-bold">
-                    Limite de siguranță
+                    Limite de siguranÈ›Äƒ
                   </h3>
 
                   <ul className="mt-2 space-y-1 text-sm leading-6">
                     <li>
                       Asistentul nu va oferi diagnostice sau
-                      recomandări de tratament.
+                      recomandÄƒri de tratament.
                     </li>
 
                     <li>
-                      O programare va necesita confirmarea explicită
+                      O programare va necesita confirmarea explicitÄƒ
                       a pacientului.
                     </li>
 
                     <li>
-                      Formularul normal de căutare și programare
-                      rămâne disponibil.
+                      Formularul normal de cÄƒutare È™i programare
+                      rÄƒmÃ¢ne disponibil.
                     </li>
                   </ul>
                 </div>
@@ -632,13 +637,13 @@ PublicVoiceAssistantShell({
 
             <section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5">
               <h3 className="font-bold text-amber-950">
-                Conexiunea vocală nu este implementată încă
+                Conexiunea vocalÄƒ nu este implementatÄƒ Ã®ncÄƒ
               </h3>
 
               <p className="mt-2 text-sm leading-6 text-amber-900">
-                Acest ecran nu pornește microfonul și nu contactează
-                OpenAI. Butonul de conversație va fi adăugat numai
-                după implementarea etapelor de conectare, testare și
+                Acest ecran nu porneÈ™te microfonul È™i nu contacteazÄƒ
+                OpenAI. Butonul de conversaÈ›ie va fi adÄƒugat numai
+                dupÄƒ implementarea etapelor de conectare, testare È™i
                 control al costurilor.
               </p>
             </section>
@@ -652,7 +657,7 @@ PublicVoiceAssistantShell({
               }
               className="romdoc-button romdoc-button-muted"
             >
-              Închide
+              ÃŽnchide
             </button>
 
             <Link
@@ -662,7 +667,7 @@ PublicVoiceAssistantShell({
               }
               className="romdoc-button romdoc-button-primary"
             >
-              Continuă fără voce
+              ContinuÄƒ fÄƒrÄƒ voce
             </Link>
           </footer>
         </div>
@@ -670,3 +675,5 @@ PublicVoiceAssistantShell({
     </div>
   );
 }
+
+

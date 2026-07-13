@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "@/components/public/localized-public-link";
 
 import PublicDoctorPhoto from "@/components/public/public-doctor-photo";
 import VerifiedDoctorBadge from "@/components/public/verified-doctor-badge";
@@ -94,7 +94,7 @@ export default function HomepageDoctorCard({
 
         <p>
           <span className="font-medium text-gray-800">
-            Oraș:
+            OraÈ™:
           </span>{" "}
           {doctor.cityName}
         </p>
@@ -111,7 +111,7 @@ export default function HomepageDoctorCard({
 
         {doctor.yearsExperience !== null && (
           <span>
-            {doctor.yearsExperience} ani experiență
+            {doctor.yearsExperience} ani experienÈ›Äƒ
           </span>
         )}
 
@@ -125,11 +125,11 @@ export default function HomepageDoctorCard({
       <div className="mt-5">
         {doctor.hasOnlineAvailability ? (
           <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
-            Programări online disponibile
+            ProgramÄƒri online disponibile
           </span>
         ) : (
           <span className="inline-flex rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600">
-            Verifică disponibilitatea pe profil
+            VerificÄƒ disponibilitatea pe profil
           </span>
         )}
       </div>
@@ -146,9 +146,10 @@ export default function HomepageDoctorCard({
           href={`${profileHref}#programare`}
           className="romdoc-button romdoc-button-primary romdoc-button-full"
         >
-          Programează-te
+          ProgrameazÄƒ-te
         </Link>
       </div>
     </article>
   );
 }
+

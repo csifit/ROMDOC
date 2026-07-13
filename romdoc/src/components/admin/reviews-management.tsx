@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Button from "@/components/ui/button";
 
@@ -163,7 +163,7 @@ export default function ReviewsManagement() {
         if (!response.ok) {
           throw new Error(
             result.error ??
-              "Recenziile nu au putut fi încărcate."
+              "Recenziile nu au putut fi Ã®ncÄƒrcate."
           );
         }
 
@@ -174,7 +174,7 @@ export default function ReviewsManagement() {
         setError(
           loadError instanceof Error
             ? loadError.message
-            : "Recenziile nu au putut fi încărcate."
+            : "Recenziile nu au putut fi Ã®ncÄƒrcate."
         );
       } finally {
         setIsLoading(false);
@@ -182,7 +182,13 @@ export default function ReviewsManagement() {
     }, [selectedStatus]);
 
   useEffect(() => {
-    void loadReviews();
+    const timerId = window.setTimeout(() => {
+      void loadReviews();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadReviews]);
 
   async function moderateReview(
@@ -205,7 +211,7 @@ export default function ReviewsManagement() {
         window.prompt(
           action === "hide"
             ? "Motivul ascunderii recenziei:"
-            : "Motivul eliminării recenziei:"
+            : "Motivul eliminÄƒrii recenziei:"
         );
 
       if (
@@ -252,13 +258,13 @@ export default function ReviewsManagement() {
       if (!response.ok) {
         throw new Error(
           result.error ??
-            "Recenzia nu a putut fi actualizată."
+            "Recenzia nu a putut fi actualizatÄƒ."
         );
       }
 
       setSuccess(
         result.message ??
-          "Recenzia a fost actualizată."
+          "Recenzia a fost actualizatÄƒ."
       );
 
       await loadReviews();
@@ -266,7 +272,7 @@ export default function ReviewsManagement() {
       setError(
         actionError instanceof Error
           ? actionError.message
-          : "Recenzia nu a putut fi actualizată."
+          : "Recenzia nu a putut fi actualizatÄƒ."
       );
     } finally {
       setChangingReviewId(
@@ -346,11 +352,11 @@ export default function ReviewsManagement() {
 
       {isLoading ? (
         <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-          Se încarcă recenziile...
+          Se Ã®ncarcÄƒ recenziile...
         </div>
       ) : reviews.length === 0 ? (
         <div className="rounded-2xl border border-gray-200 bg-white p-8 text-sm text-gray-600 shadow-sm">
-          Nu există recenzii în această categorie.
+          Nu existÄƒ recenzii Ã®n aceastÄƒ categorie.
         </div>
       ) : (
         <div className="space-y-5">
@@ -403,7 +409,7 @@ export default function ReviewsManagement() {
 
                   <p className="mt-5 whitespace-pre-line text-sm leading-7 text-gray-700">
                     {review.review_text ??
-                      "Fără comentariu."}
+                      "FÄƒrÄƒ comentariu."}
                   </p>
 
                   {review.moderation_reason && (
@@ -452,7 +458,7 @@ export default function ReviewsManagement() {
             variant="danger-outline"
             size="sm"
                         >
-                          Elimină
+                          EliminÄƒ
                         </Button>
                       </>
                     )}
@@ -472,7 +478,7 @@ export default function ReviewsManagement() {
                         }
             size="sm"
                       >
-                        Republică
+                        RepublicÄƒ
                       </Button>
                     )}
                   </div>

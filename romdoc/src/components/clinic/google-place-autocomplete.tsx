@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   useCallback,
@@ -152,6 +152,8 @@ export default function GooglePlaceAutocomplete({
     );
 
   useEffect(() => {
+    const mountElement = mountRef.current;
+
     let isActive =
       true;
 
@@ -187,7 +189,7 @@ export default function GooglePlaceAutocomplete({
 
         if (!importLibrary) {
           throw new Error(
-            "Funcția Google Maps importLibrary nu este disponibilă."
+            "FuncÈ›ia Google Maps importLibrary nu este disponibilÄƒ."
           );
         }
 
@@ -217,7 +219,7 @@ export default function GooglePlaceAutocomplete({
           });
 
         autocomplete.placeholder =
-          "Caută adresa clinicii";
+          "CautÄƒ adresa clinicii";
 
         autocomplete.style.width =
           "100%";
@@ -257,7 +259,7 @@ export default function GooglePlaceAutocomplete({
 
               if (!placePrediction) {
                 throw new Error(
-                  "Google nu a returnat sugestia selectată."
+                  "Google nu a returnat sugestia selectatÄƒ."
                 );
               }
 
@@ -270,7 +272,7 @@ export default function GooglePlaceAutocomplete({
 
               if (!placeId) {
                 throw new Error(
-                  "Google nu a returnat un identificator valid pentru adresă."
+                  "Google nu a returnat un identificator valid pentru adresÄƒ."
                 );
               }
 
@@ -303,7 +305,7 @@ export default function GooglePlaceAutocomplete({
               ) {
                 throw new Error(
                   result.error ??
-                    "Adresa nu a putut fi verificată."
+                    "Adresa nu a putut fi verificatÄƒ."
                 );
               }
 
@@ -338,7 +340,7 @@ export default function GooglePlaceAutocomplete({
                 selectionError instanceof
                   Error
                   ? selectionError.message
-                  : "Adresa nu a putut fi verificată."
+                  : "Adresa nu a putut fi verificatÄƒ."
               );
             } finally {
               if (isActive) {
@@ -385,7 +387,7 @@ export default function GooglePlaceAutocomplete({
           initializationError instanceof
             Error
             ? initializationError.message
-            : "Google Places nu a putut fi încărcat."
+            : "Google Places nu a putut fi Ã®ncÄƒrcat."
         );
 
         setIsLoading(false);
@@ -414,8 +416,7 @@ export default function GooglePlaceAutocomplete({
        * Do not call replaceChildren(), because React owns the
        * surrounding component tree.
        */
-      const mountElement =
-        mountRef.current;
+      
 
       if (
         autocomplete &&
@@ -444,13 +445,13 @@ export default function GooglePlaceAutocomplete({
         </span>
 
         <span className="ml-2 text-xs text-gray-500">
-          Selectează o adresă din lista Google
+          SelecteazÄƒ o adresÄƒ din lista Google
         </span>
 
         <div className="mt-2 rounded-xl border border-gray-300 bg-white p-1">
           {isLoading && (
             <p className="px-3 py-2 text-sm text-gray-500">
-              Se încarcă Google Places...
+              Se Ã®ncarcÄƒ Google Places...
             </p>
           )}
 
@@ -467,14 +468,14 @@ export default function GooglePlaceAutocomplete({
 
       {isResolvingAddress && (
         <p className="text-sm text-gray-600">
-          Adresa este verificată...
+          Adresa este verificatÄƒ...
         </p>
       )}
 
       {selectedAddress && (
         <div className="rounded-xl border border-green-200 bg-green-50 p-4">
           <p className="text-sm font-semibold text-green-950">
-            Adresă selectată
+            AdresÄƒ selectatÄƒ
           </p>
 
           <p className="mt-1 text-sm leading-6 text-green-900">
@@ -487,7 +488,7 @@ export default function GooglePlaceAutocomplete({
           <dl className="mt-3 grid gap-2 text-xs text-green-900 sm:grid-cols-2">
             <div>
               <dt className="font-semibold">
-                Oraș
+                OraÈ™
               </dt>
 
               <dd>
@@ -500,31 +501,31 @@ export default function GooglePlaceAutocomplete({
 
             <div>
               <dt className="font-semibold">
-                Județ
+                JudeÈ›
               </dt>
 
               <dd>
                 {selectedAddress
                   .countyName ??
-                  "—"}
+                  "â€”"}
               </dd>
             </div>
 
             <div>
               <dt className="font-semibold">
-                Cod poștal
+                Cod poÈ™tal
               </dt>
 
               <dd>
                 {selectedAddress
                   .postalCode ??
-                  "—"}
+                  "â€”"}
               </dd>
             </div>
 
             <div>
               <dt className="font-semibold">
-                Țară
+                ÈšarÄƒ
               </dt>
 
               <dd>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   FormEvent,
@@ -98,8 +98,10 @@ export default function StaffCreateAppointmentForm({
       [doctorId, doctors]
     );
 
-  const clinics =
-    selectedDoctor?.clinics ?? [];
+  const clinics = useMemo(
+    () => selectedDoctor?.clinics ?? [],
+    [selectedDoctor]
+  );
 
   const [clinicId, setClinicId] =
     useState(
@@ -158,6 +160,7 @@ export default function StaffCreateAppointmentForm({
     getLocalDateString();
 
   useEffect(() => {
+    const timerId = window.setTimeout(() => {
     if (
       doctors.length === 0
     ) {
@@ -179,10 +182,16 @@ export default function StaffCreateAppointmentForm({
 
       return doctors[0]?.id ?? "";
     });
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [doctors]);
 
   useEffect(() => {
-    setClinicId((currentClinicId) => {
+    const timerId = window.setTimeout(() => {
+      setClinicId((currentClinicId) => {
       if (
         clinics.some(
           (clinic) =>
@@ -194,22 +203,36 @@ export default function StaffCreateAppointmentForm({
       }
 
       return clinics[0]?.id ?? "";
-    });
+    
+      });
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [clinics]);
 
   useEffect(() => {
-    setScheduledTime("");
-    setSelectedDurationMinutes(null);
-    setAvailableSlots([]);
-    setSlotsError("");
+    const resetTimerId = window.setTimeout(() => {
+      setScheduledTime("");
+      setSelectedDurationMinutes(null);
+      setAvailableSlots([]);
+      setSlotsError("");
+    }, 0);
 
     if (
       !doctorId ||
       !clinicId ||
       !scheduledDate
     ) {
-      setSlotsAreLoading(false);
-      return;
+      const loadingTimerId = window.setTimeout(() => {
+        setSlotsAreLoading(false);
+      }, 0);
+
+      return () => {
+        window.clearTimeout(resetTimerId);
+        window.clearTimeout(loadingTimerId);
+      };
     }
 
     const controller = new AbortController();
@@ -240,7 +263,7 @@ export default function StaffCreateAppointmentForm({
         if (!response.ok) {
           throw new Error(
             result.error ??
-              "Intervalele disponibile nu au putut fi încărcate."
+              "Intervalele disponibile nu au putut fi Ã®ncÄƒrcate."
           );
         }
 
@@ -258,7 +281,7 @@ export default function StaffCreateAppointmentForm({
         setSlotsError(
           error instanceof Error
             ? error.message
-            : "Intervalele disponibile nu au putut fi încărcate."
+            : "Intervalele disponibile nu au putut fi Ã®ncÄƒrcate."
         );
       } finally {
         if (!controller.signal.aborted) {
@@ -270,6 +293,7 @@ export default function StaffCreateAppointmentForm({
     void loadSlots();
 
     return () => {
+      window.clearTimeout(resetTimerId);
       controller.abort();
     };
   }, [clinicId, doctorId, scheduledDate]);
@@ -325,14 +349,14 @@ export default function StaffCreateAppointmentForm({
 
     if (!doctorId) {
       setErrorMessage(
-        "Selectează medicul."
+        "SelecteazÄƒ medicul."
       );
       return;
     }
 
     if (!clinicId) {
       setErrorMessage(
-        "Selectează clinica programării."
+        "SelecteazÄƒ clinica programÄƒrii."
       );
       return;
     }
@@ -361,7 +385,7 @@ export default function StaffCreateAppointmentForm({
       7
     ) {
       setErrorMessage(
-        "Introdu un număr de telefon valid."
+        "Introdu un numÄƒr de telefon valid."
       );
       return;
     }
@@ -371,7 +395,7 @@ export default function StaffCreateAppointmentForm({
       !scheduledTime
     ) {
       setErrorMessage(
-        "Selectează data și unul dintre intervalele disponibile."
+        "SelecteazÄƒ data È™i unul dintre intervalele disponibile."
       );
       return;
     }
@@ -416,20 +440,20 @@ export default function StaffCreateAppointmentForm({
       if (!response.ok) {
         setErrorMessage(
           result.error ??
-            "Programarea nu a putut fi creată."
+            "Programarea nu a putut fi creatÄƒ."
         );
         return;
       }
 
       setSuccessMessage(
-        "Programarea a fost creată și confirmată."
+        "Programarea a fost creatÄƒ È™i confirmatÄƒ."
       );
 
       if (
         result.emailSent === false
       ) {
         setWarningMessage(
-          "Programarea a fost salvată, dar e-mailul de confirmare nu a putut fi trimis."
+          "Programarea a fost salvatÄƒ, dar e-mailul de confirmare nu a putut fi trimis."
         );
       }
 
@@ -442,7 +466,7 @@ export default function StaffCreateAppointmentForm({
       );
 
       setErrorMessage(
-        "Nu s-a putut comunica cu serverul. Încearcă din nou."
+        "Nu s-a putut comunica cu serverul. ÃŽncearcÄƒ din nou."
       );
     } finally {
       setIsSubmitting(false);
@@ -455,11 +479,11 @@ export default function StaffCreateAppointmentForm({
     return (
       <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
         <h2 className="text-lg font-semibold text-amber-950">
-          Nu există medici disponibili
+          Nu existÄƒ medici disponibili
         </h2>
 
         <p className="mt-2 text-sm leading-6 text-amber-900">
-          Poți adăuga programări după ce ai o atribuire activă pentru un medic care are cel puțin o clinică aprobată.
+          PoÈ›i adÄƒuga programÄƒri dupÄƒ ce ai o atribuire activÄƒ pentru un medic care are cel puÈ›in o clinicÄƒ aprobatÄƒ.
         </p>
       </section>
     );
@@ -483,11 +507,11 @@ export default function StaffCreateAppointmentForm({
       >
         <div>
           <h2 className="text-xl font-semibold text-gray-900">
-            Adaugă o programare
+            AdaugÄƒ o programare
           </h2>
 
           <p className="mt-1 text-sm text-gray-600">
-            Creează o programare confirmată pentru unul dintre medicii pe care îi gestionezi. Ora se alege din intervalele disponibile.
+            CreeazÄƒ o programare confirmatÄƒ pentru unul dintre medicii pe care Ã®i gestionezi. Ora se alege din intervalele disponibile.
           </p>
         </div>
 
@@ -495,7 +519,7 @@ export default function StaffCreateAppointmentForm({
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F0EEE9] text-xl font-medium text-gray-800"
           aria-hidden="true"
         >
-          {isOpen ? "−" : "+"}
+          {isOpen ? "âˆ’" : "+"}
         </span>
       </button>
 
@@ -554,7 +578,7 @@ export default function StaffCreateAppointmentForm({
                   htmlFor="staff-appointment-clinic"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  Clinică
+                  ClinicÄƒ
                 </label>
 
                 <select
@@ -602,7 +626,7 @@ export default function StaffCreateAppointmentForm({
                   htmlFor="staff-appointment-source"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  Sursa programării
+                  Sursa programÄƒrii
                 </label>
 
                 <select
@@ -625,7 +649,7 @@ export default function StaffCreateAppointmentForm({
                   </option>
 
                   <option value="walk_in">
-                    Direct la clinică
+                    Direct la clinicÄƒ
                   </option>
 
                   <option value="email">
@@ -633,7 +657,7 @@ export default function StaffCreateAppointmentForm({
                   </option>
 
                   <option value="other">
-                    Altă sursă
+                    AltÄƒ sursÄƒ
                   </option>
                 </select>
               </div>
@@ -734,7 +758,7 @@ export default function StaffCreateAppointmentForm({
                   htmlFor="staff-appointment-date"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  Data programării
+                  Data programÄƒrii
                 </label>
 
                 <input
@@ -759,16 +783,16 @@ export default function StaffCreateAppointmentForm({
 
               <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
                 <p className="text-sm font-semibold text-gray-700">
-                  Ora programării
+                  Ora programÄƒrii
                 </p>
 
                 {!scheduledDate ? (
                   <p className="mt-2 text-sm text-gray-600">
-                    Selectează mai întâi data pentru a vedea intervalele disponibile.
+                    SelecteazÄƒ mai Ã®ntÃ¢i data pentru a vedea intervalele disponibile.
                   </p>
                 ) : slotsAreLoading ? (
                   <p className="mt-2 text-sm text-gray-600">
-                    Se încarcă intervalele disponibile...
+                    Se Ã®ncarcÄƒ intervalele disponibile...
                   </p>
                 ) : slotsError ? (
                   <p className="mt-2 text-sm text-red-700">
@@ -776,7 +800,7 @@ export default function StaffCreateAppointmentForm({
                   </p>
                 ) : availableSlots.length === 0 ? (
                   <p className="mt-2 text-sm text-gray-600">
-                    Nu există intervale disponibile pentru data selectată.
+                    Nu existÄƒ intervale disponibile pentru data selectatÄƒ.
                   </p>
                 ) : (
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -812,7 +836,7 @@ export default function StaffCreateAppointmentForm({
                   <p className="mt-3 text-xs text-gray-600">
                     Interval selectat: {scheduledTime}
                     {selectedDurationMinutes
-                      ? ` · ${formatSlotDuration(
+                      ? ` Â· ${formatSlotDuration(
                           selectedDurationMinutes
                         )}`
                       : ""}
@@ -826,7 +850,7 @@ export default function StaffCreateAppointmentForm({
                 htmlFor="staff-appointment-notes"
                 className="block text-sm font-medium text-gray-700"
               >
-                Observații
+                ObservaÈ›ii
               </label>
 
               <textarea
@@ -842,7 +866,7 @@ export default function StaffCreateAppointmentForm({
                 disabled={
                   isSubmitting
                 }
-                placeholder="Detalii opționale despre programare."
+                placeholder="Detalii opÈ›ionale despre programare."
                 className="mt-2 w-full resize-y rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-not-allowed disabled:opacity-60"
               />
 
@@ -893,8 +917,8 @@ export default function StaffCreateAppointmentForm({
                 }
               >
                 {isSubmitting
-                  ? "Se creează..."
-                  : "Creează programarea"}
+                  ? "Se creeazÄƒ..."
+                  : "CreeazÄƒ programarea"}
               </Button>
 
               <Button
@@ -910,7 +934,7 @@ export default function StaffCreateAppointmentForm({
                 }}
                 variant="secondary"
               >
-                Golește formularul
+                GoleÈ™te formularul
               </Button>
             </div>
           </form>
@@ -919,3 +943,5 @@ export default function StaffCreateAppointmentForm({
     </section>
   );
 }
+
+

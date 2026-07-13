@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   type FormEvent,
@@ -90,13 +90,13 @@ function getStatusLabel(
 ) {
   switch (status) {
     case "approved":
-      return "Aprobată";
+      return "AprobatÄƒ";
 
     case "pending":
-      return "În așteptare";
+      return "ÃŽn aÈ™teptare";
 
     case "rejected":
-      return "Respinsă";
+      return "RespinsÄƒ";
 
     default:
       return status;
@@ -192,7 +192,7 @@ export default function ClinicProposalForm() {
         if (!response.ok) {
           throw new Error(
             result.error ??
-              "Clinicile nu au putut fi încărcate."
+              "Clinicile nu au putut fi Ã®ncÄƒrcate."
           );
         }
 
@@ -209,7 +209,7 @@ export default function ClinicProposalForm() {
         setError(
           loadError instanceof Error
             ? loadError.message
-            : "Clinicile nu au putut fi încărcate."
+            : "Clinicile nu au putut fi Ã®ncÄƒrcate."
         );
       } finally {
         setIsLoading(false);
@@ -217,7 +217,13 @@ export default function ClinicProposalForm() {
     }, []);
 
   useEffect(() => {
-    void loadClinics();
+    const timerId = window.setTimeout(() => {
+      void loadClinics();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadClinics]);
 
   const handleAddressSelected =
@@ -263,7 +269,7 @@ export default function ClinicProposalForm() {
 
     if (!selectedAddress) {
       setError(
-        "Selectează adresa clinicii din lista Google."
+        "SelecteazÄƒ adresa clinicii din lista Google."
       );
 
       return;
@@ -316,13 +322,13 @@ export default function ClinicProposalForm() {
         if (!response.ok) {
           throw new Error(
             result.error ??
-              "Clinica nu a putut fi trimisă."
+              "Clinica nu a putut fi trimisÄƒ."
           );
         }
 
         setSuccess(
           result.message ??
-            "Clinica a fost salvată."
+            "Clinica a fost salvatÄƒ."
         );
 
         resetForm();
@@ -332,7 +338,7 @@ export default function ClinicProposalForm() {
         setError(
           submitError instanceof Error
             ? submitError.message
-            : "Clinica nu a putut fi trimisă."
+            : "Clinica nu a putut fi trimisÄƒ."
         );
       }
     });
@@ -347,13 +353,13 @@ export default function ClinicProposalForm() {
           </p>
 
           <h1 className="mt-2 text-3xl font-bold text-gray-900">
-            Propune o clinică
+            Propune o clinicÄƒ
           </h1>
 
           <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-600">
-            Caută mai întâi adresa exactă prin
+            CautÄƒ mai Ã®ntÃ¢i adresa exactÄƒ prin
             Google. Clinicile noi vor fi
-            verificate și aprobate de un
+            verificate È™i aprobate de un
             administrator RomDoc.
           </p>
         </div>
@@ -379,7 +385,7 @@ export default function ClinicProposalForm() {
                   event.target.value
                 )
               }
-              placeholder="Exemplu: Clinica Medicală Centrală"
+              placeholder="Exemplu: Clinica MedicalÄƒ CentralÄƒ"
               className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
             />
           </label>
@@ -397,7 +403,7 @@ export default function ClinicProposalForm() {
             </span>
 
             <span className="ml-2 text-xs text-gray-500">
-              Opțional
+              OpÈ›ional
             </span>
 
             <input
@@ -410,7 +416,7 @@ export default function ClinicProposalForm() {
                   event.target.value
                 )
               }
-              placeholder="Etaj, cabinet, corp de clădire"
+              placeholder="Etaj, cabinet, corp de clÄƒdire"
               className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
             />
           </label>
@@ -422,7 +428,7 @@ export default function ClinicProposalForm() {
               </span>
 
               <span className="ml-2 text-xs text-gray-500">
-                Opțional
+                OpÈ›ional
               </span>
 
               <input
@@ -445,7 +451,7 @@ export default function ClinicProposalForm() {
               </span>
 
               <span className="ml-2 text-xs text-gray-500">
-                Opțional
+                OpÈ›ional
               </span>
 
               <input
@@ -469,7 +475,7 @@ export default function ClinicProposalForm() {
             </span>
 
             <span className="ml-2 text-xs text-gray-500">
-              Opțional
+              OpÈ›ional
             </span>
 
             <input
@@ -493,7 +499,7 @@ export default function ClinicProposalForm() {
             </span>
 
             <span className="ml-2 text-xs text-gray-500">
-              Opțional
+              OpÈ›ional
             </span>
 
             <textarea
@@ -506,7 +512,7 @@ export default function ClinicProposalForm() {
                   event.target.value
                 )
               }
-              placeholder="O scurtă descriere a clinicii"
+              placeholder="O scurtÄƒ descriere a clinicii"
               className="mt-2 w-full resize-y rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
             />
           </label>
@@ -547,13 +553,13 @@ export default function ClinicProposalForm() {
 
         {isLoading ? (
           <p className="mt-4 text-sm text-gray-500">
-            Se încarcă clinicile...
+            Se Ã®ncarcÄƒ clinicile...
           </p>
         ) : linkedClinics.length ===
           0 ? (
           <p className="mt-4 text-sm text-gray-600">
-            Nu ai încă nicio clinică aprobată
-            asociată profilului tău.
+            Nu ai Ã®ncÄƒ nicio clinicÄƒ aprobatÄƒ
+            asociatÄƒ profilului tÄƒu.
           </p>
         ) : (
           <div className="mt-5 space-y-4">
@@ -573,12 +579,12 @@ export default function ClinicProposalForm() {
 
                       <p className="mt-1 text-sm text-gray-600">
                         {clinic.formatted_address ??
-                          "Adresă indisponibilă"}
+                          "AdresÄƒ indisponibilÄƒ"}
                       </p>
                     </div>
 
                     <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800">
-                      Aprobată
+                      AprobatÄƒ
                     </span>
                   </div>
 
@@ -608,7 +614,7 @@ export default function ClinicProposalForm() {
 
         {isLoading ? (
           <p className="mt-4 text-sm text-gray-500">
-            Se încarcă propunerile...
+            Se Ã®ncarcÄƒ propunerile...
           </p>
         ) : proposals.length === 0 ? (
           <p className="mt-4 text-sm text-gray-600">
@@ -632,7 +638,7 @@ export default function ClinicProposalForm() {
 
                       <p className="mt-1 text-sm text-gray-600">
                         {clinic.formatted_address ??
-                          "Adresă indisponibilă"}
+                          "AdresÄƒ indisponibilÄƒ"}
                       </p>
                     </div>
 

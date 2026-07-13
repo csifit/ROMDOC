@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "@/components/public/localized-public-link";
 
 import PublicLayout from "@/components/public/public-layout";
 import { createClient } from "@/lib/supabase/server";
@@ -102,12 +102,12 @@ export default async function SpecialtiesPage() {
             </p>
 
             <h1 className="mt-3 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
-              Toate specializările medicale
+              Toate specializÄƒrile medicale
             </h1>
 
             <p className="mt-5 max-w-3xl text-base leading-7 text-gray-600 sm:text-lg">
-              Alege specializarea medicală potrivită pentru a
-              descoperi medicii disponibili în RomDoc.
+              Alege specializarea medicalÄƒ potrivitÄƒ pentru a
+              descoperi medicii disponibili Ã®n RomDoc.
             </p>
 
             <div className="mt-7">
@@ -115,7 +115,7 @@ export default async function SpecialtiesPage() {
                 href="/#doctor-filters"
                 className="romdoc-button romdoc-button-secondary"
               >
-                Caută un medic
+                CautÄƒ un medic
               </Link>
             </div>
           </header>
@@ -129,7 +129,7 @@ export default async function SpecialtiesPage() {
                 id="specialties-title"
                 className="sr-only"
               >
-                Lista specializărilor
+                Lista specializÄƒrilor
               </h2>
 
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -147,7 +147,7 @@ export default async function SpecialtiesPage() {
                       <div className="flex items-start gap-4">
                         <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#036661]/10 text-xl text-[#036661]">
                           {specialty.icon ??
-                            "✚"}
+                            "âœš"}
                         </span>
 
                         <div className="min-w-0">
@@ -178,12 +178,12 @@ export default async function SpecialtiesPage() {
           ) : (
             <section className="mt-8 rounded-3xl border border-dashed border-gray-300 bg-white p-8 text-center shadow-sm">
               <h2 className="text-xl font-semibold text-gray-900">
-                Specializările nu sunt disponibile momentan
+                SpecializÄƒrile nu sunt disponibile momentan
               </h2>
 
               <p className="mt-3 text-sm leading-6 text-gray-600">
-                Revino în curând sau folosește formularul principal
-                de căutare.
+                Revino Ã®n curÃ¢nd sau foloseÈ™te formularul principal
+                de cÄƒutare.
               </p>
             </section>
           )}
@@ -192,3 +192,4 @@ export default async function SpecialtiesPage() {
     </PublicLayout>
   );
 }
+

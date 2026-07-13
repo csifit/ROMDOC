@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import PatientDocumentSharing from "@/components/patient/patient-document-sharing";
 
@@ -46,9 +46,9 @@ type FolderResponse = {
 const documentLabels:
   Record<DocumentType, string> = {
     consultation_note:
-      "Notă de consultație",
+      "NotÄƒ de consultaÈ›ie",
     prescription:
-      "Rețetă",
+      "ReÈ›etÄƒ",
     laboratory_result:
       "Rezultat de laborator",
     imaging_result:
@@ -56,9 +56,9 @@ const documentLabels:
     referral:
       "Trimitere",
     medical_certificate:
-      "Adeverință medicală",
+      "AdeverinÈ›Äƒ medicalÄƒ",
     discharge_summary:
-      "Scrisoare medicală",
+      "Scrisoare medicalÄƒ",
     other:
       "Alt document",
   };
@@ -199,7 +199,7 @@ export default function PatientMedicalFolder() {
         if (!response.ok) {
           throw new Error(
             payload.error ??
-              "Dosarul medical nu a putut fi încărcat."
+              "Dosarul medical nu a putut fi Ã®ncÄƒrcat."
           );
         }
 
@@ -211,7 +211,7 @@ export default function PatientMedicalFolder() {
         setError(
           loadError instanceof Error
             ? loadError.message
-            : "Dosarul medical nu a putut fi încărcat."
+            : "Dosarul medical nu a putut fi Ã®ncÄƒrcat."
         );
       } finally {
         setIsLoading(false);
@@ -219,7 +219,13 @@ export default function PatientMedicalFolder() {
     }, []);
 
   useEffect(() => {
-    void loadDocuments();
+    const timerId = window.setTimeout(() => {
+      void loadDocuments();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadDocuments]);
 
   const visibleDocuments =
@@ -303,7 +309,7 @@ export default function PatientMedicalFolder() {
       ) {
         throw new Error(
           payload.error ??
-            "Documentul nu a putut fi descărcat."
+            "Documentul nu a putut fi descÄƒrcat."
         );
       }
 
@@ -314,7 +320,7 @@ export default function PatientMedicalFolder() {
       setError(
         downloadError instanceof Error
           ? downloadError.message
-          : "Documentul nu a putut fi descărcat."
+          : "Documentul nu a putut fi descÄƒrcat."
       );
     } finally {
       setDownloadingId(
@@ -405,7 +411,7 @@ export default function PatientMedicalFolder() {
               htmlFor="folder-search"
               className="text-sm font-semibold text-gray-800"
             >
-              Caută în Dosar
+              CautÄƒ Ã®n Dosar
             </label>
 
             <input
@@ -417,7 +423,7 @@ export default function PatientMedicalFolder() {
                   event.target.value
                 )
               }
-              placeholder="Titlu, medic sau fișier"
+              placeholder="Titlu, medic sau fiÈ™ier"
               className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm"
             />
           </div>
@@ -472,7 +478,7 @@ export default function PatientMedicalFolder() {
 
       {isLoading ? (
         <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-8 text-sm text-gray-600 shadow-sm">
-          Se încarcă Dosarul medical...
+          Se Ã®ncarcÄƒ Dosarul medical...
         </div>
       ) : documents.length ===
         0 ? (
@@ -482,13 +488,13 @@ export default function PatientMedicalFolder() {
           </h2>
 
           <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-600">
-            Documentele și notele medicale adăugate de medicii tăi vor apărea aici.
+            Documentele È™i notele medicale adÄƒugate de medicii tÄƒi vor apÄƒrea aici.
           </p>
         </div>
       ) : visibleDocuments.length ===
         0 ? (
         <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-8 text-sm text-gray-600 shadow-sm">
-          Nu există documente care corespund filtrelor selectate.
+          Nu existÄƒ documente care corespund filtrelor selectate.
         </div>
       ) : (
         <div className="mt-6 grid gap-5 lg:grid-cols-2">
@@ -522,8 +528,8 @@ export default function PatientMedicalFolder() {
                     <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
                       {document.contentFormat ===
                       "text"
-                        ? "Notă"
-                        : "Fișier"}
+                        ? "NotÄƒ"
+                        : "FiÈ™ier"}
                     </span>
                   </div>
 
@@ -549,7 +555,7 @@ export default function PatientMedicalFolder() {
 
                     <div>
                       <dt className="font-medium text-gray-500">
-                        Adăugat la
+                        AdÄƒugat la
                       </dt>
                       <dd className="mt-1 text-gray-900">
                         {formatDate(
@@ -561,7 +567,7 @@ export default function PatientMedicalFolder() {
                     {appointmentDate && (
                       <div>
                         <dt className="font-medium text-gray-500">
-                          Consultație
+                          ConsultaÈ›ie
                         </dt>
                         <dd className="mt-1 text-gray-900">
                           {
@@ -575,13 +581,13 @@ export default function PatientMedicalFolder() {
                       "file" && (
                       <div>
                         <dt className="font-medium text-gray-500">
-                          Fișier
+                          FiÈ™ier
                         </dt>
                         <dd className="mt-1 break-all text-gray-900">
                           {
                             document.originalFileName
                           }
-                          {" · "}
+                          {" Â· "}
                           {formatFileSize(
                             document.fileSizeBytes
                           )}
@@ -620,8 +626,8 @@ export default function PatientMedicalFolder() {
                     >
                       {generatingPdfId ===
                       document.id
-                        ? "Se generează..."
-                        : "Descarcă nota ca PDF"}
+                        ? "Se genereazÄƒ..."
+                        : "DescarcÄƒ nota ca PDF"}
                     </button>
                   )}
 
@@ -645,8 +651,8 @@ export default function PatientMedicalFolder() {
                     >
                       {downloadingId ===
                       document.id
-                        ? "Se pregătește..."
-                        : "Descarcă documentul"}
+                        ? "Se pregÄƒteÈ™te..."
+                        : "DescarcÄƒ documentul"}
                     </button>
                   )}
                 </article>
@@ -658,3 +664,4 @@ export default function PatientMedicalFolder() {
     </section>
   );
 }
+

@@ -1,14 +1,10 @@
-import {
+﻿import {
   NextRequest,
   NextResponse,
 } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
-
-type VerificationAction =
-  | "save"
-  | "submit";
 
 type VerificationBody = {
   action?: unknown;
@@ -74,7 +70,7 @@ async function requireDoctor() {
       response: NextResponse.json(
         {
           error:
-            "Trebuie să fii autentificat.",
+            "Trebuie sÄƒ fii autentificat.",
         },
         { status: 401 }
       ),
@@ -102,7 +98,7 @@ async function requireDoctor() {
       response: NextResponse.json(
         {
           error:
-            "Nu ai permisiunea de a gestiona verificarea profesională.",
+            "Nu ai permisiunea de a gestiona verificarea profesionalÄƒ.",
         },
         { status: 403 }
       ),
@@ -194,7 +190,7 @@ export async function GET(): Promise<Response> {
     return NextResponse.json(
       {
         error:
-          "Cererea de verificare nu a putut fi încărcată.",
+          "Cererea de verificare nu a putut fi Ã®ncÄƒrcatÄƒ.",
       },
       { status: 500 }
     );
@@ -233,7 +229,7 @@ export async function GET(): Promise<Response> {
       return NextResponse.json(
         {
           error:
-            "Documentele de verificare nu au putut fi încărcate.",
+            "Documentele de verificare nu au putut fi Ã®ncÄƒrcate.",
         },
         { status: 500 }
       );
@@ -287,7 +283,7 @@ export async function PATCH(
     return NextResponse.json(
       {
         error:
-          "Acțiunea solicitată nu este validă.",
+          "AcÈ›iunea solicitatÄƒ nu este validÄƒ.",
       },
       { status: 400 }
     );
@@ -331,7 +327,7 @@ export async function PATCH(
     return NextResponse.json(
       {
         error:
-          "Codul țării trebuie să conțină două litere.",
+          "Codul È›Äƒrii trebuie sÄƒ conÈ›inÄƒ douÄƒ litere.",
       },
       { status: 400 }
     );
@@ -344,7 +340,7 @@ export async function PATCH(
     return NextResponse.json(
       {
         error:
-          "Data expirării nu este validă.",
+          "Data expirÄƒrii nu este validÄƒ.",
       },
       { status: 400 }
     );
@@ -358,7 +354,7 @@ export async function PATCH(
       return NextResponse.json(
         {
           error:
-            "Numărul de înregistrare profesională este obligatoriu.",
+            "NumÄƒrul de Ã®nregistrare profesionalÄƒ este obligatoriu.",
         },
         { status: 400 }
       );
@@ -371,7 +367,7 @@ export async function PATCH(
       return NextResponse.json(
         {
           error:
-            "Autoritatea emitentă este obligatorie.",
+            "Autoritatea emitentÄƒ este obligatorie.",
         },
         { status: 400 }
       );
@@ -407,7 +403,7 @@ export async function PATCH(
     return NextResponse.json(
       {
         error:
-          "Cererea de verificare nu a putut fi verificată.",
+          "Cererea de verificare nu a putut fi verificatÄƒ.",
       },
       { status: 500 }
     );
@@ -420,7 +416,7 @@ export async function PATCH(
     return NextResponse.json(
       {
         error:
-          "Cererea trimisă nu mai poate fi modificată.",
+          "Cererea trimisÄƒ nu mai poate fi modificatÄƒ.",
       },
       { status: 409 }
     );
@@ -509,7 +505,7 @@ export async function PATCH(
     return NextResponse.json(
       {
         error:
-          "Cererea de verificare nu a putut fi salvată.",
+          "Cererea de verificare nu a putut fi salvatÄƒ.",
       },
       { status: 500 }
     );
@@ -538,7 +534,7 @@ export async function PATCH(
       return NextResponse.json(
         {
           error:
-            "Cererea a fost salvată, dar starea publică nu a putut fi actualizată.",
+            "Cererea a fost salvatÄƒ, dar starea publicÄƒ nu a putut fi actualizatÄƒ.",
           partialSuccess: true,
           submission,
         },
@@ -552,7 +548,8 @@ export async function PATCH(
     submission,
     message:
       action === "submit"
-        ? "Cererea a fost trimisă pentru verificare."
-        : "Ciorna a fost salvată.",
+        ? "Cererea a fost trimisÄƒ pentru verificare."
+        : "Ciorna a fost salvatÄƒ.",
   });
 }
+

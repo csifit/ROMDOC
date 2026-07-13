@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   useEffect,
@@ -55,8 +55,13 @@ PublicVoiceMicrophone({
 
   useEffect(() => {
     if (!isAuthenticated) {
-      setIsAvailable(false);
-      return;
+      const timerId = window.setTimeout(() => {
+        setIsAvailable(false);
+      }, 0);
+
+      return () => {
+        window.clearTimeout(timerId);
+      };
     }
 
     const controller =
@@ -170,3 +175,4 @@ PublicVoiceMicrophone({
     </button>
   );
 }
+
