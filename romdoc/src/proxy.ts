@@ -32,29 +32,12 @@ const localeNeutralPrefixes = [
   "/forgot-password",
   "/reset-password",
   "/set-password",
-] as const;
-
-const localeNeutralPublicPaths = new Set([
-  "/contact",
   "/support",
-  "/cookies",
-  "/confidentialitate",
-  "/informatii-legale",
-  "/termeni-si-conditii",
-  "/oferta-clinici",
-]);
+] as const;
 
 function isLocaleNeutralPath(
   pathname: string
 ) {
-  if (
-    localeNeutralPublicPaths.has(
-      pathname
-    )
-  ) {
-    return true;
-  }
-
   return localeNeutralPrefixes.some(
     (prefix) =>
       pathname === prefix ||

@@ -131,7 +131,10 @@ function FooterColumn({
 }) {
   return (
     <div>
-      <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-gray-900">{title}</h2>
+      <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-gray-900">
+        {title}
+      </h2>
+
       <ul className="mt-4 space-y-3">
         {links.map((link) => (
           <li key={link.href}>
@@ -149,7 +152,8 @@ function FooterColumn({
 }
 
 export default async function PublicFooter() {
-  const locale = (await getLocale()) as AppLocale;
+  const locale =
+    (await getLocale()) as AppLocale;
   const copy = footerCopy[locale];
 
   const homeHref = getPathname({ locale, href: "/" });
@@ -157,6 +161,12 @@ export default async function PublicFooter() {
   const specialtiesHref = getPathname({ locale, href: "/specialitati" });
   const patientGuideHref = getPathname({ locale, href: "/ghid-pacienti" });
   const doctorStaffGuideHref = getPathname({ locale, href: "/ghid-medici-personal" });
+  const clinicOfferHref = getPathname({ locale, href: "/oferta-clinici" });
+  const legalInformationHref = getPathname({ locale, href: "/informatii-legale" });
+  const termsHref = getPathname({ locale, href: "/termeni-si-conditii" });
+  const privacyHref = getPathname({ locale, href: "/confidentialitate" });
+  const cookiesHref = getPathname({ locale, href: "/cookies" });
+  const contactHref = getPathname({ locale, href: "/contact" });
 
   const platformLinks: FooterLink[] = [
     { href: homeHref, label: copy.home },
@@ -169,27 +179,27 @@ export default async function PublicFooter() {
 
   const doctorLinks: FooterLink[] = [
     { href: "/register?role=doctor", label: copy.joinAsDoctor },
-    { href: "/oferta-clinici", label: copy.clinicOffer },
+    { href: clinicOfferHref, label: copy.clinicOffer },
     { href: doctorStaffGuideHref, label: copy.doctorStaffGuide },
     { href: `${doctorStaffGuideHref}#abonament`, label: copy.doctorSubscription },
     { href: "/login", label: copy.doctorSignIn },
     {
-      href: "/informatii-legale#verificare-profesionala",
+      href: `${legalInformationHref}#verificare-profesionala`,
       label: copy.professionalVerification,
     },
   ];
 
   const legalLinks: FooterLink[] = [
-    { href: "/termeni-si-conditii", label: copy.terms },
-    { href: "/confidentialitate", label: copy.privacy },
-    { href: "/cookies", label: copy.cookies },
-    { href: "/informatii-legale", label: copy.legalInformation },
+    { href: termsHref, label: copy.terms },
+    { href: privacyHref, label: copy.privacy },
+    { href: cookiesHref, label: copy.cookies },
+    { href: legalInformationHref, label: copy.legalInformation },
   ];
 
   const supportLinks: FooterLink[] = [
-    { href: "/contact", label: "Contact" },
-    { href: "/contact#suport", label: copy.support },
-    { href: "/contact#raporteaza-problema", label: copy.reportProblem },
+    { href: contactHref, label: "Contact" },
+    { href: `${contactHref}#suport-pacienti`, label: copy.support },
+    { href: `${contactHref}#probleme-tehnice`, label: copy.reportProblem },
   ];
 
   return (
@@ -213,17 +223,33 @@ export default async function PublicFooter() {
             </p>
           </div>
 
-          <FooterColumn title={copy.platform} links={platformLinks} />
-          <FooterColumn title={copy.forDoctors} links={doctorLinks} />
+          <FooterColumn
+            title={copy.platform}
+            links={platformLinks}
+          />
+
+          <FooterColumn
+            title={copy.forDoctors}
+            links={doctorLinks}
+          />
 
           <div>
-            <FooterColumn title="Legal" links={legalLinks} />
+            <FooterColumn
+              title="Legal"
+              links={legalLinks}
+            />
+
             <div className="mt-3">
-              <CookieInformationLink label={copy.cookieInformation} />
+              <CookieInformationLink
+                label={copy.cookieInformation}
+              />
             </div>
           </div>
 
-          <FooterColumn title="Contact" links={supportLinks} />
+          <FooterColumn
+            title="Contact"
+            links={supportLinks}
+          />
         </div>
 
         <div className="mt-10 flex flex-col gap-3 border-t border-gray-200 pt-6 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between">

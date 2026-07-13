@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import NextLink from "next/link";
+
 import PublicLayout from "@/components/public/public-layout";
+import {
+  Link as LocalizedLink,
+} from "@/i18n/navigation";
 
 export const metadata: Metadata = {
   title: "Contact",
@@ -103,12 +107,12 @@ export default function ContactPage() {
                   </p>
 
                   <div className="mt-6 flex flex-wrap gap-3">
-                    <Link
+                    <NextLink
                       href={option.href}
                       className="romdoc-button romdoc-button-primary romdoc-button-sm"
                     >
                       {option.buttonLabel}
-                    </Link>
+                    </NextLink>
 
                     <a
                       href={`mailto:${option.email}`}
@@ -122,19 +126,19 @@ export default function ContactPage() {
             </div>
 
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link
+              <LocalizedLink
                 href="/confidentialitate"
                 className="romdoc-button romdoc-button-secondary"
               >
                 Confidențialitate
-              </Link>
+              </LocalizedLink>
 
-              <Link
+              <LocalizedLink
                 href="/termeni-si-conditii"
                 className="romdoc-button romdoc-button-secondary"
               >
                 Termeni și condiții
-              </Link>
+              </LocalizedLink>
             </div>
           </section>
         </div>

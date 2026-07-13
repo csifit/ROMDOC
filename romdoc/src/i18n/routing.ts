@@ -56,6 +56,45 @@ export const routing =
         en: "/doctor-staff-guide",
         de: "/ratgeber-aerzte-personal",
       },
+
+      "/termeni-si-conditii": {
+        ro: "/termeni-si-conditii",
+        en: "/terms-and-conditions",
+        de:
+          "/allgemeine-geschaeftsbedingungen",
+      },
+
+      "/confidentialitate": {
+        ro: "/confidentialitate",
+        en: "/privacy-policy",
+        de: "/datenschutz",
+      },
+
+      "/cookies": {
+        ro: "/cookies",
+        en: "/cookie-policy",
+        de: "/cookie-richtlinie",
+      },
+
+      "/informatii-legale": {
+        ro: "/informatii-legale",
+        en: "/legal-information",
+        de:
+          "/rechtliche-informationen",
+      },
+
+      "/contact": {
+        ro: "/contact",
+        en: "/contact",
+        de: "/kontakt",
+      },
+
+      "/oferta-clinici": {
+        ro: "/oferta-clinici",
+        en: "/clinic-offer",
+        de:
+          "/angebot-fuer-kliniken",
+      },
     },
   });
 

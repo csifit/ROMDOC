@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import NextLink from "next/link";
 
 import PublicLayout from "@/components/public/public-layout";
+import {
+  Link as LocalizedLink,
+} from "@/i18n/navigation";
 
 export const metadata: Metadata = {
   title: "Ofertă pentru clinici | RomDoc",
@@ -64,19 +67,22 @@ export default function ClinicOfferPage() {
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link
+              <NextLink
                 href="/register?role=clinic"
                 className="romdoc-button romdoc-button-primary"
               >
                 Creați cont pentru clinică
-              </Link>
+              </NextLink>
 
-              <Link
-                href="/contact#suport-medici"
+              <LocalizedLink
+                href={{
+                  pathname: "/contact",
+                  hash: "suport-medici",
+                }}
                 className="romdoc-button romdoc-button-secondary"
               >
                 Contactați RomDoc
-              </Link>
+              </LocalizedLink>
             </div>
           </div>
         </section>
@@ -149,19 +155,22 @@ export default function ClinicOfferPage() {
                 </div>
 
                 <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
-                  <Link
+                  <NextLink
                     href="/register?role=clinic"
                     className="inline-flex items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-semibold text-[#036661] transition-colors hover:bg-[#F0EEE9]"
                   >
                     Suntem clinică
-                  </Link>
+                  </NextLink>
 
-                  <Link
-                    href="/contact#suport-medici"
+                  <LocalizedLink
+                    href={{
+                      pathname: "/contact",
+                      hash: "suport-medici",
+                    }}
                     className="inline-flex items-center justify-center rounded-xl border border-white/40 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
                   >
                     Cereți detalii
-                  </Link>
+                  </LocalizedLink>
                 </div>
               </div>
             </div>
