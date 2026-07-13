@@ -1,0 +1,17 @@
+{
+  "Locale": {
+    "romanian": "Rumänisch",
+    "english": "Englisch",
+    "german": "Deutsch"
+  },
+  "Navigation": {
+    "home": "Startseite",
+    "doctors": "Ärzte",
+    "specializations": "Fachrichtungen"
+  },
+  "HomePage": {
+    "specializationsEyebrow": "Medizinische Fachgebiete",
+    "specializationsTitle": "Fachrichtungen",
+    "allSpecializations": "Alle Fachrichtungen anzeigen"
+  }
+}
