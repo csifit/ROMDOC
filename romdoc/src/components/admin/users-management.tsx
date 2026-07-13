@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Button from "@/components/ui/button";
 
@@ -125,7 +125,7 @@ function formatDateTime(
     | null
 ) {
   if (!value) {
-    return "—";
+    return "â€”";
   }
 
   return new Intl.DateTimeFormat(
@@ -204,7 +204,7 @@ export default function UsersManagement() {
         if (!response.ok) {
           throw new Error(
             result.error ??
-              "Utilizatorii nu au putut fi încărcați."
+              "Utilizatorii nu au putut fi Ã®ncÄƒrcaÈ›i."
           );
         }
 
@@ -215,7 +215,7 @@ export default function UsersManagement() {
         setError(
           loadError instanceof Error
             ? loadError.message
-            : "Utilizatorii nu au putut fi încărcați."
+            : "Utilizatorii nu au putut fi Ã®ncÄƒrcaÈ›i."
         );
       } finally {
         setIsLoading(false);
@@ -223,7 +223,13 @@ export default function UsersManagement() {
     }, []);
 
   useEffect(() => {
-    void loadUsers();
+    const timerId = window.setTimeout(() => {
+      void loadUsers();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadUsers]);
 
   const filteredUsers =
@@ -295,7 +301,7 @@ export default function UsersManagement() {
     if (action === "block") {
       const enteredReason =
         window.prompt(
-          `Introdu motivul blocării contului ${user.email ?? getFullName(user)}:`
+          `Introdu motivul blocÄƒrii contului ${user.email ?? getFullName(user)}:`
         );
 
       if (
@@ -429,7 +435,7 @@ export default function UsersManagement() {
         <div className="grid gap-4 lg:grid-cols-[1fr_14rem_14rem]">
           <label>
             <span className="sr-only">
-              Caută utilizator
+              CautÄƒ utilizator
             </span>
 
             <input
@@ -440,14 +446,14 @@ export default function UsersManagement() {
                   event.target.value
                 )
               }
-              placeholder="Caută după nume, e-mail sau telefon..."
+              placeholder="CautÄƒ dupÄƒ nume, e-mail sau telefon..."
               className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
             />
           </label>
 
           <label>
             <span className="sr-only">
-              Filtrează după rol
+              FiltreazÄƒ dupÄƒ rol
             </span>
 
             <select
@@ -465,11 +471,11 @@ export default function UsersManagement() {
               </option>
 
               <option value="patient">
-                Pacienți
+                PacienÈ›i
               </option>
 
               <option value="doctor_applicant">
-                Candidați medici
+                CandidaÈ›i medici
               </option>
 
               <option value="doctor">
@@ -488,7 +494,7 @@ export default function UsersManagement() {
 
           <label>
             <span className="sr-only">
-              Filtrează după statut
+              FiltreazÄƒ dupÄƒ statut
             </span>
 
             <select
@@ -538,12 +544,12 @@ export default function UsersManagement() {
       <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         {isLoading ? (
           <div className="p-8 text-sm text-gray-600">
-            Se încarcă utilizatorii...
+            Se Ã®ncarcÄƒ utilizatorii...
           </div>
         ) : filteredUsers.length ===
           0 ? (
           <div className="p-8 text-sm text-gray-600">
-            Nu există utilizatori care corespund filtrelor.
+            Nu existÄƒ utilizatori care corespund filtrelor.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -567,7 +573,7 @@ export default function UsersManagement() {
                   </th>
 
                   <th className="px-5 py-4 font-semibold">
-                    Înregistrat
+                    ÃŽnregistrat
                   </th>
 
                   <th className="px-5 py-4 font-semibold">
@@ -575,7 +581,7 @@ export default function UsersManagement() {
                   </th>
 
                   <th className="px-5 py-4 text-right font-semibold">
-                    Acțiune
+                    AcÈ›iune
                   </th>
                 </tr>
               </thead>
@@ -716,11 +722,11 @@ export default function UsersManagement() {
                               size="sm"
                             >
                               {isChanging
-                                ? "Se actualizează..."
+                                ? "Se actualizeazÄƒ..."
                                 : user.account_status ===
                                     "blocked"
-                                  ? "Deblochează"
-                                  : "Blochează"}
+                                  ? "DeblocheazÄƒ"
+                                  : "BlocheazÄƒ"}
                             </Button>
                           )}
                         </td>

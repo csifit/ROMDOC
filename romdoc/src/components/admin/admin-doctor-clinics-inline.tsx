@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   useCallback,
@@ -75,7 +75,7 @@ function getCityName(clinic: Clinic) {
     )?.name ??
     city?.city_translations?.[0]?.name ??
     city?.slug ??
-    "Oraș necunoscut"
+    "OraÈ™ necunoscut"
   );
 }
 
@@ -112,7 +112,7 @@ export default function AdminDoctorClinicsInline({ doctorId }: Props) {
 
       if (!response.ok) {
         throw new Error(
-          result.error ?? "Clinicile medicului nu au putut fi încărcate."
+          result.error ?? "Clinicile medicului nu au putut fi Ã®ncÄƒrcate."
         );
       }
 
@@ -122,7 +122,7 @@ export default function AdminDoctorClinicsInline({ doctorId }: Props) {
       setError(
         loadError instanceof Error
           ? loadError.message
-          : "Clinicile medicului nu au putut fi încărcate."
+          : "Clinicile medicului nu au putut fi Ã®ncÄƒrcate."
       );
     } finally {
       setIsLoading(false);
@@ -130,7 +130,13 @@ export default function AdminDoctorClinicsInline({ doctorId }: Props) {
   }, []);
 
   useEffect(() => {
-    void loadData();
+    const timerId = window.setTimeout(() => {
+      void loadData();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadData]);
 
   const linkedClinicIds = useMemo(
@@ -180,7 +186,7 @@ export default function AdminDoctorClinicsInline({ doctorId }: Props) {
     setSuccess(null);
 
     if (!selectedClinicId) {
-      setError("Selectează o clinică.");
+      setError("SelecteazÄƒ o clinicÄƒ.");
       return;
     }
 
@@ -201,7 +207,7 @@ export default function AdminDoctorClinicsInline({ doctorId }: Props) {
 
         if (!response.ok) {
           throw new Error(
-            result.error ?? "Clinica nu a putut fi asociată."
+            result.error ?? "Clinica nu a putut fi asociatÄƒ."
           );
         }
 
@@ -215,13 +221,13 @@ export default function AdminDoctorClinicsInline({ doctorId }: Props) {
 
         setSelectedClinicId("");
         setSuccess(
-          result.message ?? "Clinica a fost asociată medicului."
+          result.message ?? "Clinica a fost asociatÄƒ medicului."
         );
       } catch (saveError) {
         setError(
           saveError instanceof Error
             ? saveError.message
-            : "Clinica nu a putut fi asociată."
+            : "Clinica nu a putut fi asociatÄƒ."
         );
       }
     });
@@ -248,7 +254,7 @@ export default function AdminDoctorClinicsInline({ doctorId }: Props) {
 
       if (!response.ok) {
         throw new Error(
-          result.error ?? "Asocierea nu a putut fi eliminată."
+          result.error ?? "Asocierea nu a putut fi eliminatÄƒ."
         );
       }
 
@@ -262,12 +268,12 @@ export default function AdminDoctorClinicsInline({ doctorId }: Props) {
         )
       );
 
-      setSuccess(result.message ?? "Asocierea a fost eliminată.");
+      setSuccess(result.message ?? "Asocierea a fost eliminatÄƒ.");
     } catch (removeError) {
       setError(
         removeError instanceof Error
           ? removeError.message
-          : "Asocierea nu a putut fi eliminată."
+          : "Asocierea nu a putut fi eliminatÄƒ."
       );
     } finally {
       setRemovingClinicId(null);
@@ -281,7 +287,7 @@ export default function AdminDoctorClinicsInline({ doctorId }: Props) {
       </h3>
 
       <p className="mt-2 text-sm leading-6 text-gray-600">
-        Adaugă sau elimină clinicile acestui medic. Sunt disponibile numai clinicile aprobate.
+        AdaugÄƒ sau eliminÄƒ clinicile acestui medic. Sunt disponibile numai clinicile aprobate.
       </p>
 
       {error ? (
@@ -298,7 +304,7 @@ export default function AdminDoctorClinicsInline({ doctorId }: Props) {
 
       {isLoading ? (
         <p className="mt-4 text-sm text-gray-600">
-          Se încarcă clinicile...
+          Se Ã®ncarcÄƒ clinicile...
         </p>
       ) : (
         <>
@@ -308,7 +314,7 @@ export default function AdminDoctorClinicsInline({ doctorId }: Props) {
               value={clinicSearch}
               onChange={(event) => setClinicSearch(event.target.value)}
               className="romdoc-focus-ring rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm"
-              placeholder="Caută clinică, oraș sau adresă"
+              placeholder="CautÄƒ clinicÄƒ, oraÈ™ sau adresÄƒ"
             />
 
             <select
@@ -316,11 +322,11 @@ export default function AdminDoctorClinicsInline({ doctorId }: Props) {
               onChange={(event) => setSelectedClinicId(event.target.value)}
               className="romdoc-focus-ring rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm"
             >
-              <option value="">Selectează clinica</option>
+              <option value="">SelecteazÄƒ clinica</option>
 
               {availableClinics.map((clinic) => (
                 <option key={clinic.id} value={clinic.id}>
-                  {getClinicName(clinic)} — {getCityName(clinic)}
+                  {getClinicName(clinic)} â€” {getCityName(clinic)}
                 </option>
               ))}
             </select>
@@ -331,14 +337,14 @@ export default function AdminDoctorClinicsInline({ doctorId }: Props) {
               onClick={addClinic}
               disabled={isSaving || !selectedClinicId}
             >
-              {isSaving ? "Se adaugă..." : "Adaugă"}
+              {isSaving ? "Se adaugÄƒ..." : "AdaugÄƒ"}
             </Button>
           </div>
 
           <div className="mt-5 space-y-3">
             {associatedClinics.length === 0 ? (
               <p className="rounded-lg border border-dashed border-gray-300 bg-white px-4 py-4 text-sm text-gray-600">
-                Medicul nu este asociat încă niciunei clinici.
+                Medicul nu este asociat Ã®ncÄƒ niciunei clinici.
               </p>
             ) : (
               associatedClinics.map((clinic) => (
@@ -369,8 +375,8 @@ export default function AdminDoctorClinicsInline({ doctorId }: Props) {
                     className="romdoc-focus-ring rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
                   >
                     {removingClinicId === clinic.id
-                      ? "Se elimină..."
-                      : "Elimină"}
+                      ? "Se eliminÄƒ..."
+                      : "EliminÄƒ"}
                   </button>
                 </div>
               ))
@@ -381,3 +387,4 @@ export default function AdminDoctorClinicsInline({ doctorId }: Props) {
     </div>
   );
 }
+

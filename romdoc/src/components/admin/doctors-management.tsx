@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -159,7 +159,7 @@ function getSpecialties(doctor: Doctor) {
 
 function formatDate(value: string | null) {
   if (!value) {
-    return "—";
+    return "â€”";
   }
 
   return new Intl.DateTimeFormat("ro-RO", {
@@ -198,13 +198,13 @@ function getAccountStatusLabel(status: string | null | undefined) {
 
 function getDoctorTypeLabel(doctor: Doctor) {
   return doctor.account_type === "clinic_sub_account"
-    ? "Medic clinică"
+    ? "Medic clinicÄƒ"
     : "Medic independent";
 }
 
 function getSubscriptionPayerLabel(doctor: Doctor) {
   return doctor.subscription_payer === "clinic"
-    ? "Clinică"
+    ? "ClinicÄƒ"
     : "Medic / Stripe";
 }
 
@@ -214,7 +214,7 @@ function getVerificationLabel(status: string) {
       return "Verificat";
 
     case "pending":
-      return "În verificare";
+      return "ÃŽn verificare";
 
     case "rejected":
       return "Respins";
@@ -229,11 +229,11 @@ function getVerificationLabel(status: string) {
 
 function getSubscriptionLabel(subscription: Subscription | null, doctor: Doctor) {
   if (doctor.subscription_payer === "clinic") {
-    return "Plătit de clinică";
+    return "PlÄƒtit de clinicÄƒ";
   }
 
   if (!subscription) {
-    return "Fără abonament";
+    return "FÄƒrÄƒ abonament";
   }
 
   switch (subscription.status) {
@@ -241,16 +241,16 @@ function getSubscriptionLabel(subscription: Subscription | null, doctor: Doctor)
       return "Activ";
 
     case "trialing":
-      return "Perioadă de probă";
+      return "PerioadÄƒ de probÄƒ";
 
     case "past_due":
-      return "Plată restantă";
+      return "PlatÄƒ restantÄƒ";
 
     case "canceled":
       return "Anulat";
 
     case "unpaid":
-      return "Neplătit";
+      return "NeplÄƒtit";
 
     case "paused":
       return "Suspendat";
@@ -288,7 +288,7 @@ export default function DoctorsManagement() {
       const result = (await response.json()) as ApiResponse;
 
       if (!response.ok) {
-        throw new Error(result.error ?? "Medicii nu au putut fi încărcați.");
+        throw new Error(result.error ?? "Medicii nu au putut fi Ã®ncÄƒrcaÈ›i.");
       }
 
       setDoctors(result.doctors ?? []);
@@ -296,7 +296,7 @@ export default function DoctorsManagement() {
       setError(
         loadError instanceof Error
           ? loadError.message
-          : "Medicii nu au putut fi încărcați."
+          : "Medicii nu au putut fi Ã®ncÄƒrcaÈ›i."
       );
     } finally {
       setIsLoading(false);
@@ -304,7 +304,13 @@ export default function DoctorsManagement() {
   }, []);
 
   useEffect(() => {
-    void loadDoctors();
+    const timerId = window.setTimeout(() => {
+      void loadDoctors();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadDoctors]);
 
   const filteredDoctors = useMemo(() => {
@@ -378,9 +384,9 @@ export default function DoctorsManagement() {
 
   async function updateDoctorStatus(doctor: Doctor, nextStatus: "active" | "suspended") {
     const confirmed = window.confirm(
-      `Schimbi statutul medicului ${getDoctorName(doctor)} în „${getDoctorStatusLabel(
+      `Schimbi statutul medicului ${getDoctorName(doctor)} Ã®n â€ž${getDoctorStatusLabel(
         nextStatus
-      )}”?`
+      )}â€?`
     );
 
     if (!confirmed) {
@@ -430,9 +436,9 @@ export default function DoctorsManagement() {
     nextStatus: "active" | "suspended" | "blocked"
   ) {
     const confirmed = window.confirm(
-      `Schimbi statutul contului ${getDoctorName(doctor)} în „${getAccountStatusLabel(
+      `Schimbi statutul contului ${getDoctorName(doctor)} Ã®n â€ž${getAccountStatusLabel(
         nextStatus
-      )}”?`
+      )}â€?`
     );
 
     if (!confirmed) {
@@ -479,7 +485,7 @@ export default function DoctorsManagement() {
 
   async function verifyDoctor(doctor: Doctor) {
     const registrationNumber = window.prompt(
-      "Introdu numărul de înregistrare profesională:",
+      "Introdu numÄƒrul de Ã®nregistrare profesionalÄƒ:",
       doctor.professional_registration_number ?? ""
     );
 
@@ -488,7 +494,7 @@ export default function DoctorsManagement() {
     }
 
     const expiry = window.prompt(
-      "Data expirării verificării, în format YYYY-MM-DD. Lasă necompletat dacă nu expiră:",
+      "Data expirÄƒrii verificÄƒrii, Ã®n format YYYY-MM-DD. LasÄƒ necompletat dacÄƒ nu expirÄƒ:",
       doctor.verification_expires_at
         ? doctor.verification_expires_at.slice(0, 10)
         : ""
@@ -534,7 +540,7 @@ export default function DoctorsManagement() {
 
   async function removeVerification(doctor: Doctor) {
     const confirmed = window.confirm(
-      "Elimini verificarea profesională a acestui medic?"
+      "Elimini verificarea profesionalÄƒ a acestui medic?"
     );
 
     if (!confirmed) {
@@ -559,16 +565,16 @@ export default function DoctorsManagement() {
       const result = (await response.json()) as ApiResponse;
 
       if (!response.ok) {
-        throw new Error(result.error ?? "Verificarea nu a putut fi eliminată.");
+        throw new Error(result.error ?? "Verificarea nu a putut fi eliminatÄƒ.");
       }
 
-      setSuccess(result.message ?? "Verificarea a fost eliminată.");
+      setSuccess(result.message ?? "Verificarea a fost eliminatÄƒ.");
       await loadDoctors();
     } catch (actionError) {
       setError(
         actionError instanceof Error
           ? actionError.message
-          : "Verificarea nu a putut fi eliminată."
+          : "Verificarea nu a putut fi eliminatÄƒ."
       );
     } finally {
       setChangingDoctorId(null);
@@ -583,7 +589,7 @@ export default function DoctorsManagement() {
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Caută după nume, e-mail, specialitate, clinică sau slug..."
+            placeholder="CautÄƒ dupÄƒ nume, e-mail, specialitate, clinicÄƒ sau slug..."
             className="rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
           />
 
@@ -621,10 +627,10 @@ export default function DoctorsManagement() {
           >
             <option value="all">Toate abonamentele</option>
             <option value="active">Abonament activ</option>
-            <option value="trialing">Perioadă de probă</option>
-            <option value="past_due">Plată restantă</option>
+            <option value="trialing">PerioadÄƒ de probÄƒ</option>
+            <option value="past_due">PlatÄƒ restantÄƒ</option>
             <option value="canceled">Anulat</option>
-            <option value="none">Fără abonament</option>
+            <option value="none">FÄƒrÄƒ abonament</option>
           </select>
 
           <select
@@ -632,9 +638,9 @@ export default function DoctorsManagement() {
             onChange={(event) => setPayerFilter(event.target.value as PayerFilter)}
             className="rounded-xl border border-gray-300 bg-white px-4 py-3"
           >
-            <option value="all">Toți plătitorii</option>
+            <option value="all">ToÈ›i plÄƒtitorii</option>
             <option value="doctor">Medic</option>
-            <option value="clinic">Clinică</option>
+            <option value="clinic">ClinicÄƒ</option>
           </select>
 
           <select
@@ -644,12 +650,12 @@ export default function DoctorsManagement() {
             }
             className="rounded-xl border border-gray-300 bg-white px-4 py-3"
           >
-            <option value="all">Toate verificările</option>
-            <option value="verified">Verificați</option>
-            <option value="pending">În verificare</option>
+            <option value="all">Toate verificÄƒrile</option>
+            <option value="verified">VerificaÈ›i</option>
+            <option value="pending">ÃŽn verificare</option>
             <option value="not_submitted">Nedepus</option>
-            <option value="rejected">Respinși</option>
-            <option value="expired">Expirați</option>
+            <option value="rejected">RespinÈ™i</option>
+            <option value="expired">ExpiraÈ›i</option>
           </select>
         </div>
       </section>
@@ -668,10 +674,10 @@ export default function DoctorsManagement() {
 
       <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         {isLoading ? (
-          <div className="p-8 text-sm text-gray-600">Se încarcă medicii...</div>
+          <div className="p-8 text-sm text-gray-600">Se Ã®ncarcÄƒ medicii...</div>
         ) : filteredDoctors.length === 0 ? (
           <div className="p-8 text-sm text-gray-600">
-            Nu există medici care corespund filtrelor.
+            Nu existÄƒ medici care corespund filtrelor.
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
@@ -699,7 +705,7 @@ export default function DoctorsManagement() {
                       </p>
                       {doctor.clinic_organization_name && (
                         <p className="mt-1 text-xs text-gray-600">
-                          Organizație: {doctor.clinic_organization_name}
+                          OrganizaÈ›ie: {doctor.clinic_organization_name}
                         </p>
                       )}
                       {specialties.length > 0 && (
@@ -729,7 +735,7 @@ export default function DoctorsManagement() {
 
                     <div>
                       <p className="text-xs font-semibold uppercase text-gray-500">
-                        Plătitor
+                        PlÄƒtitor
                       </p>
                       <p className="mt-1 font-semibold text-gray-900">
                         {getSubscriptionPayerLabel(doctor)}
@@ -747,7 +753,7 @@ export default function DoctorsManagement() {
                       variant="secondary"
                       size="sm"
                     >
-                      {expanded ? "Închide" : "Detalii"}
+                      {expanded ? "ÃŽnchide" : "Detalii"}
                     </Button>
                   </div>
 
@@ -756,16 +762,16 @@ export default function DoctorsManagement() {
                       <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
                         <div>
                           <p className="text-xs font-semibold uppercase text-gray-500">
-                            Verificare profesională
+                            Verificare profesionalÄƒ
                           </p>
                           <p className="mt-1 font-semibold text-gray-900">
                             {getVerificationLabel(doctor.verification_status)}
                           </p>
                           <p className="mt-1 text-xs text-gray-500">
-                            Număr: {doctor.professional_registration_number ?? "—"}
+                            NumÄƒr: {doctor.professional_registration_number ?? "â€”"}
                           </p>
                           <p className="mt-1 text-xs text-gray-500">
-                            Expiră: {formatDate(doctor.verification_expires_at)}
+                            ExpirÄƒ: {formatDate(doctor.verification_expires_at)}
                           </p>
                         </div>
 
@@ -812,15 +818,15 @@ export default function DoctorsManagement() {
                             </dd>
                           </div>
                           <div>
-                            <dt className="text-xs text-gray-500">Plătitor abonament</dt>
+                            <dt className="text-xs text-gray-500">PlÄƒtitor abonament</dt>
                             <dd className="mt-1 font-medium">
                               {getSubscriptionPayerLabel(doctor)}
                             </dd>
                           </div>
                           <div>
-                            <dt className="text-xs text-gray-500">Organizație clinică</dt>
+                            <dt className="text-xs text-gray-500">OrganizaÈ›ie clinicÄƒ</dt>
                             <dd className="mt-1 font-medium">
-                              {doctor.clinic_organization_name ?? "—"}
+                              {doctor.clinic_organization_name ?? "â€”"}
                             </dd>
                           </div>
                           <div>
@@ -831,20 +837,20 @@ export default function DoctorsManagement() {
                                 : doctor.subscription
                                   ? "Lunar"
                                   : doctor.subscription_payer === "clinic"
-                                    ? "Acoperit de clinică"
-                                    : "—"}
+                                    ? "Acoperit de clinicÄƒ"
+                                    : "â€”"}
                             </dd>
                           </div>
                           <div>
                             <dt className="text-xs text-gray-500">Status Stripe</dt>
                             <dd className="mt-1 font-medium">
                               {doctor.subscription_payer === "clinic"
-                                ? "N/A clinică"
-                                : doctor.subscription?.status ?? "—"}
+                                ? "N/A clinicÄƒ"
+                                : doctor.subscription?.status ?? "â€”"}
                             </dd>
                           </div>
                           <div>
-                            <dt className="text-xs text-gray-500">Sfârșit perioadă</dt>
+                            <dt className="text-xs text-gray-500">SfÃ¢rÈ™it perioadÄƒ</dt>
                             <dd className="mt-1 font-medium">
                               {formatDate(doctor.subscription?.current_period_end ?? null)}
                             </dd>
@@ -854,8 +860,8 @@ export default function DoctorsManagement() {
 
                       <div className="mt-6 rounded-xl border border-blue-100 bg-blue-50 p-5 text-sm leading-6 text-blue-900">
                         Profilul public este responsabilitatea medicului. Completitudinea
-                        profilului este informațională și nu necesită aprobare Admin.
-                        Verificarea profesională controlează doar badge-ul RomDoc.
+                        profilului este informaÈ›ionalÄƒ È™i nu necesitÄƒ aprobare Admin.
+                        Verificarea profesionalÄƒ controleazÄƒ doar badge-ul RomDoc.
                       </div>
 
                       <AdminDoctorClinicsInline doctorId={doctor.id} />
@@ -877,7 +883,7 @@ export default function DoctorsManagement() {
                             variant="secondary"
                             size="sm"
                           >
-                            Suspendă profil
+                            SuspendÄƒ profil
                           </Button>
                         ) : (
                           <Button
@@ -886,7 +892,7 @@ export default function DoctorsManagement() {
                             onClick={() => updateDoctorStatus(doctor, "active")}
                             size="sm"
                           >
-                            Reactivează profil
+                            ReactiveazÄƒ profil
                           </Button>
                         )}
 
@@ -898,7 +904,7 @@ export default function DoctorsManagement() {
                             variant="danger-outline"
                             size="sm"
                           >
-                            Blochează cont
+                            BlocheazÄƒ cont
                           </Button>
                         ) : (
                           <Button
@@ -907,7 +913,7 @@ export default function DoctorsManagement() {
                             onClick={() => updateAccountStatus(doctor, "active")}
                             size="sm"
                           >
-                            Deblochează cont
+                            DeblocheazÄƒ cont
                           </Button>
                         )}
 
@@ -918,7 +924,7 @@ export default function DoctorsManagement() {
                             onClick={() => verifyDoctor(doctor)}
                             size="sm"
                           >
-                            Verifică profesional
+                            VerificÄƒ profesional
                           </Button>
                         ) : (
                           <Button
@@ -928,7 +934,7 @@ export default function DoctorsManagement() {
                             variant="danger-outline"
                             size="sm"
                           >
-                            Elimină verificarea
+                            EliminÄƒ verificarea
                           </Button>
                         )}
                       </div>
@@ -943,3 +949,4 @@ export default function DoctorsManagement() {
     </div>
   );
 }
+

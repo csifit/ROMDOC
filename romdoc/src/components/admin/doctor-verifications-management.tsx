@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import {
@@ -103,11 +103,11 @@ type StatusFilter =
   | "expired";
 
 const statusLabels: Record<VerificationStatus, string> = {
-  submitted: "Trimisă",
-  under_review: "În analiză",
-  verified: "Aprobată",
-  rejected: "Respinsă",
-  expired: "Expirată",
+  submitted: "TrimisÄƒ",
+  under_review: "ÃŽn analizÄƒ",
+  verified: "AprobatÄƒ",
+  rejected: "RespinsÄƒ",
+  expired: "ExpiratÄƒ",
 };
 
 const statusClasses: Record<VerificationStatus, string> = {
@@ -122,20 +122,20 @@ const documentTypeLabels: Record<string, string> = {
   identity_document: "Document de identitate",
   professional_certificate: "Certificat profesional",
   membership_certificate: "Certificat de membru",
-  practice_authorization: "Autorizație de practică",
+  practice_authorization: "AutorizaÈ›ie de practicÄƒ",
   other: "Alt document",
 };
 
 
 const auditEventLabels: Record<AuditEvent["event_type"], string> = {
-  draft_created: "Ciornă creată",
-  submitted: "Cerere trimisă",
-  review_started: "Analiză începută",
-  approved: "Verificare aprobată",
-  rejected: "Cerere respinsă",
-  expired_manual: "Verificare expirată manual",
-  expired_automatic: "Verificare expirată automat",
-  withdrawn: "Cerere retrasă",
+  draft_created: "CiornÄƒ creatÄƒ",
+  submitted: "Cerere trimisÄƒ",
+  review_started: "AnalizÄƒ Ã®nceputÄƒ",
+  approved: "Verificare aprobatÄƒ",
+  rejected: "Cerere respinsÄƒ",
+  expired_manual: "Verificare expiratÄƒ manual",
+  expired_automatic: "Verificare expiratÄƒ automat",
+  withdrawn: "Cerere retrasÄƒ",
 };
 
 function getAuditActorName(event: AuditEvent) {
@@ -162,7 +162,7 @@ function getAuditActorName(event: AuditEvent) {
 
 function formatDate(value: string | null) {
   if (!value) {
-    return "—";
+    return "â€”";
   }
 
   return new Intl.DateTimeFormat("ro-RO", {
@@ -231,7 +231,7 @@ export default function DoctorVerificationsManagement() {
 
       if (!response.ok) {
         throw new Error(
-          payload.error ?? "Cererile nu au putut fi încărcate."
+          payload.error ?? "Cererile nu au putut fi Ã®ncÄƒrcate."
         );
       }
 
@@ -251,7 +251,7 @@ export default function DoctorVerificationsManagement() {
       setError(
         loadError instanceof Error
           ? loadError.message
-          : "Cererile nu au putut fi încărcate."
+          : "Cererile nu au putut fi Ã®ncÄƒrcate."
       );
       setSubmissions([]);
       setSelectedId(null);
@@ -261,7 +261,13 @@ export default function DoctorVerificationsManagement() {
   }, [statusFilter]);
 
   useEffect(() => {
-    void loadSubmissions();
+    const timerId = window.setTimeout(() => {
+      void loadSubmissions();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadSubmissions]);
 
   async function openDocument(documentId: string) {
@@ -318,11 +324,11 @@ export default function DoctorVerificationsManagement() {
 
     const confirmations: Partial<Record<typeof action, string>> = {
       approve:
-        "Aprobi această verificare și publici insigna „Medic verificat de RomDoc”?",
+        "Aprobi aceastÄƒ verificare È™i publici insigna â€žMedic verificat de RomDocâ€?",
       reject:
-        "Respingi această cerere? Motivul va fi vizibil medicului.",
+        "Respingi aceastÄƒ cerere? Motivul va fi vizibil medicului.",
       mark_expired:
-        "Marchezi această verificare ca expirată și elimini insigna publică?",
+        "Marchezi aceastÄƒ verificare ca expiratÄƒ È™i elimini insigna publicÄƒ?",
     };
 
     const confirmation = confirmations[action];
@@ -354,15 +360,15 @@ export default function DoctorVerificationsManagement() {
 
       if (!response.ok) {
         throw new Error(
-          payload.error ?? "Verificarea nu a putut fi actualizată."
+          payload.error ?? "Verificarea nu a putut fi actualizatÄƒ."
         );
       }
 
       const successMessages = {
-        start_review: "Cererea a fost preluată pentru analiză.",
+        start_review: "Cererea a fost preluatÄƒ pentru analizÄƒ.",
         approve: "Medicul a fost verificat cu succes.",
-        reject: "Cererea a fost respinsă.",
-        mark_expired: "Verificarea a fost marcată ca expirată.",
+        reject: "Cererea a fost respinsÄƒ.",
+        mark_expired: "Verificarea a fost marcatÄƒ ca expiratÄƒ.",
       };
 
       setMessage(successMessages[action]);
@@ -373,7 +379,7 @@ export default function DoctorVerificationsManagement() {
       setError(
         reviewError instanceof Error
           ? reviewError.message
-          : "Verificarea nu a putut fi actualizată."
+          : "Verificarea nu a putut fi actualizatÄƒ."
       );
     } finally {
       setBusyAction(null);
@@ -402,7 +408,7 @@ export default function DoctorVerificationsManagement() {
             >
               <option value="all">Toate cererile</option>
               <option value="submitted">Trimise</option>
-              <option value="under_review">În analiză</option>
+              <option value="under_review">ÃŽn analizÄƒ</option>
               <option value="verified">Aprobate</option>
               <option value="rejected">Respinse</option>
               <option value="expired">Expirate</option>
@@ -415,7 +421,7 @@ export default function DoctorVerificationsManagement() {
             disabled={isLoading}
             className="romdoc-focus-ring rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isLoading ? "Se încarcă..." : "Reîncarcă"}
+            {isLoading ? "Se Ã®ncarcÄƒ..." : "ReÃ®ncarcÄƒ"}
           </button>
         </div>
       </div>
@@ -440,16 +446,16 @@ export default function DoctorVerificationsManagement() {
 
       {isLoading ? (
         <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-600 shadow-sm">
-          Se încarcă cererile de verificare...
+          Se Ã®ncarcÄƒ cererile de verificare...
         </div>
       ) : submissions.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900">
-            Nu există cereri în această categorie
+            Nu existÄƒ cereri Ã®n aceastÄƒ categorie
           </h2>
 
           <p className="mt-2 text-sm text-gray-600">
-            Cererile trimise de medici vor apărea aici.
+            Cererile trimise de medici vor apÄƒrea aici.
           </p>
         </div>
       ) : (
@@ -494,7 +500,7 @@ export default function DoctorVerificationsManagement() {
                   </div>
 
                   <p className="mt-3 text-xs text-gray-500">
-                    Trimisă: {formatDate(submission.submitted_at)}
+                    TrimisÄƒ: {formatDate(submission.submitted_at)}
                   </p>
                 </button>
               );
@@ -506,7 +512,7 @@ export default function DoctorVerificationsManagement() {
               <div className="flex flex-col gap-4 border-b border-gray-200 pb-6 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-[#036661]">
-                    Cerere profesională
+                    Cerere profesionalÄƒ
                   </p>
 
                   <h2 className="mt-1 text-2xl font-bold text-gray-900">
@@ -534,19 +540,19 @@ export default function DoctorVerificationsManagement() {
               <dl className="grid gap-4 sm:grid-cols-2">
                 <div className="rounded-xl bg-gray-50 p-4">
                   <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Număr profesional
+                    NumÄƒr profesional
                   </dt>
                   <dd className="mt-1 text-sm font-medium text-gray-900">
-                    {selectedSubmission.professional_registration_number || "—"}
+                    {selectedSubmission.professional_registration_number || "â€”"}
                   </dd>
                 </div>
 
                 <div className="rounded-xl bg-gray-50 p-4">
                   <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Autoritate emitentă
+                    Autoritate emitentÄƒ
                   </dt>
                   <dd className="mt-1 text-sm font-medium text-gray-900">
-                    {selectedSubmission.issuing_authority || "—"}
+                    {selectedSubmission.issuing_authority || "â€”"}
                   </dd>
                 </div>
 
@@ -555,16 +561,16 @@ export default function DoctorVerificationsManagement() {
                     Titlu profesional
                   </dt>
                   <dd className="mt-1 text-sm font-medium text-gray-900">
-                    {selectedSubmission.professional_title || "—"}
+                    {selectedSubmission.professional_title || "â€”"}
                   </dd>
                 </div>
 
                 <div className="rounded-xl bg-gray-50 p-4">
                   <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Țară / expirare
+                    ÈšarÄƒ / expirare
                   </dt>
                   <dd className="mt-1 text-sm font-medium text-gray-900">
-                    {selectedSubmission.registration_country} ·{" "}
+                    {selectedSubmission.registration_country} Â·{" "}
                     {formatDate(selectedSubmission.registration_expires_at)}
                   </dd>
                 </div>
@@ -577,7 +583,7 @@ export default function DoctorVerificationsManagement() {
 
                 {selectedSubmission.documents.length === 0 ? (
                   <p className="mt-3 rounded-xl border border-dashed border-gray-300 p-4 text-sm text-gray-600">
-                    Medicul nu a atașat documente.
+                    Medicul nu a ataÈ™at documente.
                   </p>
                 ) : (
                   <div className="mt-3 space-y-3">
@@ -593,7 +599,7 @@ export default function DoctorVerificationsManagement() {
                           <p className="mt-1 text-xs text-gray-500">
                             {documentTypeLabels[document.document_type] ??
                               "Document"}{" "}
-                            · {formatFileSize(document.file_size_bytes)}
+                            Â· {formatFileSize(document.file_size_bytes)}
                           </p>
                         </div>
 
@@ -631,13 +637,13 @@ export default function DoctorVerificationsManagement() {
                 </h3>
 
                 <p className="mt-1 text-sm text-gray-600">
-                  Acest istoric este generat de baza de date și nu poate fi
-                  modificat din interfața de administrare.
+                  Acest istoric este generat de baza de date È™i nu poate fi
+                  modificat din interfaÈ›a de administrare.
                 </p>
 
                 {selectedSubmission.audit_events.length === 0 ? (
                   <p className="mt-3 rounded-xl border border-dashed border-gray-300 p-4 text-sm text-gray-600">
-                    Nu există încă evenimente de audit pentru această cerere.
+                    Nu existÄƒ Ã®ncÄƒ evenimente de audit pentru aceastÄƒ cerere.
                   </p>
                 ) : (
                   <ol className="mt-4 space-y-4 border-l-2 border-gray-200 pl-5">
@@ -656,14 +662,14 @@ export default function DoctorVerificationsManagement() {
                         </p>
 
                         <p className="mt-1 text-xs text-gray-500">
-                          {getAuditActorName(event)} ·{" "}
+                          {getAuditActorName(event)} Â·{" "}
                           {formatDate(event.created_at)}
                         </p>
 
                         {event.from_status &&
                           event.from_status !== event.to_status && (
                             <p className="mt-1 text-xs text-gray-500">
-                              {event.from_status} → {event.to_status}
+                              {event.from_status} â†’ {event.to_status}
                             </p>
                           )}
                       </li>
@@ -674,7 +680,7 @@ export default function DoctorVerificationsManagement() {
 
               <section>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  Observații interne
+                  ObservaÈ›ii interne
                 </h3>
 
                 {selectedSubmission.admin_notes.length > 0 && (
@@ -688,7 +694,7 @@ export default function DoctorVerificationsManagement() {
                           {note.note}
                         </p>
                         <p className="mt-2 text-xs text-gray-500">
-                          {getAuthorName(note)} · {formatDate(note.created_at)}
+                          {getAuthorName(note)} Â· {formatDate(note.created_at)}
                         </p>
                       </div>
                     ))}
@@ -703,7 +709,7 @@ export default function DoctorVerificationsManagement() {
                     onChange={(event) => setPrivateNote(event.target.value)}
                     maxLength={5000}
                     rows={4}
-                    placeholder="Observație vizibilă numai administratorilor..."
+                    placeholder="ObservaÈ›ie vizibilÄƒ numai administratorilor..."
                     className="romdoc-focus-ring mt-3 block w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm text-gray-900"
                   />
                 )}
@@ -729,7 +735,7 @@ export default function DoctorVerificationsManagement() {
                         }
                         maxLength={2000}
                         rows={4}
-                        placeholder="Explică medicului ce informații lipsesc sau trebuie corectate."
+                        placeholder="ExplicÄƒ medicului ce informaÈ›ii lipsesc sau trebuie corectate."
                         className="romdoc-focus-ring mt-2 block w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm text-gray-900"
                       />
                     </div>
@@ -744,7 +750,7 @@ export default function DoctorVerificationsManagement() {
                       >
                         {busyAction === "start_review"
                           ? "Se preia..."
-                          : "Începe analiza"}
+                          : "ÃŽncepe analiza"}
                       </Button>
                     )}
 
@@ -756,8 +762,8 @@ export default function DoctorVerificationsManagement() {
                           disabled={Boolean(busyAction)}
                         >
                           {busyAction === "approve"
-                            ? "Se aprobă..."
-                            : "Aprobă verificarea"}
+                            ? "Se aprobÄƒ..."
+                            : "AprobÄƒ verificarea"}
                         </Button>
 
                         <button
@@ -781,8 +787,8 @@ export default function DoctorVerificationsManagement() {
                         className="romdoc-focus-ring rounded-xl border border-gray-300 px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {busyAction === "mark_expired"
-                          ? "Se actualizează..."
-                          : "Marchează expirată"}
+                          ? "Se actualizeazÄƒ..."
+                          : "MarcheazÄƒ expiratÄƒ"}
                       </button>
                     )}
                   </div>
@@ -795,3 +801,4 @@ export default function DoctorVerificationsManagement() {
     </section>
   );
 }
+

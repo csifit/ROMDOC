@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   type FormEvent,
@@ -170,7 +170,7 @@ export default function CitiesManagement() {
         if (!response.ok) {
           throw new Error(
             result.error ??
-              "Orașele nu au putut fi încărcate."
+              "OraÈ™ele nu au putut fi Ã®ncÄƒrcate."
           );
         }
 
@@ -181,7 +181,7 @@ export default function CitiesManagement() {
         setError(
           loadError instanceof Error
             ? loadError.message
-            : "Orașele nu au putut fi încărcate."
+            : "OraÈ™ele nu au putut fi Ã®ncÄƒrcate."
         );
       } finally {
         setIsLoading(false);
@@ -189,7 +189,13 @@ export default function CitiesManagement() {
     }, []);
 
   useEffect(() => {
-    void loadCities();
+    const timerId = window.setTimeout(() => {
+      void loadCities();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadCities]);
 
   const filteredCities =
@@ -345,7 +351,7 @@ export default function CitiesManagement() {
         .length < 2
     ) {
       setError(
-        "Introdu numele orașului în limba română."
+        "Introdu numele oraÈ™ului Ã®n limba romÃ¢nÄƒ."
       );
 
       return;
@@ -357,7 +363,7 @@ export default function CitiesManagement() {
         .length < 2
     ) {
       setError(
-        "Introdu numele orașului în limba engleză."
+        "Introdu numele oraÈ™ului Ã®n limba englezÄƒ."
       );
 
       return;
@@ -369,7 +375,7 @@ export default function CitiesManagement() {
       )
     ) {
       setError(
-        "Codul țării trebuie să conțină exact două litere."
+        "Codul È›Äƒrii trebuie sÄƒ conÈ›inÄƒ exact douÄƒ litere."
       );
 
       return;
@@ -417,13 +423,13 @@ export default function CitiesManagement() {
       if (!response.ok) {
         throw new Error(
           result.error ??
-            "Orașul nu a putut fi salvat."
+            "OraÈ™ul nu a putut fi salvat."
         );
       }
 
       setSuccess(
         result.message ??
-          "Orașul a fost salvat."
+          "OraÈ™ul a fost salvat."
       );
 
       setForm(emptyForm);
@@ -433,7 +439,7 @@ export default function CitiesManagement() {
       setError(
         saveError instanceof Error
           ? saveError.message
-          : "Orașul nu a putut fi salvat."
+          : "OraÈ™ul nu a putut fi salvat."
       );
     } finally {
       setIsSaving(false);
@@ -463,7 +469,7 @@ export default function CitiesManagement() {
       city.clinic_count > 0
     ) {
       setError(
-        "Orașul este asociat unor clinici și nu poate fi dezactivat."
+        "OraÈ™ul este asociat unor clinici È™i nu poate fi dezactivat."
       );
 
       return;
@@ -472,8 +478,8 @@ export default function CitiesManagement() {
     const confirmed =
       window.confirm(
         nextActive
-          ? "Reactivezi acest oraș?"
-          : "Dezactivezi acest oraș?"
+          ? "Reactivezi acest oraÈ™?"
+          : "Dezactivezi acest oraÈ™?"
       );
 
     if (!confirmed) {
@@ -538,13 +544,13 @@ export default function CitiesManagement() {
       if (!response.ok) {
         throw new Error(
           result.error ??
-            "Statutul orașului nu a putut fi actualizat."
+            "Statutul oraÈ™ului nu a putut fi actualizat."
         );
       }
 
       setSuccess(
         result.message ??
-          "Statutul orașului a fost actualizat."
+          "Statutul oraÈ™ului a fost actualizat."
       );
 
       await loadCities();
@@ -552,7 +558,7 @@ export default function CitiesManagement() {
       setError(
         toggleError instanceof Error
           ? toggleError.message
-          : "Statutul orașului nu a putut fi actualizat."
+          : "Statutul oraÈ™ului nu a putut fi actualizat."
       );
     } finally {
       setChangingCityId(
@@ -569,18 +575,18 @@ export default function CitiesManagement() {
             <p className="text-sm font-semibold text-[#036661]">
               {isEditing
                 ? "Editare"
-                : "Oraș nou"}
+                : "OraÈ™ nou"}
             </p>
 
             <h2 className="mt-2 text-2xl font-bold text-gray-900">
               {isEditing
-                ? "Editează orașul"
-                : "Adaugă un oraș"}
+                ? "EditeazÄƒ oraÈ™ul"
+                : "AdaugÄƒ un oraÈ™"}
             </h2>
 
             <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
-              Orașele sunt utilizate în directoarele SEO, în filtre și
-              pentru asocierea clinicilor cu o localitate internă RomDoc.
+              OraÈ™ele sunt utilizate Ã®n directoarele SEO, Ã®n filtre È™i
+              pentru asocierea clinicilor cu o localitate internÄƒ RomDoc.
             </p>
           </div>
 
@@ -590,7 +596,7 @@ export default function CitiesManagement() {
               onClick={resetForm}
               className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             >
-              Anulează editarea
+              AnuleazÄƒ editarea
             </button>
           )}
         </div>
@@ -602,7 +608,7 @@ export default function CitiesManagement() {
           <div className="grid gap-5 md:grid-cols-2">
             <label className="block">
               <span className="text-sm font-medium text-gray-700">
-                Nume în română
+                Nume Ã®n romÃ¢nÄƒ
               </span>
 
               <input
@@ -632,14 +638,14 @@ export default function CitiesManagement() {
                     );
                   }
                 }}
-                placeholder="Exemplu: Timișoara"
+                placeholder="Exemplu: TimiÈ™oara"
                 className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
               />
             </label>
 
             <label className="block">
               <span className="text-sm font-medium text-gray-700">
-                Nume în engleză
+                Nume Ã®n englezÄƒ
               </span>
 
               <input
@@ -687,7 +693,7 @@ export default function CitiesManagement() {
 
             <label className="block">
               <span className="text-sm font-medium text-gray-700">
-                Cod țară
+                Cod È›arÄƒ
               </span>
 
               <input
@@ -716,7 +722,7 @@ export default function CitiesManagement() {
               />
 
               <p className="mt-2 text-xs text-gray-500">
-                Cod ISO din două litere. Pentru România folosește RO.
+                Cod ISO din douÄƒ litere. Pentru RomÃ¢nia foloseÈ™te RO.
               </p>
             </label>
           </div>
@@ -728,7 +734,7 @@ export default function CitiesManagement() {
               </span>
 
               <span className="ml-2 text-xs text-gray-500">
-                Opțional
+                OpÈ›ional
               </span>
 
               <input
@@ -755,7 +761,7 @@ export default function CitiesManagement() {
               </span>
 
               <span className="ml-2 text-xs text-gray-500">
-                Opțional
+                OpÈ›ional
               </span>
 
               <input
@@ -801,10 +807,10 @@ export default function CitiesManagement() {
             className="rounded-xl bg-[#036661] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#ff2800] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSaving
-              ? "Se salvează..."
+              ? "Se salveazÄƒ..."
               : isEditing
-                ? "Salvează modificările"
-                : "Adaugă orașul"}
+                ? "SalveazÄƒ modificÄƒrile"
+                : "AdaugÄƒ oraÈ™ul"}
           </button>
         </form>
       </section>
@@ -813,18 +819,18 @@ export default function CitiesManagement() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">
-              Lista orașelor
+              Lista oraÈ™elor
             </h2>
 
             <p className="mt-2 text-sm text-gray-600">
-              {cities.length} orașe înregistrate.
+              {cities.length} oraÈ™e Ã®nregistrate.
             </p>
           </div>
 
           <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
             <label className="w-full sm:w-52">
               <span className="sr-only">
-                Filtrează după status
+                FiltreazÄƒ dupÄƒ status
               </span>
 
               <select
@@ -838,7 +844,7 @@ export default function CitiesManagement() {
                 className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
               >
                 <option value="all">
-                  Toate orașele
+                  Toate oraÈ™ele
                 </option>
 
                 <option value="active">
@@ -853,7 +859,7 @@ export default function CitiesManagement() {
 
             <label className="w-full sm:w-80">
               <span className="sr-only">
-                Caută oraș
+                CautÄƒ oraÈ™
               </span>
 
               <input
@@ -864,7 +870,7 @@ export default function CitiesManagement() {
                     event.target.value
                   )
                 }
-                placeholder="Caută după nume, slug sau țară..."
+                placeholder="CautÄƒ dupÄƒ nume, slug sau È›arÄƒ..."
                 className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
               />
             </label>
@@ -873,12 +879,12 @@ export default function CitiesManagement() {
 
         {isLoading ? (
           <p className="mt-6 text-sm text-gray-600">
-            Se încarcă orașele...
+            Se Ã®ncarcÄƒ oraÈ™ele...
           </p>
         ) : filteredCities.length ===
           0 ? (
           <p className="mt-6 rounded-xl bg-gray-50 p-5 text-sm text-gray-600">
-            Nu există orașe care corespund filtrelor selectate.
+            Nu existÄƒ oraÈ™e care corespund filtrelor selectate.
           </p>
         ) : (
           <div className="mt-6 overflow-x-auto">
@@ -886,11 +892,11 @@ export default function CitiesManagement() {
               <thead>
                 <tr className="text-gray-500">
                   <th className="px-4 py-3 font-semibold">
-                    Oraș
+                    OraÈ™
                   </th>
 
                   <th className="px-4 py-3 font-semibold">
-                    Engleză
+                    EnglezÄƒ
                   </th>
 
                   <th className="px-4 py-3 font-semibold">
@@ -898,7 +904,7 @@ export default function CitiesManagement() {
                   </th>
 
                   <th className="px-4 py-3 font-semibold">
-                    Țară
+                    ÈšarÄƒ
                   </th>
 
                   <th className="px-4 py-3 font-semibold">
@@ -914,7 +920,7 @@ export default function CitiesManagement() {
                   </th>
 
                   <th className="px-4 py-3 text-right font-semibold">
-                    Acțiuni
+                    AcÈ›iuni
                   </th>
                 </tr>
               </thead>
@@ -946,13 +952,13 @@ export default function CitiesManagement() {
                         <td className="px-4 py-4">
                           <p className="font-semibold text-gray-900">
                             {ro?.name ??
-                              "—"}
+                              "â€”"}
                           </p>
                         </td>
 
                         <td className="px-4 py-4 text-gray-700">
                           {en?.name ??
-                            "—"}
+                            "â€”"}
                         </td>
 
                         <td className="px-4 py-4 font-mono text-xs text-gray-600">
@@ -986,7 +992,7 @@ export default function CitiesManagement() {
                               </span>
                             </>
                           ) : (
-                            "—"
+                            "â€”"
                           )}
                         </td>
 
@@ -1021,7 +1027,7 @@ export default function CitiesManagement() {
                               }
                               className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
                             >
-                              Editează
+                              EditeazÄƒ
                             </button>
 
                             <button
@@ -1041,10 +1047,10 @@ export default function CitiesManagement() {
                               }`}
                             >
                               {isChanging
-                                ? "Se actualizează..."
+                                ? "Se actualizeazÄƒ..."
                                 : city.is_active
-                                  ? "Dezactivează"
-                                  : "Activează"}
+                                  ? "DezactiveazÄƒ"
+                                  : "ActiveazÄƒ"}
                             </button>
                           </div>
                         </td>

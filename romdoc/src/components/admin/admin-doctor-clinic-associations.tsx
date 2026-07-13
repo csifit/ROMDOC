@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import Button from "@/components/ui/button";
@@ -82,7 +82,7 @@ function cityName(clinic: Clinic) {
     city?.city_translations?.find((item) => item.locale === "ro")?.name ??
     city?.city_translations?.[0]?.name ??
     city?.slug ??
-    "Oraș necunoscut"
+    "OraÈ™ necunoscut"
   );
 }
 
@@ -117,19 +117,25 @@ export default function AdminDoctorClinicAssociations() {
         cache: "no-store",
       });
       const result = (await response.json()) as ApiResponse;
-      if (!response.ok) throw new Error(result.error ?? "Datele nu au putut fi încărcate.");
+      if (!response.ok) throw new Error(result.error ?? "Datele nu au putut fi Ã®ncÄƒrcate.");
       setDoctors(result.doctors ?? []);
       setClinics(result.clinics ?? []);
       setLinks(result.links ?? []);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Datele nu au putut fi încărcate.");
+      setError(cause instanceof Error ? cause.message : "Datele nu au putut fi Ã®ncÄƒrcate.");
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    void loadData();
+    const timerId = window.setTimeout(() => {
+      void loadData();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadData]);
 
   const filteredDoctors = useMemo(() => {
@@ -164,7 +170,7 @@ export default function AdminDoctorClinicAssociations() {
     setSuccess(null);
 
     if (!doctorId || !clinicId) {
-      setError("Selectează un medic și o clinică.");
+      setError("SelecteazÄƒ un medic È™i o clinicÄƒ.");
       return;
     }
 
@@ -176,7 +182,7 @@ export default function AdminDoctorClinicAssociations() {
           body: JSON.stringify({ doctorId, clinicId }),
         });
         const result = (await response.json()) as ApiResponse;
-        if (!response.ok) throw new Error(result.error ?? "Asocierea nu a putut fi salvată.");
+        if (!response.ok) throw new Error(result.error ?? "Asocierea nu a putut fi salvatÄƒ.");
         setLinks((current) =>
           current.some((link) => link.doctor_id === doctorId && link.clinic_id === clinicId)
             ? current
@@ -185,7 +191,7 @@ export default function AdminDoctorClinicAssociations() {
         setClinicId("");
         setSuccess(result.message ?? "Medicul a fost asociat clinicii.");
       } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Asocierea nu a putut fi salvată.");
+        setError(cause instanceof Error ? cause.message : "Asocierea nu a putut fi salvatÄƒ.");
       }
     });
   }
@@ -202,13 +208,13 @@ export default function AdminDoctorClinicAssociations() {
         body: JSON.stringify({ doctorId, clinicId: clinicIdToRemove }),
       });
       const result = (await response.json()) as ApiResponse;
-      if (!response.ok) throw new Error(result.error ?? "Asocierea nu a putut fi eliminată.");
+      if (!response.ok) throw new Error(result.error ?? "Asocierea nu a putut fi eliminatÄƒ.");
       setLinks((current) =>
         current.filter((link) => !(link.doctor_id === doctorId && link.clinic_id === clinicIdToRemove))
       );
-      setSuccess(result.message ?? "Asocierea a fost eliminată.");
+      setSuccess(result.message ?? "Asocierea a fost eliminatÄƒ.");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Asocierea nu a putut fi eliminată.");
+      setError(cause instanceof Error ? cause.message : "Asocierea nu a putut fi eliminatÄƒ.");
     } finally {
       setRemoving(null);
     }
@@ -217,16 +223,16 @@ export default function AdminDoctorClinicAssociations() {
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
       <p className="text-sm font-semibold text-[#9A4F35]">Asocieri</p>
-      <h2 className="mt-2 text-2xl font-bold text-gray-900">Asociază medici cu clinici</h2>
+      <h2 className="mt-2 text-2xl font-bold text-gray-900">AsociazÄƒ medici cu clinici</h2>
       <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-        Un medic poate lucra în mai multe clinici, iar o clinică poate avea mai mulți medici.
+        Un medic poate lucra Ã®n mai multe clinici, iar o clinicÄƒ poate avea mai mulÈ›i medici.
       </p>
 
       {error ? <p className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
       {success ? <p className="mt-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{success}</p> : null}
 
       {isLoading ? (
-        <p className="mt-6 text-sm text-gray-600">Se încarcă...</p>
+        <p className="mt-6 text-sm text-gray-600">Se Ã®ncarcÄƒ...</p>
       ) : (
         <div className="mt-7 grid gap-7 xl:grid-cols-2">
           <div className="space-y-5">
@@ -234,7 +240,7 @@ export default function AdminDoctorClinicAssociations() {
               type="search"
               value={doctorSearch}
               onChange={(event) => setDoctorSearch(event.target.value)}
-              placeholder="Caută medicul"
+              placeholder="CautÄƒ medicul"
               className="romdoc-focus-ring w-full rounded-xl border border-gray-300 px-4 py-3"
             />
 
@@ -246,10 +252,10 @@ export default function AdminDoctorClinicAssociations() {
               }}
               className="romdoc-focus-ring w-full rounded-xl border border-gray-300 bg-white px-4 py-3"
             >
-              <option value="">Selectează medicul</option>
+              <option value="">SelecteazÄƒ medicul</option>
               {filteredDoctors.map((doctor) => (
                 <option key={doctor.id} value={doctor.id}>
-                  {doctorName(doctor)} — {doctorTitle(doctor)}
+                  {doctorName(doctor)} â€” {doctorTitle(doctor)}
                 </option>
               ))}
             </select>
@@ -258,7 +264,7 @@ export default function AdminDoctorClinicAssociations() {
               type="search"
               value={clinicSearch}
               onChange={(event) => setClinicSearch(event.target.value)}
-              placeholder="Caută clinica după nume, oraș sau adresă"
+              placeholder="CautÄƒ clinica dupÄƒ nume, oraÈ™ sau adresÄƒ"
               className="romdoc-focus-ring w-full rounded-xl border border-gray-300 px-4 py-3"
             />
 
@@ -268,22 +274,22 @@ export default function AdminDoctorClinicAssociations() {
               disabled={!doctorId}
               className="romdoc-focus-ring w-full rounded-xl border border-gray-300 bg-white px-4 py-3 disabled:bg-gray-100"
             >
-              <option value="">{doctorId ? "Selectează clinica" : "Selectează mai întâi medicul"}</option>
+              <option value="">{doctorId ? "SelecteazÄƒ clinica" : "SelecteazÄƒ mai Ã®ntÃ¢i medicul"}</option>
               {availableClinics.map((clinic) => (
                 <option key={clinic.id} value={clinic.id}>
-                  {clinicName(clinic)} — {cityName(clinic)}
+                  {clinicName(clinic)} â€” {cityName(clinic)}
                 </option>
               ))}
             </select>
 
             <Button type="button" onClick={associate} disabled={isSaving || !doctorId || !clinicId}>
-              {isSaving ? "Se asociază..." : "Asociază medicul cu clinica"}
+              {isSaving ? "Se asociazÄƒ..." : "AsociazÄƒ medicul cu clinica"}
             </Button>
           </div>
 
           <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
             <h3 className="text-lg font-bold text-gray-900">Clinici asociate</h3>
-            {!doctorId ? <p className="mt-3 text-sm text-gray-600">Selectează un medic.</p> : null}
+            {!doctorId ? <p className="mt-3 text-sm text-gray-600">SelecteazÄƒ un medic.</p> : null}
             {doctorId && associatedClinics.length === 0 ? (
               <p className="mt-3 text-sm text-gray-600">Medicul nu are clinici asociate.</p>
             ) : null}
@@ -300,7 +306,7 @@ export default function AdminDoctorClinicAssociations() {
                     disabled={removing === clinic.id}
                     className="romdoc-focus-ring mt-3 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
                   >
-                    {removing === clinic.id ? "Se elimină..." : "Elimină asocierea"}
+                    {removing === clinic.id ? "Se eliminÄƒ..." : "EliminÄƒ asocierea"}
                   </button>
                 </div>
               ))}
@@ -311,3 +317,4 @@ export default function AdminDoctorClinicAssociations() {
     </section>
   );
 }
+

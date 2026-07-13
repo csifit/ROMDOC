@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   useCallback,
@@ -72,7 +72,7 @@ type SmsAdminResponse = {
 
 function formatDate(value: string | null) {
   if (!value) {
-    return "—";
+    return "â€”";
   }
 
   return new Intl.DateTimeFormat("ro-RO", {
@@ -110,7 +110,7 @@ function normalizeForSearch(value: string) {
 
 function paymentStatusLabel(status: string) {
   if (status === "paid") {
-    return "Plătit";
+    return "PlÄƒtit";
   }
 
   if (status === "checkout_open") {
@@ -118,7 +118,7 @@ function paymentStatusLabel(status: string) {
   }
 
   if (status === "failed") {
-    return "Eșuat";
+    return "EÈ™uat";
   }
 
   if (status === "cancelled") {
@@ -129,19 +129,19 @@ function paymentStatusLabel(status: string) {
     return "Rambursat";
   }
 
-  return "Neplătit";
+  return "NeplÄƒtit";
 }
 
 function sagaStatusLabel(status: string) {
   if (status === "issued") {
-    return "Emisă";
+    return "EmisÄƒ";
   }
 
   if (status === "cancelled") {
-    return "Anulată";
+    return "AnulatÄƒ";
   }
 
-  return "Neemisă";
+  return "NeemisÄƒ";
 }
 
 export default function AdminSmsControlPanel() {
@@ -175,7 +175,7 @@ export default function AdminSmsControlPanel() {
 
       if (!response.ok) {
         throw new Error(
-          result.error ?? "Setările SMS nu au putut fi încărcate."
+          result.error ?? "SetÄƒrile SMS nu au putut fi Ã®ncÄƒrcate."
         );
       }
 
@@ -187,7 +187,7 @@ export default function AdminSmsControlPanel() {
       setError(
         loadError instanceof Error
           ? loadError.message
-          : "Setările SMS nu au putut fi încărcate."
+          : "SetÄƒrile SMS nu au putut fi Ã®ncÄƒrcate."
       );
     } finally {
       setIsLoading(false);
@@ -195,7 +195,13 @@ export default function AdminSmsControlPanel() {
   }, []);
 
   useEffect(() => {
-    void loadData();
+    const timerId = window.setTimeout(() => {
+      void loadData();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [loadData]);
 
   const filteredCounters = useMemo(() => {
@@ -323,17 +329,17 @@ export default function AdminSmsControlPanel() {
 
       if (!response.ok || !result.settings) {
         throw new Error(
-          result.error ?? "Setările SMS nu au putut fi salvate."
+          result.error ?? "SetÄƒrile SMS nu au putut fi salvate."
         );
       }
 
       setSettings(result.settings);
-      setSuccess(result.message ?? "Setările SMS au fost salvate.");
+      setSuccess(result.message ?? "SetÄƒrile SMS au fost salvate.");
     } catch (saveError) {
       setError(
         saveError instanceof Error
           ? saveError.message
-          : "Setările SMS nu au putut fi salvate."
+          : "SetÄƒrile SMS nu au putut fi salvate."
       );
     } finally {
       setIsSaving(false);
@@ -344,7 +350,7 @@ export default function AdminSmsControlPanel() {
     const invoiceReference = (invoiceReferences[counter.doctorId] ?? "").trim();
 
     if (!invoiceReference) {
-      setError("Introdu referința facturii înainte de marcare.");
+      setError("Introdu referinÈ›a facturii Ã®nainte de marcare.");
       setSuccess("");
       return;
     }
@@ -399,7 +405,7 @@ export default function AdminSmsControlPanel() {
       (sagaReferences[period.id] ?? period.saga_invoice_reference ?? "").trim();
 
     if (!invoiceReference) {
-      setError("Introdu referința facturii SAGA înainte de salvare.");
+      setError("Introdu referinÈ›a facturii SAGA Ã®nainte de salvare.");
       setSuccess("");
       return;
     }
@@ -425,11 +431,11 @@ export default function AdminSmsControlPanel() {
 
       if (!response.ok) {
         throw new Error(
-          result.error ?? "Referința SAGA nu a putut fi salvată."
+          result.error ?? "ReferinÈ›a SAGA nu a putut fi salvatÄƒ."
         );
       }
 
-      setSuccess(result.message ?? "Referința SAGA a fost salvată.");
+      setSuccess(result.message ?? "ReferinÈ›a SAGA a fost salvatÄƒ.");
       setSagaReferences((current) => ({
         ...current,
         [period.id]: "",
@@ -439,7 +445,7 @@ export default function AdminSmsControlPanel() {
       setError(
         saveError instanceof Error
           ? saveError.message
-          : "Referința SAGA nu a putut fi salvată."
+          : "ReferinÈ›a SAGA nu a putut fi salvatÄƒ."
       );
     } finally {
       setSavingSagaPeriodId(null);
@@ -463,7 +469,7 @@ export default function AdminSmsControlPanel() {
   if (isLoading) {
     return (
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <p className="text-sm text-gray-600">Se încarcă setările SMS...</p>
+        <p className="text-sm text-gray-600">Se Ã®ncarcÄƒ setÄƒrile SMS...</p>
       </section>
     );
   }
@@ -485,7 +491,7 @@ export default function AdminSmsControlPanel() {
             </h2>
 
             <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-              Activează sau oprește notificările SMS pentru confirmări și reamintiri cu 24 de ore înainte. Programările nu trebuie să eșueze dacă trimiterea SMS nu reușește.
+              ActiveazÄƒ sau opreÈ™te notificÄƒrile SMS pentru confirmÄƒri È™i reamintiri cu 24 de ore Ã®nainte. ProgramÄƒrile nu trebuie sÄƒ eÈ™ueze dacÄƒ trimiterea SMS nu reuÈ™eÈ™te.
             </p>
           </div>
 
@@ -495,7 +501,7 @@ export default function AdminSmsControlPanel() {
             disabled={isSaving || Boolean(invoicingDoctorId) || Boolean(savingSagaPeriodId)}
             className="romdoc-focus-ring rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Reîncarcă
+            ReÃ®ncarcÄƒ
           </button>
         </div>
 
@@ -524,7 +530,7 @@ export default function AdminSmsControlPanel() {
                 <div>
                   <p className="font-semibold text-gray-900">Master SMS switch</p>
                   <p className="mt-2 text-sm leading-6 text-gray-600">
-                    Oprește sau pornește toate SMS-urile RomDoc.
+                    OpreÈ™te sau porneÈ™te toate SMS-urile RomDoc.
                   </p>
                 </div>
                 <input
@@ -542,9 +548,9 @@ export default function AdminSmsControlPanel() {
             <label className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="font-semibold text-gray-900">Confirmări SMS</p>
+                  <p className="font-semibold text-gray-900">ConfirmÄƒri SMS</p>
                   <p className="mt-2 text-sm leading-6 text-gray-600">
-                    Trimite SMS când o programare este confirmată.
+                    Trimite SMS cÃ¢nd o programare este confirmatÄƒ.
                   </p>
                 </div>
                 <input
@@ -564,7 +570,7 @@ export default function AdminSmsControlPanel() {
                 <div>
                   <p className="font-semibold text-gray-900">Reamintire 24h SMS</p>
                   <p className="mt-2 text-sm leading-6 text-gray-600">
-                    Trimite SMS cu aproximativ 24 de ore înainte de programare.
+                    Trimite SMS cu aproximativ 24 de ore Ã®nainte de programare.
                   </p>
                 </div>
                 <input
@@ -582,7 +588,7 @@ export default function AdminSmsControlPanel() {
         ) : null}
 
         <p className="mt-5 text-xs leading-5 text-gray-500">
-          Provider configurat: SMSLink. Pentru producție sunt necesare variabilele de mediu SMSLINK_CONNECTION_ID și SMSLINK_PASSWORD.
+          Provider configurat: SMSLink. Pentru producÈ›ie sunt necesare variabilele de mediu SMSLINK_CONNECTION_ID È™i SMSLINK_PASSWORD.
         </p>
       </section>
 
@@ -593,7 +599,7 @@ export default function AdminSmsControlPanel() {
               Facturare SMS / SAGA
             </h2>
             <p className="mt-2 text-sm leading-6 text-gray-600">
-              Monitorizează soldurile SMS plătite/neplătite și salvează referința facturii fiscale emise în SAGA.
+              MonitorizeazÄƒ soldurile SMS plÄƒtite/neplÄƒtite È™i salveazÄƒ referinÈ›a facturii fiscale emise Ã®n SAGA.
             </p>
           </div>
 
@@ -602,7 +608,7 @@ export default function AdminSmsControlPanel() {
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Caută medic sau slug"
+              placeholder="CautÄƒ medic sau slug"
               className="romdoc-focus-ring rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-950"
             />
 
@@ -611,10 +617,10 @@ export default function AdminSmsControlPanel() {
               onChange={(event) => setBillingStatusFilter(event.target.value)}
               className="romdoc-focus-ring rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-950"
             >
-              <option value="open">Solduri neplătite</option>
-              <option value="paid">Plătite</option>
-              <option value="saga_missing">Fără factură SAGA</option>
-              <option value="saga_issued">Cu factură SAGA</option>
+              <option value="open">Solduri neplÄƒtite</option>
+              <option value="paid">PlÄƒtite</option>
+              <option value="saga_missing">FÄƒrÄƒ facturÄƒ SAGA</option>
+              <option value="saga_issued">Cu facturÄƒ SAGA</option>
               <option value="all">Toate perioadele</option>
             </select>
           </div>
@@ -622,11 +628,11 @@ export default function AdminSmsControlPanel() {
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-xl bg-amber-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Sold neplătit</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Sold neplÄƒtit</p>
             <p className="mt-1 text-2xl font-bold text-amber-900">{formatMoney(billingTotals.unpaidMinor, currency)}</p>
           </div>
           <div className="rounded-xl bg-emerald-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Plătit</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">PlÄƒtit</p>
             <p className="mt-1 text-2xl font-bold text-emerald-900">{formatMoney(billingTotals.paidMinor, currency)}</p>
           </div>
           <div className="rounded-xl bg-blue-50 p-4">
@@ -634,7 +640,7 @@ export default function AdminSmsControlPanel() {
             <p className="mt-1 text-2xl font-bold text-blue-900">{billingTotals.periods}</p>
           </div>
           <div className="rounded-xl bg-red-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-red-700">Fără SAGA</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-red-700">FÄƒrÄƒ SAGA</p>
             <p className="mt-1 text-2xl font-bold text-red-900">{billingTotals.sagaMissing}</p>
           </div>
         </div>
@@ -642,17 +648,17 @@ export default function AdminSmsControlPanel() {
         <div className="mt-6 overflow-hidden rounded-2xl border border-gray-200">
           <div className="hidden grid-cols-[1.5fr_0.9fr_0.7fr_0.9fr_0.9fr_0.9fr_1.4fr] gap-3 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 lg:grid">
             <span>Medic</span>
-            <span>Perioadă</span>
+            <span>PerioadÄƒ</span>
             <span>SMS</span>
             <span>Total</span>
-            <span>Plată</span>
+            <span>PlatÄƒ</span>
             <span>SAGA</span>
-            <span>Referință SAGA</span>
+            <span>ReferinÈ›Äƒ SAGA</span>
           </div>
 
           {filteredBillingPeriods.length === 0 ? (
             <div className="px-4 py-6 text-sm text-gray-600">
-              Nu există perioade de facturare pentru filtrul selectat.
+              Nu existÄƒ perioade de facturare pentru filtrul selectat.
             </div>
           ) : (
             <div className="divide-y divide-gray-200">
@@ -670,7 +676,7 @@ export default function AdminSmsControlPanel() {
                       <p className="font-semibold text-gray-900">{period.doctorName}</p>
                       <p className="text-xs text-gray-500">{period.slug}</p>
                     </div>
-                    <p><span className="font-semibold lg:hidden">Perioadă: </span>{formatPeriod(period.period_start)}</p>
+                    <p><span className="font-semibold lg:hidden">PerioadÄƒ: </span>{formatPeriod(period.period_start)}</p>
                     <p><span className="font-semibold lg:hidden">SMS: </span>{period.sms_count}</p>
                     <p><span className="font-semibold lg:hidden">Total: </span>{formatMoney(period.gross_amount_minor, period.currency)}</p>
                     <div>
@@ -701,7 +707,7 @@ export default function AdminSmsControlPanel() {
                         disabled={isSavingSaga}
                         className="romdoc-focus-ring w-full rounded-lg bg-[#036661] px-3 py-2 text-xs font-semibold text-white hover:bg-[#024d49] disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600"
                       >
-                        {isSavingSaga ? "Se salvează..." : "Salvează SAGA"}
+                        {isSavingSaga ? "Se salveazÄƒ..." : "SalveazÄƒ SAGA"}
                       </button>
                     </div>
                   </div>
@@ -719,7 +725,7 @@ export default function AdminSmsControlPanel() {
               Counter SMS pe medic
             </h2>
             <p className="mt-2 text-sm leading-6 text-gray-600">
-              Preț configurat: {formatMoney(unitPrice, currency)} / SMS trimis + TVA. Doar SMS-urile trimise cu succes sunt marcate ca facturabile.
+              PreÈ› configurat: {formatMoney(unitPrice, currency)} / SMS trimis + TVA. Doar SMS-urile trimise cu succes sunt marcate ca facturabile.
             </p>
           </div>
 
@@ -728,12 +734,12 @@ export default function AdminSmsControlPanel() {
             onChange={(event) => setStatusFilter(event.target.value)}
             className="romdoc-focus-ring rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-950 lg:w-[260px]"
           >
-            <option value="all">Toți medicii</option>
+            <option value="all">ToÈ›i medicii</option>
             <option value="sent">Cu SMS trimise</option>
             <option value="uninvoiced">Cu SMS nefacturate</option>
             <option value="invoiced">Cu SMS facturate</option>
-            <option value="failed">Cu SMS eșuate</option>
-            <option value="zero">Fără SMS</option>
+            <option value="failed">Cu SMS eÈ™uate</option>
+            <option value="zero">FÄƒrÄƒ SMS</option>
           </select>
         </div>
 
@@ -755,11 +761,11 @@ export default function AdminSmsControlPanel() {
             <p className="mt-1 text-2xl font-bold text-emerald-900">{totals.invoiced}</p>
           </div>
           <div className="rounded-xl bg-amber-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Valoare nefacturată</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Valoare nefacturatÄƒ</p>
             <p className="mt-1 text-2xl font-bold text-amber-900">{formatMoney(totals.estimatedUninvoicedMinor, currency)}</p>
           </div>
           <div className="rounded-xl bg-red-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-red-700">Eșuate</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-red-700">EÈ™uate</p>
             <p className="mt-1 text-2xl font-bold text-red-900">{totals.failed}</p>
           </div>
         </div>
@@ -768,7 +774,7 @@ export default function AdminSmsControlPanel() {
           <div className="hidden grid-cols-[1.8fr_0.7fr_0.7fr_0.85fr_0.85fr_1fr_0.85fr_1.5fr] gap-3 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 lg:grid">
             <span>Medic</span>
             <span>Trimise</span>
-            <span>Eșuate</span>
+            <span>EÈ™uate</span>
             <span>Nefacturate</span>
             <span>Facturate</span>
             <span>Valoare</span>
@@ -778,7 +784,7 @@ export default function AdminSmsControlPanel() {
 
           {filteredCounters.length === 0 ? (
             <div className="px-4 py-6 text-sm text-gray-600">
-              Nu există rezultate pentru filtrul selectat.
+              Nu existÄƒ rezultate pentru filtrul selectat.
             </div>
           ) : (
             <div className="divide-y divide-gray-200">
@@ -796,10 +802,10 @@ export default function AdminSmsControlPanel() {
                       <p className="text-xs text-gray-500">{counter.slug}</p>
                     </div>
                     <p><span className="font-semibold lg:hidden">Trimise: </span>{counter.sent}</p>
-                    <p><span className="font-semibold lg:hidden">Eșuate: </span>{counter.failed}</p>
+                    <p><span className="font-semibold lg:hidden">EÈ™uate: </span>{counter.failed}</p>
                     <p><span className="font-semibold lg:hidden">Nefacturate: </span>{counter.uninvoiced}</p>
                     <p><span className="font-semibold lg:hidden">Facturate: </span>{counter.invoiced}</p>
-                    <p><span className="font-semibold lg:hidden">Valoare nefacturată: </span>{formatMoney(counter.estimatedUninvoicedMinor, currency)}</p>
+                    <p><span className="font-semibold lg:hidden">Valoare nefacturatÄƒ: </span>{formatMoney(counter.estimatedUninvoicedMinor, currency)}</p>
                     <p><span className="font-semibold lg:hidden">Ultimul SMS: </span>{formatDate(counter.lastSentAt)}</p>
                     <div className="space-y-2">
                       <input
@@ -821,7 +827,7 @@ export default function AdminSmsControlPanel() {
                         disabled={!canMarkInvoiced}
                         className="romdoc-focus-ring w-full rounded-lg bg-[#036661] px-3 py-2 text-xs font-semibold text-white hover:bg-[#024d49] disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600"
                       >
-                        {isInvoicing ? "Se salvează..." : "Marchează facturat"}
+                        {isInvoicing ? "Se salveazÄƒ..." : "MarcheazÄƒ facturat"}
                       </button>
                     </div>
                   </div>
@@ -834,3 +840,4 @@ export default function AdminSmsControlPanel() {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   useCallback,
@@ -74,7 +74,7 @@ function formatDateTime(
     | null
 ) {
   if (!value) {
-    return "—";
+    return "â€”";
   }
 
   return new Intl.DateTimeFormat(
@@ -93,17 +93,17 @@ function getStatusLabel(
 ) {
   switch (status) {
     case "draft":
-      return "Ciornă";
+      return "CiornÄƒ";
     case "sent":
-      return "Trimisă";
+      return "TrimisÄƒ";
     case "accepted":
-      return "Acceptată";
+      return "AcceptatÄƒ";
     case "expired":
-      return "Expirată";
+      return "ExpiratÄƒ";
     case "cancelled":
-      return "Anulată";
+      return "AnulatÄƒ";
     case "failed":
-      return "Eșuată";
+      return "EÈ™uatÄƒ";
   }
 }
 
@@ -183,7 +183,7 @@ export default function DoctorInvitationsList({
         if (!response.ok) {
           throw new Error(
             result.error ??
-              "Invitațiile nu au putut fi încărcate."
+              "InvitaÈ›iile nu au putut fi Ã®ncÄƒrcate."
           );
         }
 
@@ -196,7 +196,7 @@ export default function DoctorInvitationsList({
           loadError instanceof
             Error
             ? loadError.message
-            : "Invitațiile nu au putut fi încărcate."
+            : "InvitaÈ›iile nu au putut fi Ã®ncÄƒrcate."
         );
       } finally {
         setIsLoading(
@@ -206,11 +206,15 @@ export default function DoctorInvitationsList({
     }, [status]);
 
   useEffect(() => {
-    void loadInvitations();
-  }, [
-    loadInvitations,
-    refreshKey,
-  ]);
+    const timerId = window.setTimeout(() => {
+      void loadInvitations();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [loadInvitations,
+    refreshKey,]);
 
   const filteredInvitations =
     useMemo(() => {
@@ -251,11 +255,11 @@ export default function DoctorInvitationsList({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h2 className="text-xl font-bold text-gray-950">
-              Istoric invitații
+              Istoric invitaÈ›ii
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-gray-600">
-              Urmărește invitațiile trimise, acceptate, expirate sau eșuate.
+              UrmÄƒreÈ™te invitaÈ›iile trimise, acceptate, expirate sau eÈ™uate.
             </p>
           </div>
 
@@ -271,7 +275,7 @@ export default function DoctorInvitationsList({
                     .value
                 )
               }
-              placeholder="Caută nume sau e-mail..."
+              placeholder="CautÄƒ nume sau e-mail..."
               className="romdoc-focus-ring rounded-xl border border-gray-300 px-4 py-3"
             />
 
@@ -299,7 +303,7 @@ export default function DoctorInvitationsList({
                 Acceptate
               </option>
               <option value="failed">
-                Eșuate
+                EÈ™uate
               </option>
               <option value="expired">
                 Expirate
@@ -323,12 +327,12 @@ export default function DoctorInvitationsList({
 
       {isLoading ? (
         <div className="p-8 text-sm text-gray-600">
-          Se încarcă invitațiile...
+          Se Ã®ncarcÄƒ invitaÈ›iile...
         </div>
       ) : filteredInvitations.length ===
         0 ? (
         <div className="p-8 text-sm text-gray-600">
-          Nu există invitații care corespund filtrelor.
+          Nu existÄƒ invitaÈ›ii care corespund filtrelor.
         </div>
       ) : (
         <div className="divide-y divide-gray-200">
@@ -383,7 +387,7 @@ export default function DoctorInvitationsList({
                         luni gratuite
                       </p>
                       <p className="mt-1 text-xs text-gray-500">
-                        Creată{" "}
+                        CreatÄƒ{" "}
                         {formatDateTime(
                           invitation.created_at
                         )}
@@ -417,11 +421,11 @@ export default function DoctorInvitationsList({
                           {invitation.locale ===
                           "en"
                             ? "English"
-                            : "Română"}
+                            : "RomÃ¢nÄƒ"}
                         </p>
                         <p>
                           <strong>
-                            Trimisă:
+                            TrimisÄƒ:
                           </strong>{" "}
                           {formatDateTime(
                             invitation.sent_at
@@ -429,7 +433,7 @@ export default function DoctorInvitationsList({
                         </p>
                         <p>
                           <strong>
-                            Expiră:
+                            ExpirÄƒ:
                           </strong>{" "}
                           {formatDateTime(
                             invitation.expires_at
@@ -437,7 +441,7 @@ export default function DoctorInvitationsList({
                         </p>
                         <p>
                           <strong>
-                            Acceptată:
+                            AcceptatÄƒ:
                           </strong>{" "}
                           {formatDateTime(
                             invitation.accepted_at
@@ -451,14 +455,14 @@ export default function DoctorInvitationsList({
                             Auth user:
                           </strong>{" "}
                           {invitation.auth_user_id ??
-                            "—"}
+                            "â€”"}
                         </p>
                         <p>
                           <strong>
                             Doctor:
                           </strong>{" "}
                           {invitation.doctor_id ??
-                            "—"}
+                            "â€”"}
                         </p>
 
                         {invitation.failure_message ? (
@@ -496,3 +500,4 @@ export default function DoctorInvitationsList({
     </section>
   );
 }
+
