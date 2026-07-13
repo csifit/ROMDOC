@@ -1,14 +1,14 @@
 ﻿"use client";
 
 import {
-  ChangeEvent,
-  FormEvent,
+  type ChangeEvent,
+  type FormEvent,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-
 type AppointmentMessageAttachment = {
   id: string;
   fileName: string;
@@ -110,7 +110,7 @@ export default function AppointmentMessages({
     [appointmentId]
   );
 
-  async function loadMessages() {
+  const loadMessages = useCallback(async () => {
     setIsLoading(true);
     setErrorMessage("");
 
@@ -141,7 +141,7 @@ export default function AppointmentMessages({
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [endpoint]);
 
   useEffect(() => {
     const timerId = window.setTimeout(() => {
@@ -459,5 +459,7 @@ export default function AppointmentMessages({
     </section>
   );
 }
+
+
 
 

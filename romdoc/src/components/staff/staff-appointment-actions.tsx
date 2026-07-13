@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   FormEvent,
@@ -67,6 +67,7 @@ export default function StaffAppointmentActions({
     useState("");
 
   useEffect(() => {
+    const timerId = window.setTimeout(() => {
     setDate(
       scheduledDate ?? requestedDate
     );
@@ -78,6 +79,11 @@ export default function StaffAppointmentActions({
     );
 
     setReason(currentReason ?? "");
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [
     currentReason,
     requestedDate,
@@ -103,7 +109,7 @@ export default function StaffAppointmentActions({
 
     if (terminalStatus) {
       setErrorMessage(
-        "Această programare este într-o stare finală și nu mai poate fi modificată."
+        "AceastÄƒ programare este Ã®ntr-o stare finalÄƒ È™i nu mai poate fi modificatÄƒ."
       );
       return;
     }
@@ -116,7 +122,7 @@ export default function StaffAppointmentActions({
       (!date || !time)
     ) {
       setErrorMessage(
-        "Selectează data și ora programării."
+        "SelecteazÄƒ data È™i ora programÄƒrii."
       );
       return;
     }
@@ -126,7 +132,7 @@ export default function StaffAppointmentActions({
       reason.trim().length < 3
     ) {
       setErrorMessage(
-        "Adaugă motivul reprogramării."
+        "AdaugÄƒ motivul reprogramÄƒrii."
       );
       return;
     }
@@ -141,10 +147,10 @@ export default function StaffAppointmentActions({
     ) {
       const label =
         action === "cancel"
-          ? "Motivul anulării — opțional:"
+          ? "Motivul anulÄƒrii â€” opÈ›ional:"
           : action === "complete"
-            ? "Notă operațională — opțional:"
-            : "Notă despre neprezentare — opțional:";
+            ? "NotÄƒ operaÈ›ionalÄƒ â€” opÈ›ional:"
+            : "NotÄƒ despre neprezentare â€” opÈ›ional:";
 
       const enteredReason =
         window.prompt(label, "");
@@ -194,15 +200,15 @@ export default function StaffAppointmentActions({
       if (!response.ok) {
         throw new Error(
           result.error ??
-            "Programarea nu a putut fi actualizată."
+            "Programarea nu a putut fi actualizatÄƒ."
         );
       }
 
       setMessage(
         result.emailSent === false
-          ? `${result.message ?? "Programarea a fost actualizată."} E-mailul pacientului nu a putut fi trimis.`
+          ? `${result.message ?? "Programarea a fost actualizatÄƒ."} E-mailul pacientului nu a putut fi trimis.`
           : result.message ??
-              "Programarea a fost actualizată."
+              "Programarea a fost actualizatÄƒ."
       );
 
       await onUpdated();
@@ -210,7 +216,7 @@ export default function StaffAppointmentActions({
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Programarea nu a putut fi actualizată."
+          : "Programarea nu a putut fi actualizatÄƒ."
       );
     } finally {
       setIsSaving(false);
@@ -244,7 +250,7 @@ export default function StaffAppointmentActions({
   if (terminalStatus) {
     return (
       <div className="mt-6 rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
-        Programarea este închisă și nu mai poate fi modificată.
+        Programarea este Ã®nchisÄƒ È™i nu mai poate fi modificatÄƒ.
       </div>
     );
   }
@@ -265,7 +271,7 @@ export default function StaffAppointmentActions({
               htmlFor={`staff-scheduled-date-${appointmentId}`}
               className="block text-sm font-medium text-gray-700"
             >
-              Data confirmată
+              Data confirmatÄƒ
             </label>
 
             <input
@@ -286,7 +292,7 @@ export default function StaffAppointmentActions({
               htmlFor={`staff-scheduled-time-${appointmentId}`}
               className="block text-sm font-medium text-gray-700"
             >
-              Ora confirmată
+              Ora confirmatÄƒ
             </label>
 
             <input
@@ -307,7 +313,7 @@ export default function StaffAppointmentActions({
             htmlFor={`staff-reschedule-reason-${appointmentId}`}
             className="block text-sm font-medium text-gray-700"
           >
-            Motivul reprogramării
+            Motivul reprogramÄƒrii
           </label>
 
           <textarea
@@ -318,7 +324,7 @@ export default function StaffAppointmentActions({
             onChange={(event) =>
               setReason(event.target.value)
             }
-            placeholder="Completează acest câmp dacă modifici data sau ora."
+            placeholder="CompleteazÄƒ acest cÃ¢mp dacÄƒ modifici data sau ora."
             className="romdoc-focus-ring mt-2 w-full resize-y rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900"
           />
         </div>
@@ -347,10 +353,10 @@ export default function StaffAppointmentActions({
             disabled={isSaving}
           >
             {isSaving
-              ? "Se salvează..."
+              ? "Se salveazÄƒ..."
               : currentStatus === "pending"
-                ? "Confirmă programarea"
-                : "Salvează data și ora"}
+                ? "ConfirmÄƒ programarea"
+                : "SalveazÄƒ data È™i ora"}
           </Button>
 
           <Button
@@ -363,7 +369,7 @@ export default function StaffAppointmentActions({
             }
             variant="secondary"
           >
-            Marchează finalizată
+            MarcheazÄƒ finalizatÄƒ
           </Button>
 
           <Button
@@ -376,7 +382,7 @@ export default function StaffAppointmentActions({
             }
             variant="secondary"
           >
-            Marchează neprezentare
+            MarcheazÄƒ neprezentare
           </Button>
 
           <Button
@@ -389,10 +395,11 @@ export default function StaffAppointmentActions({
             }
             variant="danger-outline"
           >
-            Anulează
+            AnuleazÄƒ
           </Button>
         </div>
       </form>
     </div>
   );
 }
+
