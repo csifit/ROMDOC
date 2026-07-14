@@ -1,13 +1,17 @@
 import { cache } from "react";
+import { getLocale } from "next-intl/server";
 
 import {
   getLegalPageDefinition,
+  normalizeLegalLocale,
   type LegalPageKey,
+  type LegalLocale,
 } from "@/lib/legal/legal-pages";
 import { createClient } from "@/lib/supabase/server";
 
 export type PublicLegalPage = {
   pageKey: LegalPageKey;
+  locale: LegalLocale;
   title: string;
   route: string;
   eyebrow: string;
@@ -19,89 +23,55 @@ export type PublicLegalPage = {
 
 type LegalPageRow = {
   page_key: string;
+  locale: string;
   title: string;
   content: string;
   updated_at: string;
 };
 
-export const getPublicLegalPage = cache(
-  async (
-    key: LegalPageKey
-  ): Promise<PublicLegalPage> => {
-    const definition =
-      getLegalPageDefinition(key);
+export const getPublicLegalPage = cache(async (key: LegalPageKey): Promise<PublicLegalPage> => {
+  const locale = normalizeLegalLocale(await getLocale());
+  const definition = getLegalPageDefinition(key, locale);
 
-    try {
-      const supabase =
-        await createClient();
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("legal_pages")
+      .select("page_key, locale, title, content, updated_at")
+      .eq("page_key", key)
+      .in("locale", locale === "ro" ? ["ro"] : [locale, "ro"])
+      .eq("is_published", true);
 
-      const {
-        data,
-        error,
-      } = await supabase
-        .from("legal_pages")
-        .select(`
-          page_key,
-          title,
-          content,
-          updated_at
-        `)
-        .eq("page_key", key)
-        .eq("is_published", true)
-        .maybeSingle();
+    if (error) console.error(`Public legal page query failed for ${key}/${locale}:`, error);
 
-      if (error) {
-        console.error(
-          `Public legal page query failed for ${key}:`,
-          error
-        );
-      }
-
-      const row =
-        data as LegalPageRow | null;
-
-      if (row) {
-        return {
-          pageKey: key,
-          title:
-            row.title ||
-            definition.title,
-          route:
-            definition.route,
-          eyebrow:
-            definition.eyebrow,
-          description:
-            definition.description,
-          notice:
-            definition.notice,
-          content:
-            row.content ||
-            definition.defaultContent,
-          updatedAt:
-            row.updated_at ||
-            definition.fallbackUpdatedAt,
-        };
-      }
-    } catch (error) {
-      console.error(
-        `Public legal page loading failed for ${key}:`,
-        error
-      );
+    const rows = (data ?? []) as LegalPageRow[];
+    const row = rows.find((item) => item.locale === locale) ?? rows.find((item) => item.locale === "ro");
+    if (row) {
+      return {
+        pageKey: key,
+        locale,
+        title: row.locale === locale ? row.title : definition.title,
+        route: definition.route,
+        eyebrow: definition.eyebrow,
+        description: definition.description,
+        notice: definition.notice,
+        content: row.content || definition.defaultContent,
+        updatedAt: row.updated_at || definition.fallbackUpdatedAt,
+      };
     }
-
-    return {
-      pageKey: key,
-      title: definition.title,
-      route: definition.route,
-      eyebrow:
-        definition.eyebrow,
-      description:
-        definition.description,
-      notice: definition.notice,
-      content:
-        definition.defaultContent,
-      updatedAt:
-        definition.fallbackUpdatedAt,
-    };
+  } catch (error) {
+    console.error(`Public legal page loading failed for ${key}/${locale}:`, error);
   }
-);
+
+  return {
+    pageKey: key,
+    locale,
+    title: definition.title,
+    route: definition.route,
+    eyebrow: definition.eyebrow,
+    description: definition.description,
+    notice: definition.notice,
+    content: definition.defaultContent,
+    updatedAt: definition.fallbackUpdatedAt,
+  };
+});

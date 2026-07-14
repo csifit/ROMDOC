@@ -1,4 +1,4 @@
 export {
   default,
-  metadata,
+  generateMetadata,
 } from "@/app/oferta-clinici/page";
