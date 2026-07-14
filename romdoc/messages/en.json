@@ -37,8 +37,13 @@
     "unavailable": "Photo unavailable for {doctorName}"
   },
   "HomePage": {
+    "heroTitle": "Find the right doctor",
+    "heroDescription": "Explore approved clinics on the map, then search for doctors by specialty, location and important attributes.",
+    "citiesEyebrow": "Locations",
+    "citiesTitle": "Popular cities",
     "specializationsEyebrow": "Medical fields",
     "specializationsTitle": "Specialties",
+    "specializationsDescription": "Discover RomDoc doctors by the medical field you need.",
     "allSpecializations": "View all specialties"
   },
   "HomepageFilters": {
@@ -153,5 +158,9 @@
     "clinicsInRadius": "{count, plural, =1 {1 approved clinic} other {# approved clinics}} within {radius} km",
     "clinicCount": "{count, plural, =1 {1 approved clinic} other {# approved clinics}}",
     "searchDoctors": "Search doctors"
+  },
+  "GeographicDoctorSearch": {
+    "metadataTitle": "Nearby doctors",
+    "metadataDescription": "Search for doctors and approved clinics near an address or locality."
   }
 }

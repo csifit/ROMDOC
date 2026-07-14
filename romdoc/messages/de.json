@@ -37,8 +37,13 @@
     "unavailable": "Foto von {doctorName} nicht verfügbar"
   },
   "HomePage": {
+    "heroTitle": "Finden Sie den passenden Arzt",
+    "heroDescription": "Entdecken Sie genehmigte Kliniken auf der Karte und suchen Sie anschließend Ärzte nach Fachrichtung, Standort und wichtigen Merkmalen.",
+    "citiesEyebrow": "Standorte",
+    "citiesTitle": "Beliebte Städte",
     "specializationsEyebrow": "Medizinische Fachgebiete",
     "specializationsTitle": "Fachrichtungen",
+    "specializationsDescription": "Finden Sie RomDoc-Ärzte nach der benötigten medizinischen Fachrichtung.",
     "allSpecializations": "Alle Fachrichtungen anzeigen"
   },
   "HomepageFilters": {
@@ -153,5 +158,9 @@
     "clinicsInRadius": "{count, plural, =1 {1 genehmigte Klinik} other {# genehmigte Kliniken}} im Umkreis von {radius} km",
     "clinicCount": "{count, plural, =1 {1 genehmigte Klinik} other {# genehmigte Kliniken}}",
     "searchDoctors": "Ärzte suchen"
+  },
+  "GeographicDoctorSearch": {
+    "metadataTitle": "Ärzte in der Nähe",
+    "metadataDescription": "Suchen Sie Ärzte und genehmigte Kliniken in der Nähe einer Adresse oder eines Ortes."
   }
 }

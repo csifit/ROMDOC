@@ -37,8 +37,13 @@
     "unavailable": "Fotografie indisponibilă pentru {doctorName}"
   },
   "HomePage": {
+    "heroTitle": "Găsește medicul potrivit în România",
+    "heroDescription": "Explorează clinicile aprobate pe hartă, apoi caută medici după specialitate, locație și atribute importante.",
+    "citiesEyebrow": "Locații",
+    "citiesTitle": "Orașe populare",
     "specializationsEyebrow": "Domenii medicale",
     "specializationsTitle": "Specializări",
+    "specializationsDescription": "Descoperă medicii RomDoc după domeniul medical de care ai nevoie.",
     "allSpecializations": "Vezi toate specializările"
   },
   "HomepageFilters": {
@@ -153,5 +158,9 @@
     "clinicsInRadius": "{count, plural, =1 {1 clinică aprobată} other {# clinici aprobate}} în raza de {radius} km",
     "clinicCount": "{count, plural, =1 {1 clinică aprobată} other {# clinici aprobate}}",
     "searchDoctors": "Caută medici"
+  },
+  "GeographicDoctorSearch": {
+    "metadataTitle": "Medici în apropiere",
+    "metadataDescription": "Caută medici și clinici aprobate în apropierea unei adrese sau localități."
   }
 }

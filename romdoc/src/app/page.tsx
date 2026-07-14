@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getLocale, getTranslations } from "next-intl/server";
 
 import HomepageDoctorCta from "@/components/public/homepage-doctor-cta";
 import HomepageDoctorFilters from "@/components/public/homepage-doctor-filters";
@@ -116,10 +117,14 @@ function getSingleRelation<T>(
   return relation ?? null;
 }
 
-function getRomanianName(
-  translations: Translation[] | null | undefined
+function getLocalizedName(
+  translations: Translation[] | null | undefined,
+  locale: string
 ) {
   return (
+    translations?.find(
+      (translation) => translation.locale === locale
+    )?.name ??
     translations?.find(
       (translation) => translation.locale === "ro"
     )?.name ??
@@ -128,10 +133,14 @@ function getRomanianName(
   );
 }
 
-function getRomanianTitle(
-  translations: Translation[] | null | undefined
+function getLocalizedTitle(
+  translations: Translation[] | null | undefined,
+  locale: string
 ) {
   return (
+    translations?.find(
+      (translation) => translation.locale === locale
+    )?.title ??
     translations?.find(
       (translation) => translation.locale === "ro"
     )?.title ??
@@ -164,6 +173,8 @@ function normalizeNumber(
 }
 
 export default async function Home() {
+  const locale = await getLocale();
+  const t = await getTranslations("HomePage");
   const supabase = await createClient();
 
   const [
@@ -179,7 +190,7 @@ export default async function Home() {
           slug
         )
       `)
-      .eq("locale", "ro")
+      .eq("locale", locale)
       .order("name")
       .limit(100),
 
@@ -193,7 +204,7 @@ export default async function Home() {
           icon
         )
       `)
-      .eq("locale", "ro")
+      .eq("locale", locale)
       .order("name")
       .limit(100),
 
@@ -399,12 +410,14 @@ export default async function Home() {
 
           const city = getSingleRelation(clinic.cities);
 
-          const clinicName = getRomanianName(
-            clinic.clinic_translations
+          const clinicName = getLocalizedName(
+            clinic.clinic_translations,
+            locale
           );
 
-          const cityName = getRomanianName(
-            city?.city_translations
+          const cityName = getLocalizedName(
+            city?.city_translations,
+            locale
           );
 
           if (!clinicName || !cityName) {
@@ -421,8 +434,9 @@ export default async function Home() {
               )
             : null;
 
-          const specialtyName = getRomanianName(
-            specialty?.specialty_translations
+          const specialtyName = getLocalizedName(
+            specialty?.specialty_translations,
+            locale
           );
 
           if (!specialtyName) {
@@ -434,8 +448,9 @@ export default async function Home() {
               id: doctor.id,
               slug: doctor.slug,
               name: formatDoctorName(doctor.slug),
-              title: getRomanianTitle(
-                doctor.doctor_translations
+              title: getLocalizedTitle(
+                doctor.doctor_translations,
+                locale
               ),
               photoUrl: doctor.photo_url,
               specialtyName,
@@ -485,13 +500,11 @@ export default async function Home() {
               </p>
 
               <h1 className="mt-3 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-                Găsește medicul potrivit în România
+                {t("heroTitle")}
               </h1>
 
               <p className="mt-4 max-w-3xl text-base leading-7 text-gray-600 sm:text-lg">
-                Explorează clinicile aprobate pe hartă, apoi caută
-                medici după specialitate, locație și atribute
-                importante.
+                {t("heroDescription")}
               </p>
             </div>
 
@@ -509,11 +522,11 @@ export default async function Home() {
         >
           <div className="mx-auto max-w-7xl rounded-3xl bg-white p-6 shadow-sm sm:p-8">
             <p className="text-sm font-semibold uppercase tracking-wide text-[#036661]">
-              Locații
+              {t("citiesEyebrow")}
             </p>
 
             <h2 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
-              Orașe populare
+              {t("citiesTitle")}
             </h2>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -536,17 +549,16 @@ export default async function Home() {
         >
           <div className="mx-auto max-w-7xl rounded-3xl bg-white p-6 shadow-sm sm:p-8">
             <p className="text-sm font-semibold uppercase tracking-wide text-[#036661]">
-              Domenii medicale
+              {t("specializationsEyebrow")}
             </p>
 
             <div className="mt-2">
               <h2 className="text-3xl font-bold tracking-tight text-gray-900">
-                Specializări
+                {t("specializationsTitle")}
               </h2>
 
               <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-600">
-                Descoperă medicii RomDoc după domeniul medical de
-                care ai nevoie.
+                {t("specializationsDescription")}
               </p>
             </div>
 
@@ -587,7 +599,7 @@ export default async function Home() {
                 href="/specialitati"
                 className="romdoc-button romdoc-button-primary"
               >
-                Vezi toate specializările
+                {t("allSpecializations")}
               </Link>
             </div>
           </div>

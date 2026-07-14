@@ -2,8 +2,12 @@ import type {
   Metadata,
 } from "next";
 import {
+  getTranslations,
+} from "next-intl/server";
+import {
   notFound,
 } from "next/navigation";
+
 import NearbyDoctorResults from "@/components/public/nearby-doctor-results";
 import PublicLayout from "@/components/public/public-layout";
 
@@ -20,16 +24,21 @@ type SearchPageProps = {
   }>;
 };
 
-export const metadata: Metadata = {
-  title:
-    "Medici în apropiere",
-  description:
-    "Caută medici și clinici aprobate în apropierea unei adrese sau localități.",
-  robots: {
-    index: false,
-    follow: true,
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations(
+    "GeographicDoctorSearch"
+  );
+
+  return {
+    title: t("metadataTitle"),
+    description:
+      t("metadataDescription"),
+    robots: {
+      index: false,
+      follow: true,
+    },
+  };
+}
 
 function parseCoordinate(
   value:
