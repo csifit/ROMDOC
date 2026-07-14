@@ -122,11 +122,7 @@ export default async function PublicLayout({
       <PublicFooter />
 
       <CookieInformationBanner
-        locale={
-          locale === "en"
-            ? "en"
-            : "ro"
-        }
+        locale={locale}
       />
 
       <PublicVoiceAssistantShell
