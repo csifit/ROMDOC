@@ -162,5 +162,191 @@
   "GeographicDoctorSearch": {
     "metadataTitle": "Medici în apropiere",
     "metadataDescription": "Caută medici și clinici aprobate în apropierea unei adrese sau localități."
+  },
+  "PatientGuide": {
+    "metadataTitle": "Cum te ajută RomDoc să găsești medici",
+    "metadataDescription": "Află cum folosești RomDoc pentru a găsi medici, a solicita programări și a primi notificări operaționale despre programare.",
+    "eyebrow": "Ghid pentru pacienți",
+    "title": "Cum găsești un medic și soliciți o programare prin RomDoc",
+    "introduction": "RomDoc este un director medical și o platformă de programări. Începe de pe <homeLink>pagina principală RomDoc</homeLink>, alege specialitatea și locația, analizează profilurile și trimite o solicitare de programare.",
+    "benefits": {
+      "eyebrow": "Beneficii",
+      "title": "De ce folosesc pacienții RomDoc",
+      "items": [
+        {
+          "title": "Căutare după specialitate și locație",
+          "body": "Restrânge directorul la tipul de medic și zona de care ai nevoie."
+        },
+        {
+          "title": "Profiluri publice clare",
+          "body": "Paginile medicilor pot prezenta informații profesionale, clinici, servicii, tarife, verificare, recenzii și disponibilitate."
+        },
+        {
+          "title": "Notificări prin e-mail și SMS",
+          "body": "Atunci când serviciul este activ, RomDoc poate trimite confirmări și reamintiri operaționale despre programare."
+        },
+        {
+          "title": "Un singur cont pentru programări",
+          "body": "Pacienții autentificați pot solicita programări, urmări starea lor, anula programările eligibile și consulta istoricul."
+        }
+      ],
+      "directoryLinks": "Explorează <specialtiesLink>directorul de specializări medicale</specialtiesLink> sau consultă <doctorsLink>medicii disponibili pe RomDoc</doctorsLink>."
+    },
+    "sms": {
+      "title": "Notificări SMS pentru programări",
+      "description": "RomDoc poate trimite SMS-uri pentru confirmarea programării și, atunci când serviciul este activ, o reamintire cu aproximativ 24 de ore înainte.",
+      "privacy": "SMS-urile sunt destinate exclusiv organizării programării și nu trebuie să includă diagnostice, simptome, note medicale sau rezultate de investigații."
+    },
+    "steps": {
+      "eyebrow": "Cum se folosește",
+      "title": "Cum cauți un medic, pas cu pas",
+      "items": [
+        {
+          "title": "Deschide căutarea RomDoc",
+          "body": "Intră pe pagina principală sau în directorul medicilor și selectează specialitatea potrivită."
+        },
+        {
+          "title": "Alege locația",
+          "body": "Introdu adresa, localitatea sau punctul de reper și selectează raza de căutare."
+        },
+        {
+          "title": "Compară profilurile",
+          "body": "Verifică informațiile profesionale, clinicile, serviciile, recenziile și statutul verificării."
+        },
+        {
+          "title": "Folosește contul de pacient",
+          "body": "Programările necesită autentificare. Confirmă adresa de e-mail pentru a accesa istoricul."
+        },
+        {
+          "title": "Trimite solicitarea",
+          "body": "Alege clinica, data și ora disponibile, completează datele de contact și trimite cererea."
+        }
+      ]
+    },
+    "example": {
+      "title": "Exemplu: cardiolog în București",
+      "body": "Un pacient poate deschide pagina <cardiologyLink>medicilor cardiologi din București</cardiologyLink>, compara profilurile și continua către medicul ales."
+    },
+    "actions": {
+      "start": "Începe căutarea pe RomDoc",
+      "specialties": "Vezi specializările"
+    }
+  },
+  "DoctorStaffGuide": {
+    "metadataTitle": "Ghid pentru medici și personalul medical",
+    "metadataDescription": "Află cum folosesc medicii și personalul autorizat RomDoc pentru programări, documente medicale, securitate și notificări SMS.",
+    "eyebrow": "Ghid pentru medici și personal",
+    "title": "Ghid de utilizare pentru medici și personalul medical",
+    "introduction": "Acest ghid explică administrarea programărilor, rolurile medicului și personalului autorizat, notificările SMS și regulile de securitate.",
+    "actions": {
+      "signIn": "Autentificare",
+      "join": "Înscrie-te ca medic",
+      "back": "Înapoi la RomDoc"
+    },
+    "access": {
+      "eyebrow": "Acces",
+      "title": "Cine poate face ce",
+      "items": [
+        {
+          "title": "Accesul medicului",
+          "body": "Medicul își administrează programările, clinicile, disponibilitatea, serviciile și informațiile medicale pentru care este autorizat."
+        },
+        {
+          "title": "Accesul personalului autorizat",
+          "body": "Personalul activ poate ajuta medicul în limitele rolului atribuit. Accesul încetează când atribuirea este dezactivată."
+        }
+      ]
+    },
+    "appointments": {
+      "eyebrow": "Programări",
+      "title": "Statusurile programărilor",
+      "items": [
+        {
+          "title": "În așteptare",
+          "body": "Pacientul a trimis o solicitare care nu a fost încă confirmată."
+        },
+        {
+          "title": "Confirmată",
+          "body": "Data și ora au fost acceptate, iar pacientul poate primi notificări operaționale."
+        },
+        {
+          "title": "Reprogramată",
+          "body": "Programarea a fost mutată la o altă dată sau oră."
+        },
+        {
+          "title": "Finalizată",
+          "body": "Consultația este închisă, iar conținutul existent devine disponibil numai pentru citire."
+        },
+        {
+          "title": "Anulată",
+          "body": "Programarea nu va mai avea loc și nu mai poate fi modificată."
+        },
+        {
+          "title": "Neprezentare",
+          "body": "Pacientul nu s-a prezentat la programare."
+        }
+      ]
+    },
+    "subscription": {
+      "eyebrow": "Abonament",
+      "title": "Abonamentul medicului",
+      "description": "Abonamentul oferă acces la profilul profesional, serviciile, clinicile, disponibilitatea și instrumentele de programare RomDoc.",
+      "monthlyLabel": "Plan lunar",
+      "monthlyPrice": "60 RON/lună + TVA",
+      "yearlyLabel": "Plan anual",
+      "yearlyPrice": "600 RON/an + TVA",
+      "smsNote": "Costurile serviciului de mesagerie și SMS sunt separate și nu sunt incluse în abonamentul medicului."
+    },
+    "sms": {
+      "title": "Serviciul SMS pentru programări",
+      "description": "RomDoc poate furniza notificări SMS ca serviciu operațional separat pentru programări.",
+      "rules": [
+        "SMS-urile sunt notificări operaționale, nu comunicare medicală.",
+        "Confirmările SMS pot fi trimise când programarea devine confirmată.",
+        "Platforma poate trimite o reamintire cu aproximativ 24 de ore înainte.",
+        "Serviciul SMS este facturat separat de abonamentul medicului.",
+        "Costurile neachitate se pot cumula până la plata soldului.",
+        "Soldul SMS poate fi achitat prin RomDoc și Stripe, conform fluxului disponibil.",
+        "Mesajele nu trebuie să includă diagnostice, simptome, note medicale sau rezultate."
+      ]
+    },
+    "manual": {
+      "eyebrow": "Programări create manual",
+      "title": "Câmpuri folosite de medici și personal",
+      "fields": [
+        "Medicul",
+        "Clinica",
+        "Sursa programării",
+        "Numele pacientului",
+        "Numărul de telefon",
+        "Adresa de e-mail",
+        "Intervalul disponibil",
+        "Observații opționale"
+      ]
+    },
+    "workflow": {
+      "eyebrow": "Flux de lucru",
+      "title": "De la confirmare la finalizare",
+      "items": [
+        "Programarea este confirmată.",
+        "Pacientul primește confirmarea prin e-mail și, când este activ, prin SMS.",
+        "Pacientul poate primi o reamintire înainte de programare.",
+        "Pacientul se prezintă la clinică.",
+        "Medicul efectuează consultația și investigațiile necesare.",
+        "Medicul sau personalul autorizat încarcă documentele relevante, dacă este necesar.",
+        "Programarea este închisă folosind acțiunea de finalizare."
+      ]
+    },
+    "security": {
+      "eyebrow": "Securitate",
+      "title": "Reguli de utilizare sigură",
+      "rules": [
+        "Folosește numai propriul cont RomDoc și nu partaja parola.",
+        "Verifică pacientul și programarea înainte de încărcarea unui document.",
+        "Accesează numai informațiile necesare activității profesionale.",
+        "Nu exporta și nu distribui documente fără un temei și o autorizare corespunzătoare.",
+        "Deconectează-te după utilizarea unui dispozitiv comun."
+      ]
+    }
   }
 }

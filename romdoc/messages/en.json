@@ -162,5 +162,191 @@
   "GeographicDoctorSearch": {
     "metadataTitle": "Nearby doctors",
     "metadataDescription": "Search for doctors and approved clinics near an address or locality."
+  },
+  "PatientGuide": {
+    "metadataTitle": "How RomDoc helps patients find doctors",
+    "metadataDescription": "Learn how to use RomDoc to find doctors, request appointments and receive operational appointment notifications.",
+    "eyebrow": "Patient guide",
+    "title": "How to find a doctor and request an appointment with RomDoc",
+    "introduction": "RomDoc is a medical directory and appointment platform. Start on the <homeLink>RomDoc homepage</homeLink>, choose a specialty and location, review profiles and submit an appointment request.",
+    "benefits": {
+      "eyebrow": "Benefits",
+      "title": "Why patients use RomDoc",
+      "items": [
+        {
+          "title": "Search by specialty and location",
+          "body": "Narrow the directory to the type of doctor and area you need."
+        },
+        {
+          "title": "Clear public profiles",
+          "body": "Doctor pages can show professional information, clinics, services, prices, verification, reviews and availability."
+        },
+        {
+          "title": "Email and SMS notifications",
+          "body": "When enabled, RomDoc can send operational appointment confirmations and reminders."
+        },
+        {
+          "title": "One account for appointments",
+          "body": "Authenticated patients can request appointments, track their status, cancel eligible appointments and review history."
+        }
+      ],
+      "directoryLinks": "Explore the <specialtiesLink>medical specialties directory</specialtiesLink> or browse <doctorsLink>doctors available on RomDoc</doctorsLink>."
+    },
+    "sms": {
+      "title": "Appointment SMS notifications",
+      "description": "RomDoc may send SMS messages for appointment confirmation and, when enabled, a reminder approximately 24 hours before the appointment.",
+      "privacy": "SMS messages are only for appointment logistics and should not include diagnoses, symptoms, medical notes or investigation results."
+    },
+    "steps": {
+      "eyebrow": "How to use",
+      "title": "How to search for a doctor step by step",
+      "items": [
+        {
+          "title": "Open RomDoc search",
+          "body": "Go to the homepage or doctor directory and select the appropriate specialty."
+        },
+        {
+          "title": "Choose a location",
+          "body": "Enter an address, locality or landmark and select the search radius."
+        },
+        {
+          "title": "Compare profiles",
+          "body": "Review professional information, clinics, services, reviews and verification status."
+        },
+        {
+          "title": "Use your patient account",
+          "body": "Appointments require authentication. Confirm your email to access appointment history."
+        },
+        {
+          "title": "Submit the request",
+          "body": "Choose the clinic, available date and time, provide your contact details and send the request."
+        }
+      ]
+    },
+    "example": {
+      "title": "Example: cardiologist in Bucharest",
+      "body": "A patient can open the <cardiologyLink>cardiology doctors in Bucharest page</cardiologyLink>, compare profiles and continue to the selected doctor."
+    },
+    "actions": {
+      "start": "Start on RomDoc",
+      "specialties": "Browse specialties"
+    }
+  },
+  "DoctorStaffGuide": {
+    "metadataTitle": "Guide for doctors and medical staff",
+    "metadataDescription": "Learn how doctors and authorized staff use RomDoc for appointments, medical documents, security and SMS notifications.",
+    "eyebrow": "Guide for doctors and staff",
+    "title": "User guide for doctors and medical staff",
+    "introduction": "This guide explains appointment management, doctor and authorized-staff roles, SMS notifications and security rules.",
+    "actions": {
+      "signIn": "Sign in",
+      "join": "Join as a doctor",
+      "back": "Back to RomDoc"
+    },
+    "access": {
+      "eyebrow": "Access",
+      "title": "Who can do what",
+      "items": [
+        {
+          "title": "Doctor access",
+          "body": "Doctors manage their appointments, clinics, availability, services and medical information for which they are authorized."
+        },
+        {
+          "title": "Authorized staff access",
+          "body": "Active staff can assist the doctor within the assigned role. Access ends when the assignment is disabled."
+        }
+      ]
+    },
+    "appointments": {
+      "eyebrow": "Appointments",
+      "title": "Appointment statuses",
+      "items": [
+        {
+          "title": "Pending",
+          "body": "The patient submitted a request that has not yet been confirmed."
+        },
+        {
+          "title": "Confirmed",
+          "body": "The date and time were accepted and the patient may receive operational notifications."
+        },
+        {
+          "title": "Rescheduled",
+          "body": "The appointment was moved to another date or time."
+        },
+        {
+          "title": "Completed",
+          "body": "The consultation is closed and existing content becomes read-only."
+        },
+        {
+          "title": "Cancelled",
+          "body": "The appointment will no longer take place and cannot be modified."
+        },
+        {
+          "title": "No-show",
+          "body": "The patient did not attend the appointment."
+        }
+      ]
+    },
+    "subscription": {
+      "eyebrow": "Subscription",
+      "title": "Doctor subscription",
+      "description": "The subscription provides access to the professional profile, services, clinics, availability and RomDoc appointment tools.",
+      "monthlyLabel": "Monthly plan",
+      "monthlyPrice": "60 RON/month + VAT",
+      "yearlyLabel": "Yearly plan",
+      "yearlyPrice": "600 RON/year + VAT",
+      "smsNote": "Messaging and SMS service costs are separate and are not included in the doctor subscription."
+    },
+    "sms": {
+      "title": "Appointment SMS service",
+      "description": "RomDoc can provide SMS notifications as a separate operational appointment service.",
+      "rules": [
+        "SMS messages are operational notifications, not medical communication.",
+        "SMS confirmations may be sent when an appointment becomes confirmed.",
+        "The platform may send a reminder approximately 24 hours before the appointment.",
+        "The SMS service is billed separately from the doctor subscription.",
+        "Unpaid costs may accumulate until the outstanding balance is paid.",
+        "The SMS balance may be paid through RomDoc and Stripe when that flow is available.",
+        "Messages should not include diagnoses, symptoms, medical notes or results."
+      ]
+    },
+    "manual": {
+      "eyebrow": "Manual appointments",
+      "title": "Fields used by doctors and staff",
+      "fields": [
+        "Doctor",
+        "Clinic",
+        "Booking source",
+        "Patient name",
+        "Phone number",
+        "Email address",
+        "Available time slot",
+        "Optional notes"
+      ]
+    },
+    "workflow": {
+      "eyebrow": "Workflow",
+      "title": "From confirmation to completion",
+      "items": [
+        "The appointment is confirmed.",
+        "The patient receives email confirmation and, when enabled, SMS confirmation.",
+        "The patient may receive a reminder before the appointment.",
+        "The patient arrives at the clinic.",
+        "The doctor performs the consultation and necessary investigations.",
+        "The doctor or authorized staff uploads relevant documents when needed.",
+        "The appointment is closed using the completion action."
+      ]
+    },
+    "security": {
+      "eyebrow": "Security",
+      "title": "Safe use rules",
+      "rules": [
+        "Use only your own RomDoc account and do not share your password.",
+        "Check the patient and appointment before uploading a document.",
+        "Access only information needed for your professional activity.",
+        "Do not export or share documents without an appropriate legal basis and authorization.",
+        "Sign out after using a shared device."
+      ]
+    }
   }
 }

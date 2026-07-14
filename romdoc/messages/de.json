@@ -162,5 +162,191 @@
   "GeographicDoctorSearch": {
     "metadataTitle": "Ärzte in der Nähe",
     "metadataDescription": "Suchen Sie Ärzte und genehmigte Kliniken in der Nähe einer Adresse oder eines Ortes."
+  },
+  "PatientGuide": {
+    "metadataTitle": "Wie RomDoc Patienten bei der Arztsuche unterstützt",
+    "metadataDescription": "Erfahren Sie, wie Sie mit RomDoc Ärzte finden, Termine anfragen und organisatorische Terminbenachrichtigungen erhalten.",
+    "eyebrow": "Ratgeber für Patienten",
+    "title": "So finden Sie einen Arzt und fragen einen Termin über RomDoc an",
+    "introduction": "RomDoc ist ein Ärzteverzeichnis und eine Terminplattform. Beginnen Sie auf der <homeLink>RomDoc-Startseite</homeLink>, wählen Sie Fachrichtung und Standort, vergleichen Sie Profile und senden Sie eine Terminanfrage.",
+    "benefits": {
+      "eyebrow": "Vorteile",
+      "title": "Warum Patienten RomDoc nutzen",
+      "items": [
+        {
+          "title": "Suche nach Fachrichtung und Standort",
+          "body": "Grenzen Sie das Verzeichnis auf die benötigte Fachrichtung und Region ein."
+        },
+        {
+          "title": "Klare öffentliche Profile",
+          "body": "Arztprofile können berufliche Angaben, Kliniken, Leistungen, Preise, Verifizierung, Bewertungen und Verfügbarkeit zeigen."
+        },
+        {
+          "title": "E-Mail- und SMS-Benachrichtigungen",
+          "body": "Wenn aktiviert, kann RomDoc organisatorische Terminbestätigungen und Erinnerungen senden."
+        },
+        {
+          "title": "Ein Konto für Termine",
+          "body": "Angemeldete Patienten können Termine anfragen, den Status verfolgen, zulässige Termine stornieren und den Verlauf einsehen."
+        }
+      ],
+      "directoryLinks": "Entdecken Sie das <specialtiesLink>Verzeichnis medizinischer Fachrichtungen</specialtiesLink> oder durchsuchen Sie die <doctorsLink>auf RomDoc verfügbaren Ärzte</doctorsLink>."
+    },
+    "sms": {
+      "title": "SMS-Benachrichtigungen zu Terminen",
+      "description": "RomDoc kann SMS zur Terminbestätigung und, sofern aktiviert, etwa 24 Stunden vor dem Termin eine Erinnerung senden.",
+      "privacy": "SMS dienen ausschließlich der Terminorganisation und dürfen keine Diagnosen, Symptome, medizinischen Notizen oder Untersuchungsergebnisse enthalten."
+    },
+    "steps": {
+      "eyebrow": "Anwendung",
+      "title": "Schritt für Schritt einen Arzt suchen",
+      "items": [
+        {
+          "title": "RomDoc-Suche öffnen",
+          "body": "Öffnen Sie die Startseite oder das Ärzteverzeichnis und wählen Sie die passende Fachrichtung."
+        },
+        {
+          "title": "Standort wählen",
+          "body": "Geben Sie eine Adresse, einen Ort oder Orientierungspunkt ein und wählen Sie den Suchradius."
+        },
+        {
+          "title": "Profile vergleichen",
+          "body": "Prüfen Sie berufliche Angaben, Kliniken, Leistungen, Bewertungen und Verifizierungsstatus."
+        },
+        {
+          "title": "Patientenkonto verwenden",
+          "body": "Termine erfordern eine Anmeldung. Bestätigen Sie Ihre E-Mail-Adresse, um den Terminverlauf aufzurufen."
+        },
+        {
+          "title": "Anfrage senden",
+          "body": "Wählen Sie Klinik, verfügbares Datum und Uhrzeit, ergänzen Sie Kontaktdaten und senden Sie die Anfrage."
+        }
+      ]
+    },
+    "example": {
+      "title": "Beispiel: Kardiologe in Bukarest",
+      "body": "Ein Patient kann die Seite <cardiologyLink>Kardiologen in Bukarest</cardiologyLink> öffnen, Profile vergleichen und zum ausgewählten Arzt wechseln."
+    },
+    "actions": {
+      "start": "Auf RomDoc starten",
+      "specialties": "Fachrichtungen ansehen"
+    }
+  },
+  "DoctorStaffGuide": {
+    "metadataTitle": "Ratgeber für Ärzte und medizinisches Personal",
+    "metadataDescription": "Erfahren Sie, wie Ärzte und autorisiertes Personal RomDoc für Termine, medizinische Dokumente, Sicherheit und SMS-Benachrichtigungen nutzen.",
+    "eyebrow": "Ratgeber für Ärzte und Personal",
+    "title": "Benutzerleitfaden für Ärzte und medizinisches Personal",
+    "introduction": "Dieser Ratgeber erläutert Terminverwaltung, Rollen von Ärzten und autorisiertem Personal, SMS-Benachrichtigungen und Sicherheitsregeln.",
+    "actions": {
+      "signIn": "Anmelden",
+      "join": "Als Arzt registrieren",
+      "back": "Zurück zu RomDoc"
+    },
+    "access": {
+      "eyebrow": "Zugriff",
+      "title": "Wer darf was tun?",
+      "items": [
+        {
+          "title": "Zugriff des Arztes",
+          "body": "Ärzte verwalten ihre Termine, Kliniken, Verfügbarkeit, Leistungen und die medizinischen Informationen, für die sie berechtigt sind."
+        },
+        {
+          "title": "Zugriff autorisierten Personals",
+          "body": "Aktives Personal kann den Arzt im Rahmen der zugewiesenen Rolle unterstützen. Der Zugriff endet, wenn die Zuweisung deaktiviert wird."
+        }
+      ]
+    },
+    "appointments": {
+      "eyebrow": "Termine",
+      "title": "Terminstatus",
+      "items": [
+        {
+          "title": "Ausstehend",
+          "body": "Der Patient hat eine Anfrage gesendet, die noch nicht bestätigt wurde."
+        },
+        {
+          "title": "Bestätigt",
+          "body": "Datum und Uhrzeit wurden angenommen; der Patient kann organisatorische Benachrichtigungen erhalten."
+        },
+        {
+          "title": "Verschoben",
+          "body": "Der Termin wurde auf ein anderes Datum oder eine andere Uhrzeit verlegt."
+        },
+        {
+          "title": "Abgeschlossen",
+          "body": "Die Konsultation ist geschlossen und vorhandene Inhalte werden schreibgeschützt."
+        },
+        {
+          "title": "Storniert",
+          "body": "Der Termin findet nicht mehr statt und kann nicht geändert werden."
+        },
+        {
+          "title": "Nicht erschienen",
+          "body": "Der Patient ist nicht zum Termin erschienen."
+        }
+      ]
+    },
+    "subscription": {
+      "eyebrow": "Abonnement",
+      "title": "Arzt-Abonnement",
+      "description": "Das Abonnement bietet Zugriff auf Berufsprofil, Leistungen, Kliniken, Verfügbarkeit und RomDoc-Terminwerkzeuge.",
+      "monthlyLabel": "Monatsplan",
+      "monthlyPrice": "60 RON/Monat + MwSt.",
+      "yearlyLabel": "Jahresplan",
+      "yearlyPrice": "600 RON/Jahr + MwSt.",
+      "smsNote": "Kosten für Nachrichten- und SMS-Dienste sind separat und nicht im Arzt-Abonnement enthalten."
+    },
+    "sms": {
+      "title": "SMS-Dienst für Termine",
+      "description": "RomDoc kann SMS-Benachrichtigungen als separaten organisatorischen Termindienst bereitstellen.",
+      "rules": [
+        "SMS sind organisatorische Benachrichtigungen und keine medizinische Kommunikation.",
+        "SMS-Bestätigungen können versendet werden, wenn ein Termin bestätigt wird.",
+        "Die Plattform kann etwa 24 Stunden vor dem Termin eine Erinnerung senden.",
+        "Der SMS-Dienst wird getrennt vom Arzt-Abonnement berechnet.",
+        "Unbezahlte Kosten können sich bis zur Begleichung des offenen Betrags ansammeln.",
+        "Das SMS-Guthaben kann über RomDoc und Stripe bezahlt werden, sofern dieser Ablauf verfügbar ist.",
+        "Nachrichten dürfen keine Diagnosen, Symptome, medizinischen Notizen oder Ergebnisse enthalten."
+      ]
+    },
+    "manual": {
+      "eyebrow": "Manuell erstellte Termine",
+      "title": "Von Ärzten und Personal verwendete Felder",
+      "fields": [
+        "Arzt",
+        "Klinik",
+        "Buchungsquelle",
+        "Patientenname",
+        "Telefonnummer",
+        "E-Mail-Adresse",
+        "Verfügbares Zeitfenster",
+        "Optionale Notizen"
+      ]
+    },
+    "workflow": {
+      "eyebrow": "Arbeitsablauf",
+      "title": "Von der Bestätigung bis zum Abschluss",
+      "items": [
+        "Der Termin wird bestätigt.",
+        "Der Patient erhält eine E-Mail-Bestätigung und, sofern aktiviert, eine SMS-Bestätigung.",
+        "Der Patient kann vor dem Termin eine Erinnerung erhalten.",
+        "Der Patient erscheint in der Klinik.",
+        "Der Arzt führt die Konsultation und erforderliche Untersuchungen durch.",
+        "Der Arzt oder autorisiertes Personal lädt bei Bedarf relevante Dokumente hoch.",
+        "Der Termin wird mit der Abschlussaktion geschlossen."
+      ]
+    },
+    "security": {
+      "eyebrow": "Sicherheit",
+      "title": "Regeln für eine sichere Nutzung",
+      "rules": [
+        "Verwenden Sie nur Ihr eigenes RomDoc-Konto und teilen Sie Ihr Passwort nicht.",
+        "Prüfen Sie Patient und Termin vor dem Hochladen eines Dokuments.",
+        "Greifen Sie nur auf Informationen zu, die Sie für Ihre berufliche Tätigkeit benötigen.",
+        "Exportieren oder teilen Sie Dokumente nicht ohne geeignete Rechtsgrundlage und Berechtigung.",
+        "Melden Sie sich nach der Nutzung eines gemeinsam verwendeten Geräts ab."
+      ]
+    }
   }
 }
