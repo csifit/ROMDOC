@@ -1,5 +1,7 @@
 {
   "Locale": {
+    "label": "Sprache",
+    "selectLabel": "Sprache auswählen",
     "romanian": "Rumänisch",
     "english": "Englisch",
     "german": "Deutsch"
@@ -8,6 +10,31 @@
     "home": "Startseite",
     "doctors": "Ärzte",
     "specializations": "Fachrichtungen"
+  },
+  "PublicNavigation": {
+    "openMenu": "Menü öffnen",
+    "closeMenu": "Menü schließen",
+    "publicMenu": "Öffentliches RomDoc-Menü",
+    "publicNavigation": "Öffentliche Navigation",
+    "accountActions": "Kontoaktionen",
+    "home": "Startseite",
+    "findDoctor": "Arzt finden",
+    "specialties": "Fachrichtungen",
+    "cities": "Städte",
+    "dashboard": "Mein Dashboard",
+    "signIn": "Anmelden",
+    "createAccount": "Konto erstellen",
+    "signOut": "Abmelden",
+    "signingOut": "Abmeldung läuft...",
+    "accountFallback": "RomDoc-Konto"
+  },
+  "VerifiedDoctor": {
+    "label": "Von RomDoc verifizierter Arzt",
+    "description": "RomDoc hat die beruflichen Angaben und die von diesem Arzt eingereichten Dokumente geprüft. RomDoc erteilt keine ärztlichen Zulassungen."
+  },
+  "DoctorPhoto": {
+    "profilePhoto": "Profilfoto von {doctorName}",
+    "unavailable": "Foto von {doctorName} nicht verfügbar"
   },
   "HomePage": {
     "specializationsEyebrow": "Medizinische Fachgebiete",

@@ -1,5 +1,7 @@
 {
   "Locale": {
+    "label": "Language",
+    "selectLabel": "Select language",
     "romanian": "Romanian",
     "english": "English",
     "german": "German"
@@ -8,6 +10,31 @@
     "home": "Home",
     "doctors": "Doctors",
     "specializations": "Specialties"
+  },
+  "PublicNavigation": {
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "publicMenu": "RomDoc public menu",
+    "publicNavigation": "Public navigation",
+    "accountActions": "Account actions",
+    "home": "Home",
+    "findDoctor": "Find a doctor",
+    "specialties": "Specialties",
+    "cities": "Cities",
+    "dashboard": "My dashboard",
+    "signIn": "Sign in",
+    "createAccount": "Create account",
+    "signOut": "Sign out",
+    "signingOut": "Signing out...",
+    "accountFallback": "RomDoc account"
+  },
+  "VerifiedDoctor": {
+    "label": "Doctor verified by RomDoc",
+    "description": "RomDoc has reviewed the professional information and documents submitted by this doctor. RomDoc does not issue medical licences."
+  },
+  "DoctorPhoto": {
+    "profilePhoto": "Profile photo for {doctorName}",
+    "unavailable": "Photo unavailable for {doctorName}"
   },
   "HomePage": {
     "specializationsEyebrow": "Medical fields",

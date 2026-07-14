@@ -1,3 +1,9 @@
+"use client";
+
+import {
+  useTranslations,
+} from "next-intl";
+
 type VerifiedDoctorBadgeProps = {
   compact?: boolean;
   className?: string;
@@ -18,6 +24,7 @@ function VerifiedIcon() {
         strokeLinejoin="round"
         d="M12 3 19 6v5c0 4.6-2.7 8-7 10-4.3-2-7-5.4-7-10V6l7-3Z"
       />
+
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -27,14 +34,20 @@ function VerifiedIcon() {
   );
 }
 
-export default function VerifiedDoctorBadge({
+export default function
+VerifiedDoctorBadge({
   compact = false,
   className = "",
 }: VerifiedDoctorBadgeProps) {
+  const t =
+    useTranslations(
+      "VerifiedDoctor"
+    );
+
   return (
     <span
-      title="RomDoc a verificat informațiile profesionale și documentele transmise de acest medic. RomDoc nu emite licențe medicale."
-      aria-label="Medic verificat de RomDoc"
+      title={t("description")}
+      aria-label={t("label")}
       className={`inline-flex items-center gap-1.5 rounded-full bg-[#036661]/10 font-semibold text-[#036661] ${
         compact
           ? "px-2.5 py-1 text-xs"
@@ -42,7 +55,7 @@ export default function VerifiedDoctorBadge({
       } ${className}`.trim()}
     >
       <VerifiedIcon />
-      Medic verificat de RomDoc
+      {t("label")}
     </span>
   );
 }

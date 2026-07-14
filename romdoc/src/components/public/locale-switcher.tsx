@@ -17,7 +17,10 @@ import {
 } from "@/i18n/routing";
 
 function getStringParam(
-  value: string | string[] | undefined
+  value:
+    | string
+    | string[]
+    | undefined
 ) {
   return Array.isArray(value)
     ? value[0] ?? ""
@@ -44,7 +47,9 @@ LocaleSwitcher() {
   function changeLocale(
     nextLocale: AppLocale
   ) {
-    if (nextLocale === locale) {
+    if (
+      nextLocale === locale
+    ) {
       return;
     }
 
@@ -132,7 +137,7 @@ LocaleSwitcher() {
   return (
     <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
       <span className="sr-only">
-        Limbă
+        {t("label")}
       </span>
 
       <select
@@ -144,7 +149,9 @@ LocaleSwitcher() {
           )
         }
         className="romdoc-focus-ring rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
-        aria-label="Selectează limba"
+        aria-label={t(
+          "selectLabel"
+        )}
       >
         <option value="ro">
           {t("romanian")}
@@ -152,6 +159,10 @@ LocaleSwitcher() {
 
         <option value="en">
           {t("english")}
+        </option>
+
+        <option value="de">
+          {t("german")}
         </option>
       </select>
     </label>

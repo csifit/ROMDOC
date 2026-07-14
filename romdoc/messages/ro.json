@@ -1,5 +1,7 @@
 {
   "Locale": {
+    "label": "Limbă",
+    "selectLabel": "Selectează limba",
     "romanian": "Română",
     "english": "Engleză",
     "german": "Germană"
@@ -8,6 +10,31 @@
     "home": "Acasă",
     "doctors": "Medici",
     "specializations": "Specializări"
+  },
+  "PublicNavigation": {
+    "openMenu": "Deschide meniul",
+    "closeMenu": "Închide meniul",
+    "publicMenu": "Meniu public RomDoc",
+    "publicNavigation": "Navigare publică",
+    "accountActions": "Acțiuni cont",
+    "home": "Acasă",
+    "findDoctor": "Găsește un medic",
+    "specialties": "Specializări",
+    "cities": "Orașe",
+    "dashboard": "Panoul meu",
+    "signIn": "Autentificare",
+    "createAccount": "Creează cont",
+    "signOut": "Deconectare",
+    "signingOut": "Se deconectează...",
+    "accountFallback": "Cont RomDoc"
+  },
+  "VerifiedDoctor": {
+    "label": "Medic verificat de RomDoc",
+    "description": "RomDoc a verificat informațiile profesionale și documentele transmise de acest medic. RomDoc nu emite licențe medicale."
+  },
+  "DoctorPhoto": {
+    "profilePhoto": "Fotografie de profil pentru {doctorName}",
+    "unavailable": "Fotografie indisponibilă pentru {doctorName}"
   },
   "HomePage": {
     "specializationsEyebrow": "Domenii medicale",

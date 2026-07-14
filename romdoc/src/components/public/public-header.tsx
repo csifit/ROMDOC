@@ -1,10 +1,18 @@
 "use client";
 
 import NextLink from "next/link";
-import { useState } from "react";
+import {
+  useTranslations,
+} from "next-intl";
+import {
+  useState,
+} from "react";
 
-import PublicSidebar from "@/components/public/public-sidebar";
-import { Link as LocalizedLink } from "@/i18n/navigation";
+import PublicSidebar
+  from "@/components/public/public-sidebar";
+import {
+  Link as LocalizedLink,
+} from "@/i18n/navigation";
 
 type PublicHeaderProps = {
   isAuthenticated: boolean;
@@ -14,8 +22,18 @@ type PublicHeaderProps = {
 
 function MenuIcon() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path strokeLinecap="round" d="M4 7h16M4 12h16M4 17h16" />
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-6 w-6"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <path
+        strokeLinecap="round"
+        d="M4 7h16M4 12h16M4 17h16"
+      />
     </svg>
   );
 }
@@ -25,7 +43,15 @@ export default function PublicHeader({
   userName,
   userEmail,
 }: PublicHeaderProps) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const t =
+    useTranslations(
+      "PublicNavigation"
+    );
+
+  const [
+    isSidebarOpen,
+    setIsSidebarOpen,
+  ] = useState(false);
 
   return (
     <>
@@ -34,9 +60,17 @@ export default function PublicHeader({
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setIsSidebarOpen(true)}
-              aria-label="Deschide meniul"
-              aria-expanded={isSidebarOpen}
+              onClick={() =>
+                setIsSidebarOpen(
+                  true
+                )
+              }
+              aria-label={t(
+                "openMenu"
+              )}
+              aria-expanded={
+                isSidebarOpen
+              }
               className="romdoc-focus-ring inline-flex rounded-lg p-2 text-gray-700 transition hover:bg-gray-100 hover:text-gray-950"
             >
               <MenuIcon />
@@ -50,13 +84,18 @@ export default function PublicHeader({
             </LocalizedLink>
           </div>
 
-          <nav aria-label="Acțiuni cont" className="flex items-center gap-2">
+          <nav
+            aria-label={t(
+              "accountActions"
+            )}
+            className="flex items-center gap-2"
+          >
             {isAuthenticated ? (
               <NextLink
                 href="/dashboard"
                 className="romdoc-button romdoc-button-primary romdoc-button-sm"
               >
-                Panoul meu
+                {t("dashboard")}
               </NextLink>
             ) : (
               <>
@@ -64,14 +103,16 @@ export default function PublicHeader({
                   href="/login"
                   className="romdoc-button romdoc-button-secondary romdoc-button-sm hidden sm:inline-flex"
                 >
-                  Autentificare
+                  {t("signIn")}
                 </NextLink>
 
                 <NextLink
                   href="/register"
                   className="romdoc-button romdoc-button-primary romdoc-button-sm"
                 >
-                  Creează cont
+                  {t(
+                    "createAccount"
+                  )}
                 </NextLink>
               </>
             )}
@@ -81,8 +122,14 @@ export default function PublicHeader({
 
       <PublicSidebar
         isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        isAuthenticated={isAuthenticated}
+        onClose={() =>
+          setIsSidebarOpen(
+            false
+          )
+        }
+        isAuthenticated={
+          isAuthenticated
+        }
         userName={userName}
         userEmail={userEmail}
       />
