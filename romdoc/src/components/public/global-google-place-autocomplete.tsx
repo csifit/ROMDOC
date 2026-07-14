@@ -1,11 +1,13 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
+
 import {
   loadGoogleMaps,
 } from "@/lib/google-maps/load-google-maps";
@@ -18,7 +20,6 @@ type GlobalGooglePlaceAutocompleteProps = {
   onPlaceSelected: (
     address: GoogleClinicAddress
   ) => void;
-
   onClear?: () => void;
   disabled?: boolean;
 };
@@ -40,12 +41,10 @@ type PlacePredictionSelectEvent =
 type PlaceAutocompleteElementInstance =
   HTMLElement & {
     placeholder: string;
-
     addEventListener: (
       type: string,
       listener: EventListener
     ) => void;
-
     removeEventListener: (
       type: string,
       listener: EventListener
@@ -77,6 +76,11 @@ export default function GlobalGooglePlaceAutocomplete({
   onClear,
   disabled = false,
 }: GlobalGooglePlaceAutocompleteProps) {
+  const t =
+    useTranslations(
+      "GooglePlaces"
+    );
+
   const containerRef =
     useRef<HTMLDivElement | null>(
       null
@@ -90,15 +94,20 @@ export default function GlobalGooglePlaceAutocomplete({
       null
     );
 
-  const [isLoading, setIsLoading] =
-    useState(true);
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(true);
 
   const [
     isResolving,
     setIsResolving,
   ] = useState(false);
 
-  const [error, setError] =
+  const [
+    error,
+    setError,
+  ] =
     useState<string | null>(
       null
     );
@@ -119,6 +128,9 @@ export default function GlobalGooglePlaceAutocomplete({
   useEffect(() => {
     let isActive = true;
 
+    const hostElement =
+      containerRef.current;
+
     let autocomplete:
       | PlaceAutocompleteElementInstance
       | null = null;
@@ -136,7 +148,7 @@ export default function GlobalGooglePlaceAutocomplete({
 
         if (
           !isActive ||
-          !containerRef.current
+          !hostElement
         ) {
           return;
         }
@@ -151,7 +163,7 @@ export default function GlobalGooglePlaceAutocomplete({
 
         if (!importLibrary) {
           throw new Error(
-            "Google Maps nu este disponibil."
+            t("unavailable")
           );
         }
 
@@ -165,7 +177,7 @@ export default function GlobalGooglePlaceAutocomplete({
             .PlaceAutocompleteElement();
 
         autocomplete.placeholder =
-          "Introdu o adresă, localitate sau punct de reper";
+          t("placeholder");
 
         autocomplete.style.width =
           "100%";
@@ -202,7 +214,7 @@ export default function GlobalGooglePlaceAutocomplete({
 
               if (!placeId) {
                 throw new Error(
-                  "Google nu a returnat un identificator valid."
+                  t("invalidPlace")
                 );
               }
 
@@ -212,12 +224,10 @@ export default function GlobalGooglePlaceAutocomplete({
                   {
                     method:
                       "POST",
-
                     headers: {
                       "Content-Type":
                         "application/json",
                     },
-
                     body:
                       JSON.stringify({
                         placeId,
@@ -235,7 +245,9 @@ export default function GlobalGooglePlaceAutocomplete({
               ) {
                 throw new Error(
                   result.error ??
-                    "Locația nu a putut fi verificată."
+                    t(
+                      "locationVerificationFailed"
+                    )
                 );
               }
 
@@ -270,11 +282,15 @@ export default function GlobalGooglePlaceAutocomplete({
                 selectionError instanceof
                   Error
                   ? selectionError.message
-                  : "Locația nu a putut fi verificată."
+                  : t(
+                      "locationVerificationFailed"
+                    )
               );
             } finally {
               if (isActive) {
-                setIsResolving(false);
+                setIsResolving(
+                  false
+                );
               }
             }
           }) as EventListener;
@@ -284,7 +300,7 @@ export default function GlobalGooglePlaceAutocomplete({
           selectionHandler
         );
 
-        containerRef.current.appendChild(
+        hostElement.appendChild(
           autocomplete
         );
 
@@ -305,7 +321,7 @@ export default function GlobalGooglePlaceAutocomplete({
           initializationError instanceof
             Error
             ? initializationError.message
-            : "Google Places nu a putut fi încărcat."
+            : t("loadFailed")
         );
 
         setIsLoading(false);
@@ -328,9 +344,6 @@ export default function GlobalGooglePlaceAutocomplete({
           );
       }
 
-      const hostElement =
-        containerRef.current;
-
       if (
         autocomplete &&
         hostElement &&
@@ -345,6 +358,7 @@ export default function GlobalGooglePlaceAutocomplete({
   }, [
     disabled,
     handleSelected,
+    t,
   ]);
 
   function clearSelection() {
@@ -367,7 +381,7 @@ export default function GlobalGooglePlaceAutocomplete({
     <div className="space-y-3">
       <div>
         <span className="text-sm font-semibold text-gray-800">
-          Adresă sau localitate
+          {t("label")}
         </span>
 
         <div className="mt-2">
@@ -378,7 +392,7 @@ export default function GlobalGooglePlaceAutocomplete({
 
           {isLoading && (
             <p className="mt-2 text-sm text-gray-500">
-              Se încarcă Google Places...
+              {t("loading")}
             </p>
           )}
         </div>
@@ -386,7 +400,7 @@ export default function GlobalGooglePlaceAutocomplete({
 
       {isResolving && (
         <p className="text-sm text-gray-600">
-          Locația este verificată...
+          {t("resolving")}
         </p>
       )}
 
@@ -395,7 +409,7 @@ export default function GlobalGooglePlaceAutocomplete({
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-emerald-950">
-                Locație selectată
+                {t("selected")}
               </p>
 
               <p className="mt-1 text-sm leading-6 text-emerald-900">
@@ -423,7 +437,7 @@ export default function GlobalGooglePlaceAutocomplete({
               onClick={clearSelection}
               className="romdoc-focus-ring rounded-lg px-2 py-1 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100"
             >
-              Schimbă
+              {t("change")}
             </button>
           </div>
         </div>

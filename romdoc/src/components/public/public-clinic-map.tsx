@@ -2,10 +2,16 @@
 
 import Link from "next/link";
 import {
+  useTranslations,
+} from "next-intl";
+import {
+  useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
+
 import {
   loadGoogleMaps,
 } from "@/lib/google-maps/load-google-maps";
@@ -47,7 +53,9 @@ type LatLngLiteral = {
 type MapLike = {
   fitBounds: (
     bounds: unknown,
-    padding?: number | Record<string, number>
+    padding?:
+      | number
+      | Record<string, number>
   ) => void;
   setCenter: (
     center: LatLngLiteral
@@ -93,13 +101,16 @@ type InfoWindowLike = {
 type MapsLibrary = {
   Map: new (
     element: HTMLElement,
-    options: Record<string, unknown>
+    options:
+      Record<string, unknown>
   ) => MapLike;
   InfoWindow: new (
-    options?: Record<string, unknown>
+    options?:
+      Record<string, unknown>
   ) => InfoWindowLike;
   Circle: new (
-    options: Record<string, unknown>
+    options:
+      Record<string, unknown>
   ) => CircleLike;
 };
 
@@ -113,7 +124,8 @@ type CoreLibrary = {
 
 type MarkerLibrary = {
   AdvancedMarkerElement: new (
-    options: Record<string, unknown>
+    options:
+      Record<string, unknown>
   ) => MarkerLike;
 };
 
@@ -128,7 +140,21 @@ type GoogleWindow =
     };
   };
 
-const ROMANIA_CENTER: LatLngLiteral = {
+type ClinicMapCopy = {
+  openClinic: (
+    clinicName: string
+  ) => string;
+  activeDoctorCount: (
+    count: number
+  ) => string;
+  specialtyCount: (
+    count: number
+  ) => string;
+  viewDoctors: string;
+};
+
+const ROMANIA_CENTER:
+LatLngLiteral = {
   lat: 45.9432,
   lng: 24.9668,
 };
@@ -139,15 +165,31 @@ function escapeHtml(
   value: string
 ) {
   return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
 }
 
 function createClinicMarkerContent(
-  clinic: PublicClinicMapItem
+  clinic: PublicClinicMapItem,
+  copy: ClinicMapCopy
 ) {
   const marker =
     document.createElement(
@@ -155,12 +197,15 @@ function createClinicMarkerContent(
     );
 
   marker.type = "button";
+
   marker.className =
     "romdoc-map-marker";
 
   marker.setAttribute(
     "aria-label",
-    `Deschide detaliile pentru ${clinic.name}`
+    copy.openClinic(
+      clinic.name
+    )
   );
 
   marker.innerHTML = `
@@ -190,7 +235,8 @@ function createSearchMarkerContent() {
 }
 
 function createInfoWindowContent(
-  clinic: PublicClinicMapItem
+  clinic: PublicClinicMapItem,
+  copy: ClinicMapCopy
 ) {
   const container =
     document.createElement(
@@ -199,16 +245,6 @@ function createInfoWindowContent(
 
   container.className =
     "romdoc-map-popup";
-
-  const doctorLabel =
-    clinic.doctorCount === 1
-      ? "1 medic activ"
-      : `${clinic.doctorCount} medici activi`;
-
-  const specialtyLabel =
-    clinic.specialtyCount === 1
-      ? "1 specialitate"
-      : `${clinic.specialtyCount} specialități`;
 
   const doctorsHref =
     clinic.citySlug
@@ -229,15 +265,21 @@ function createInfoWindowContent(
     )}</p>
     <div class="romdoc-map-popup-stats">
       <span>${escapeHtml(
-        doctorLabel
+        copy.activeDoctorCount(
+          clinic.doctorCount
+        )
       )}</span>
       <span>${escapeHtml(
-        specialtyLabel
+        copy.specialtyCount(
+          clinic.specialtyCount
+        )
       )}</span>
     </div>
     <div class="romdoc-map-popup-actions">
       <a href="${doctorsHref}" class="romdoc-map-popup-primary">
-        Vezi medicii
+        ${escapeHtml(
+          copy.viewDoctors
+        )}
       </a>
       ${
         clinic.googleMapsUri
@@ -263,35 +305,49 @@ function distanceKilometres(
   first: LatLngLiteral,
   second: LatLngLiteral
 ) {
-  const earthRadius = 6371;
+  const earthRadius =
+    6371;
+
   const toRadians = (
     degrees: number
   ) =>
-    (degrees * Math.PI) /
-    180;
+    (
+      degrees *
+      Math.PI
+    ) / 180;
 
   const latitudeDelta =
     toRadians(
-      second.lat - first.lat
+      second.lat -
+        first.lat
     );
 
   const longitudeDelta =
     toRadians(
-      second.lng - first.lng
+      second.lng -
+        first.lng
     );
 
   const firstLatitude =
-    toRadians(first.lat);
+    toRadians(
+      first.lat
+    );
 
   const secondLatitude =
-    toRadians(second.lat);
+    toRadians(
+      second.lat
+    );
 
   const a =
     Math.sin(
       latitudeDelta / 2
     ) ** 2 +
-    Math.cos(firstLatitude) *
-      Math.cos(secondLatitude) *
+    Math.cos(
+      firstLatitude
+    ) *
+      Math.cos(
+        secondLatitude
+      ) *
       Math.sin(
         longitudeDelta / 2
       ) ** 2;
@@ -312,12 +368,61 @@ function scrollToFilters() {
       "doctor-filters"
     )
     ?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
+      behavior:
+        "smooth",
+      block:
+        "start",
     });
 }
 
-export default function PublicClinicMap() {
+export default function
+PublicClinicMap() {
+  const t =
+    useTranslations(
+      "ClinicMap"
+    );
+
+  const copy =
+    useMemo<ClinicMapCopy>(
+      () => ({
+        openClinic:
+          (
+            clinicName
+          ) =>
+            t(
+              "openClinic",
+              {
+                clinicName,
+              }
+            ),
+        activeDoctorCount:
+          (
+            count
+          ) =>
+            t(
+              "activeDoctorCount",
+              {
+                count,
+              }
+            ),
+        specialtyCount:
+          (
+            count
+          ) =>
+            t(
+              "specialtyCount",
+              {
+                count,
+              }
+            ),
+        viewDoctors:
+          t(
+            "viewDoctors"
+          ),
+      }),
+      [t]
+    );
+
   const mapContainerRef =
     useRef<HTMLDivElement | null>(
       null
@@ -349,7 +454,9 @@ export default function PublicClinicMap() {
     >([]);
 
   const clinicMarkersRef =
-    useRef<MarkerLike[]>([]);
+    useRef<MarkerLike[]>(
+      []
+    );
 
   const markerListenersRef =
     useRef<
@@ -370,6 +477,11 @@ export default function PublicClinicMap() {
 
   const infoWindowRef =
     useRef<InfoWindowLike | null>(
+      null
+    );
+
+  const activeSearchRef =
+    useRef<HomepageMapSearchDetail>(
       null
     );
 
@@ -399,262 +511,304 @@ export default function PublicClinicMap() {
       null
     );
 
-  function clearRenderedSearch() {
-    searchMarkerRef.current &&
-      (searchMarkerRef.current.map =
-        null);
+  const clearRenderedSearch =
+    useCallback(
+      () => {
+        if (
+          searchMarkerRef.current
+        ) {
+          searchMarkerRef.current
+            .map = null;
+        }
 
-    searchMarkerRef.current =
-      null;
+        searchMarkerRef.current =
+          null;
 
-    radiusCircleRef.current?.setMap(
-      null
+        radiusCircleRef.current
+          ?.setMap(
+            null
+          );
+
+        radiusCircleRef.current =
+          null;
+      },
+      []
     );
 
-    radiusCircleRef.current =
-      null;
-  }
+  const clearClinicMarkers =
+    useCallback(
+      () => {
+        for (
+          const listener of
+          markerListenersRef.current
+        ) {
+          listener.remove();
+        }
 
-  function clearClinicMarkers() {
-    for (
-      const listener of
-        markerListenersRef.current
-    ) {
-      listener.remove();
-    }
+        for (
+          const marker of
+          clinicMarkersRef.current
+        ) {
+          marker.map =
+            null;
+        }
 
-    for (
-      const marker of
-        clinicMarkersRef.current
-    ) {
-      marker.map = null;
-    }
+        markerListenersRef.current =
+          [];
 
-    markerListenersRef.current =
-      [];
+        clinicMarkersRef.current =
+          [];
 
-    clinicMarkersRef.current =
-      [];
+        infoWindowRef.current
+          ?.close();
+      },
+      []
+    );
 
-    infoWindowRef.current?.close();
-  }
+  const renderMap =
+    useCallback(
+      (
+        search:
+          HomepageMapSearchDetail
+      ) => {
+        const map =
+          mapRef.current;
 
-  function renderMap(
-    search:
-      HomepageMapSearchDetail
-  ) {
-    const map =
-      mapRef.current;
+        const mapsLibrary =
+          mapsLibraryRef.current;
 
-    const mapsLibrary =
-      mapsLibraryRef.current;
+        const coreLibrary =
+          coreLibraryRef.current;
 
-    const coreLibrary =
-      coreLibraryRef.current;
+        const markerLibrary =
+          markerLibraryRef.current;
 
-    const markerLibrary =
-      markerLibraryRef.current;
+        if (
+          !map ||
+          !mapsLibrary ||
+          !coreLibrary ||
+          !markerLibrary
+        ) {
+          return;
+        }
 
-    if (
-      !map ||
-      !mapsLibrary ||
-      !coreLibrary ||
-      !markerLibrary
-    ) {
-      return;
-    }
+        clearClinicMarkers();
+        clearRenderedSearch();
 
-    clearClinicMarkers();
-    clearRenderedSearch();
+        const searchCenter =
+          search
+            ? {
+                lat:
+                  search.latitude,
+                lng:
+                  search.longitude,
+              }
+            : null;
 
-    const searchCenter =
-      search
-        ? {
+        const visibleClinics =
+          searchCenter &&
+          search
+            ? clinicsRef.current
+                .filter(
+                  (
+                    clinic
+                  ) =>
+                    distanceKilometres(
+                      searchCenter,
+                      {
+                        lat:
+                          clinic.latitude,
+                        lng:
+                          clinic.longitude,
+                      }
+                    ) <=
+                    search.radius
+                )
+            : clinicsRef.current;
+
+        setVisibleClinicCount(
+          visibleClinics.length
+        );
+
+        const bounds =
+          new coreLibrary
+            .LatLngBounds();
+
+        for (
+          const clinic of
+          visibleClinics
+        ) {
+          const position = {
             lat:
-              search.latitude,
+              clinic.latitude,
             lng:
-              search.longitude,
-          }
-        : null;
+              clinic.longitude,
+          };
 
-    const visibleClinics =
-      searchCenter && search
-        ? clinicsRef.current.filter(
-            (clinic) =>
-              distanceKilometres(
-                searchCenter,
-                {
-                  lat:
-                    clinic.latitude,
-                  lng:
-                    clinic.longitude,
-                }
-              ) <= search.radius
-          )
-        : clinicsRef.current;
+          bounds.extend(
+            position
+          );
 
-    setVisibleClinicCount(
-      visibleClinics.length
-    );
+          const marker =
+            new markerLibrary
+              .AdvancedMarkerElement({
+                map,
+                position,
+                title:
+                  clinic.name,
+                content:
+                  createClinicMarkerContent(
+                    clinic,
+                    copy
+                  ),
+              });
 
-    const bounds =
-      new coreLibrary
-        .LatLngBounds();
+          const listener =
+            marker.addListener(
+              "click",
+              () => {
+                infoWindowRef.current
+                  ?.close();
 
-    for (
-      const clinic of
-        visibleClinics
-    ) {
-      const position = {
-        lat:
-          clinic.latitude,
-        lng:
-          clinic.longitude,
-      };
+                const infoWindow =
+                  new mapsLibrary
+                    .InfoWindow({
+                      content:
+                        createInfoWindowContent(
+                          clinic,
+                          copy
+                        ),
+                      ariaLabel:
+                        clinic.name,
+                    });
 
-      bounds.extend(position);
-
-      const marker =
-        new markerLibrary
-          .AdvancedMarkerElement({
-            map,
-            position,
-            title:
-              clinic.name,
-            content:
-              createClinicMarkerContent(
-                clinic
-              ),
-          });
-
-      const listener =
-        marker.addListener(
-          "click",
-          () => {
-            infoWindowRef.current
-              ?.close();
-
-            const infoWindow =
-              new mapsLibrary
-                .InfoWindow({
-                  content:
-                    createInfoWindowContent(
-                      clinic
-                    ),
-                  ariaLabel:
-                    clinic.name,
+                infoWindow.open({
+                  map,
+                  anchor:
+                    marker,
                 });
 
-            infoWindow.open({
-              map,
-              anchor:
-                marker,
-            });
+                infoWindowRef.current =
+                  infoWindow;
+              }
+            );
 
-            infoWindowRef.current =
-              infoWindow;
-          }
-        );
+          clinicMarkersRef.current
+            .push(
+              marker
+            );
 
-      clinicMarkersRef.current.push(
-        marker
-      );
-
-      markerListenersRef.current.push(
-        listener
-      );
-    }
-
-    if (searchCenter && search) {
-      searchMarkerRef.current =
-        new markerLibrary
-          .AdvancedMarkerElement({
-            map,
-            position:
-              searchCenter,
-            title:
-              search.formattedAddress,
-            content:
-              createSearchMarkerContent(),
-            zIndex:
-              9999,
-          });
-
-      radiusCircleRef.current =
-        new mapsLibrary.Circle({
-          map,
-          center:
-            searchCenter,
-          radius:
-            search.radius *
-            1000,
-          clickable:
-            false,
-          fillColor:
-            "#036661",
-          fillOpacity:
-            0.08,
-          strokeColor:
-            "#036661",
-          strokeOpacity:
-            0.75,
-          strokeWeight:
-            2,
-        });
-
-      map.setCenter(
-        searchCenter
-      );
-
-      map.setZoom(
-        search.radius === 10
-          ? 11
-          : 9
-      );
-
-      return;
-    }
-
-    if (
-      visibleClinics.length >
-      0
-    ) {
-      map.fitBounds(
-        bounds,
-        {
-          top: 72,
-          right: 48,
-          bottom: 72,
-          left: 48,
+          markerListenersRef.current
+            .push(
+              listener
+            );
         }
-      );
 
-      const idleListener =
-        map.addListener(
-          "idle",
-          () => {
-            if (
-              (
-                map.getZoom() ??
-                0
-              ) > 15
-            ) {
-              map.setZoom(15);
+        if (
+          searchCenter &&
+          search
+        ) {
+          searchMarkerRef.current =
+            new markerLibrary
+              .AdvancedMarkerElement({
+                map,
+                position:
+                  searchCenter,
+                title:
+                  search
+                    .formattedAddress,
+                content:
+                  createSearchMarkerContent(),
+                zIndex:
+                  9999,
+              });
+
+          radiusCircleRef.current =
+            new mapsLibrary
+              .Circle({
+                map,
+                center:
+                  searchCenter,
+                radius:
+                  search.radius *
+                  1000,
+                clickable:
+                  false,
+                fillColor:
+                  "#036661",
+                fillOpacity:
+                  0.08,
+                strokeColor:
+                  "#036661",
+                strokeOpacity:
+                  0.75,
+                strokeWeight:
+                  2,
+              });
+
+          map.setCenter(
+            searchCenter
+          );
+
+          map.setZoom(
+            search.radius ===
+              10
+              ? 11
+              : 9
+          );
+
+          return;
+        }
+
+        if (
+          visibleClinics.length >
+          0
+        ) {
+          map.fitBounds(
+            bounds,
+            {
+              top: 72,
+              right: 48,
+              bottom: 72,
+              left: 48,
             }
+          );
 
-            idleListener.remove();
-          }
-        );
-    } else {
-      map.setCenter(
-        ROMANIA_CENTER
-      );
+          const idleListener =
+            map.addListener(
+              "idle",
+              () => {
+                if (
+                  (
+                    map.getZoom() ??
+                    0
+                  ) > 15
+                ) {
+                  map.setZoom(
+                    15
+                  );
+                }
 
-      map.setZoom(
-        ROMANIA_ZOOM
-      );
-    }
-  }
+                idleListener
+                  .remove();
+              }
+            );
+        } else {
+          map.setCenter(
+            ROMANIA_CENTER
+          );
+
+          map.setZoom(
+            ROMANIA_ZOOM
+          );
+        }
+      },
+      [
+        clearClinicMarkers,
+        clearRenderedSearch,
+        copy,
+      ]
+    );
 
   useEffect(() => {
     function handleSearchChange(
@@ -663,6 +817,9 @@ export default function PublicClinicMap() {
       const customEvent =
         event as
           CustomEvent<HomepageMapSearchDetail>;
+
+      activeSearchRef.current =
+        customEvent.detail;
 
       setActiveSearch(
         customEvent.detail
@@ -684,15 +841,22 @@ export default function PublicClinicMap() {
         handleSearchChange
       );
     };
-  }, []);
+  }, [
+    renderMap,
+  ]);
 
   useEffect(() => {
     let isActive = true;
 
     async function initializeMap() {
       try {
-        setIsLoading(true);
-        setError(null);
+        setIsLoading(
+          true
+        );
+
+        setError(
+          null
+        );
 
         const response =
           await fetch(
@@ -702,7 +866,8 @@ export default function PublicClinicMap() {
                 Accept:
                   "application/json",
               },
-              cache: "no-store",
+              cache:
+                "no-store",
             }
           );
 
@@ -710,10 +875,14 @@ export default function PublicClinicMap() {
           (await response.json()) as
             PublicClinicMapResponse;
 
-        if (!response.ok) {
+        if (
+          !response.ok
+        ) {
           throw new Error(
             result.error ??
-              "Clinicile nu au putut fi încărcate."
+              t(
+                "clinicsLoadFailed"
+              )
           );
         }
 
@@ -726,17 +895,19 @@ export default function PublicClinicMap() {
           return;
         }
 
-        const googleWindow =
-          window as GoogleWindow;
-
         const importLibrary =
-          googleWindow.google
+          (
+            window as
+              GoogleWindow
+          ).google
             ?.maps
             ?.importLibrary;
 
         if (!importLibrary) {
           throw new Error(
-            "Google Maps importLibrary nu este disponibil."
+            t(
+              "mapsUnavailable"
+            )
           );
         }
 
@@ -749,11 +920,9 @@ export default function PublicClinicMap() {
             importLibrary(
               "maps"
             ) as Promise<MapsLibrary>,
-
             importLibrary(
               "core"
             ) as Promise<CoreLibrary>,
-
             importLibrary(
               "marker"
             ) as Promise<MarkerLibrary>,
@@ -773,26 +942,27 @@ export default function PublicClinicMap() {
           "DEMO_MAP_ID";
 
         const map =
-          new mapsLibrary.Map(
-            mapContainerRef.current,
-            {
-              center:
-                ROMANIA_CENTER,
-              zoom:
-                ROMANIA_ZOOM,
-              mapId,
-              mapTypeControl:
-                false,
-              streetViewControl:
-                false,
-              fullscreenControl:
-                true,
-              clickableIcons:
-                false,
-              gestureHandling:
-                "cooperative",
-            }
-          );
+          new mapsLibrary
+            .Map(
+              mapContainerRef.current,
+              {
+                center:
+                  ROMANIA_CENTER,
+                zoom:
+                  ROMANIA_ZOOM,
+                mapId,
+                mapTypeControl:
+                  false,
+                streetViewControl:
+                  false,
+                fullscreenControl:
+                  true,
+                clickableIcons:
+                  false,
+                gestureHandling:
+                  "cooperative",
+              }
+            );
 
         clinicsRef.current =
           result.clinics ??
@@ -815,11 +985,13 @@ export default function PublicClinicMap() {
             .InfoWindow();
 
         renderMap(
-          activeSearch
+          activeSearchRef.current
         );
 
         if (isActive) {
-          setIsLoading(false);
+          setIsLoading(
+            false
+          );
         }
       } catch (
         initializationError
@@ -837,10 +1009,14 @@ export default function PublicClinicMap() {
           initializationError instanceof
             Error
             ? initializationError.message
-            : "Harta clinicilor nu a putut fi încărcată."
+            : t(
+                "mapLoadFailed"
+              )
         );
 
-        setIsLoading(false);
+        setIsLoading(
+          false
+        );
       }
     }
 
@@ -852,7 +1028,8 @@ export default function PublicClinicMap() {
       clearClinicMarkers();
       clearRenderedSearch();
 
-      infoWindowRef.current?.close();
+      infoWindowRef.current
+        ?.close();
 
       mapRef.current =
         null;
@@ -866,15 +1043,24 @@ export default function PublicClinicMap() {
       markerLibraryRef.current =
         null;
     };
-  }, []);
+  }, [
+    clearClinicMarkers,
+    clearRenderedSearch,
+    renderMap,
+    t,
+  ]);
 
   return (
     <section
-      aria-label="Harta clinicilor aprobate"
+      aria-label={t(
+        "ariaLabel"
+      )}
       className="relative isolate overflow-hidden bg-gray-200"
     >
       <div
-        ref={mapContainerRef}
+        ref={
+          mapContainerRef
+        }
         className="h-[55vh] min-h-[26rem] w-full md:h-[68vh] lg:h-[80vh]"
       />
 
@@ -887,7 +1073,9 @@ export default function PublicClinicMap() {
             />
 
             <p className="mt-3 text-sm font-medium text-gray-700">
-              Se încarcă harta clinicilor...
+              {t(
+                "loading"
+              )}
             </p>
           </div>
         </div>
@@ -898,7 +1086,9 @@ export default function PublicClinicMap() {
           <div className="absolute inset-0 flex items-center justify-center bg-[#F0EEE9] px-4">
             <div className="max-w-md rounded-2xl border border-red-200 bg-white p-6 text-center shadow-sm">
               <h2 className="text-lg font-semibold text-gray-900">
-                Harta nu este disponibilă
+                {t(
+                  "unavailableTitle"
+                )}
               </h2>
 
               <p className="mt-2 text-sm leading-6 text-red-700">
@@ -909,7 +1099,9 @@ export default function PublicClinicMap() {
                 href="/medici"
                 className="romdoc-button romdoc-button-primary mt-5"
               >
-                Vezi lista medicilor
+                {t(
+                  "viewDoctorList"
+                )}
               </Link>
             </div>
           </div>
@@ -921,21 +1113,36 @@ export default function PublicClinicMap() {
             <div className="rounded-2xl border border-white/70 bg-white/95 px-4 py-3 text-sm shadow-lg backdrop-blur">
               <p className="font-semibold text-gray-900">
                 {activeSearch
-                  ? `${visibleClinicCount} ${
-                      visibleClinicCount === 1
-                        ? "clinică aprobată"
-                        : "clinici aprobate"
-                    } în raza de ${activeSearch.radius} km`
-                  : visibleClinicCount === 1
-                    ? "1 clinică aprobată"
-                    : `${visibleClinicCount} clinici aprobate`}
+                  ? t(
+                      "clinicsInRadius",
+                      {
+                        count:
+                          visibleClinicCount,
+                        radius:
+                          activeSearch
+                            .radius,
+                      }
+                    )
+                  : t(
+                      "clinicCount",
+                      {
+                        count:
+                          visibleClinicCount,
+                      }
+                    )}
               </p>
 
               {activeSearch && (
                 <p className="mt-1 truncate text-xs text-gray-600">
-                  {activeSearch.formattedAddress}
+                  {
+                    activeSearch
+                      .formattedAddress
+                  }
                   {" · "}
-                  {activeSearch.countryCode}
+                  {
+                    activeSearch
+                      .countryCode
+                  }
                 </p>
               )}
             </div>
@@ -944,10 +1151,14 @@ export default function PublicClinicMap() {
 
       <button
         type="button"
-        onClick={scrollToFilters}
+        onClick={
+          scrollToFilters
+        }
         className="romdoc-button romdoc-button-primary absolute bottom-5 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap shadow-xl sm:bottom-7"
       >
-        Caută medici
+        {t(
+          "searchDoctors"
+        )}
       </button>
     </section>
   );
