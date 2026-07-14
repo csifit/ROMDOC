@@ -59,11 +59,25 @@ type CityMetadataRow = {
     Translation[] | null;
 };
 
+type LocalizedPaths = {
+  ro: string;
+  en: string;
+  de: string;
+};
+
 const SITE_NAME = "RomDoc";
 
 function getFirstRelation<T>(
-  relation: T | T[] | null
+  relation:
+    | T
+    | T[]
+    | null
+    | undefined
 ): T | null {
+  if (!relation) {
+    return null;
+  }
+
   if (Array.isArray(relation)) {
     return relation[0] ?? null;
   }
@@ -71,7 +85,7 @@ function getFirstRelation<T>(
   return relation;
 }
 
-function getTranslation(
+function getExactTranslation(
   translations:
     | Translation[]
     | null
@@ -82,6 +96,21 @@ function getTranslation(
     translations?.find(
       (translation) =>
         translation.locale === locale
+    ) ?? null
+  );
+}
+
+function getTranslation(
+  translations:
+    | Translation[]
+    | null
+    | undefined,
+  locale: AppLocale
+) {
+  return (
+    getExactTranslation(
+      translations,
+      locale
     ) ??
     translations?.find(
       (translation) =>
@@ -92,13 +121,19 @@ function getTranslation(
   );
 }
 
-function formatSlug(slug: string) {
-  return decodeURIComponent(slug)
+function formatSlug(
+  slug: string
+) {
+  return decodeURIComponent(
+    slug
+  )
     .split("-")
     .filter(Boolean)
     .map(
       (part) =>
-        part.charAt(0).toUpperCase() +
+        part
+          .charAt(0)
+          .toUpperCase() +
         part.slice(1)
     )
     .join(" ");
@@ -109,7 +144,9 @@ function truncate(
   maximumLength = 160
 ) {
   const normalized =
-    value.replace(/\s+/g, " ").trim();
+    value
+      .replace(/\s+/g, " ")
+      .trim();
 
   if (
     normalized.length <=
@@ -126,36 +163,30 @@ function truncate(
     .trimEnd()}…`;
 }
 
-type LocalizedPaths = {
-  ro: string;
-  en: string;
-  de: string;
-};
-
 function createMetadata({
   locale,
   title,
   description,
   paths,
   type = "website",
+  indexable = true,
 }: {
   locale: AppLocale;
   title: string;
   description: string;
   paths: LocalizedPaths;
   type?: "website" | "profile";
+  indexable?: boolean;
 }): Metadata {
   const canonical =
     paths[locale];
 
-  const openGraphLocale: Record<
-    AppLocale,
-    string
-  > = {
-    ro: "ro_RO",
-    en: "en_US",
-    de: "de_DE",
-  };
+  const openGraphLocale:
+    Record<AppLocale, string> = {
+      ro: "ro_RO",
+      en: "en_US",
+      de: "de_DE",
+    };
 
   return {
     title,
@@ -165,60 +196,70 @@ function createMetadata({
       languages: {
         ro: paths.ro,
         en: paths.en,
-        "x-default": paths.ro,
+        de: paths.de,
+        "x-default":
+          paths.ro,
       },
     },
-    robots:
-      locale === "de"
-        ? {
-            index: false,
-            follow: true,
-          }
-        : {
-            index: true,
-            follow: true,
-          },
+    robots: {
+      index: indexable,
+      follow: true,
+    },
     openGraph: {
       type,
       locale:
-        openGraphLocale[locale],
-      siteName: SITE_NAME,
+        openGraphLocale[
+          locale
+        ],
+      siteName:
+        SITE_NAME,
       title,
       description,
       url: canonical,
     },
     twitter: {
-      card: "summary_large_image",
+      card:
+        "summary_large_image",
       title,
       description,
     },
   };
 }
 
-export function getHomeMetadata(
+export function
+getHomeMetadata(
   locale: AppLocale
 ): Metadata {
-  if (locale === "en") {
-    return createMetadata({
-      locale,
+  const copy: Record<
+    AppLocale,
+    {
+      title: string;
+      description: string;
+    }
+  > = {
+    ro: {
       title:
-        "Doctors and medical appointments in Romania",
+        "Medici și programări medicale în România",
       description:
-        "Find doctors, approved clinics and online medical appointments across Romania with RomDoc.",
-      paths: {
-        ro: "/ro",
-        en: "/en",
-        de: "/de",
-      },
-    });
-  }
+        "Găsește medici, clinici aprobate și programări medicale online în România prin RomDoc.",
+    },
+    en: {
+      title:
+        "Doctors and medical appointments",
+      description:
+        "Find doctors, approved clinics and online medical appointments with RomDoc.",
+    },
+    de: {
+      title:
+        "Ärzte und medizinische Termine",
+      description:
+        "Finden Sie Ärzte, genehmigte Kliniken und Online-Termine mit RomDoc.",
+    },
+  };
 
   return createMetadata({
     locale,
-    title:
-      "Medici și programări medicale în România",
-    description:
-      "Găsește medici, clinici aprobate și programări medicale online în România prin RomDoc.",
+    ...copy[locale],
     paths: {
       ro: "/ro",
       en: "/en",
@@ -227,30 +268,40 @@ export function getHomeMetadata(
   });
 }
 
-export function getDoctorsIndexMetadata(
+export function
+getDoctorsIndexMetadata(
   locale: AppLocale
 ): Metadata {
-  if (locale === "en") {
-    return createMetadata({
-      locale,
+  const copy: Record<
+    AppLocale,
+    {
+      title: string;
+      description: string;
+    }
+  > = {
+    ro: {
       title:
-        "Find doctors in Romania",
+        "Găsește medici în România",
+      description:
+        "Caută medici RomDoc după specializare, oraș, verificare profesională și disponibilitate online.",
+    },
+    en: {
+      title:
+        "Find doctors",
       description:
         "Browse RomDoc doctors by specialty, city, professional verification and online availability.",
-      paths: {
-        ro: "/ro/medici",
-        en: "/en/doctors",
-        de: "/de/aerzte",
-      },
-    });
-  }
+    },
+    de: {
+      title:
+        "Ärzte finden",
+      description:
+        "Durchsuchen Sie RomDoc-Ärzte nach Fachrichtung, Stadt, beruflicher Verifizierung und Online-Verfügbarkeit.",
+    },
+  };
 
   return createMetadata({
     locale,
-    title:
-      "Găsește medici în România",
-    description:
-      "Caută medici RomDoc după specializare, oraș, verificare profesională și disponibilitate online.",
+    ...copy[locale],
     paths: {
       ro: "/ro/medici",
       en: "/en/doctors",
@@ -259,34 +310,47 @@ export function getDoctorsIndexMetadata(
   });
 }
 
-export function getSpecializationsMetadata(
+export function
+getSpecializationsMetadata(
   locale: AppLocale
 ): Metadata {
-  if (locale === "en") {
-    return createMetadata({
-      locale,
+  const copy: Record<
+    AppLocale,
+    {
+      title: string;
+      description: string;
+    }
+  > = {
+    ro: {
+      title:
+        "Specializări medicale",
+      description:
+        "Explorează specializările medicale și găsește medicii și clinicile potrivite în România.",
+    },
+    en: {
       title:
         "Medical specialties",
       description:
-        "Browse medical specialties and find the right doctors and clinics in Romania.",
-      paths: {
-        ro: "/ro/specialitati",
-        en: "/en/specialties",
-        de: "/de/fachrichtungen",
-      },
-    });
-  }
+        "Browse medical specialties and find suitable doctors and clinics.",
+    },
+    de: {
+      title:
+        "Medizinische Fachrichtungen",
+      description:
+        "Entdecken Sie medizinische Fachrichtungen und finden Sie passende Ärzte und Kliniken.",
+    },
+  };
 
   return createMetadata({
     locale,
-    title:
-      "Specializări medicale",
-    description:
-      "Explorează specializările medicale și găsește medicii și clinicile potrivite în România.",
+    ...copy[locale],
     paths: {
-      ro: "/ro/specialitati",
-      en: "/en/specialties",
-      de: "/de/fachrichtungen",
+      ro:
+        "/ro/specialitati",
+      en:
+        "/en/specialties",
+      de:
+        "/de/fachrichtungen",
     },
   });
 }
@@ -332,7 +396,10 @@ getDoctorProfileMetadata({
       )
     `)
     .eq("slug", slug)
-    .eq("status", "active")
+    .eq(
+      "status",
+      "active"
+    )
     .maybeSingle();
 
   if (error) {
@@ -350,45 +417,60 @@ getDoctorProfileMetadata({
   const doctorName =
     formatSlug(slug);
 
+  const exactTranslation =
+    getExactTranslation(
+      doctor
+        ?.doctor_translations,
+      locale
+    );
+
   const translation =
     getTranslation(
-      doctor?.doctor_translations,
+      doctor
+        ?.doctor_translations,
       locale
     );
 
   const firstClinicRelation =
-    doctor?.doctor_clinics?.[0] ??
+    doctor
+      ?.doctor_clinics?.[0] ??
     null;
 
   const clinic =
     getFirstRelation(
-      firstClinicRelation?.clinics ??
-      null
+      firstClinicRelation
+        ?.clinics
     );
 
   const city =
     getFirstRelation(
-      clinic?.cities ?? null
+      clinic?.cities
     );
 
   const clinicName =
     getTranslation(
-      clinic?.clinic_translations,
+      clinic
+        ?.clinic_translations,
       locale
     )?.name ?? null;
 
   const cityName =
     getTranslation(
-      city?.city_translations,
+      city
+        ?.city_translations,
       locale
     )?.name ?? null;
 
   const professionalTitle =
-    translation?.title?.trim() ??
+    translation
+      ?.title
+      ?.trim() ??
     null;
 
   const title =
-    translation?.meta_title?.trim() ||
+    translation
+      ?.meta_title
+      ?.trim() ||
     [
       doctorName,
       professionalTitle,
@@ -397,10 +479,15 @@ getDoctorProfileMetadata({
       .filter(Boolean)
       .join(" – ");
 
-  const fallbackDescription =
-    locale === "en"
-      ? `View ${doctorName}'s profile, medical services, clinic information, reviews and appointment availability on RomDoc.`
-      : `Vezi profilul ${doctorName}, serviciile medicale, clinica, recenziile și disponibilitatea pentru programări pe RomDoc.`;
+  const fallbackDescription:
+    Record<AppLocale, string> = {
+      ro:
+        `Vezi profilul ${doctorName}, serviciile medicale, clinica, recenziile și disponibilitatea pentru programări pe RomDoc.`,
+      en:
+        `View ${doctorName}'s profile, medical services, clinic information, reviews and appointment availability on RomDoc.`,
+      de:
+        `Sehen Sie das Profil von ${doctorName}, medizinische Leistungen, Klinikangaben, Bewertungen und Terminverfügbarkeit auf RomDoc.`,
+    };
 
   const contextDescription =
     [
@@ -412,25 +499,33 @@ getDoctorProfileMetadata({
       .filter(Boolean)
       .join(", ");
 
-  const description = truncate(
-    translation
-      ?.meta_description
-      ?.trim() ||
-      translation?.biography?.trim() ||
+  const description =
+    truncate(
+      translation
+        ?.meta_description
+        ?.trim() ||
+      translation
+        ?.biography
+        ?.trim() ||
       (
         contextDescription
-          ? `${contextDescription}. ${fallbackDescription}`
-          : fallbackDescription
+          ? `${contextDescription}. ${fallbackDescription[locale]}`
+          : fallbackDescription[
+              locale
+            ]
       )
-  );
+    );
 
   const encodedSlug =
-    encodeURIComponent(slug);
+    encodeURIComponent(
+      slug
+    );
 
   return createMetadata({
     locale,
     title:
-      title || doctorName,
+      title ||
+      doctorName,
     description,
     paths: {
       ro:
@@ -441,6 +536,11 @@ getDoctorProfileMetadata({
         `/de/arzt/${encodedSlug}`,
     },
     type: "profile",
+    indexable:
+      locale !== "de" ||
+      Boolean(
+        exactTranslation
+      ),
   });
 }
 
@@ -469,8 +569,14 @@ getSpecialtyMetadata({
         meta_description
       )
     `)
-    .eq("slug", specialtySlug)
-    .eq("is_active", true)
+    .eq(
+      "slug",
+      specialtySlug
+    )
+    .eq(
+      "is_active",
+      true
+    )
     .maybeSingle();
 
   if (error) {
@@ -485,6 +591,13 @@ getSpecialtyMetadata({
       | SpecialtyMetadataRow
       | null;
 
+  const exactTranslation =
+    getExactTranslation(
+      specialty
+        ?.specialty_translations,
+      locale
+    );
+
   const translation =
     getTranslation(
       specialty
@@ -493,27 +606,32 @@ getSpecialtyMetadata({
     );
 
   const specialtyName =
-    translation?.name?.trim() ||
-    formatSlug(specialtySlug);
-
-  const title =
-    translation?.meta_title?.trim() ||
-    (
-      locale === "en"
-        ? `${specialtyName} doctors`
-        : `Medici ${specialtyName}`
+    translation
+      ?.name
+      ?.trim() ||
+    formatSlug(
+      specialtySlug
     );
 
-  const description = truncate(
-    translation
-      ?.meta_description
-      ?.trim() ||
-      (
-        locale === "en"
-          ? `Find ${specialtyName.toLowerCase()} doctors, clinics and online appointment options in Romania.`
-          : `Găsește medici de ${specialtyName.toLowerCase()}, clinici și opțiuni de programare online în România.`
-      )
-  );
+  const titleFallback:
+    Record<AppLocale, string> = {
+      ro:
+        `Medici ${specialtyName}`,
+      en:
+        `${specialtyName} doctors`,
+      de:
+        `Ärzte für ${specialtyName}`,
+    };
+
+  const descriptionFallback:
+    Record<AppLocale, string> = {
+      ro:
+        `Găsește medici de ${specialtyName.toLowerCase()}, clinici și opțiuni de programare online.`,
+      en:
+        `Find ${specialtyName.toLowerCase()} doctors, clinics and online appointment options.`,
+      de:
+        `Finden Sie Ärzte für ${specialtyName}, Kliniken und Online-Terminoptionen.`,
+    };
 
   const encodedSpecialtySlug =
     encodeURIComponent(
@@ -522,8 +640,20 @@ getSpecialtyMetadata({
 
   return createMetadata({
     locale,
-    title,
-    description,
+    title:
+      translation
+        ?.meta_title
+        ?.trim() ||
+      titleFallback[locale],
+    description:
+      truncate(
+        translation
+          ?.meta_description
+          ?.trim() ||
+        descriptionFallback[
+          locale
+        ]
+      ),
     paths: {
       ro:
         `/ro/medici/${encodedSpecialtySlug}`,
@@ -532,6 +662,13 @@ getSpecialtyMetadata({
       de:
         `/de/aerzte/${encodedSpecialtySlug}`,
     },
+    indexable:
+      locale !== "de" ||
+      Boolean(
+        exactTranslation
+          ?.name
+          ?.trim()
+      ),
   });
 }
 
@@ -553,7 +690,9 @@ getDirectoryMetadata({
     cityResult,
   ] = await Promise.all([
     supabase
-      .from("specialties")
+      .from(
+        "specialties"
+      )
       .select(`
         slug,
         specialty_translations (
@@ -563,8 +702,14 @@ getDirectoryMetadata({
           meta_description
         )
       `)
-      .eq("slug", specialtySlug)
-      .eq("is_active", true)
+      .eq(
+        "slug",
+        specialtySlug
+      )
+      .eq(
+        "is_active",
+        true
+      )
       .maybeSingle(),
 
     supabase
@@ -576,12 +721,20 @@ getDirectoryMetadata({
           name
         )
       `)
-      .eq("slug", citySlug)
-      .eq("is_active", true)
+      .eq(
+        "slug",
+        citySlug
+      )
+      .eq(
+        "is_active",
+        true
+      )
       .maybeSingle(),
   ]);
 
-  if (specialtyResult.error) {
+  if (
+    specialtyResult.error
+  ) {
     console.error(
       "Directory specialty metadata lookup failed:",
       specialtyResult.error
@@ -605,40 +758,63 @@ getDirectoryMetadata({
       | CityMetadataRow
       | null;
 
-  const specialtyTranslation =
-    getTranslation(
+  const exactSpecialty =
+    getExactTranslation(
       specialty
         ?.specialty_translations,
       locale
     );
 
-  const cityTranslation =
-    getTranslation(
-      city?.city_translations,
+  const exactCity =
+    getExactTranslation(
+      city
+        ?.city_translations,
       locale
     );
 
   const specialtyName =
-    specialtyTranslation
+    getTranslation(
+      specialty
+        ?.specialty_translations,
+      locale
+    )
       ?.name
       ?.trim() ||
-    formatSlug(specialtySlug);
+    formatSlug(
+      specialtySlug
+    );
 
   const cityName =
-    cityTranslation
+    getTranslation(
+      city
+        ?.city_translations,
+      locale
+    )
       ?.name
       ?.trim() ||
-    formatSlug(citySlug);
+    formatSlug(
+      citySlug
+    );
 
-  const title =
-    locale === "en"
-      ? `${specialtyName} doctors in ${cityName}`
-      : `Medici ${specialtyName} în ${cityName}`;
+  const titles:
+    Record<AppLocale, string> = {
+      ro:
+        `Medici ${specialtyName} în ${cityName}`,
+      en:
+        `${specialtyName} doctors in ${cityName}`,
+      de:
+        `Ärzte für ${specialtyName} in ${cityName}`,
+    };
 
-  const description =
-    locale === "en"
-      ? `Find ${specialtyName.toLowerCase()} doctors in ${cityName}. Compare clinics, reviews, professional verification and appointment availability.`
-      : `Găsește medici de ${specialtyName.toLowerCase()} în ${cityName}. Compară clinicile, recenziile, verificarea profesională și disponibilitatea pentru programări.`;
+  const descriptions:
+    Record<AppLocale, string> = {
+      ro:
+        `Găsește medici de ${specialtyName.toLowerCase()} în ${cityName}. Compară clinicile, recenziile, verificarea profesională și disponibilitatea pentru programări.`,
+      en:
+        `Find ${specialtyName.toLowerCase()} doctors in ${cityName}. Compare clinics, reviews, professional verification and appointment availability.`,
+      de:
+        `Finden Sie Ärzte für ${specialtyName} in ${cityName}. Vergleichen Sie Kliniken, Bewertungen, berufliche Verifizierung und Terminverfügbarkeit.`,
+    };
 
   const encodedSpecialtySlug =
     encodeURIComponent(
@@ -646,13 +822,20 @@ getDirectoryMetadata({
     );
 
   const encodedCitySlug =
-    encodeURIComponent(citySlug);
+    encodeURIComponent(
+      citySlug
+    );
 
   return createMetadata({
     locale,
-    title,
+    title:
+      titles[locale],
     description:
-      truncate(description),
+      truncate(
+        descriptions[
+          locale
+        ]
+      ),
     paths: {
       ro:
         `/ro/medici/${encodedSpecialtySlug}/${encodedCitySlug}`,
@@ -661,5 +844,15 @@ getDirectoryMetadata({
       de:
         `/de/aerzte/${encodedSpecialtySlug}/${encodedCitySlug}`,
     },
+    indexable:
+      locale !== "de" ||
+      Boolean(
+        exactSpecialty
+          ?.name
+          ?.trim() &&
+        exactCity
+          ?.name
+          ?.trim()
+      ),
   });
 }

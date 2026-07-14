@@ -18,6 +18,7 @@ robots(): MetadataRoute.Robots {
         allow: [
           "/ro/",
           "/en/",
+          "/de/",
         ],
         disallow: [
           "/api/",
