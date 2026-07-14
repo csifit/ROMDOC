@@ -1,12 +1,15 @@
 import {
   redirect,
 } from "next/navigation";
-import SpecialtiesManagement from "@/components/admin/specialties-management";
+
+import SpecialtiesManagement
+  from "@/components/admin/specialties-management";
 import {
   createClient,
 } from "@/lib/supabase/server";
 
-export default async function AdminSpecialtiesPage() {
+export default async function
+AdminSpecialtiesPage() {
   const supabase =
     await createClient();
 
@@ -53,9 +56,11 @@ export default async function AdminSpecialtiesPage() {
         </h1>
 
         <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Adaugă și administrează specialitățile medicale disponibile
-          în directoarele RomDoc. Fiecare specialitate conține o
-          denumire în română și una în engleză.
+          Adaugă și administrează specialitățile medicale
+          disponibile în directoarele RomDoc. Denumirile în
+          română și engleză sunt obligatorii în fluxul actual.
+          Traducerea în germană și câmpurile SEO sunt opționale
+          și pot fi completate manual.
         </p>
       </header>
 

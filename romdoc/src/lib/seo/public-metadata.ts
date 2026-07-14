@@ -129,6 +129,7 @@ function truncate(
 type LocalizedPaths = {
   ro: string;
   en: string;
+  de: string;
 };
 
 function createMetadata({
@@ -145,9 +146,16 @@ function createMetadata({
   type?: "website" | "profile";
 }): Metadata {
   const canonical =
-    locale === "ro"
-      ? paths.ro
-      : paths.en;
+    paths[locale];
+
+  const openGraphLocale: Record<
+    AppLocale,
+    string
+  > = {
+    ro: "ro_RO",
+    en: "en_US",
+    de: "de_DE",
+  };
 
   return {
     title,
@@ -160,15 +168,24 @@ function createMetadata({
         "x-default": paths.ro,
       },
     },
+    robots:
+      locale === "de"
+        ? {
+            index: false,
+            follow: true,
+          }
+        : {
+            index: true,
+            follow: true,
+          },
     openGraph: {
       type,
       locale:
-        locale === "ro"
-          ? "ro_RO"
-          : "en_US",
+        openGraphLocale[locale],
       siteName: SITE_NAME,
       title,
       description,
+      url: canonical,
     },
     twitter: {
       card: "summary_large_image",
@@ -191,6 +208,7 @@ export function getHomeMetadata(
       paths: {
         ro: "/ro",
         en: "/en",
+        de: "/de",
       },
     });
   }
@@ -204,6 +222,7 @@ export function getHomeMetadata(
     paths: {
       ro: "/ro",
       en: "/en",
+      de: "/de",
     },
   });
 }
@@ -221,6 +240,7 @@ export function getDoctorsIndexMetadata(
       paths: {
         ro: "/ro/medici",
         en: "/en/doctors",
+        de: "/de/aerzte",
       },
     });
   }
@@ -234,6 +254,7 @@ export function getDoctorsIndexMetadata(
     paths: {
       ro: "/ro/medici",
       en: "/en/doctors",
+      de: "/de/aerzte",
     },
   });
 }
@@ -251,6 +272,7 @@ export function getSpecializationsMetadata(
       paths: {
         ro: "/ro/specialitati",
         en: "/en/specialties",
+        de: "/de/fachrichtungen",
       },
     });
   }
@@ -264,6 +286,7 @@ export function getSpecializationsMetadata(
     paths: {
       ro: "/ro/specialitati",
       en: "/en/specialties",
+      de: "/de/fachrichtungen",
     },
   });
 }
@@ -380,23 +403,14 @@ getDoctorProfileMetadata({
       : `Vezi profilul ${doctorName}, serviciile medicale, clinica, recenziile și disponibilitatea pentru programări pe RomDoc.`;
 
   const contextDescription =
-    locale === "en"
-      ? [
-          doctorName,
-          professionalTitle,
-          clinicName,
-          cityName,
-        ]
-          .filter(Boolean)
-          .join(", ")
-      : [
-          doctorName,
-          professionalTitle,
-          clinicName,
-          cityName,
-        ]
-          .filter(Boolean)
-          .join(", ");
+    [
+      doctorName,
+      professionalTitle,
+      clinicName,
+      cityName,
+    ]
+      .filter(Boolean)
+      .join(", ");
 
   const description = truncate(
     translation
@@ -423,6 +437,8 @@ getDoctorProfileMetadata({
         `/ro/doctor/${encodedSlug}`,
       en:
         `/en/doctor/${encodedSlug}`,
+      de:
+        `/de/arzt/${encodedSlug}`,
     },
     type: "profile",
   });
@@ -513,6 +529,8 @@ getSpecialtyMetadata({
         `/ro/medici/${encodedSpecialtySlug}`,
       en:
         `/en/doctors/${encodedSpecialtySlug}`,
+      de:
+        `/de/aerzte/${encodedSpecialtySlug}`,
     },
   });
 }
@@ -640,6 +658,8 @@ getDirectoryMetadata({
         `/ro/medici/${encodedSpecialtySlug}/${encodedCitySlug}`,
       en:
         `/en/doctors/${encodedSpecialtySlug}/${encodedCitySlug}`,
+      de:
+        `/de/aerzte/${encodedSpecialtySlug}/${encodedCitySlug}`,
     },
   });
 }

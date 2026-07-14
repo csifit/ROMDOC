@@ -7,6 +7,7 @@ import {
   useMemo,
   useState,
 } from "react";
+
 import {
   createSpecialtySlug,
 } from "@/lib/specialties/create-specialty-slug";
@@ -15,25 +16,18 @@ type SpecialtyTranslation = {
   id: string;
   locale: string;
   name: string;
-  meta_title:
-    | string
-    | null;
-  meta_description:
-    | string
-    | null;
+  meta_title: string | null;
+  meta_description: string | null;
 };
 
 type Specialty = {
   id: string;
   slug: string;
-  icon:
-    | string
-    | null;
+  icon: string | null;
   is_active: boolean;
   doctor_count: number;
   created_at: string;
   updated_at: string;
-
   specialty_translations:
     | SpecialtyTranslation[]
     | null;
@@ -49,12 +43,15 @@ type SpecialtyFormState = {
   specialtyId: string;
   nameRo: string;
   nameEn: string;
+  nameDe: string;
   slug: string;
   icon: string;
   metaTitleRo: string;
   metaTitleEn: string;
+  metaTitleDe: string;
   metaDescriptionRo: string;
   metaDescriptionEn: string;
+  metaDescriptionDe: string;
   isActive: boolean;
 };
 
@@ -62,12 +59,15 @@ const emptyForm: SpecialtyFormState = {
   specialtyId: "",
   nameRo: "",
   nameEn: "",
+  nameDe: "",
   slug: "",
   icon: "",
   metaTitleRo: "",
   metaTitleEn: "",
+  metaTitleDe: "",
   metaDescriptionRo: "",
   metaDescriptionEn: "",
+  metaDescriptionDe: "",
   isActive: true,
 };
 
@@ -79,19 +79,17 @@ function getTranslation(
     specialty.specialty_translations
       ?.find(
         (translation) =>
-          translation.locale ===
-          locale
+          translation.locale === locale
       ) ?? null
   );
 }
 
-export default function SpecialtiesManagement() {
+export default function
+SpecialtiesManagement() {
   const [
     specialties,
     setSpecialties,
-  ] = useState<Specialty[]>(
-    []
-  );
+  ] = useState<Specialty[]>([]);
 
   const [form, setForm] =
     useState<SpecialtyFormState>(
@@ -143,8 +141,7 @@ export default function SpecialtiesManagement() {
         }
 
         setSpecialties(
-          result.specialties ??
-            []
+          result.specialties ?? []
         );
       } catch (loadError) {
         setError(
@@ -158,15 +155,22 @@ export default function SpecialtiesManagement() {
     }, []);
 
   useEffect(() => {
-    void loadSpecialties();
+    const timeoutId =
+      window.setTimeout(() => {
+        void loadSpecialties();
+      }, 0);
+
+    return () => {
+      window.clearTimeout(
+        timeoutId
+      );
+    };
   }, [loadSpecialties]);
 
   const filteredSpecialties =
     useMemo(() => {
       const normalized =
-        search
-          .trim()
-          .toLowerCase();
+        search.trim().toLowerCase();
 
       if (!normalized) {
         return specialties;
@@ -186,44 +190,44 @@ export default function SpecialtiesManagement() {
               "en"
             );
 
+          const de =
+            getTranslation(
+              specialty,
+              "de"
+            );
+
           return [
             specialty.slug,
             ro?.name,
             en?.name,
+            de?.name,
           ]
             .filter(Boolean)
             .some((value) =>
               value
                 ?.toLowerCase()
-                .includes(
-                  normalized
-                )
+                .includes(normalized)
             );
         }
       );
-    }, [
-      search,
-      specialties,
-    ]);
+    }, [search, specialties]);
 
   function updateForm<
     Key extends keyof SpecialtyFormState,
   >(
     key: Key,
-    value:
-      SpecialtyFormState[Key]
+    value: SpecialtyFormState[Key]
   ) {
-    setForm(
-      (current) => ({
-        ...current,
-        [key]: value,
-      })
-    );
+    setForm((current) => ({
+      ...current,
+      [key]: value,
+    }));
   }
 
   function resetForm() {
     setForm(emptyForm);
     setError(null);
+    setSuccess(null);
   }
 
   function beginEditing(
@@ -241,36 +245,31 @@ export default function SpecialtiesManagement() {
         "en"
       );
 
+    const de =
+      getTranslation(
+        specialty,
+        "de"
+      );
+
     setForm({
-      specialtyId:
-        specialty.id,
-
-      nameRo:
-        ro?.name ?? "",
-
-      nameEn:
-        en?.name ?? "",
-
-      slug:
-        specialty.slug,
-
-      icon:
-        specialty.icon ?? "",
-
+      specialtyId: specialty.id,
+      nameRo: ro?.name ?? "",
+      nameEn: en?.name ?? "",
+      nameDe: de?.name ?? "",
+      slug: specialty.slug,
+      icon: specialty.icon ?? "",
       metaTitleRo:
         ro?.meta_title ?? "",
-
       metaTitleEn:
         en?.meta_title ?? "",
-
+      metaTitleDe:
+        de?.meta_title ?? "",
       metaDescriptionRo:
-        ro?.meta_description ??
-        "",
-
+        ro?.meta_description ?? "",
       metaDescriptionEn:
-        en?.meta_description ??
-        "",
-
+        en?.meta_description ?? "",
+      metaDescriptionDe:
+        de?.meta_description ?? "",
       isActive:
         specialty.is_active,
     });
@@ -284,72 +283,73 @@ export default function SpecialtiesManagement() {
     });
   }
 
+  async function submitForm(
+    payload: SpecialtyFormState,
+    method: "POST" | "PATCH"
+  ) {
+    const response =
+      await fetch(
+        "/api/admin/specialties",
+        {
+          method,
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body:
+            JSON.stringify(payload),
+        }
+      );
+
+    const result =
+      (await response.json()) as
+        ApiResponse;
+
+    if (!response.ok) {
+      throw new Error(
+        result.error ??
+          "Specialitatea nu a putut fi salvată."
+      );
+    }
+
+    return result;
+  }
+
   async function saveSpecialty(
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
-
     setError(null);
     setSuccess(null);
 
     if (
-      form.nameRo
-        .trim()
-        .length < 2
+      form.nameRo.trim().length < 2
     ) {
       setError(
         "Introdu numele în limba română."
       );
-
       return;
     }
 
     if (
-      form.nameEn
-        .trim()
-        .length < 2
+      form.nameEn.trim().length < 2
     ) {
       setError(
         "Introdu numele în limba engleză."
       );
-
       return;
     }
 
     setIsSaving(true);
 
     try {
-      const response =
-        await fetch(
-          "/api/admin/specialties",
-          {
-            method:
-              isEditing
-                ? "PATCH"
-                : "POST",
-
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-
-            body:
-              JSON.stringify(
-                form
-              ),
-          }
-        );
-
       const result =
-        (await response.json()) as
-          ApiResponse;
-
-      if (!response.ok) {
-        throw new Error(
-          result.error ??
-            "Specialitatea nu a putut fi salvată."
+        await submitForm(
+          form,
+          isEditing
+            ? "PATCH"
+            : "POST"
         );
-      }
 
       setSuccess(
         result.message ??
@@ -357,7 +357,6 @@ export default function SpecialtiesManagement() {
       );
 
       setForm(emptyForm);
-
       await loadSpecialties();
     } catch (saveError) {
       setError(
@@ -373,30 +372,16 @@ export default function SpecialtiesManagement() {
   async function toggleSpecialty(
     specialty: Specialty
   ) {
-    const ro =
-      getTranslation(
-        specialty,
-        "ro"
-      );
-
-    const en =
-      getTranslation(
-        specialty,
-        "en"
-      );
-
     const nextActive =
       !specialty.is_active;
 
     if (
       !nextActive &&
-      specialty.doctor_count >
-        0
+      specialty.doctor_count > 0
     ) {
       setError(
         "Specialitatea este asociată unor medici și nu poate fi dezactivată."
       );
-
       return;
     }
 
@@ -411,71 +396,63 @@ export default function SpecialtiesManagement() {
       return;
     }
 
+    const ro =
+      getTranslation(
+        specialty,
+        "ro"
+      );
+
+    const en =
+      getTranslation(
+        specialty,
+        "en"
+      );
+
+    const de =
+      getTranslation(
+        specialty,
+        "de"
+      );
+
     setError(null);
     setSuccess(null);
 
     try {
-      const response =
-        await fetch(
-          "/api/admin/specialties",
-          {
-            method: "PATCH",
-
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-
-            body:
-              JSON.stringify({
-                specialtyId:
-                  specialty.id,
-
-                slug:
-                  specialty.slug,
-
-                icon:
-                  specialty.icon ??
-                  "",
-
-                nameRo:
-                  ro?.name ?? "",
-
-                nameEn:
-                  en?.name ?? "",
-
-                metaTitleRo:
-                  ro?.meta_title ??
-                  "",
-
-                metaTitleEn:
-                  en?.meta_title ??
-                  "",
-
-                metaDescriptionRo:
-                  ro?.meta_description ??
-                  "",
-
-                metaDescriptionEn:
-                  en?.meta_description ??
-                  "",
-
-                isActive:
-                  nextActive,
-              }),
-          }
-        );
-
       const result =
-        (await response.json()) as
-          ApiResponse;
-
-      if (!response.ok) {
-        throw new Error(
-          result.error ??
-            "Statutul nu a putut fi actualizat."
+        await submitForm(
+          {
+            specialtyId:
+              specialty.id,
+            slug:
+              specialty.slug,
+            icon:
+              specialty.icon ?? "",
+            nameRo:
+              ro?.name ?? "",
+            nameEn:
+              en?.name ?? "",
+            nameDe:
+              de?.name ?? "",
+            metaTitleRo:
+              ro?.meta_title ?? "",
+            metaTitleEn:
+              en?.meta_title ?? "",
+            metaTitleDe:
+              de?.meta_title ?? "",
+            metaDescriptionRo:
+              ro?.meta_description ??
+              "",
+            metaDescriptionEn:
+              en?.meta_description ??
+              "",
+            metaDescriptionDe:
+              de?.meta_description ??
+              "",
+            isActive:
+              nextActive,
+          },
+          "PATCH"
         );
-      }
 
       setSuccess(
         result.message ??
@@ -525,63 +502,57 @@ export default function SpecialtiesManagement() {
           onSubmit={saveSpecialty}
           className="mt-8 space-y-6"
         >
-          <div className="grid gap-5 md:grid-cols-2">
-            <label className="block">
-              <span className="text-sm font-medium text-gray-700">
-                Nume în română
-              </span>
+          <div className="grid gap-5 lg:grid-cols-3">
+            <LanguageNameField
+              label="Nume în română"
+              required
+              value={form.nameRo}
+              disabled={isSaving}
+              onChange={(name) => {
+                updateForm(
+                  "nameRo",
+                  name
+                );
 
-              <input
-                required
-                type="text"
-                maxLength={200}
-                value={form.nameRo}
-                disabled={isSaving}
-                onChange={(event) => {
-                  const name =
-                    event.target.value;
-
+                if (
+                  !isEditing ||
+                  !form.slug
+                ) {
                   updateForm(
-                    "nameRo",
-                    name
+                    "slug",
+                    createSpecialtySlug(
+                      name
+                    )
                   );
-
-                  if (
-                    !isEditing ||
-                    !form.slug
-                  ) {
-                    updateForm(
-                      "slug",
-                      createSpecialtySlug(
-                        name
-                      )
-                    );
-                  }
-                }}
-                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
-              />
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-medium text-gray-700">
-                Nume în engleză
-              </span>
-
-              <input
-                required
-                type="text"
-                maxLength={200}
-                value={form.nameEn}
-                disabled={isSaving}
-                onChange={(event) =>
-                  updateForm(
-                    "nameEn",
-                    event.target.value
-                  )
                 }
-                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
-              />
-            </label>
+              }}
+            />
+
+            <LanguageNameField
+              label="Nume în engleză"
+              required
+              value={form.nameEn}
+              disabled={isSaving}
+              onChange={(value) =>
+                updateForm(
+                  "nameEn",
+                  value
+                )
+              }
+            />
+
+            <LanguageNameField
+              label="Nume în germană"
+              optional
+              value={form.nameDe}
+              disabled={isSaving}
+              onChange={(value) =>
+                updateForm(
+                  "nameDe",
+                  value
+                )
+              }
+            />
           </div>
 
           <div className="grid gap-5 md:grid-cols-2">
@@ -639,94 +610,80 @@ export default function SpecialtiesManagement() {
               Câmpuri SEO
             </summary>
 
-            <div className="mt-5 grid gap-5 md:grid-cols-2">
-              <label className="block">
-                <span className="text-sm font-medium text-gray-700">
-                  Titlu SEO română
-                </span>
+            <p className="mt-3 text-sm leading-6 text-gray-600">
+              Câmpurile germane sunt opționale. Completează-le
+              manual când traducerea este disponibilă.
+            </p>
 
-                <input
-                  type="text"
-                  maxLength={250}
-                  value={
-                    form.metaTitleRo
-                  }
-                  disabled={isSaving}
-                  onChange={(event) =>
-                    updateForm(
-                      "metaTitleRo",
-                      event.target.value
-                    )
-                  }
-                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3"
-                />
-              </label>
+            <div className="mt-5 grid gap-5 lg:grid-cols-3">
+              <SeoLanguageFields
+                language="română"
+                title={form.metaTitleRo}
+                description={
+                  form.metaDescriptionRo
+                }
+                disabled={isSaving}
+                onTitleChange={(value) =>
+                  updateForm(
+                    "metaTitleRo",
+                    value
+                  )
+                }
+                onDescriptionChange={(
+                  value
+                ) =>
+                  updateForm(
+                    "metaDescriptionRo",
+                    value
+                  )
+                }
+              />
 
-              <label className="block">
-                <span className="text-sm font-medium text-gray-700">
-                  Titlu SEO engleză
-                </span>
+              <SeoLanguageFields
+                language="engleză"
+                title={form.metaTitleEn}
+                description={
+                  form.metaDescriptionEn
+                }
+                disabled={isSaving}
+                onTitleChange={(value) =>
+                  updateForm(
+                    "metaTitleEn",
+                    value
+                  )
+                }
+                onDescriptionChange={(
+                  value
+                ) =>
+                  updateForm(
+                    "metaDescriptionEn",
+                    value
+                  )
+                }
+              />
 
-                <input
-                  type="text"
-                  maxLength={250}
-                  value={
-                    form.metaTitleEn
-                  }
-                  disabled={isSaving}
-                  onChange={(event) =>
-                    updateForm(
-                      "metaTitleEn",
-                      event.target.value
-                    )
-                  }
-                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3"
-                />
-              </label>
-
-              <label className="block">
-                <span className="text-sm font-medium text-gray-700">
-                  Descriere SEO română
-                </span>
-
-                <textarea
-                  rows={3}
-                  maxLength={500}
-                  value={
-                    form.metaDescriptionRo
-                  }
-                  disabled={isSaving}
-                  onChange={(event) =>
-                    updateForm(
-                      "metaDescriptionRo",
-                      event.target.value
-                    )
-                  }
-                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3"
-                />
-              </label>
-
-              <label className="block">
-                <span className="text-sm font-medium text-gray-700">
-                  Descriere SEO engleză
-                </span>
-
-                <textarea
-                  rows={3}
-                  maxLength={500}
-                  value={
-                    form.metaDescriptionEn
-                  }
-                  disabled={isSaving}
-                  onChange={(event) =>
-                    updateForm(
-                      "metaDescriptionEn",
-                      event.target.value
-                    )
-                  }
-                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3"
-                />
-              </label>
+              <SeoLanguageFields
+                language="germană"
+                title={form.metaTitleDe}
+                description={
+                  form.metaDescriptionDe
+                }
+                disabled={isSaving}
+                onTitleChange={(value) =>
+                  updateForm(
+                    "metaTitleDe",
+                    value
+                  )
+                }
+                onDescriptionChange={(
+                  value
+                ) =>
+                  updateForm(
+                    "metaDescriptionDe",
+                    value
+                  )
+                }
+              />
             </div>
           </details>
 
@@ -808,11 +765,15 @@ export default function SpecialtiesManagement() {
               <thead>
                 <tr className="text-gray-500">
                   <th className="px-4 py-3 font-semibold">
-                    Specialitate
+                    Română
                   </th>
 
                   <th className="px-4 py-3 font-semibold">
                     Engleză
+                  </th>
+
+                  <th className="px-4 py-3 font-semibold">
+                    Germană
                   </th>
 
                   <th className="px-4 py-3 font-semibold">
@@ -848,38 +809,46 @@ export default function SpecialtiesManagement() {
                         "en"
                       );
 
+                    const de =
+                      getTranslation(
+                        specialty,
+                        "de"
+                      );
+
                     return (
                       <tr
-                        key={
-                          specialty.id
-                        }
+                        key={specialty.id}
                         className="align-top"
                       >
                         <td className="px-4 py-4">
                           <p className="font-semibold text-gray-900">
-                            {ro?.name ??
-                              "—"}
+                            {ro?.name ?? "—"}
                           </p>
 
                           {specialty.icon && (
                             <p className="mt-1 text-xs text-gray-500">
                               Icon:{" "}
-                              {
-                                specialty.icon
-                              }
+                              {specialty.icon}
                             </p>
                           )}
                         </td>
 
                         <td className="px-4 py-4 text-gray-700">
-                          {en?.name ??
-                            "—"}
+                          {en?.name ?? "—"}
+                        </td>
+
+                        <td className="px-4 py-4 text-gray-700">
+                          {de?.name ? (
+                            de.name
+                          ) : (
+                            <span className="text-gray-400">
+                              Netadusă
+                            </span>
+                          )}
                         </td>
 
                         <td className="px-4 py-4 font-mono text-xs text-gray-600">
-                          {
-                            specialty.slug
-                          }
+                          {specialty.slug}
                         </td>
 
                         <td className="px-4 py-4 text-gray-700">
@@ -944,6 +913,108 @@ export default function SpecialtiesManagement() {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+function LanguageNameField({
+  label,
+  value,
+  disabled,
+  required = false,
+  optional = false,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  disabled: boolean;
+  required?: boolean;
+  optional?: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="text-sm font-medium text-gray-700">
+        {label}
+      </span>
+
+      {optional && (
+        <span className="ml-2 text-xs text-gray-500">
+          Opțional
+        </span>
+      )}
+
+      <input
+        required={required}
+        type="text"
+        maxLength={200}
+        value={value}
+        disabled={disabled}
+        onChange={(event) =>
+          onChange(event.target.value)
+        }
+        className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+      />
+    </label>
+  );
+}
+
+function SeoLanguageFields({
+  language,
+  title,
+  description,
+  disabled,
+  onTitleChange,
+  onDescriptionChange,
+}: {
+  language: string;
+  title: string;
+  description: string;
+  disabled: boolean;
+  onTitleChange:
+    (value: string) => void;
+  onDescriptionChange:
+    (value: string) => void;
+}) {
+  return (
+    <div className="space-y-5">
+      <label className="block">
+        <span className="text-sm font-medium text-gray-700">
+          Titlu SEO {language}
+        </span>
+
+        <input
+          type="text"
+          maxLength={250}
+          value={title}
+          disabled={disabled}
+          onChange={(event) =>
+            onTitleChange(
+              event.target.value
+            )
+          }
+          className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3"
+        />
+      </label>
+
+      <label className="block">
+        <span className="text-sm font-medium text-gray-700">
+          Descriere SEO {language}
+        </span>
+
+        <textarea
+          rows={4}
+          maxLength={500}
+          value={description}
+          disabled={disabled}
+          onChange={(event) =>
+            onDescriptionChange(
+              event.target.value
+            )
+          }
+          className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3"
+        />
+      </label>
     </div>
   );
 }

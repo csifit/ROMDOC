@@ -2,6 +2,7 @@ import {
   NextRequest,
   NextResponse,
 } from "next/server";
+
 import {
   createAdminClient,
 } from "@/lib/supabase/admin";
@@ -16,11 +17,9 @@ export const runtime = "nodejs";
 
 type AdminAuthorizationResult =
   | {
-      profileId: string;
       response: null;
     }
   | {
-      profileId: null;
       response: NextResponse;
     };
 
@@ -30,17 +29,28 @@ type SpecialtyRequestBody = {
   icon?: unknown;
   nameRo?: unknown;
   nameEn?: unknown;
+  nameDe?: unknown;
   metaTitleRo?: unknown;
   metaTitleEn?: unknown;
+  metaTitleDe?: unknown;
   metaDescriptionRo?: unknown;
   metaDescriptionEn?: unknown;
+  metaDescriptionDe?: unknown;
   isActive?: unknown;
+};
+
+type TranslationInput = {
+  specialty_id: string;
+  locale: "ro" | "en" | "de";
+  name: string;
+  meta_title: string | null;
+  meta_description: string | null;
 };
 
 function normalizeString(
   value: unknown,
   maximumLength = 500
-): string {
+) {
   if (typeof value !== "string") {
     return "";
   }
@@ -50,7 +60,8 @@ function normalizeString(
     .slice(0, maximumLength);
 }
 
-async function requireAdmin(): Promise<AdminAuthorizationResult> {
+async function requireAdmin():
+Promise<AdminAuthorizationResult> {
   const supabase =
     await createClient();
 
@@ -65,8 +76,6 @@ async function requireAdmin(): Promise<AdminAuthorizationResult> {
     !user
   ) {
     return {
-      profileId: null,
-
       response:
         NextResponse.json(
           {
@@ -94,8 +103,6 @@ async function requireAdmin(): Promise<AdminAuthorizationResult> {
     profile?.role !== "admin"
   ) {
     return {
-      profileId: null,
-
       response:
         NextResponse.json(
           {
@@ -110,12 +117,197 @@ async function requireAdmin(): Promise<AdminAuthorizationResult> {
   }
 
   return {
-    profileId: user.id,
     response: null,
   };
 }
 
-export async function GET(): Promise<Response> {
+function buildRequiredTranslations(
+  specialtyId: string,
+  body: SpecialtyRequestBody
+): TranslationInput[] {
+  return [
+    {
+      specialty_id: specialtyId,
+      locale: "ro",
+      name:
+        normalizeString(
+          body.nameRo,
+          200
+        ),
+      meta_title:
+        normalizeString(
+          body.metaTitleRo,
+          250
+        ) || null,
+      meta_description:
+        normalizeString(
+          body.metaDescriptionRo,
+          500
+        ) || null,
+    },
+    {
+      specialty_id: specialtyId,
+      locale: "en",
+      name:
+        normalizeString(
+          body.nameEn,
+          200
+        ),
+      meta_title:
+        normalizeString(
+          body.metaTitleEn,
+          250
+        ) || null,
+      meta_description:
+        normalizeString(
+          body.metaDescriptionEn,
+          500
+        ) || null,
+    },
+  ];
+}
+
+function buildGermanTranslation(
+  specialtyId: string,
+  body: SpecialtyRequestBody
+): TranslationInput | null {
+  const name =
+    normalizeString(
+      body.nameDe,
+      200
+    );
+
+  if (!name) {
+    return null;
+  }
+
+  return {
+    specialty_id: specialtyId,
+    locale: "de",
+    name,
+    meta_title:
+      normalizeString(
+        body.metaTitleDe,
+        250
+      ) || null,
+    meta_description:
+      normalizeString(
+        body.metaDescriptionDe,
+        500
+      ) || null,
+  };
+}
+
+function validateRequiredNames(
+  body: SpecialtyRequestBody
+): NextResponse | null {
+  if (
+    normalizeString(
+      body.nameRo,
+      200
+    ).length < 2
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Introdu numele specialității în limba română.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  if (
+    normalizeString(
+      body.nameEn,
+      200
+    ).length < 2
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Introdu numele specialității în limba engleză.",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+
+  return null;
+}
+
+async function saveTranslations({
+  specialtyId,
+  body,
+}: {
+  specialtyId: string;
+  body: SpecialtyRequestBody;
+}) {
+  const admin =
+    createAdminClient();
+
+  const requiredTranslations =
+    buildRequiredTranslations(
+      specialtyId,
+      body
+    );
+
+  const germanTranslation =
+    buildGermanTranslation(
+      specialtyId,
+      body
+    );
+
+  const translations =
+    germanTranslation
+      ? [
+          ...requiredTranslations,
+          germanTranslation,
+        ]
+      : requiredTranslations;
+
+  const {
+    error: upsertError,
+  } = await admin
+    .from("specialty_translations")
+    .upsert(
+      translations,
+      {
+        onConflict:
+          "specialty_id,locale",
+      }
+    );
+
+  if (upsertError) {
+    return upsertError;
+  }
+
+  if (!germanTranslation) {
+    const {
+      error: deleteGermanError,
+    } = await admin
+      .from(
+        "specialty_translations"
+      )
+      .delete()
+      .eq(
+        "specialty_id",
+        specialtyId
+      )
+      .eq("locale", "de");
+
+    if (deleteGermanError) {
+      return deleteGermanError;
+    }
+  }
+
+  return null;
+}
+
+export async function GET():
+Promise<Response> {
   const authorization =
     await requireAdmin();
 
@@ -177,9 +369,9 @@ export async function GET(): Promise<Response> {
     (specialties ?? []).map(
       (specialty) => ({
         ...specialty,
-
         doctor_count:
-          specialty.doctor_specialties
+          specialty
+            .doctor_specialties
             ?.length ?? 0,
       })
     );
@@ -217,15 +409,16 @@ export async function POST(
     );
   }
 
+  const validationResponse =
+    validateRequiredNames(body);
+
+  if (validationResponse) {
+    return validationResponse;
+  }
+
   const nameRo =
     normalizeString(
       body.nameRo,
-      200
-    );
-
-  const nameEn =
-    normalizeString(
-      body.nameEn,
       200
     );
 
@@ -237,39 +430,8 @@ export async function POST(
 
   const slug =
     createSpecialtySlug(
-      providedSlug ||
-        nameRo
+      providedSlug || nameRo
     );
-
-  const icon =
-    normalizeString(
-      body.icon,
-      100
-    ) || null;
-
-  if (nameRo.length < 2) {
-    return NextResponse.json(
-      {
-        error:
-          "Introdu numele specialității în limba română.",
-      },
-      {
-        status: 400,
-      }
-    );
-  }
-
-  if (nameEn.length < 2) {
-    return NextResponse.json(
-      {
-        error:
-          "Introdu numele specialității în limba engleză.",
-      },
-      {
-        status: 400,
-      }
-    );
-  }
 
   if (!slug) {
     return NextResponse.json(
@@ -287,15 +449,15 @@ export async function POST(
     createAdminClient();
 
   const {
-    data: existingSlug,
-    error: existingSlugError,
+    data: duplicateSlug,
+    error: duplicateSlugError,
   } = await admin
     .from("specialties")
     .select("id")
     .eq("slug", slug)
     .maybeSingle();
 
-  if (existingSlugError) {
+  if (duplicateSlugError) {
     return NextResponse.json(
       {
         error:
@@ -307,7 +469,7 @@ export async function POST(
     );
   }
 
-  if (existingSlug) {
+  if (duplicateSlug) {
     return NextResponse.json(
       {
         error:
@@ -320,9 +482,8 @@ export async function POST(
   }
 
   const {
-    data: duplicateTranslation,
-    error:
-      duplicateTranslationError,
+    data: duplicateName,
+    error: duplicateNameError,
   } = await admin
     .from("specialty_translations")
     .select("specialty_id")
@@ -330,7 +491,7 @@ export async function POST(
     .ilike("name", nameRo)
     .maybeSingle();
 
-  if (duplicateTranslationError) {
+  if (duplicateNameError) {
     return NextResponse.json(
       {
         error:
@@ -342,7 +503,7 @@ export async function POST(
     );
   }
 
-  if (duplicateTranslation) {
+  if (duplicateName) {
     return NextResponse.json(
       {
         error:
@@ -361,7 +522,11 @@ export async function POST(
     .from("specialties")
     .insert({
       slug,
-      icon,
+      icon:
+        normalizeString(
+          body.icon,
+          100
+        ) || null,
       is_active: true,
     })
     .select(`
@@ -401,57 +566,17 @@ export async function POST(
     );
   }
 
-  const translations = [
-    {
-      specialty_id:
+  const translationError =
+    await saveTranslations({
+      specialtyId:
         specialty.id,
+      body,
+    });
 
-      locale: "ro",
-      name: nameRo,
-
-      meta_title:
-        normalizeString(
-          body.metaTitleRo,
-          250
-        ) || null,
-
-      meta_description:
-        normalizeString(
-          body.metaDescriptionRo,
-          500
-        ) || null,
-    },
-    {
-      specialty_id:
-        specialty.id,
-
-      locale: "en",
-      name: nameEn,
-
-      meta_title:
-        normalizeString(
-          body.metaTitleEn,
-          250
-        ) || null,
-
-      meta_description:
-        normalizeString(
-          body.metaDescriptionEn,
-          500
-        ) || null,
-    },
-  ];
-
-  const {
-    error: translationsError,
-  } = await admin
-    .from("specialty_translations")
-    .insert(translations);
-
-  if (translationsError) {
+  if (translationError) {
     console.error(
       "Specialty translations creation failed:",
-      translationsError
+      translationError
     );
 
     await admin
@@ -474,7 +599,6 @@ export async function POST(
     {
       message:
         "Specialitatea a fost adăugată.",
-
       specialty,
     },
     {
@@ -529,6 +653,13 @@ export async function PATCH(
     );
   }
 
+  const validationResponse =
+    validateRequiredNames(body);
+
+  if (validationResponse) {
+    return validationResponse;
+  }
+
   const admin =
     createAdminClient();
 
@@ -566,12 +697,13 @@ export async function PATCH(
     typeof body.isActive ===
       "boolean"
       ? body.isActive
-      : existingSpecialty.is_active;
+      : existingSpecialty
+          .is_active;
 
   if (
     requestedActive === false &&
-    existingSpecialty.is_active ===
-      true
+    existingSpecialty
+      .is_active === true
   ) {
     const {
       count: doctorCount,
@@ -600,8 +732,7 @@ export async function PATCH(
     }
 
     if (
-      (doctorCount ?? 0) >
-      0
+      (doctorCount ?? 0) > 0
     ) {
       return NextResponse.json(
         {
@@ -615,18 +746,6 @@ export async function PATCH(
     }
   }
 
-  const nameRo =
-    normalizeString(
-      body.nameRo,
-      200
-    );
-
-  const nameEn =
-    normalizeString(
-      body.nameEn,
-      200
-    );
-
   const requestedSlug =
     normalizeString(
       body.slug,
@@ -639,36 +758,6 @@ export async function PATCH(
           requestedSlug
         )
       : existingSpecialty.slug;
-
-  const icon =
-    normalizeString(
-      body.icon,
-      100
-    ) || null;
-
-  if (nameRo.length < 2) {
-    return NextResponse.json(
-      {
-        error:
-          "Introdu numele în limba română.",
-      },
-      {
-        status: 400,
-      }
-    );
-  }
-
-  if (nameEn.length < 2) {
-    return NextResponse.json(
-      {
-        error:
-          "Introdu numele în limba engleză.",
-      },
-      {
-        status: 400,
-      }
-    );
-  }
 
   if (!slug) {
     return NextResponse.json(
@@ -717,12 +806,16 @@ export async function PATCH(
   }
 
   const {
-    error: specialtyUpdateError,
+    error: updateError,
   } = await admin
     .from("specialties")
     .update({
       slug,
-      icon,
+      icon:
+        normalizeString(
+          body.icon,
+          100
+        ) || null,
       is_active:
         requestedActive,
       updated_at:
@@ -730,7 +823,7 @@ export async function PATCH(
     })
     .eq("id", specialtyId);
 
-  if (specialtyUpdateError) {
+  if (updateError) {
     return NextResponse.json(
       {
         error:
@@ -742,60 +835,18 @@ export async function PATCH(
     );
   }
 
-  const translations = [
-    {
-      specialty_id:
-        specialtyId,
+  const translationError =
+    await saveTranslations({
+      specialtyId,
+      body,
+    });
 
-      locale: "ro",
-      name: nameRo,
-
-      meta_title:
-        normalizeString(
-          body.metaTitleRo,
-          250
-        ) || null,
-
-      meta_description:
-        normalizeString(
-          body.metaDescriptionRo,
-          500
-        ) || null,
-    },
-    {
-      specialty_id:
-        specialtyId,
-
-      locale: "en",
-      name: nameEn,
-
-      meta_title:
-        normalizeString(
-          body.metaTitleEn,
-          250
-        ) || null,
-
-      meta_description:
-        normalizeString(
-          body.metaDescriptionEn,
-          500
-        ) || null,
-    },
-  ];
-
-  const {
-    error: translationsError,
-  } = await admin
-    .from("specialty_translations")
-    .upsert(
-      translations,
-      {
-        onConflict:
-          "specialty_id,locale",
-      }
+  if (translationError) {
+    console.error(
+      "Specialty translations update failed:",
+      translationError
     );
 
-  if (translationsError) {
     return NextResponse.json(
       {
         error:
