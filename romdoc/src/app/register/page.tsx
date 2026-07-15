@@ -1,6 +1,29 @@
-import { redirect } from "next/navigation";
+import {
+  getLocale,
+} from "next-intl/server";
+import {
+  redirect,
+} from "next/navigation";
+
 import RegisterForm from "@/components/auth/register-form";
-import { createClient } from "@/lib/supabase/server";
+import {
+  type AppLocale,
+} from "@/i18n/routing";
+import {
+  createClient,
+} from "@/lib/supabase/server";
+
+type RegistrationType =
+  | "patient"
+  | "doctor"
+  | "clinic";
+
+type RegisterPageProps = {
+  searchParams: Promise<{
+    type?: string;
+    role?: string;
+  }>;
+};
 
 type TranslationRow = {
   locale: string;
@@ -15,29 +38,74 @@ type SpecialtyRow = {
     | null;
 };
 
-function getRomanianName(
+function resolveRegistrationType(
+  type?: string,
+  role?: string
+): RegistrationType {
+  const requestedType =
+    type ?? role;
+
+  if (
+    requestedType === "doctor"
+  ) {
+    return "doctor";
+  }
+
+  if (
+    requestedType === "clinic" ||
+    requestedType === "clinica"
+  ) {
+    return "clinic";
+  }
+
+  return "patient";
+}
+
+function getLocalizedName(
   translations:
     | TranslationRow[]
     | null,
+  locale: AppLocale,
   fallback: string
 ) {
   return (
     translations?.find(
       (translation) =>
-        translation.locale === "ro"
+        translation.locale ===
+        locale
+    )?.name ??
+    translations?.find(
+      (translation) =>
+        translation.locale ===
+        "ro"
     )?.name ??
     translations?.[0]?.name ??
     fallback
   );
 }
 
-export default async function RegisterPage() {
+export default async function RegisterPage({
+  searchParams,
+}: RegisterPageProps) {
+  const parameters =
+    await searchParams;
+
+  const initialRegistrationType =
+    resolveRegistrationType(
+      parameters.type,
+      parameters.role
+    );
+
+  const locale =
+    (await getLocale()) as AppLocale;
+
   const supabase =
     await createClient();
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } =
+    await supabase.auth.getUser();
 
   if (user) {
     redirect("/dashboard");
@@ -76,16 +144,17 @@ export default async function RegisterPage() {
         id: specialty.id,
 
         name:
-          getRomanianName(
+          getLocalizedName(
             specialty
               .specialty_translations,
+            locale,
             specialty.slug
           ),
       }))
       .sort((first, second) =>
         first.name.localeCompare(
           second.name,
-          "ro"
+          locale
         )
       );
 
@@ -94,6 +163,10 @@ export default async function RegisterPage() {
       <div className="mx-auto flex min-h-[calc(100vh-6rem)] items-center justify-center">
         <RegisterForm
           specialties={specialties}
+          locale={locale}
+          initialRegistrationType={
+            initialRegistrationType
+          }
         />
       </div>
     </main>
