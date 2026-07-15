@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
+import ClinicInvoicingOrganizationSearch from "@/components/manager/clinic-invoicing-organization-search";
+
 type ClinicSmsPageProps = {
   searchParams?: Promise<{
     month?: string;
@@ -849,13 +851,20 @@ export default async function ManagerClinicSmsPage({
           </span>
         </div>
 
+        <ClinicInvoicingOrganizationSearch
+         targetId="clinic-invoicing-organizations"
+        />
+
         {groups.length === 0 ? (
           <div className="mt-5 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm leading-6 text-gray-600">
             Nu există organizații de clinică sau consum SMS de clinică pentru
             perioada selectată.
           </div>
         ) : (
-          <div className="mt-6 space-y-4">
+          <div 
+           id="clinic-invoicing-organizations"
+           className="mt-6 space-y-4">
+           
             {groups.map((group) => {
               const billing = group.billingProfile;
               const organization = group.organization;
@@ -863,6 +872,7 @@ export default async function ManagerClinicSmsPage({
               return (
                 <details
                   key={organization.id}
+                  data-clinic-invoicing-organization
                   className="group rounded-2xl border border-gray-200 bg-white shadow-sm open:border-[#036661]/40"
                 >
                   <summary className="flex cursor-pointer list-none flex-col gap-4 rounded-2xl px-5 py-4 hover:bg-gray-50 lg:flex-row lg:items-center lg:justify-between">

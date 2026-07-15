@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
+import DoctorInvoicingSearch from "@/components/manager/doctor-invoicing-search";
+
 type DoctorSmsPageProps = {
   searchParams?: Promise<{
     month?: string;
@@ -888,13 +890,20 @@ export default async function ManagerDoctorSmsPage({
           </span>
         </div>
 
+        <DoctorInvoicingSearch
+         targetId="doctor-invoicing-list"
+        />
+
         {groups.length === 0 ? (
           <div className="mt-5 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm leading-6 text-gray-600">
             Nu există consum SMS individual sau date de facturare pentru medici
             în perioada selectată.
           </div>
         ) : (
-          <div className="mt-6 space-y-4">
+          <div 
+           id="doctor-invoicing-list"
+           className="mt-6 space-y-4">
+
             {groups.map((group) => {
               const billing = group.billingProfile;
               const doctor = group.doctor;
@@ -903,6 +912,7 @@ export default async function ManagerDoctorSmsPage({
               return (
                 <details
                   key={doctor.id}
+                  data-doctor-invoicing-row
                   className="group rounded-2xl border border-gray-200 bg-white shadow-sm open:border-[#036661]/40"
                 >
                   <summary className="flex cursor-pointer list-none flex-col gap-4 rounded-2xl px-5 py-4 hover:bg-gray-50 lg:flex-row lg:items-center lg:justify-between">
