@@ -1,694 +1,579 @@
+import Link from "next/link";
+import { getLocale } from "next-intl/server";
+
+import { type AppLocale } from "@/i18n/routing";
 import { createClient } from "@/lib/supabase/server";
+
+type BillingPageProps = {
+  searchParams: Promise<{ month?: string }>;
+};
 
 type OrganizationMember = {
   organization_id: string;
-  member_role: string;
 };
 
-type ClinicOrganization = {
-  id: string;
-  name: string;
-  status: string;
-  contact_email: string | null;
-  contact_phone: string | null;
+type OrganizationSummary = {
+  monthStart: string;
+  monthEndExclusive: string;
+  organization: {
+    id: string;
+    name: string;
+    status: string;
+    contact_email: string | null;
+    contact_phone: string | null;
+  } | null;
+  billingProfile: {
+    company_name: string;
+    tax_id: string;
+    trade_register_number: string | null;
+    billing_address: string;
+    billing_city: string;
+    billing_county: string;
+    billing_country: string;
+    billing_email: string;
+    is_vat_payer: boolean;
+    vat_number: string | null;
+    updated_at: string;
+  } | null;
+  locations: Array<{
+    id: string;
+    name: string;
+    formattedAddress: string | null;
+  }>;
+  prices: {
+    clinicDoctorMonthlyPriceRon: number;
+    smsUnitPriceRon: number;
+    vatRate: number;
+  };
+  totals: {
+    activeDoctorCount: number;
+    subscriptionSubtotalRon: number;
+    confirmationSmsCount: number;
+    reminder24hSmsCount: number;
+    totalSmsCount: number;
+    smsSubtotalRon: number;
+    subtotalBeforeVatRon: number;
+    estimatedVatRon: number;
+    estimatedTotalRon: number;
+  };
+  doctors: Array<{
+    relationshipId: string;
+    doctorId: string | null;
+    doctorName: string;
+    email: string | null;
+    invitationStatus: string;
+    coverageStatus: string;
+    acceptedAt: string | null;
+    coverageStartedAt: string | null;
+    clinicName: string | null;
+    clinicAddress: string | null;
+    subscriptionBillable: boolean;
+    subscriptionCostRon: number;
+    confirmationSmsCount: number;
+    reminder24hSmsCount: number;
+    totalSmsCount: number;
+    smsCostRon: number;
+    estimatedDoctorSubtotalRon: number;
+  }>;
 };
 
-type BillingProfile = {
-  organization_id: string;
-  company_name: string;
-  tax_id: string;
-  trade_register_number: string | null;
-  billing_address: string;
-  billing_city: string;
-  billing_county: string;
-  billing_country: string;
-  billing_email: string;
-  is_vat_payer: boolean;
-  vat_number: string | null;
-  updated_at: string;
+type Copy = {
+  title: string;
+  description: string;
+  auditNotice: string;
+  previousMonth: string;
+  nextMonth: string;
+  currentMonth: string;
+  organizationSummary: string;
+  coveredDoctors: string;
+  subscriptions: string;
+  sentSms: string;
+  estimatedTotal: string;
+  locations: string;
+  noLocations: string;
+  billingDetails: string;
+  costBreakdown: string;
+  doctorSubscriptions: string;
+  confirmationSms: string;
+  reminderSms: string;
+  smsSubtotal: string;
+  subtotalBeforeVat: string;
+  estimatedVat: string;
+  totalWithVat: string;
+  doctorsTitle: string;
+  doctorsHelper: string;
+  subscription: string;
+  accountEmail: string;
+  coverageStart: string;
+  assignedLocation: string;
+  unitPrices: string;
+  doctorUnitPrice: string;
+  smsUnitPrice: string;
+  noOrganizations: string;
+  noOrganizationsHelper: string;
+  noDoctors: string;
+  notInvoice: string;
+  unavailable: string;
 };
 
-type DoctorRelationship = {
-  organization_id: string;
-  doctor_id: string | null;
-  accepted_profile_id: string | null;
-  accepted_account_email: string | null;
-  invited_doctor_email: string | null;
-  invitation_status: string;
-  payment_responsibility: string;
-  coverage_status: string;
-  accepted_at: string | null;
-  expires_at: string | null;
+const COPY: Record<AppLocale, Copy> = {
+  ro: {
+    title: "Costuri și acoperire",
+    description:
+      "Prezentare lunară a abonamentelor medicilor invitați și a SMS-urilor trimise pacienților.",
+    auditNotice:
+      "Această pagină este exclusiv pentru vizualizare și audit. Nu generează facturi și nu confirmă sume finale de plată.",
+    previousMonth: "Luna precedentă",
+    nextMonth: "Luna următoare",
+    currentMonth: "Luna curentă",
+    organizationSummary: "Sumar organizații",
+    coveredDoctors: "Medici acoperiți",
+    subscriptions: "Abonamente medici",
+    sentSms: "SMS trimise",
+    estimatedTotal: "Total estimat",
+    locations: "Locații aprobate",
+    noLocations: "Nu există locații aprobate asociate.",
+    billingDetails: "Date de facturare",
+    costBreakdown: "Defalcare costuri",
+    doctorSubscriptions: "Abonamente medici",
+    confirmationSms: "SMS confirmare",
+    reminderSms: "SMS reminder 24h",
+    smsSubtotal: "Subtotal SMS",
+    subtotalBeforeVat: "Subtotal înainte de TVA",
+    estimatedVat: "TVA estimat",
+    totalWithVat: "Total estimat cu TVA",
+    doctorsTitle: "Costuri pe medic",
+    doctorsHelper:
+      "Deschide un medic pentru a vedea abonamentul, mesajele SMS și locația asociată.",
+    subscription: "Abonament",
+    accountEmail: "E-mail cont",
+    coverageStart: "Început acoperire",
+    assignedLocation: "Locație asociată",
+    unitPrices: "Tarife utilizate",
+    doctorUnitPrice: "Abonament medic / lună",
+    smsUnitPrice: "Preț / SMS trimis",
+    noOrganizations: "Nu există organizații asociate",
+    noOrganizationsHelper:
+      "După asocierea contului cu o organizație de clinică, sumarul va apărea aici.",
+    noDoctors: "Nu există medici invitați pentru această organizație.",
+    notInvoice: "Estimare de audit — nu reprezintă factură",
+    unavailable: "Indisponibil",
+  },
+  en: {
+    title: "Costs and coverage",
+    description:
+      "Monthly overview of clinic-invited doctor subscriptions and SMS messages sent to patients.",
+    auditNotice:
+      "This page is for viewing and audit only. It does not generate invoices or confirm final payable amounts.",
+    previousMonth: "Previous month",
+    nextMonth: "Next month",
+    currentMonth: "Current month",
+    organizationSummary: "Organization summary",
+    coveredDoctors: "Covered doctors",
+    subscriptions: "Doctor subscriptions",
+    sentSms: "SMS sent",
+    estimatedTotal: "Estimated total",
+    locations: "Approved locations",
+    noLocations: "No approved locations are associated.",
+    billingDetails: "Billing details",
+    costBreakdown: "Cost breakdown",
+    doctorSubscriptions: "Doctor subscriptions",
+    confirmationSms: "Confirmation SMS",
+    reminderSms: "24h reminder SMS",
+    smsSubtotal: "SMS subtotal",
+    subtotalBeforeVat: "Subtotal before VAT",
+    estimatedVat: "Estimated VAT",
+    totalWithVat: "Estimated total with VAT",
+    doctorsTitle: "Cost by doctor",
+    doctorsHelper:
+      "Open a doctor to view subscription, SMS usage and assigned location.",
+    subscription: "Subscription",
+    accountEmail: "Account email",
+    coverageStart: "Coverage start",
+    assignedLocation: "Assigned location",
+    unitPrices: "Prices used",
+    doctorUnitPrice: "Doctor subscription / month",
+    smsUnitPrice: "Price / sent SMS",
+    noOrganizations: "No associated organizations",
+    noOrganizationsHelper:
+      "The summary will appear after this account is linked to a clinic organization.",
+    noDoctors: "No invited doctors for this organization.",
+    notInvoice: "Audit estimate — not an invoice",
+    unavailable: "Unavailable",
+  },
+  de: {
+    title: "Kosten und Abdeckung",
+    description:
+      "Monatliche Übersicht über Abonnements eingeladener Ärzte und an Patienten gesendete SMS.",
+    auditNotice:
+      "Diese Seite dient ausschließlich der Übersicht und Prüfung. Sie erstellt keine Rechnungen und bestätigt keine endgültigen Zahlungsbeträge.",
+    previousMonth: "Vorheriger Monat",
+    nextMonth: "Nächster Monat",
+    currentMonth: "Aktueller Monat",
+    organizationSummary: "Organisationsübersicht",
+    coveredDoctors: "Abgedeckte Ärzte",
+    subscriptions: "Arztabonnements",
+    sentSms: "Gesendete SMS",
+    estimatedTotal: "Geschätzter Gesamtbetrag",
+    locations: "Genehmigte Standorte",
+    noLocations: "Keine genehmigten Standorte zugeordnet.",
+    billingDetails: "Rechnungsdaten",
+    costBreakdown: "Kostenaufstellung",
+    doctorSubscriptions: "Arztabonnements",
+    confirmationSms: "Bestätigungs-SMS",
+    reminderSms: "24-Stunden-Erinnerungs-SMS",
+    smsSubtotal: "SMS-Zwischensumme",
+    subtotalBeforeVat: "Zwischensumme vor MwSt.",
+    estimatedVat: "Geschätzte MwSt.",
+    totalWithVat: "Geschätzter Gesamtbetrag inkl. MwSt.",
+    doctorsTitle: "Kosten pro Arzt",
+    doctorsHelper:
+      "Öffnen Sie einen Arzt, um Abonnement, SMS-Nutzung und Standort zu sehen.",
+    subscription: "Abonnement",
+    accountEmail: "Konto-E-Mail",
+    coverageStart: "Beginn der Abdeckung",
+    assignedLocation: "Zugewiesener Standort",
+    unitPrices: "Verwendete Preise",
+    doctorUnitPrice: "Arztabonnement / Monat",
+    smsUnitPrice: "Preis / gesendete SMS",
+    noOrganizations: "Keine zugeordneten Organisationen",
+    noOrganizationsHelper:
+      "Die Übersicht erscheint, sobald dieses Konto einer Klinikorganisation zugeordnet ist.",
+    noDoctors: "Keine eingeladenen Ärzte für diese Organisation.",
+    notInvoice: "Prüfschätzung — keine Rechnung",
+    unavailable: "Nicht verfügbar",
+  },
 };
 
-type Doctor = {
-  id: string;
-  slug: string;
-  profile_id: string | null;
-};
+function normalizeMonth(value?: string) {
+  if (value && /^\d{4}-\d{2}$/.test(value)) {
+    const month = Number(value.slice(5, 7));
+    if (month >= 1 && month <= 12) return value;
+  }
 
-type DoctorTranslation = {
-  doctor_id: string;
-  locale: string;
-  title: string | null;
-};
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Bucharest",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(new Date());
 
-type Profile = {
-  id: string;
-  first_name: string | null;
-  last_name: string | null;
-};
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  return `${year}-${month}`;
+}
 
-const DOCTOR_MONTHLY_PRICE_RON = 60;
-const VAT_RATE = 0.19;
+function shiftMonth(value: string, offset: number) {
+  const [year, month] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1 + offset, 1));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("ro-RO", {
+function intlLocale(locale: AppLocale) {
+  if (locale === "ro") return "ro-RO";
+  if (locale === "de") return "de-DE";
+  return "en-US";
+}
+
+function formatCurrency(value: number, locale: AppLocale) {
+  return new Intl.NumberFormat(intlLocale(locale), {
     style: "currency",
     currency: "RON",
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(Number(value ?? 0));
 }
 
-function formatDate(value: string | null) {
-  if (!value) {
-    return "—";
-  }
-
-  return new Intl.DateTimeFormat("ro-RO", {
-    day: "2-digit",
+function formatMonth(value: string, locale: AppLocale) {
+  const [year, month] = value.split("-").map(Number);
+  return new Intl.DateTimeFormat(intlLocale(locale), {
     month: "long",
     year: "numeric",
+    timeZone: "Europe/Bucharest",
+  }).format(new Date(Date.UTC(year, month - 1, 15)));
+}
+
+function formatDate(value: string | null, locale: AppLocale) {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat(intlLocale(locale), {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "Europe/Bucharest",
   }).format(new Date(value));
 }
 
-function getOrganizationStatusLabel(status: string) {
-  switch (status) {
-    case "active":
-      return "Activă";
-    case "suspended":
-      return "Suspendată";
-    case "rejected":
-      return "Respinsă";
-    case "archived":
-      return "Arhivată";
-    default:
-      return "În așteptare";
-  }
-}
-
-function getInvitationStatusLabel(status: string) {
-  switch (status) {
-    case "accepted":
-      return "Acceptată";
-    case "declined":
-      return "Refuzată";
-    case "expired":
-      return "Expirată";
-    case "cancelled":
-      return "Anulată";
-    default:
-      return "Trimisă";
-  }
-}
-
-function getCoverageStatusLabel(relationship: DoctorRelationship) {
-  if (
-    relationship.payment_responsibility === "clinic_paid" &&
-    relationship.coverage_status === "active"
-  ) {
-    return "Acoperit de clinică";
-  }
-
-  if (relationship.coverage_status === "paused") {
-    return "Acoperire suspendată";
-  }
-
-  if (relationship.coverage_status === "ended") {
-    return "Acoperire încheiată";
-  }
-
-  if (relationship.invitation_status === "pending") {
-    return "Așteaptă înregistrarea medicului";
-  }
-
-  return "Neacoperit activ";
-}
-
-function getProfileName(profile: Profile | undefined) {
-  const profileName = [profile?.first_name, profile?.last_name]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
-
-  return profileName || null;
-}
-
-function getDoctorDisplayName(
-  relationship: DoctorRelationship,
-  doctorsById: Map<string, Doctor>,
-  doctorTitlesById: Map<string, string>,
-  profilesById: Map<string, Profile>
-) {
-  if (relationship.doctor_id) {
-    const title = doctorTitlesById.get(relationship.doctor_id);
-
-    if (title) {
-      return title;
-    }
-
-    const doctor = doctorsById.get(relationship.doctor_id);
-
-    if (doctor?.profile_id) {
-      const profileName = getProfileName(profilesById.get(doctor.profile_id));
-
-      if (profileName) {
-        return profileName;
-      }
-    }
-
-    if (doctor?.slug) {
-      return doctor.slug;
-    }
-  }
-
-  if (relationship.accepted_profile_id) {
-    const profileName = getProfileName(
-      profilesById.get(relationship.accepted_profile_id)
-    );
-
-    if (profileName) {
-      return profileName;
-    }
-  }
-
-  return (
-    relationship.accepted_account_email ??
-    relationship.invited_doctor_email ??
-    "Medic invitat"
-  );
-}
-
-function DetailRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | null | undefined;
-}) {
-  return (
-    <div>
-      <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-        {label}
-      </dt>
-      <dd className="mt-1 text-sm text-gray-900">{value || "—"}</dd>
-    </div>
-  );
-}
-
-function SummaryBox({
-  label,
-  value,
-  helper,
-}: {
+function SummaryCard({ label, value, helper }: {
   label: string;
   value: string | number;
   helper: string;
 }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-[#F0EEE9] p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-bold text-gray-900">{value}</p>
-      <p className="mt-1 text-xs leading-5 text-gray-600">{helper}</p>
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</p>
+      <p className="mt-3 text-3xl font-bold text-gray-900">{value}</p>
+      <p className="mt-2 text-sm leading-6 text-gray-600">{helper}</p>
     </div>
   );
 }
 
-export default async function ClinicManagerBillingPage() {
+function CostLine({ label, value, strong = false }: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <div className={`flex items-center justify-between gap-4 ${strong ? "border-t border-gray-200 pt-3" : ""}`}>
+      <dt className={strong ? "font-semibold text-gray-900" : "text-gray-600"}>{label}</dt>
+      <dd className={strong ? "font-bold text-gray-900" : "font-semibold text-gray-900"}>{value}</dd>
+    </div>
+  );
+}
+
+export default async function ClinicManagerBillingPage({ searchParams }: BillingPageProps) {
+  const parameters = await searchParams;
+  const selectedMonth = normalizeMonth(parameters.month);
+  const currentMonth = normalizeMonth();
+  const previousMonth = shiftMonth(selectedMonth, -1);
+  const nextMonth = shiftMonth(selectedMonth, 1);
+  const locale = (await getLocale()) as AppLocale;
+  const text = COPY[locale] ?? COPY.ro;
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const profileId = user?.id;
-
-  const { data: memberships } = profileId
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: memberships } = user
     ? await supabase
         .from("clinic_organization_members")
-        .select("organization_id, member_role")
-        .eq("profile_id", profileId)
+        .select("organization_id")
+        .eq("profile_id", user.id)
         .eq("status", "active")
     : { data: [] };
 
-  const activeMemberships = (memberships ?? []) as OrganizationMember[];
-  const organizationIds = activeMemberships.map(
-    (membership) => membership.organization_id
-  );
+  const summaries: OrganizationSummary[] = [];
+  for (const membership of (memberships ?? []) as OrganizationMember[]) {
+    const { data, error } = await supabase.rpc(
+      "get_clinic_manager_monthly_coverage_summary",
+      {
+        target_organization_id: membership.organization_id,
+        target_month: `${selectedMonth}-01`,
+      }
+    );
 
-  let organizations: ClinicOrganization[] = [];
-  let billingProfiles: BillingProfile[] = [];
-  let doctorRelationships: DoctorRelationship[] = [];
-
-  if (organizationIds.length > 0) {
-    const [organizationsResult, billingProfilesResult, relationshipsResult] =
-      await Promise.all([
-        supabase
-          .from("clinic_organizations")
-          .select(
-            `
-              id,
-              name,
-              status,
-              contact_email,
-              contact_phone
-            `
-          )
-          .in("id", organizationIds)
-          .order("created_at", {
-            ascending: false,
-          }),
-
-        supabase
-          .from("clinic_organization_billing_profiles")
-          .select(
-            `
-              organization_id,
-              company_name,
-              tax_id,
-              trade_register_number,
-              billing_address,
-              billing_city,
-              billing_county,
-              billing_country,
-              billing_email,
-              is_vat_payer,
-              vat_number,
-              updated_at
-            `
-          )
-          .in("organization_id", organizationIds),
-
-        supabase
-          .from("clinic_doctor_relationships")
-          .select(
-            `
-              organization_id,
-              doctor_id,
-              accepted_profile_id,
-              accepted_account_email,
-              invited_doctor_email,
-              invitation_status,
-              payment_responsibility,
-              coverage_status,
-              accepted_at,
-              expires_at
-            `
-          )
-          .in("organization_id", organizationIds),
-      ]);
-
-    organizations = (organizationsResult.data ?? []) as ClinicOrganization[];
-    billingProfiles = (billingProfilesResult.data ?? []) as BillingProfile[];
-    doctorRelationships =
-      (relationshipsResult.data ?? []) as DoctorRelationship[];
-  }
-
-  const doctorIds = Array.from(
-    new Set(
-      doctorRelationships
-        .map((relationship) => relationship.doctor_id)
-        .filter((doctorId): doctorId is string => Boolean(doctorId))
-    )
-  );
-
-  const acceptedProfileIds = Array.from(
-    new Set(
-      doctorRelationships
-        .map((relationship) => relationship.accepted_profile_id)
-        .filter((profileId): profileId is string => Boolean(profileId))
-    )
-  );
-
-  let doctors: Doctor[] = [];
-  let doctorTranslations: DoctorTranslation[] = [];
-  let profiles: Profile[] = [];
-
-  if (doctorIds.length > 0) {
-    const [doctorsResult, translationsResult] = await Promise.all([
-      supabase
-        .from("doctors")
-        .select("id, slug, profile_id")
-        .in("id", doctorIds),
-
-      supabase
-        .from("doctor_translations")
-        .select("doctor_id, locale, title")
-        .in("doctor_id", doctorIds),
-    ]);
-
-    doctors = (doctorsResult.data ?? []) as Doctor[];
-    doctorTranslations =
-      (translationsResult.data ?? []) as DoctorTranslation[];
-  }
-
-  const doctorProfileIds = doctors
-    .map((doctor) => doctor.profile_id)
-    .filter((profileId): profileId is string => Boolean(profileId));
-
-  const allProfileIds = Array.from(
-    new Set([...acceptedProfileIds, ...doctorProfileIds])
-  );
-
-  if (allProfileIds.length > 0) {
-    const { data: profilesData } = await supabase
-      .from("profiles")
-      .select("id, first_name, last_name")
-      .in("id", allProfileIds);
-
-    profiles = (profilesData ?? []) as Profile[];
-  }
-
-  const billingByOrganization = new Map(
-    billingProfiles.map((profile) => [profile.organization_id, profile])
-  );
-
-  const doctorsById = new Map(doctors.map((doctor) => [doctor.id, doctor]));
-  const profilesById = new Map(profiles.map((profile) => [profile.id, profile]));
-  const doctorTitlesById = new Map<string, string>();
-
-  for (const translation of doctorTranslations) {
-    if (!translation.title) {
+    if (error) {
+      console.error("Clinic coverage summary failed:", error);
       continue;
     }
 
-    const existingTitle = doctorTitlesById.get(translation.doctor_id);
-
-    if (!existingTitle || translation.locale === "ro") {
-      doctorTitlesById.set(translation.doctor_id, translation.title);
-    }
+    if (data) summaries.push(data as OrganizationSummary);
   }
+
+  const totals = summaries.reduce(
+    (acc, summary) => ({
+      doctors: acc.doctors + summary.totals.activeDoctorCount,
+      subscriptions: acc.subscriptions + Number(summary.totals.subscriptionSubtotalRon),
+      sms: acc.sms + summary.totals.totalSmsCount,
+      total: acc.total + Number(summary.totals.estimatedTotalRon),
+    }),
+    { doctors: 0, subscriptions: 0, sms: 0, total: 0 }
+  );
 
   return (
     <div className="space-y-8">
       <header>
-        <p className="text-sm font-semibold text-[#9A4F35]">
-          Clinic Manager
-        </p>
-        <h1 className="mt-2 text-3xl font-bold text-gray-900">
-          Facturare clinică
-        </h1>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Verifică datele de facturare ale clinicii, medicii invitați și
-          totalul lunar simplu. Medicii invitați prin clinică nu plătesc
-          individual prin Stripe; costul lor intră în factura cumulată a
-          clinicii.
+        <p className="text-sm font-semibold text-[#9A4F35]">Clinic Manager</p>
+        <h1 className="mt-2 text-3xl font-bold text-gray-900">{text.title}</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">{text.description}</p>
+        <p className="mt-4 max-w-4xl rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium leading-6 text-amber-950">
+          {text.auditNotice}
         </p>
       </header>
 
-      {organizations.length === 0 ? (
-        <section className="rounded-2xl border border-dashed border-gray-300 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Nu există încă date de facturare pentru contul tău
-          </h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-            După ce RomDoc asociază contul tău unei organizații de clinică,
-            datele de facturare vor fi afișate aici.
+      <nav className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+        <Link href={`/clinic-manager-dashboard/billing?month=${previousMonth}`} className="romdoc-focus-ring rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+          ← {text.previousMonth}
+        </Link>
+        <div className="text-center">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            {selectedMonth === currentMonth ? text.currentMonth : text.title}
           </p>
+          <p className="mt-1 text-lg font-bold capitalize text-gray-900">{formatMonth(selectedMonth, locale)}</p>
+        </div>
+        {nextMonth <= currentMonth ? (
+          <Link href={`/clinic-manager-dashboard/billing?month=${nextMonth}`} className="romdoc-focus-ring rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+            {text.nextMonth} →
+          </Link>
+        ) : (
+          <span className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-400">{text.nextMonth} →</span>
+        )}
+      </nav>
+
+      {summaries.length === 0 ? (
+        <section className="rounded-2xl border border-dashed border-gray-300 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-gray-900">{text.noOrganizations}</h2>
+          <p className="mt-2 text-sm leading-6 text-gray-600">{text.noOrganizationsHelper}</p>
         </section>
       ) : (
         <div className="space-y-6">
-          {organizations.map((organization) => {
-            const billing = billingByOrganization.get(organization.id);
-            const relationships = doctorRelationships.filter(
-              (relationship) => relationship.organization_id === organization.id
-            );
-
-            const activeCoveredRelationships = relationships.filter(
-              (relationship) =>
-                relationship.payment_responsibility === "clinic_paid" &&
-                relationship.invitation_status === "accepted" &&
-                relationship.coverage_status === "active"
-            );
-
-            const pendingInvitations = relationships.filter(
-              (relationship) => relationship.invitation_status === "pending"
-            );
-
-            const registeredClinicPaidDoctors = relationships.filter(
-              (relationship) =>
-                relationship.payment_responsibility === "clinic_paid" &&
-                relationship.invitation_status === "accepted"
-            );
-
-            const monthlySubscriptionNet =
-              activeCoveredRelationships.length * DOCTOR_MONTHLY_PRICE_RON;
-            const monthlyVat = monthlySubscriptionNet * VAT_RATE;
-            const monthlySubscriptionGross =
-              monthlySubscriptionNet + monthlyVat;
+          {summaries.map((summary) => {
+            const organization = summary.organization;
+            if (!organization) return null;
+            const billing = summary.billingProfile;
 
             return (
-              <section
+              <details
                 key={organization.id}
-                className="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6"
+                className="group rounded-2xl border border-gray-200 bg-white shadow-sm"
               >
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-xl font-bold text-gray-900">
+                <summary className="cursor-pointer list-none p-5 sm:p-6">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[#9A4F35]">
+                        {text.organizationSummary}
+                      </p>
+                      <h2 className="mt-2 text-xl font-bold text-gray-900">
                         {organization.name}
                       </h2>
-                      <span className="rounded-full bg-[#036661]/10 px-2.5 py-1 text-xs font-semibold text-[#036661]">
-                        {getOrganizationStatusLabel(organization.status)}
-                      </span>
+                      <p className="mt-2 text-sm text-gray-600">
+                        {summary.totals.activeDoctorCount} {text.coveredDoctors.toLowerCase()} ·{" "}
+                        {formatCurrency(summary.totals.estimatedTotalRon, locale)}
+                      </p>
                     </div>
+
+                    <span className="text-2xl text-gray-400 transition group-open:rotate-45">
+                      +
+                    </span>
+                  </div>
+                </summary>
+
+                <div className="space-y-5 border-t border-gray-200 p-5 sm:p-6">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">{organization.name}</h2>
                     <p className="mt-2 text-sm text-gray-600">
-                      Contact: {organization.contact_email ?? "—"}
-                      {organization.contact_phone
-                        ? ` · ${organization.contact_phone}`
-                        : ""}
+                      {organization.contact_email ?? text.unavailable}
+                      {organization.contact_phone ? ` · ${organization.contact_phone}` : ""}
                     </p>
+                    <div className="mt-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{text.locations}</p>
+                      <p className="mt-1 text-sm leading-6 text-gray-600">
+                        {summary.locations.length > 0
+                          ? summary.locations.map((location) => location.name).join(" · ")
+                          : text.noLocations}
+                      </p>
+                    </div>
                   </div>
-
-                  <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm leading-6 text-green-900">
-                    Clinic Manager invită medicii și clinica plătește cumulat.
-                    Adminul doar poate verifica statusul general și facturarea.
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-4">
-                  <SummaryBox
-                    label="Medici activi"
-                    value={activeCoveredRelationships.length}
-                    helper="Intră în totalul lunar al clinicii."
-                  />
-                  <SummaryBox
-                    label="Medici înregistrați"
-                    value={registeredClinicPaidDoctors.length}
-                    helper="Au acceptat invitația clinicii."
-                  />
-                  <SummaryBox
-                    label="Invitații deschise"
-                    value={pendingInvitations.length}
-                    helper="Așteaptă crearea contului de medic."
-                  />
-                  <SummaryBox
-                    label="Total estimat"
-                    value={formatCurrency(monthlySubscriptionGross)}
-                    helper="Abonamente + TVA, fără SMS."
-                  />
+                  <span className="rounded-full bg-[#036661]/10 px-3 py-1.5 text-xs font-semibold text-[#036661]">{text.notInvoice}</span>
                 </div>
 
                 <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
                   <div className="rounded-2xl border border-gray-200 p-5">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Date de facturare
-                    </h3>
-
+                    <h3 className="text-lg font-semibold text-gray-900">{text.billingDetails}</h3>
                     {billing ? (
-                      <dl className="mt-5 grid gap-4 sm:grid-cols-2">
-                        <DetailRow
-                          label="Denumire firmă"
-                          value={billing.company_name}
-                        />
-                        <DetailRow label="CUI" value={billing.tax_id} />
-                        <DetailRow
-                          label="Nr. Registrul Comerțului"
-                          value={billing.trade_register_number}
-                        />
-                        <DetailRow
-                          label="E-mail facturare"
-                          value={billing.billing_email}
-                        />
-                        <DetailRow label="Adresă" value={billing.billing_address} />
-                        <DetailRow label="Oraș" value={billing.billing_city} />
-                        <DetailRow label="Județ" value={billing.billing_county} />
-                        <DetailRow label="Țară" value={billing.billing_country} />
-                        <DetailRow
-                          label="Plătitor TVA"
-                          value={billing.is_vat_payer ? "Da" : "Nu"}
-                        />
-                        <DetailRow label="Cod TVA" value={billing.vat_number} />
-                        <DetailRow
-                          label="Ultima actualizare"
-                          value={formatDate(billing.updated_at)}
-                        />
+                      <dl className="mt-5 grid gap-4 sm:grid-cols-2 text-sm">
+                        <div><dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Company</dt><dd className="mt-1">{billing.company_name}</dd></div>
+                        <div><dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">CUI</dt><dd className="mt-1">{billing.tax_id}</dd></div>
+                        <div><dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">E-mail</dt><dd className="mt-1">{billing.billing_email}</dd></div>
+                        <div><dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">TVA</dt><dd className="mt-1">{billing.is_vat_payer ? "Da" : "Nu"}</dd></div>
+                        <div className="sm:col-span-2"><dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Address</dt><dd className="mt-1">{[billing.billing_address, billing.billing_city, billing.billing_county, billing.billing_country].filter(Boolean).join(", ")}</dd></div>
                       </dl>
                     ) : (
-                      <p className="mt-3 text-sm leading-6 text-gray-600">
-                        Datele de facturare nu sunt încă asociate acestei
-                        organizații. Te rugăm să contactezi RomDoc pentru
-                        completare.
-                      </p>
+                      <p className="mt-3 text-sm text-gray-600">{text.unavailable}</p>
                     )}
                   </div>
 
-                  <aside className="space-y-4 rounded-2xl border border-gray-200 p-5">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Sumar curent
-                    </h3>
-
-                    <dl className="space-y-3 text-sm">
-                      <div className="flex items-center justify-between gap-4">
-                        <dt className="text-gray-600">Abonamente medici</dt>
-                        <dd className="font-semibold text-gray-900">
-                          {formatCurrency(monthlySubscriptionNet)}
-                        </dd>
-                      </div>
-                      <div className="flex items-center justify-between gap-4">
-                        <dt className="text-gray-600">TVA estimat</dt>
-                        <dd className="font-semibold text-gray-900">
-                          {formatCurrency(monthlyVat)}
-                        </dd>
-                      </div>
-                      <div className="flex items-center justify-between gap-4 border-t border-gray-200 pt-3">
-                        <dt className="font-semibold text-gray-900">
-                          Total estimat
-                        </dt>
-                        <dd className="font-bold text-gray-900">
-                          {formatCurrency(monthlySubscriptionGross)}
-                        </dd>
-                      </div>
+                  <aside className="rounded-2xl border border-gray-200 p-5">
+                    <h3 className="text-lg font-semibold text-gray-900">{text.costBreakdown}</h3>
+                    <dl className="mt-5 space-y-3 text-sm">
+                      <CostLine label={text.doctorSubscriptions} value={formatCurrency(summary.totals.subscriptionSubtotalRon, locale)} />
+                      <CostLine label={`${text.confirmationSms} (${summary.totals.confirmationSmsCount})`} value={formatCurrency(summary.totals.confirmationSmsCount * summary.prices.smsUnitPriceRon, locale)} />
+                      <CostLine label={`${text.reminderSms} (${summary.totals.reminder24hSmsCount})`} value={formatCurrency(summary.totals.reminder24hSmsCount * summary.prices.smsUnitPriceRon, locale)} />
+                      <CostLine label={text.smsSubtotal} value={formatCurrency(summary.totals.smsSubtotalRon, locale)} />
+                      <CostLine label={text.subtotalBeforeVat} value={formatCurrency(summary.totals.subtotalBeforeVatRon, locale)} />
+                      <CostLine label={text.estimatedVat} value={formatCurrency(summary.totals.estimatedVatRon, locale)} />
+                      <CostLine label={text.totalWithVat} value={formatCurrency(summary.totals.estimatedTotalRon, locale)} strong />
                     </dl>
-
-                    <p className="rounded-xl bg-gray-50 p-3 text-xs leading-5 text-gray-600">
-                      SMS-urile nu sunt incluse încă în acest total. După
-                      conectarea logurilor SMS la organizația clinicii, ele vor
-                      apărea separat.
-                    </p>
+                    <div className="mt-5 rounded-xl bg-gray-50 p-3 text-xs leading-5 text-gray-600">
+                      <p className="font-semibold text-gray-800">{text.unitPrices}</p>
+                      <p className="mt-1">{text.doctorUnitPrice}: {formatCurrency(summary.prices.clinicDoctorMonthlyPriceRon, locale)}</p>
+                      <p>{text.smsUnitPrice}: {formatCurrency(summary.prices.smsUnitPriceRon, locale)}</p>
+                    </div>
                   </aside>
                 </div>
 
-                <div className="rounded-2xl border border-gray-200 p-5">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Medici invitați / acoperiți de clinică
-                  </h3>
-
-                  {relationships.length === 0 ? (
-                    <p className="mt-3 text-sm leading-6 text-gray-600">
-                      Nu există încă medici invitați sau acoperiți de această
-                      clinică.
-                    </p>
-                  ) : (
-                    <div className="mt-4 overflow-hidden rounded-xl border border-gray-200">
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200 text-sm">
-                          <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                            <tr>
-                              <th className="px-4 py-3">Medic / cont</th>
-                              <th className="px-4 py-3">Invitație</th>
-                              <th className="px-4 py-3">Acoperire</th>
-                              <th className="px-4 py-3">Acceptată</th>
-                              <th className="px-4 py-3">Cost lunar</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-200 bg-white">
-                            {relationships.map((relationship, index) => {
-                              const isActiveCovered =
-                                relationship.payment_responsibility ===
-                                  "clinic_paid" &&
-                                relationship.invitation_status === "accepted" &&
-                                relationship.coverage_status === "active";
-
-                              return (
-                                <tr
-                                  key={`${organization.id}-${
-                                    relationship.doctor_id ??
-                                    relationship.accepted_profile_id ??
-                                    relationship.invited_doctor_email ??
-                                    index
-                                  }`}
-                                >
-                                  <td className="px-4 py-3 font-medium text-gray-900">
-                                    {getDoctorDisplayName(
-                                      relationship,
-                                      doctorsById,
-                                      doctorTitlesById,
-                                      profilesById
-                                    )}
-                                    {(relationship.accepted_account_email ||
-                                      relationship.invited_doctor_email) && (
-                                      <p className="mt-1 text-xs font-normal text-gray-500">
-                                        {relationship.accepted_account_email ??
-                                          relationship.invited_doctor_email}
-                                      </p>
-                                    )}
-                                  </td>
-                                  <td className="px-4 py-3 text-gray-700">
-                                    {getInvitationStatusLabel(
-                                      relationship.invitation_status
-                                    )}
-                                  </td>
-                                  <td className="px-4 py-3 text-gray-700">
-                                    {getCoverageStatusLabel(relationship)}
-                                  </td>
-                                  <td className="px-4 py-3 text-gray-700">
-                                    {formatDate(relationship.accepted_at)}
-                                  </td>
-                                  <td className="px-4 py-3 text-gray-700">
-                                    {isActiveCovered
-                                      ? `${DOCTOR_MONTHLY_PRICE_RON} RON/lună + TVA`
-                                      : "—"}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                <details className="group rounded-2xl border border-gray-200">
+                  <summary className="cursor-pointer list-none p-5 sm:p-6">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">{text.doctorsTitle}</h3>
+                        <p className="mt-1 text-sm leading-6 text-gray-600">{text.doctorsHelper}</p>
                       </div>
+                      <span className="text-2xl text-gray-400 transition group-open:rotate-45">+</span>
                     </div>
-                  )}
-                </div>
-
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <div className="rounded-2xl border border-gray-200 p-5">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Consum SMS
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-gray-600">
-                      Consumul SMS va fi afișat aici după ce logurile SMS vor fi
-                      legate de organizația clinicii. Vor fi vizibile doar date
-                      de livrare și facturare, nu conținut medical.
-                    </p>
+                  </summary>
+                  <div className="border-t border-gray-200 p-5 sm:p-6">
+                    {summary.doctors.length === 0 ? (
+                      <p className="text-sm text-gray-600">{text.noDoctors}</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {summary.doctors.map((doctor) => (
+                          <details key={doctor.relationshipId} className="group rounded-xl border border-gray-200 bg-gray-50">
+                            <summary className="cursor-pointer list-none p-4">
+                              <div className="grid items-center gap-3 md:grid-cols-[minmax(0,1.5fr)_minmax(7rem,0.7fr)_minmax(7rem,0.6fr)_minmax(8rem,0.8fr)]">
+                                <div>
+                                  <p className="font-semibold text-gray-900">{doctor.doctorName}</p>
+                                  <p className="mt-1 text-xs text-gray-500">{doctor.email ?? text.unavailable}</p>
+                                </div>
+                                <p className="text-sm text-gray-700">{doctor.coverageStatus}</p>
+                                <p className="text-sm text-gray-700">{doctor.totalSmsCount} SMS</p>
+                                <p className="text-sm font-bold text-gray-900">{formatCurrency(doctor.estimatedDoctorSubtotalRon, locale)}</p>
+                              </div>
+                            </summary>
+                            <div className="border-t border-gray-200 bg-white p-4">
+                              <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+                                <div><dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{text.accountEmail}</dt><dd className="mt-1">{doctor.email ?? "—"}</dd></div>
+                                <div><dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{text.coverageStart}</dt><dd className="mt-1">{formatDate(doctor.coverageStartedAt ?? doctor.acceptedAt, locale)}</dd></div>
+                                <div><dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{text.assignedLocation}</dt><dd className="mt-1">{doctor.clinicName ?? "—"}</dd><p className="mt-1 text-xs text-gray-500">{doctor.clinicAddress}</p></div>
+                                <div><dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{text.subscription}</dt><dd className="mt-1 font-bold">{formatCurrency(doctor.subscriptionCostRon, locale)}</dd></div>
+                              </dl>
+                              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                                <SummaryCard label={text.confirmationSms} value={doctor.confirmationSmsCount} helper={formatCurrency(doctor.confirmationSmsCount * summary.prices.smsUnitPriceRon, locale)} />
+                                <SummaryCard label={text.reminderSms} value={doctor.reminder24hSmsCount} helper={formatCurrency(doctor.reminder24hSmsCount * summary.prices.smsUnitPriceRon, locale)} />
+                                <SummaryCard label={text.smsSubtotal} value={formatCurrency(doctor.smsCostRon, locale)} helper={`${doctor.totalSmsCount} SMS`} />
+                              </div>
+                            </div>
+                          </details>
+                        ))}
+                      </div>
+                    )}
                   </div>
-
-                  <div className="rounded-2xl border border-gray-200 p-5">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Istoric facturi / plăți
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-gray-600">
-                      Istoricul facturilor va fi adăugat după ce stabilim fluxul
-                      final pentru facturarea manuală sau Stripe.
-                    </p>
-                  </div>
+                </details>
                 </div>
-              </section>
+              </details>
             );
           })}
         </div>
       )}
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <SummaryCard
+          label={text.coveredDoctors}
+          value={totals.doctors}
+          helper={text.notInvoice}
+        />
+        <SummaryCard
+          label={text.subscriptions}
+          value={formatCurrency(totals.subscriptions, locale)}
+          helper={text.notInvoice}
+        />
+        <SummaryCard
+          label={text.sentSms}
+          value={totals.sms}
+          helper={text.notInvoice}
+        />
+        <SummaryCard
+          label={text.estimatedTotal}
+          value={formatCurrency(totals.total, locale)}
+          helper={text.notInvoice}
+        />
+      </div>
     </div>
   );
 }

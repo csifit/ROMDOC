@@ -1,4 +1,7 @@
-import { redirect } from "next/navigation";
+import Link from "next/link";
+import {
+  redirect,
+} from "next/navigation";
 
 import AdminClinicCreationForm from "@/components/admin/admin-clinic-creation-form";
 import AdminDoctorClinicAssociations from "@/components/admin/admin-doctor-clinic-associations";
@@ -7,56 +10,78 @@ import ClinicOrganizationLocationApprovals from "@/components/admin/clinic-organ
 import ClinicOrganizationsOverview from "@/components/admin/clinic-organizations-overview";
 import ClinicEditingPanel from "@/components/clinic/clinic-editing-panel";
 import AdminAccordion from "@/components/ui/admin-accordion";
-import { createClient } from "@/lib/supabase/server";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
 export default async function AdminClinicsPage() {
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
 
   const {
     data: { user },
     error: userError,
-  } = await supabase.auth.getUser();
+  } =
+    await supabase.auth.getUser();
 
-  if (userError || !user) {
-    redirect("/login?next=/admin/clinics");
+  if (
+    userError ||
+    !user
+  ) {
+    redirect(
+      "/login?next=/admin/clinics"
+    );
   }
 
-  const { data: profile, error: profileError } = await supabase
+  const {
+    data: profile,
+    error: profileError,
+  } = await supabase
     .from("profiles")
-    .select(
-      `
-        role,
-        account_status
-      `
-    )
+    .select(`
+      role,
+      account_status
+    `)
     .eq("id", user.id)
     .maybeSingle();
 
   if (
     profileError ||
     profile?.role !== "admin" ||
-    profile.account_status !== "active"
+    profile.account_status !==
+      "active"
   ) {
     redirect("/dashboard");
   }
 
   return (
     <div className="space-y-8">
-      <header>
-        <p className="text-sm font-semibold text-[#9A4F35]">
-          Administrare
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-5">
+        <div>
+          <p className="text-sm font-semibold text-[#9A4F35]">
+            Administrare
+          </p>
 
-        <h1 className="mt-2 text-3xl font-bold text-gray-900">
-          Clinici
-        </h1>
+          <h1 className="mt-2 text-3xl font-bold text-gray-900">
+            Clinici
+          </h1>
 
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Creează clinici aprobate, asociază medicii existenți cu locațiile lor,
-          verifică propunerile trimise de medici și aprobă punctele de lucru ale
-          organizațiilor de clinică. Locațiile aprobate devin eligibile pentru
-          harta publică RomDoc.
-        </p>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
+            Creează clinici aprobate, asociază medicii existenți cu locațiile lor,
+            verifică propunerile trimise de medici și aprobă punctele de lucru ale
+            organizațiilor de clinică. Locațiile aprobate devin eligibile pentru
+            harta publică RomDoc.
+          </p>
+        </div>
+
+        <Link
+          href="/admin/clinics/clinic-billing"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="romdoc-focus-ring inline-flex rounded-xl border border-[#036661] bg-white px-4 py-2.5 text-sm font-semibold text-[#036661] transition hover:bg-[#036661]/10"
+        >
+          Tarife clinică ↗
+        </Link>
       </header>
 
       <ClinicOrganizationsOverview />
