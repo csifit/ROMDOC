@@ -166,23 +166,50 @@ export default async function DoctorsPage({ searchParams }: Props) {
       if (!specialtyName) return [];
 
       return [{
-        id: doctor.id,
-        slug: doctor.slug,
-        name: formatDoctorName(doctor.slug),
-        title: localized(doctor.doctor_translations, locale, "title", t.doctorFallback) ?? t.doctorFallback,
-        photoUrl: doctor.photo_url,
-        specialtyName,
-        cityName: city ? cityName(city.city_translations, city.slug, locale) : t.countryFallback,
-        clinicName: matchingClinic ? localized(matchingClinic.clinic_translations, locale, "name", t.clinicFallback) ?? t.clinicFallback : t.clinicFallback,
-        averageRating: numberValue(doctor.average_rating) ?? 0,
-        reviewCount: doctor.review_count ?? 0,
-        consultationPrice: numberValue(doctor.consultation_price),
-        yearsExperience: doctor.years_experience,
-        isVerified: doctor.verification_status === "verified",
-        hasOnlineAvailability: onlineDoctorIds.has(doctor.id),
-      }];
-    });
-  }
+  id: doctor.id,
+  slug: doctor.slug,
+  name: formatDoctorName(doctor.slug),
+  title:
+    localized(
+      doctor.doctor_translations,
+      locale,
+      "title",
+      t.doctorFallback
+    ) ?? t.doctorFallback,
+  photoUrl: doctor.photo_url,
+  specialtyName,
+  cityName: city
+    ? cityName(
+        city.city_translations,
+        city.slug,
+        locale
+      )
+    : t.countryFallback,
+  clinicId: matchingClinic?.id ?? "",
+  clinicName: matchingClinic
+    ? localized(
+        matchingClinic.clinic_translations,
+        locale,
+        "name",
+        t.clinicFallback
+      ) ?? t.clinicFallback
+    : t.clinicFallback,
+  averageRating:
+    numberValue(doctor.average_rating) ?? 0,
+  reviewCount: doctor.review_count ?? 0,
+  consultationPrice: numberValue(
+    doctor.consultation_price
+  ),
+  yearsExperience: doctor.years_experience,
+  isVerified:
+    doctor.verification_status === "verified",
+  hasOnlineAvailability: onlineDoctorIds.has(
+    doctor.id
+  ),
+  nextAvailableSlot: null,
+}];
+
+});
 
   return (
     <PublicLayout>
@@ -219,4 +246,4 @@ export default async function DoctorsPage({ searchParams }: Props) {
       </main>
     </PublicLayout>
   );
-}
+}}

@@ -75,6 +75,8 @@
     "priceFrom": "From {price} RON",
     "onlineAvailable": "Online appointments available",
     "checkAvailability": "Check availability on profile",
+    "nextAvailableLabel": "Next available appointment",
+    "nextAvailableValue": "{date} at {time}",
     "viewProfile": "View profile",
     "bookAppointment": "Book appointment"
   },

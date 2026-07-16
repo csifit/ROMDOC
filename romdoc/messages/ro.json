@@ -75,6 +75,8 @@
     "priceFrom": "De la {price} RON",
     "onlineAvailable": "Programări online disponibile",
     "checkAvailability": "Verifică disponibilitatea pe profil",
+    "nextAvailableLabel": "Următorul interval disponibil",
+    "nextAvailableValue": "{date}, ora {time}",
     "viewProfile": "Vezi profilul",
     "bookAppointment": "Programează-te"
   },
