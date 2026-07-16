@@ -49,7 +49,7 @@ export default function DoctorPhotoManager({
     }
 
     if (file.size > 2 * 1024 * 1024) {
-      setError("Fotografia trebuie să aibă cel mult 5 MB.");
+      setError("Fotografia trebuie să aibă cel mult 2 MB.");
       event.target.value = "";
       return;
     }
@@ -175,7 +175,7 @@ export default function DoctorPhotoManager({
 
           <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-600">
             Folosește o fotografie profesională, clară și recentă. Sunt
-            acceptate fișiere JPG, PNG și WebP de cel mult 5 MB.
+            acceptate fișiere JPG, PNG și WebP de cel mult 2 MB.
           </p>
 
           <input

@@ -105,23 +105,6 @@ export async function POST(
     return authorization.response;
   }
 
-  const rateLimit =
-    await consumeRateLimit({
-      namespace:
-        "doctor-photo-upload",
-      identifier:
-        authorization.doctor.profile_id,
-      limit: 10,
-      windowSeconds:
-        60 * 60,
-    });
-
-  if (!rateLimit.allowed) {
-    return rateLimitResponse(
-      rateLimit
-    );
-  }
-
   let formData: FormData;
 
   try {
@@ -166,6 +149,23 @@ export async function POST(
             "no-store",
         },
       }
+    );
+  }
+
+  const rateLimit =
+    await consumeRateLimit({
+    namespace:
+      "doctor-photo-upload",
+    identifier:
+      authorization.doctor.profile_id,
+    limit: 30,
+    windowSeconds:
+      60 * 60,
+  });
+
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(
+    rateLimit
     );
   }
 
