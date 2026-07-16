@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 
 import ClinicInvoicingOrganizationSearch from "@/components/manager/clinic-invoicing-organization-search";
 
+import CreateClinicInvoiceFromEstimateLink from "@/components/invoices/create-clinic-invoice-from-estimate-link";
+
 type ClinicSmsPageProps = {
   searchParams?: Promise<{
     month?: string;
@@ -174,6 +176,17 @@ function getMonthRange(monthParam: string | undefined) {
     previousMonth: previous.toISOString().slice(0, 7),
     nextMonth: next.toISOString().slice(0, 7),
   };
+}
+
+function getInclusiveMonthEnd(
+  endIso: string
+) {
+  return new Date(
+    new Date(endIso).getTime() -
+      24 * 60 * 60 * 1000
+  )
+    .toISOString()
+    .slice(0, 10);
 }
 
 function formatCurrencyMinor(valueMinor: number, currency = "RON") {
@@ -993,6 +1006,48 @@ export default async function ManagerClinicSmsPage({
                           </div>
                         </div>
                       </div>
+                    </section>
+
+                    <section className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#036661]/20 bg-[#036661]/5 p-5">
+                      <div>
+                        <h4 className="font-bold text-gray-900">
+                          Înregistrează factura în RomDoc
+                        </h4>
+
+                        <p className="mt-2 text-sm leading-6 text-gray-700">
+                          Perioadă: {monthRange.label}. Estimarea precompletată
+                          însumează totalul abonamentelor afișat mai sus și
+                          costul SMS nefacturat afișat pentru organizație.
+                        </p>
+
+                        <p className="mt-2 text-lg font-bold text-gray-900">
+                          {formatCurrencyMinor(
+                            group.subscriptionTotalMinor +
+                              group.uninvoicedCostMinor,
+                            "RON"
+                          )}
+                        </p>
+                      </div>
+
+                      <CreateClinicInvoiceFromEstimateLink
+                        href="/manager-dashboard/invoices"
+                        organizationId={organization.id}
+                        billingPeriodStart={
+                          monthRange.startIso.slice(
+                            0,
+                            10
+                          )
+                        }
+                        billingPeriodEnd={getInclusiveMonthEnd(
+                          monthRange.endIso
+                        )}
+                        estimatedAmountRon={
+                          (
+                            group.subscriptionTotalMinor +
+                            group.uninvoicedCostMinor
+                          ) / 100
+                        }
+                      />
                     </section>
 
                     <div className="mt-6 grid gap-5 lg:grid-cols-3">

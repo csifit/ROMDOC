@@ -135,6 +135,101 @@ export async function POST(
     );
   }
 
+  const [
+    periodConflictResult,
+    invoiceNumbersResult,
+  ] = await Promise.all([
+    admin
+      .from("clinic_invoices")
+      .select(
+        "id, invoice_number, status, issued_on, amount_ron"
+      )
+      .eq("organization_id", organizationId)
+      .in("status", ["invoiced", "paid"])
+      .lte(
+        "billing_period_start",
+        billingPeriodEnd
+      )
+      .gte(
+        "billing_period_end",
+        billingPeriodStart
+      )
+      .limit(5),
+
+    admin
+      .from("clinic_invoices")
+      .select(
+        "id, invoice_number, organization_id, status"
+      ),
+  ]);
+
+  if (
+    periodConflictResult.error ||
+    invoiceNumbersResult.error
+  ) {
+    console.error(
+      "Clinic invoice duplicate check failed:",
+      periodConflictResult.error ??
+        invoiceNumbersResult.error
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          "Factura nu a putut fi verificată pentru duplicate.",
+      },
+      { status: 500 }
+    );
+  }
+
+  const periodConflicts =
+    periodConflictResult.data ?? [];
+
+  if (periodConflicts.length > 0) {
+    return NextResponse.json(
+      {
+        error:
+          "Această organizație are deja o factură facturată sau plătită pentru perioada selectată.",
+        code:
+          "organization_period_already_processed",
+        conflicts:
+          periodConflicts,
+      },
+      { status: 409 }
+    );
+  }
+
+  const normalizedInvoiceNumber =
+    invoiceNumber
+      .trim()
+      .toLocaleLowerCase("ro-RO");
+
+  const duplicateNumber =
+    (
+      invoiceNumbersResult.data ??
+      []
+    ).find(
+      (existingInvoice) =>
+        existingInvoice.invoice_number
+          .trim()
+          .toLocaleLowerCase("ro-RO") ===
+        normalizedInvoiceNumber
+    );
+
+  if (duplicateNumber) {
+    return NextResponse.json(
+      {
+        error:
+          "Numărul de factură SAGA există deja în RomDoc.",
+        code:
+          "invoice_number_already_exists",
+        conflict:
+          duplicateNumber,
+      },
+      { status: 409 }
+    );
+  }
+
   const { data: invoice, error: insertError } = await admin
     .from("clinic_invoices")
     .insert({

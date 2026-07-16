@@ -1,10 +1,20 @@
 import { redirect } from "next/navigation";
 
 import ClinicInvoicesWorkspace from "@/components/invoices/clinic-invoices-workspace";
+import {
+  getClinicInvoiceInitialDraft,
+  type InvoiceSearchParameters,
+} from "@/lib/invoices/clinic-invoice-prefill";
 import { loadClinicInvoiceWorkspaceData } from "@/lib/invoices/load-clinic-invoice-workspace-data";
 import { requireClinicInvoiceAccess } from "@/lib/invoices/require-clinic-invoice-access";
 
-export default async function AdminInvoicesPage() {
+type AdminInvoicesPageProps = {
+  searchParams?: Promise<InvoiceSearchParameters>;
+};
+
+export default async function AdminInvoicesPage({
+  searchParams,
+}: AdminInvoicesPageProps) {
   const access = await requireClinicInvoiceAccess();
 
   if (!access.ok) {
@@ -18,6 +28,10 @@ export default async function AdminInvoicesPage() {
   if (access.actor.role !== "admin") {
     redirect("/dashboard");
   }
+
+  const parameters = (await searchParams) ?? {};
+  const initialDraft =
+    getClinicInvoiceInitialDraft(parameters);
 
   const { organizations, invoices } =
     await loadClinicInvoiceWorkspaceData();
@@ -42,6 +56,7 @@ export default async function AdminInvoicesPage() {
       <ClinicInvoicesWorkspace
         invoices={invoices}
         organizations={organizations}
+        initialDraft={initialDraft}
       />
     </div>
   );

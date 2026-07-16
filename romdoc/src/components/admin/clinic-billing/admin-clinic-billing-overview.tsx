@@ -7,6 +7,8 @@ import {
   type AppLocale,
 } from "@/i18n/routing";
 
+import CreateClinicInvoiceFromEstimateLink from "@/components/invoices/create-clinic-invoice-from-estimate-link";
+
 export type ClinicBillingDoctorRow = {
   relationshipId: string;
   doctorId: string | null;
@@ -135,6 +137,7 @@ type Copy = {
   noDoctors: string;
   currentGlobalDetails: string;
   previousGlobalDetails: string;
+  markAsInvoiced: string;
 };
 
 const COPY: Record<AppLocale, Copy> = {
@@ -192,6 +195,7 @@ const COPY: Record<AppLocale, Copy> = {
       "Nu există conturi cu acoperire activă pentru această organizație.",
     currentGlobalDetails: "Detalii luna curentă",
     previousGlobalDetails: "Detalii luna precedentă",
+    markAsInvoiced: "Marchează ca facturată",
   },
 
   en: {
@@ -248,6 +252,7 @@ const COPY: Record<AppLocale, Copy> = {
       "There are no accounts with active coverage for this organization.",
     currentGlobalDetails: "Current-month details",
     previousGlobalDetails: "Previous-month details",
+    markAsInvoiced: "Mark as Invoiced",
   },
 
   de: {
@@ -304,6 +309,7 @@ const COPY: Record<AppLocale, Copy> = {
       "Für diese Organisation gibt es keine Konten mit aktiver Abdeckung.",
     currentGlobalDetails: "Details aktueller Monat",
     previousGlobalDetails: "Details Vormonat",
+    markAsInvoiced: "Als fakturiert markieren",
   },
 };
 
@@ -1020,6 +1026,50 @@ export default function AdminClinicBillingOverview({
                           />
                         </div>
                       </div>
+
+                      {previousOrganization ? (
+                        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#036661]/20 bg-[#036661]/5 p-5">
+                          <div>
+                            <p className="font-semibold text-gray-900">
+                              {text.previousMonth}
+                            </p>
+
+                            <p className="mt-1 text-sm text-gray-600">
+                              {formatMonth(
+                                previousSummary.monthStart,
+                                locale
+                              )}{" "}
+                              ·{" "}
+                              {formatCurrency(
+                                previousOrganization.estimatedTotalRon,
+                                locale
+                              )}
+                            </p>
+                          </div>
+
+                          <CreateClinicInvoiceFromEstimateLink
+                            href="/admin/invoices"
+                            organizationId={organization.id}
+                            billingPeriodStart={
+                              previousSummary.monthStart
+                            }
+                            billingPeriodEnd={
+                              new Date(
+                                new Date(
+                                  `${previousSummary.monthEndExclusive}T00:00:00Z`
+                                ).getTime() -
+                                  24 * 60 * 60 * 1000
+                              )
+                                .toISOString()
+                                .slice(0, 10)
+                            }
+                            estimatedAmountRon={
+                              previousOrganization.estimatedTotalRon
+                            }
+                            label={text.markAsInvoiced}
+                          />
+                        </div>
+                      ) : null}
 
                       <details className="group overflow-hidden rounded-2xl border border-gray-200 bg-white">
                         <summary className="cursor-pointer list-none p-5">

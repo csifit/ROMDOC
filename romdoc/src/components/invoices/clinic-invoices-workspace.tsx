@@ -14,9 +14,17 @@ import {
   type ClinicInvoiceStatus,
 } from "@/lib/invoices/clinic-invoices";
 
+export type ClinicInvoiceInitialDraft = {
+  organizationId: string;
+  billingPeriodStart: string;
+  billingPeriodEnd: string;
+  estimatedAmountRon: string;
+};
+
 type Props = {
   invoices: ClinicInvoiceRow[];
   organizations: ClinicInvoiceOrganization[];
+  initialDraft?: ClinicInvoiceInitialDraft | null;
 };
 
 type ApiResponse = {
@@ -93,24 +101,56 @@ function previousMonthEnd() {
 export default function ClinicInvoicesWorkspace({
   invoices,
   organizations,
+  initialDraft = null,
 }: Props) {
   const router = useRouter();
+
+  const hasValidInitialDraft =
+    initialDraft !== null &&
+    organizations.some(
+      (organization) =>
+        organization.id ===
+        initialDraft.organizationId
+    );
+
   const [isPending, startTransition] = useTransition();
 
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(
+    hasValidInitialDraft
+  );
   const [search, setSearch] = useState("");
   const [organizationFilter, setOrganizationFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
-  const [organizationId, setOrganizationId] = useState("");
+  const [organizationId, setOrganizationId] = useState(
+    hasValidInitialDraft
+      ? initialDraft.organizationId
+      : ""
+  );
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [issuedOn, setIssuedOn] = useState(isoToday());
-  const [billingPeriodStart, setBillingPeriodStart] = useState(previousMonthStart());
-  const [billingPeriodEnd, setBillingPeriodEnd] = useState(previousMonthEnd());
-  const [estimatedAmountRon, setEstimatedAmountRon] = useState("");
-  const [amountRon, setAmountRon] = useState("");
+  const [billingPeriodStart, setBillingPeriodStart] = useState(
+    hasValidInitialDraft
+      ? initialDraft.billingPeriodStart
+      : previousMonthStart()
+  );
+  const [billingPeriodEnd, setBillingPeriodEnd] = useState(
+    hasValidInitialDraft
+      ? initialDraft.billingPeriodEnd
+      : previousMonthEnd()
+  );
+  const [estimatedAmountRon, setEstimatedAmountRon] = useState(
+    hasValidInitialDraft
+      ? initialDraft.estimatedAmountRon
+      : ""
+  );
+  const [amountRon, setAmountRon] = useState(
+    hasValidInitialDraft
+      ? initialDraft.estimatedAmountRon
+      : ""
+  );
   const [notes, setNotes] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -158,6 +198,53 @@ export default function ClinicInvoicesWorkspace({
     });
   }, [invoices, organizationFilter, statusFilter, dateFrom, dateTo, search]);
 
+  const processedPeriodInvoices = useMemo(() => {
+    if (!organizationId || !billingPeriodStart || !billingPeriodEnd) {
+      return [];
+    }
+
+    return invoices.filter((invoice) => {
+      if (
+        invoice.organizationId !== organizationId ||
+        (invoice.status !== "invoiced" && invoice.status !== "paid")
+      ) {
+        return false;
+      }
+
+      return (
+        invoice.billingPeriodStart <= billingPeriodEnd &&
+        invoice.billingPeriodEnd >= billingPeriodStart
+      );
+    });
+  }, [
+    invoices,
+    organizationId,
+    billingPeriodStart,
+    billingPeriodEnd,
+  ]);
+
+  const duplicateInvoiceNumber = useMemo(() => {
+    const normalizedInvoiceNumber = invoiceNumber
+      .trim()
+      .toLocaleLowerCase("ro-RO");
+
+    if (!normalizedInvoiceNumber) {
+      return null;
+    }
+
+    return (
+      invoices.find(
+        (invoice) =>
+          invoice.invoiceNumber.trim().toLocaleLowerCase("ro-RO") ===
+          normalizedInvoiceNumber
+      ) ?? null
+    );
+  }, [invoices, invoiceNumber]);
+
+  const hasInvoiceConflict =
+    processedPeriodInvoices.length > 0 ||
+    duplicateInvoiceNumber !== null;
+
   const totals = useMemo(
     () =>
       invoices.reduce(
@@ -194,6 +281,13 @@ export default function ClinicInvoicesWorkspace({
   function submitInvoice(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setCreateError(null);
+
+    if (hasInvoiceConflict) {
+      setCreateError(
+        "Rezolvă avertismentele de duplicare înainte de salvare."
+      );
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -321,6 +415,14 @@ export default function ClinicInvoicesWorkspace({
             <h3 className="text-lg font-bold text-gray-900">
               Înregistrează factura din SAGA
             </h3>
+
+            {hasValidInitialDraft ? (
+              <div className="mt-4 rounded-xl border border-[#036661]/20 bg-[#036661]/5 p-4 text-sm leading-6 text-gray-700">
+                Organizația, perioada și estimarea RomDoc au fost preluate din
+                pagina de facturare. Completează numărul facturii din SAGA și
+                confirmă suma finală facturată.
+              </div>
+            ) : null}
 
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <label>
@@ -452,6 +554,54 @@ export default function ClinicInvoicesWorkspace({
               </label>
             </div>
 
+            {processedPeriodInvoices.length > 0 ? (
+              <div
+                role="alert"
+                className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
+              >
+                <p className="font-bold">
+                  Atenție: această organizație are deja o factură procesată
+                  pentru perioada selectată.
+                </p>
+
+                <div className="mt-3 space-y-2">
+                  {processedPeriodInvoices.map((invoice) => (
+                    <p key={invoice.id} className="leading-6">
+                      Factura <strong>{invoice.invoiceNumber}</strong> ·{" "}
+                      {dateLabel(invoice.issuedOn)} ·{" "}
+                      {statusLabel(invoice.status)} ·{" "}
+                      {currency(invoice.amountRon)}
+                    </p>
+                  ))}
+                </div>
+
+                <p className="mt-3 leading-6">
+                  Verifică factura existentă înainte de a crea una nouă pentru
+                  aceeași organizație și perioadă.
+                </p>
+              </div>
+            ) : null}
+
+            {duplicateInvoiceNumber ? (
+              <div
+                role="alert"
+                className="mt-4 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-900"
+              >
+                <p className="font-bold">
+                  Numărul de factură SAGA există deja în RomDoc.
+                </p>
+
+                <p className="mt-2 leading-6">
+                  Factura{" "}
+                  <strong>{duplicateInvoiceNumber.invoiceNumber}</strong>{" "}
+                  aparține organizației{" "}
+                  <strong>{duplicateInvoiceNumber.organizationName}</strong>,
+                  este emisă la {dateLabel(duplicateInvoiceNumber.issuedOn)} și
+                  are statusul {statusLabel(duplicateInvoiceNumber.status)}.
+                </p>
+              </div>
+            ) : null}
+
             {createError ? (
               <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
                 {createError}
@@ -460,10 +610,14 @@ export default function ClinicInvoicesWorkspace({
 
             <button
               type="submit"
-              disabled={isPending}
-              className="romdoc-focus-ring mt-5 rounded-xl bg-[#036661] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#ff2800] disabled:opacity-60"
+              disabled={isPending || hasInvoiceConflict}
+              className="romdoc-focus-ring mt-5 rounded-xl bg-[#036661] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#ff2800] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isPending ? "Se salvează..." : "Salvează ca Facturată"}
+              {isPending
+                ? "Se salvează..."
+                : hasInvoiceConflict
+                  ? "Rezolvă avertismentele"
+                  : "Salvează ca Facturată"}
             </button>
           </form>
         ) : null}
