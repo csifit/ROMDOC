@@ -169,10 +169,10 @@ function buildMessage(
   }
 
   if (event === "reminder_24_hours") {
-    return `RomDoc: Reamintire - ai programare maine, ${formatDate(date)}, ora ${formatTime(time)}, la ${doctorName}, ${clinicName}. Detalii in contul tau RomDoc.`;
+    return `RomDoc: Reamintire - ai programare maine, ${formatDate(date)}, ora ${formatTime(time)}, la ${doctorName}, ${clinicName}.`;
   }
 
-  return `RomDoc: Programarea ta la ${doctorName}, ${clinicName}, a fost confirmata pentru ${formatDate(date)}, ora ${formatTime(time)}. Detalii in contul tau RomDoc.`;
+  return `RomDoc: Programarea ta la ${doctorName}, ${clinicName}, a fost confirmata pentru ${formatDate(date)}, ora ${formatTime(time)}. Detaliile au fost trimise prin e-mail.`;
 }
 
 async function logSmsDelivery({

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { doctorCanUseClinic } from "@/lib/doctors/clinic-subaccount-scope";
 import { sendAppointmentStatusEmail } from "@/lib/appointments/send-appointment-status-email";
+import { sendAppointmentSms } from "@/lib/appointments/send-appointment-sms";
 import { createClient } from "@/lib/supabase/server";
 
 type AppointmentSource = "phone" | "walk_in" | "email" | "other";
@@ -430,28 +431,44 @@ export async function POST(request: Request) {
     const doctorName = profileName || formatNameFromSlug(doctor.slug);
     const clinicName = getClinicName(clinic);
 
-    const emailResult = await sendAppointmentStatusEmail({
-      status: "confirmed",
-      patientName,
-      patientEmail,
-      doctorName,
-      clinicName,
-      scheduledDate,
-      scheduledTime,
-      rescheduleReason: null,
-    });
+    const [emailResult, smsResult] =
+      await Promise.all([
+        sendAppointmentStatusEmail({
+          status: "confirmed",
+          patientName,
+          patientEmail,
+          doctorName,
+          clinicName,
+          scheduledDate,
+          scheduledTime,
+          rescheduleReason: null,
+        }),
+        sendAppointmentSms({
+          appointmentId,
+          event: "confirmed",
+          triggeredByProfileId: user.id,
+        }),
+      ]);
 
     if (!emailResult.sent) {
       console.error(
         `Doctor-created appointment ${appointmentId} was saved, but its confirmation email was not sent.`
-      );
+     );
     }
+
+    if (!smsResult.sent && !smsResult.skipped) {
+      console.error(
+        `Doctor-created appointment ${appointmentId} was saved, but its confirmation SMS was not sent.`
+    );
+  }
 
     return NextResponse.json(
       {
         success: true,
         appointment,
         emailSent: emailResult.sent,
+        smsSent: smsResult.sent,
+        smsSkipped: smsResult.skipped,
       },
       {
         status: 201,

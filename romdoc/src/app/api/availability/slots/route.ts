@@ -4,11 +4,13 @@ import {
   BOOKING_TIME_ZONE,
   BOOKING_WINDOW_DAYS,
   MAXIMUM_AVAILABILITY_RANGE_DAYS,
+  PUBLIC_BOOKING_MINIMUM_LEAD_DAYS,
   addDays,
   getAvailableDatesInRange,
   getAvailableSlotsForDate,
   getDateStringInTimeZone,
   getInclusiveDayCount,
+  getPublicMinimumBookingDate,
   isIsoDate,
   isUuid,
 } from "@/lib/appointments/calculate-available-slots";
@@ -131,6 +133,8 @@ export async function GET(request: NextRequest) {
       new Date(),
       BOOKING_TIME_ZONE
     );
+    const minimumBookingDate =
+      getPublicMinimumBookingDate();
     const maximumDate = addDays(
       today,
       BOOKING_WINDOW_DAYS
@@ -161,9 +165,9 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      if (date < today) {
+      if (date < minimumBookingDate) {
         return errorResponse(
-          "Nu poți selecta o dată din trecut.",
+          `Programările online pot fi solicitate începând cu ${PUBLIC_BOOKING_MINIMUM_LEAD_DAYS} zile după data curentă.`,
           400
         );
       }
@@ -185,7 +189,10 @@ export async function GET(request: NextRequest) {
       );
 
       return NextResponse.json(
-        { slots },
+        {
+          minimumBookingDate,
+          slots,
+        },
         {
           headers: {
             "Cache-Control":
@@ -209,10 +216,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (from < today) {
-      return errorResponse(
-        "Calendarul nu poate solicita date din trecut.",
-        400
+    if (to < minimumBookingDate) {
+      return NextResponse.json(
+        {
+          timezone: BOOKING_TIME_ZONE,
+          bookingWindowDays: BOOKING_WINDOW_DAYS,
+          minimumLeadDays:
+            PUBLIC_BOOKING_MINIMUM_LEAD_DAYS,
+          minimumBookingDate,
+          dates: [],
+        },
+        {
+          headers: {
+            "Cache-Control":
+              "private, no-store, max-age=0",
+          },
+        }
       );
     }
 
@@ -223,8 +242,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    /*
+     * A monthly calendar may request a range beginning today.
+     * Clamp the calculation instead of returning an error.
+     * Dates before minimumBookingDate remain unavailable.
+     */
+    const effectiveFrom =
+      from < minimumBookingDate
+        ? minimumBookingDate
+        : from;
+
     const requestedDayCount = getInclusiveDayCount(
-      from,
+      effectiveFrom,
       to
     );
 
@@ -244,7 +273,7 @@ export async function GET(request: NextRequest) {
       {
         doctorId,
         clinicId,
-        from,
+        from: effectiveFrom,
         to,
       }
     );
@@ -253,6 +282,9 @@ export async function GET(request: NextRequest) {
       {
         timezone: BOOKING_TIME_ZONE,
         bookingWindowDays: BOOKING_WINDOW_DAYS,
+        minimumLeadDays:
+          PUBLIC_BOOKING_MINIMUM_LEAD_DAYS,
+        minimumBookingDate,
         dates,
       },
       {

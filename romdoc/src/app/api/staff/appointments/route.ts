@@ -10,6 +10,7 @@ import {
 import {
   sendAppointmentStatusEmail,
 } from "@/lib/appointments/send-appointment-status-email";
+import { sendAppointmentSms } from "@/lib/appointments/send-appointment-sms";
 import {
   createAdminClient,
 } from "@/lib/supabase/admin";
@@ -1201,21 +1202,35 @@ export async function POST(
   const clinicName =
     getClinicName(clinic);
 
-  const emailResult =
-    await sendAppointmentStatusEmail({
-      status: "confirmed",
-      patientName,
-      patientEmail,
-      doctorName,
-      clinicName,
-      scheduledDate,
-      scheduledTime,
-      rescheduleReason: null,
-    });
+  const [emailResult, smsResult] =
+    await Promise.all([
+      sendAppointmentStatusEmail({
+        status: "confirmed",
+        patientName,
+        patientEmail,
+        doctorName,
+        clinicName,
+        scheduledDate,
+        scheduledTime,
+        rescheduleReason: null,
+      }),
+      sendAppointmentSms({
+        appointmentId,
+        event: "confirmed",
+        triggeredByProfileId:
+          result.authorization.userId,
+      }),
+    ]);
 
   if (!emailResult.sent) {
     console.error(
       `Staff-created appointment ${appointmentId} was saved, but its confirmation email was not sent.`
+    );
+  }
+
+  if (!smsResult.sent && !smsResult.skipped) {
+    console.error(
+      `Staff-created appointment ${appointmentId} was saved, but its confirmation SMS was not sent.`
     );
   }
 
@@ -1225,6 +1240,9 @@ export async function POST(
       appointment,
       emailSent:
         emailResult.sent,
+      smsSent: smsResult.sent,
+      smsSkipped:
+        smsResult.skipped,
     },
     { status: 201 }
   );

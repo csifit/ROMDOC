@@ -49,6 +49,13 @@ export const BOOKING_WINDOW_DAYS = 90;
 export const MAXIMUM_AVAILABILITY_RANGE_DAYS = 42;
 export const HOMEPAGE_NEXT_SLOT_SEARCH_DAYS = 30;
 
+/**
+ * Public online bookings start two calendar days after today.
+ *
+ * Manual Doctor/Staff-created appointments do not use this limit.
+ */
+export const PUBLIC_BOOKING_MINIMUM_LEAD_DAYS = 2;
+
 export function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value
@@ -99,6 +106,18 @@ export function addDays(value: string, numberOfDays: number) {
   date.setUTCDate(date.getUTCDate() + numberOfDays);
 
   return date.toISOString().slice(0, 10);
+}
+
+export function getPublicMinimumBookingDate(referenceDate = new Date()) {
+  const today = getDateStringInTimeZone(
+    referenceDate,
+    BOOKING_TIME_ZONE
+  );
+
+  return addDays(
+    today,
+    PUBLIC_BOOKING_MINIMUM_LEAD_DAYS
+  );
 }
 
 export function getInclusiveDayCount(from: string, to: string) {
@@ -185,8 +204,8 @@ export async function getNextAvailableAppointment(
   supabase: SupabaseClient,
   input: GetNextAvailableAppointmentInput
 ): Promise<NextAvailableAppointment | null> {
-  const today = getDateStringInTimeZone(new Date());
-  const from = input.from ?? today;
+  const defaultFrom = getPublicMinimumBookingDate();
+  const from = input.from ?? defaultFrom;
   const searchDays = Math.max(
     1,
     Math.min(

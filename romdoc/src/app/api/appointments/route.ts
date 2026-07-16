@@ -4,6 +4,11 @@ import { Resend } from "resend";
 import { doctorCanUseClinic } from "@/lib/doctors/clinic-subaccount-scope";
 import { createClient } from "@/lib/supabase/server";
 
+import {
+  PUBLIC_BOOKING_MINIMUM_LEAD_DAYS,
+  getPublicMinimumBookingDate,
+} from "@/lib/appointments/calculate-available-slots";
+
 type AppointmentRequestBody = {
   doctorId?: string;
   clinicId?: string;
@@ -201,12 +206,13 @@ export async function POST(request: NextRequest): Promise<Response> {
       return jsonError("Mesajul pentru medic este prea lung.", 400);
     }
 
-    const today = getLocalDateString(new Date());
-
-    if (requestedDate < today) {
+    const minimumBookingDate =
+      getPublicMinimumBookingDate();
+  
+    if (requestedDate < minimumBookingDate) {
       return jsonError(
-        "Nu poți solicita o programare pentru o dată din trecut.",
-        400
+       `Programările online pot fi solicitate începând cu ${PUBLIC_BOOKING_MINIMUM_LEAD_DAYS} zile după data curentă.`,
+       400
       );
     }
 
