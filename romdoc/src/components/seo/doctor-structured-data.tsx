@@ -22,7 +22,6 @@ type CityRelation = {
 type ClinicRelation = {
   id: string;
   slug: string;
-  photo_url: string | null;
   phone: string | null;
   website: string | null;
   street_address: string | null;
@@ -214,7 +213,6 @@ DoctorStructuredData({
         clinics (
           id,
           slug,
-          photo_url,
           phone,
           website,
           street_address,
@@ -400,12 +398,6 @@ DoctorStructuredData({
                   description:
                     translation
                       .description,
-                }
-              : {}),
-            ...(clinic.photo_url
-              ? {
-                  image:
-                    clinic.photo_url,
                 }
               : {}),
             ...(clinic.phone
