@@ -5,10 +5,7 @@ import {
 } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import {
-  consumeRateLimit,
-  rateLimitResponse,
-} from "@/lib/security/rate-limit";
+
 import {
   ALLOWED_IMAGE_MIME_TYPES,
   MAX_UPLOAD_BYTES,
@@ -149,23 +146,6 @@ export async function POST(
             "no-store",
         },
       }
-    );
-  }
-
-  const rateLimit =
-    await consumeRateLimit({
-    namespace:
-      "doctor-photo-upload",
-    identifier:
-      authorization.doctor.profile_id,
-    limit: 30,
-    windowSeconds:
-      60 * 60,
-  });
-
-  if (!rateLimit.allowed) {
-    return rateLimitResponse(
-    rateLimit
     );
   }
 

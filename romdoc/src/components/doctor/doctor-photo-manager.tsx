@@ -14,6 +14,8 @@ type ApiResponse = {
   error?: string;
 };
 
+const MAX_UPLOAD_ATTEMPTS = 20;
+
 export default function DoctorPhotoManager({
   initialPhotoUrl,
   doctorName,
@@ -23,6 +25,7 @@ export default function DoctorPhotoManager({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [uploadAttempts, setUploadAttempts] = useState(0);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -58,11 +61,27 @@ export default function DoctorPhotoManager({
     setPreviewUrl(URL.createObjectURL(file));
   }
 
-  async function uploadPhoto() {
-    if (!selectedFile) {
-      setError("Selectează o fotografie.");
-      return;
-    }
+async function uploadPhoto() {
+  if (
+    uploadAttempts >=
+    MAX_UPLOAD_ATTEMPTS
+  ) {
+    setError(
+      "Ai atins limita de 20 de încercări pentru această sesiune. Reîncarcă pagina pentru a încerca din nou."
+    );
+    return;
+  }
+
+  if (!selectedFile) {
+    setError(
+      "Selectează o fotografie."
+    );
+    return;
+  }
+
+  setUploadAttempts(
+    (current) => current + 1
+  );
 
     setIsSaving(true);
     setMessage("");
@@ -210,8 +229,23 @@ export default function DoctorPhotoManager({
               onClick={() => void uploadPhoto()}
               disabled={!selectedFile || isSaving}
             >
-              {isSaving ? "Se salvează..." : "Publică fotografia"}
+              {isSaving
+                ? "Se salvează..."
+                : uploadAttempts >=
+                    MAX_UPLOAD_ATTEMPTS
+                      ? "Limită atinsă"
+                      : "Publică fotografia"}
             </Button>
+
+            <p className="mt-2 text-xs text-gray-500">
+              Încercări disponibile în această
+              sesiune:{" "}
+             {Math.max(
+              MAX_UPLOAD_ATTEMPTS -
+               uploadAttempts,
+                0
+               )}
+            </p>
 
             {photoUrl && (
               <button
