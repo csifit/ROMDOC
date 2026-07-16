@@ -109,6 +109,12 @@ const navigationItems: NavigationItem[] = [
     adminOnly: true,
   },
   {
+    href: "/admin/invoices",
+    label: "Facturi",
+    icon: "sms",
+    available: true,
+  },
+  {
     href: "/admin/privacy",
     label: "Confidențialitate",
     icon: "privacy",

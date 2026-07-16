@@ -71,6 +71,11 @@ const navigationItems: NavigationItem[] = [
     icon: "clinics",
   },
   {
+    href: "/manager-dashboard/invoices",
+    label: "Facturi",
+    icon: "clinics",
+  },
+  {
     href:
       "/manager-dashboard/cities",
     label: "Orașe",
