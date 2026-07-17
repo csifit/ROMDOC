@@ -8,6 +8,7 @@ export type PatientNotificationStatus =
   | "no_show";
 
 type SendAppointmentStatusEmailInput = {
+  appointmentId: string;
   status: PatientNotificationStatus;
   patientName: string;
   patientEmail: string;
@@ -78,37 +79,107 @@ function getPatientRegisterUrl(patientEmail: string) {
   return `${baseUrl}/register?${query.toString()}`;
 }
 
+function getAppointmentDetailsUrl(appointmentId: string) {
+  return `${getSiteUrl()}/appointments/${appointmentId}/request-received`;
+}
+
+function getCalendarDownloadUrl(appointmentId: string) {
+  return `${getSiteUrl()}/api/appointments/${appointmentId}/calendar`;
+}
+
+function getGoogleCalendarUrl(input: {
+  doctorName: string;
+  clinicName: string;
+  scheduledDate: string | null;
+  scheduledTime: string | null;
+}) {
+  if (!input.scheduledDate || !input.scheduledTime) {
+    return null;
+  }
+
+  const [year, month, day] = input.scheduledDate
+    .split("-")
+    .map(Number);
+
+  const [hours, minutes] = input.scheduledTime
+    .slice(0, 5)
+    .split(":")
+    .map(Number);
+
+  const start = new Date(
+    Date.UTC(
+      year,
+      month - 1,
+      day,
+      hours,
+      minutes
+    )
+  );
+
+  const end = new Date(
+    start.getTime() +
+      30 * 60 * 1000
+  );
+
+  function compact(value: Date) {
+    return value
+      .toISOString()
+      .slice(0, 19)
+      .replaceAll("-", "")
+      .replaceAll(":", "");
+  }
+
+  const query = new URLSearchParams({
+    action: "TEMPLATE",
+    text: `Programare - ${input.doctorName}`,
+    dates: `${compact(start)}/${compact(end)}`,
+    details:
+      "Programare medicală confirmată prin RomDoc.",
+    location: input.clinicName,
+    ctz: "Europe/Bucharest",
+  });
+
+  return `https://calendar.google.com/calendar/render?${query.toString()}`;
+}
+
 function getContent(status: PatientNotificationStatus) {
   switch (status) {
     case "confirmed":
       return {
         subject: "Programare confirmată",
         heading: "Programarea ta a fost confirmată",
-        message: "Medicul sau clinica a confirmat programarea ta.",
+        message:
+          "Medicul sau clinica a confirmat programarea ta.",
       };
     case "rescheduled":
       return {
         subject: "Programare reprogramată",
         heading: "Programarea ta a fost reprogramată",
-        message: "Data sau ora programării tale a fost modificată.",
+        message:
+          "Data sau ora programării tale a fost modificată.",
       };
     case "cancelled":
       return {
         subject: "Programare anulată",
         heading: "Programarea ta a fost anulată",
-        message: "Programarea a fost anulată. Poți solicita o nouă programare prin RomDoc.",
+        message:
+          "Programarea a fost anulată. Poți solicita o nouă programare prin RomDoc.",
       };
     case "completed":
       return {
         subject: "Consultație finalizată",
-        heading: "Consultația a fost marcată ca finalizată",
-        message: "Programarea ta a fost înregistrată ca finalizată în RomDoc.",
+        heading:
+          "Consultația a fost marcată ca finalizată",
+        message:
+          "Programarea ta a fost înregistrată ca finalizată în RomDoc.",
       };
     case "no_show":
       return {
         subject: "Neprezentare înregistrată",
-        heading: "Programarea a fost marcată ca neprezentare",
-        message: "Clinica a înregistrat faptul că pacientul nu s-a prezentat la programare.",
+        heading:
+          "Programarea a fost marcată ca neprezentare",
+        message:
+          "Clinica a înregistrat faptul că pacientul nu s-a prezentat la programare.",
       };
   }
 }
@@ -167,90 +238,179 @@ export async function sendAppointmentStatusEmail(
 
   const content = getContent(input.status);
   const resend = new Resend(apiKey);
-  const patientRegisterUrl = getPatientRegisterUrl(
-    input.patientEmail
-  );
 
-  try {
-    const result = await resend.emails.send({
-      from,
-      to: input.patientEmail,
-      subject: `${content.subject} – ${input.doctorName}`,
-      html: `
-        <!doctype html>
-        <html lang="ro">
-          <body style="margin:0;background:#f0eee9;font-family:Arial,sans-serif;color:#111827">
-            <div style="max-width:640px;margin:0 auto;padding:32px 16px">
-              <div style="background:#fff;border-radius:16px;padding:32px">
-                <p style="margin:0 0 12px;color:#036661;font-weight:700">RomDoc</p>
-                <h1 style="margin:0;font-size:28px">${escapeHtml(content.heading)}</h1>
-                <p style="margin-top:20px;line-height:1.7">Bună, ${escapeHtml(input.patientName)}.</p>
-                <p style="line-height:1.7">${escapeHtml(content.message)}</p>
-                <div style="margin-top:24px;padding:20px;border-radius:12px;background:#f9fafb">
-                  <p><strong>Medic:</strong> ${escapeHtml(input.doctorName)}</p>
-                  <p><strong>Clinică:</strong> ${escapeHtml(input.clinicName)}</p>
-                  <p><strong>Data:</strong> ${formatDate(input.scheduledDate)}</p>
-                  <p><strong>Ora:</strong> ${formatTime(input.scheduledTime)}</p>
-                </div>
-                ${
-                  input.status === "confirmed"
-                    ? `
-                      <div style="margin-top:24px;padding:20px;border-radius:12px;border:1px solid #d1fae5;background:#f0fdf4">
-                        <p style="margin:0 0 10px;font-weight:700;color:#036661">Creează cont de pacient RomDoc</p>
-                        <p style="margin:0;line-height:1.7;color:#374151">
-                          Dacă nu ai încă un cont RomDoc, îl poți crea folosind această adresă de e-mail. Contul te va ajuta să urmărești programările și, pe viitor, documentele medicale disponibile în RomDoc.
-                        </p>
-                        <p style="margin:18px 0 0">
-                          <a href="${escapeHtml(patientRegisterUrl)}" style="display:inline-block;border-radius:10px;background:#036661;color:#ffffff;padding:12px 18px;text-decoration:none;font-weight:700">
-                            Creează cont RomDoc
-                          </a>
-                        </p>
-                      </div>
-                    `
-                    : ""
-                }
-                ${
-                  input.status === "rescheduled" &&
-                  input.rescheduleReason
-                    ? `<p style="margin-top:20px"><strong>Motiv:</strong> ${escapeHtml(input.rescheduleReason)}</p>`
-                    : ""
-                }
-                <p style="margin-top:28px;color:#6b7280;font-size:13px">RomDoc — găsește medicul potrivit.</p>
-              </div>
-            </div>
-          </body>
-        </html>
-      `,
+  const patientRegisterUrl =
+    getPatientRegisterUrl(
+      input.patientEmail
+    );
+
+  const appointmentDetailsUrl =
+    getAppointmentDetailsUrl(
+      input.appointmentId
+    );
+
+  const calendarDownloadUrl =
+    getCalendarDownloadUrl(
+      input.appointmentId
+    );
+
+  const googleCalendarUrl =
+    getGoogleCalendarUrl({
+      doctorName: input.doctorName,
+      clinicName: input.clinicName,
+      scheduledDate:
+        input.scheduledDate,
+      scheduledTime:
+        input.scheduledTime,
     });
 
+  const calendarIsAvailable =
+    input.status === "confirmed" ||
+    input.status === "rescheduled";
+
+  try {
+    const result =
+      await resend.emails.send({
+        from,
+        to: input.patientEmail,
+        subject:
+          `${content.subject} – ${input.doctorName}`,
+        html: `
+          <!doctype html>
+          <html lang="ro">
+            <body style="margin:0;background:#f0eee9;font-family:Arial,sans-serif;color:#111827">
+              <div style="max-width:640px;margin:0 auto;padding:32px 16px">
+                <div style="background:#fff;border-radius:16px;padding:32px">
+                  <p style="margin:0 0 12px;color:#036661;font-weight:700">RomDoc</p>
+                  <h1 style="margin:0;font-size:28px">${escapeHtml(content.heading)}</h1>
+                  <p style="margin-top:20px;line-height:1.7">Bună, ${escapeHtml(input.patientName)}.</p>
+                  <p style="line-height:1.7">${escapeHtml(content.message)}</p>
+
+                  <div style="margin-top:24px;padding:20px;border-radius:12px;background:#f9fafb">
+                    <p><strong>Medic:</strong> ${escapeHtml(input.doctorName)}</p>
+                    <p><strong>Clinică:</strong> ${escapeHtml(input.clinicName)}</p>
+                    <p><strong>Data:</strong> ${formatDate(input.scheduledDate)}</p>
+                    <p><strong>Ora:</strong> ${formatTime(input.scheduledTime)}</p>
+                  </div>
+
+                  ${
+                    calendarIsAvailable
+                      ? `
+                        <div style="margin-top:24px;padding:20px;border-radius:12px;border:1px solid #bfdbfe;background:#eff6ff">
+                          <p style="margin:0 0 10px;font-weight:700;color:#1d4ed8">
+                            Detalii și calendar
+                          </p>
+                          <p style="margin:0;line-height:1.7;color:#374151">
+                            Poți deschide detaliile programării, descărca fișierul calendar în format .ics sau adăuga programarea în Google Calendar.
+                          </p>
+
+                          <p style="margin:18px 0 0">
+                            <a
+                              href="${escapeHtml(appointmentDetailsUrl)}"
+                              style="display:inline-block;margin-right:10px;margin-bottom:10px;border-radius:10px;background:#036661;color:#ffffff;padding:12px 18px;text-decoration:none;font-weight:700"
+                            >
+                              Vezi programarea
+                            </a>
+
+                            <a
+                              href="${escapeHtml(calendarDownloadUrl)}"
+                              style="display:inline-block;margin-right:10px;margin-bottom:10px;border-radius:10px;background:#1d4ed8;color:#ffffff;padding:12px 18px;text-decoration:none;font-weight:700"
+                            >
+                              Descarcă în calendar (.ics)
+                            </a>
+
+                            ${
+                              googleCalendarUrl
+                                ? `
+                                  <a
+                                    href="${escapeHtml(googleCalendarUrl)}"
+                                    style="display:inline-block;margin-bottom:10px;border-radius:10px;background:#ffffff;color:#1d4ed8;border:1px solid #1d4ed8;padding:11px 17px;text-decoration:none;font-weight:700"
+                                  >
+                                    Adaugă în Google Calendar
+                                  </a>
+                                `
+                                : ""
+                            }
+                          </p>
+                        </div>
+                      `
+                      : ""
+                  }
+
+                  ${
+                    input.status === "confirmed"
+                      ? `
+                        <div style="margin-top:24px;padding:20px;border-radius:12px;border:1px solid #d1fae5;background:#f0fdf4">
+                          <p style="margin:0 0 10px;font-weight:700;color:#036661">
+                            Creează cont de pacient RomDoc
+                          </p>
+                          <p style="margin:0;line-height:1.7;color:#374151">
+                            Dacă nu ai încă un cont RomDoc, îl poți crea folosind această adresă de e-mail. Contul te va ajuta să urmărești programările și documentele medicale disponibile în RomDoc.
+                          </p>
+                          <p style="margin:18px 0 0">
+                            <a
+                              href="${escapeHtml(patientRegisterUrl)}"
+                              style="display:inline-block;border-radius:10px;background:#036661;color:#ffffff;padding:12px 18px;text-decoration:none;font-weight:700"
+                            >
+                              Creează cont RomDoc
+                            </a>
+                          </p>
+                        </div>
+                      `
+                      : ""
+                  }
+
+                  ${
+                    input.status ===
+                      "rescheduled" &&
+                    input.rescheduleReason
+                      ? `<p style="margin-top:20px"><strong>Motiv:</strong> ${escapeHtml(input.rescheduleReason)}</p>`
+                      : ""
+                  }
+
+                  <p style="margin-top:28px;color:#6b7280;font-size:13px">
+                    RomDoc — găsește medicul potrivit.
+                  </p>
+                </div>
+              </div>
+            </body>
+          </html>
+        `,
+      });
+
     if (result.error) {
-      const normalized = stringifyError(result.error);
+      const normalized =
+        stringifyError(result.error);
 
       return {
         sent: false,
         skipped: false,
         providerMessageId: null,
         errorCode: normalized.code,
-        errorMessage: normalized.message,
+        errorMessage:
+          normalized.message,
       };
     }
 
     return {
       sent: true,
       skipped: false,
-      providerMessageId: result.data?.id ?? null,
+      providerMessageId:
+        result.data?.id ?? null,
       errorCode: null,
       errorMessage: null,
     };
   } catch (error) {
-    const normalized = stringifyError(error);
+    const normalized =
+      stringifyError(error);
 
     return {
       sent: false,
       skipped: false,
       providerMessageId: null,
       errorCode: normalized.code,
-      errorMessage: normalized.message,
+      errorMessage:
+        normalized.message,
     };
   }
 }

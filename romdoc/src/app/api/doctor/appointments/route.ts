@@ -1,10 +1,25 @@
-import { NextResponse } from "next/server";
-import { doctorCanUseClinic } from "@/lib/doctors/clinic-subaccount-scope";
-import { sendAppointmentStatusEmail } from "@/lib/appointments/send-appointment-status-email";
-import { sendAppointmentSms } from "@/lib/appointments/send-appointment-sms";
-import { createClient } from "@/lib/supabase/server";
+import {
+  NextResponse,
+} from "next/server";
 
-type AppointmentSource = "phone" | "walk_in" | "email" | "other";
+import {
+  sendAppointmentSms,
+} from "@/lib/appointments/send-appointment-sms";
+import {
+  sendAppointmentStatusEmail,
+} from "@/lib/appointments/send-appointment-status-email";
+import {
+  doctorCanUseClinic,
+} from "@/lib/doctors/clinic-subaccount-scope";
+import {
+  createClient,
+} from "@/lib/supabase/server";
+
+type AppointmentSource =
+  | "phone"
+  | "walk_in"
+  | "email"
+  | "other";
 
 type DoctorAppointmentRequestBody = {
   clinicId?: string;
@@ -25,7 +40,9 @@ type ClinicTranslation = {
 type ClinicRelation = {
   id: string;
   slug: string;
-  clinic_translations: ClinicTranslation[] | null;
+  clinic_translations:
+    | ClinicTranslation[]
+    | null;
 };
 
 type DoctorRow = {
@@ -36,46 +53,103 @@ type DoctorRow = {
   account_type: string | null;
 };
 
-const allowedSources: AppointmentSource[] = ["phone", "walk_in", "email", "other"];
+const allowedSources:
+  AppointmentSource[] = [
+    "phone",
+    "walk_in",
+    "email",
+    "other",
+  ];
 
-function isValidEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+function isValidEmail(
+  value: string
+) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+    value
+  );
 }
 
-function isValidDateString(value: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+function isValidDateString(
+  value: string
+) {
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(
+      value
+    )
+  ) {
     return false;
   }
 
-  const date = new Date(`${value}T12:00:00`);
+  const date =
+    new Date(
+      `${value}T12:00:00`
+    );
 
-  return !Number.isNaN(date.getTime());
+  return !Number.isNaN(
+    date.getTime()
+  );
 }
 
-function isTodayOrFuture(value: string) {
-  if (!isValidDateString(value)) {
+function isTodayOrFuture(
+  value: string
+) {
+  if (
+    !isValidDateString(
+      value
+    )
+  ) {
     return false;
   }
 
-  const selectedDate = new Date(`${value}T12:00:00`);
-  const today = new Date();
+  const selectedDate =
+    new Date(
+      `${value}T12:00:00`
+    );
 
-  today.setHours(0, 0, 0, 0);
+  const today =
+    new Date();
 
-  return selectedDate >= today;
+  today.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+  return (
+    selectedDate >= today
+  );
 }
 
-function normalizeTime(value: string) {
-  const trimmedValue = value.trim();
+function normalizeTime(
+  value: string
+) {
+  const trimmedValue =
+    value.trim();
 
-  if (!/^\d{2}:\d{2}(:\d{2})?$/.test(trimmedValue)) {
+  if (
+    !/^\d{2}:\d{2}(:\d{2})?$/.test(
+      trimmedValue
+    )
+  ) {
     return null;
   }
 
-  const [hours, minutes, seconds = "00"] = trimmedValue.split(":");
-  const hoursNumber = Number(hours);
-  const minutesNumber = Number(minutes);
-  const secondsNumber = Number(seconds);
+  const [
+    hours,
+    minutes,
+    seconds = "00",
+  ] =
+    trimmedValue.split(":");
+
+  const hoursNumber =
+    Number(hours);
+
+  const minutesNumber =
+    Number(minutes);
+
+  const secondsNumber =
+    Number(seconds);
 
   if (
     hoursNumber < 0 ||
@@ -91,39 +165,91 @@ function normalizeTime(value: string) {
   return `${hours}:${minutes}:${seconds}`;
 }
 
-function formatNameFromSlug(slug: string) {
+function formatNameFromSlug(
+  slug: string
+) {
   return slug
     .split("-")
-    .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
+    .map(
+      (part) =>
+        part
+          .charAt(0)
+          .toUpperCase() +
+        part.slice(1)
+    )
     .join(" ");
 }
 
-function getClinicName(clinic: ClinicRelation) {
-  const romanianTranslation = clinic.clinic_translations?.find(
-    (translation: ClinicTranslation) => translation.locale === "ro"
-  );
+function getClinicName(
+  clinic: ClinicRelation
+) {
+  const romanianTranslation =
+    clinic
+      .clinic_translations
+      ?.find(
+        (
+          translation:
+            ClinicTranslation
+        ) =>
+          translation.locale ===
+          "ro"
+      );
 
-  const fallbackTranslation = clinic.clinic_translations?.[0];
+  const fallbackTranslation =
+    clinic
+      .clinic_translations?.[0];
 
   return (
-    romanianTranslation?.name ??
-    fallbackTranslation?.name ??
-    formatNameFromSlug(clinic.slug)
+    romanianTranslation
+      ?.name ??
+    fallbackTranslation
+      ?.name ??
+    formatNameFromSlug(
+      clinic.slug
+    )
   );
 }
 
-export async function POST(request: Request) {
+export async function POST(
+  request: Request
+) {
   try {
-    const body = (await request.json()) as DoctorAppointmentRequestBody;
+    const body =
+      (await request.json()) as
+        DoctorAppointmentRequestBody;
 
-    const clinicId = body.clinicId?.trim();
-    const patientName = body.patientName?.trim();
-    const patientEmail = body.patientEmail?.trim().toLowerCase();
-    const patientPhone = body.patientPhone?.trim();
-    const scheduledDate = body.scheduledDate?.trim();
-    const rawScheduledTime = body.scheduledTime?.trim();
-    const source = body.source;
-    const notes = body.notes?.trim() || null;
+    const clinicId =
+      body.clinicId
+        ?.trim();
+
+    const patientName =
+      body.patientName
+        ?.trim();
+
+    const patientEmail =
+      body.patientEmail
+        ?.trim()
+        .toLowerCase();
+
+    const patientPhone =
+      body.patientPhone
+        ?.trim();
+
+    const scheduledDate =
+      body.scheduledDate
+        ?.trim();
+
+    const rawScheduledTime =
+      body.scheduledTime
+        ?.trim();
+
+    const source =
+      body.source;
+
+    const notes =
+      body.notes
+        ?.trim() ||
+      null;
 
     if (
       !clinicId ||
@@ -136,7 +262,8 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json(
         {
-          error: "Completează toate câmpurile obligatorii.",
+          error:
+            "Completează toate câmpurile obligatorii.",
         },
         {
           status: 400,
@@ -144,10 +271,13 @@ export async function POST(request: Request) {
       );
     }
 
-    if (patientName.length < 2) {
+    if (
+      patientName.length < 2
+    ) {
       return NextResponse.json(
         {
-          error: "Introdu un nume valid.",
+          error:
+            "Introdu un nume valid.",
         },
         {
           status: 400,
@@ -155,10 +285,15 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!isValidEmail(patientEmail)) {
+    if (
+      !isValidEmail(
+        patientEmail
+      )
+    ) {
       return NextResponse.json(
         {
-          error: "Introdu o adresă de e-mail validă.",
+          error:
+            "Introdu o adresă de e-mail validă.",
         },
         {
           status: 400,
@@ -166,10 +301,13 @@ export async function POST(request: Request) {
       );
     }
 
-    if (patientPhone.length < 7) {
+    if (
+      patientPhone.length < 7
+    ) {
       return NextResponse.json(
         {
-          error: "Introdu un număr de telefon valid.",
+          error:
+            "Introdu un număr de telefon valid.",
         },
         {
           status: 400,
@@ -177,10 +315,15 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!isTodayOrFuture(scheduledDate)) {
+    if (
+      !isTodayOrFuture(
+        scheduledDate
+      )
+    ) {
       return NextResponse.json(
         {
-          error: "Selectează o dată validă, începând de astăzi.",
+          error:
+            "Selectează o dată validă, începând de astăzi.",
         },
         {
           status: 400,
@@ -188,12 +331,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const scheduledTime = normalizeTime(rawScheduledTime);
+    const scheduledTime =
+      normalizeTime(
+        rawScheduledTime
+      );
 
-    if (!scheduledTime) {
+    if (
+      !scheduledTime
+    ) {
       return NextResponse.json(
         {
-          error: "Ora programării nu este validă.",
+          error:
+            "Ora programării nu este validă.",
         },
         {
           status: 400,
@@ -201,10 +350,15 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!allowedSources.includes(source)) {
+    if (
+      !allowedSources.includes(
+        source
+      )
+    ) {
       return NextResponse.json(
         {
-          error: "Sursa programării nu este validă.",
+          error:
+            "Sursa programării nu este validă.",
         },
         {
           status: 400,
@@ -212,10 +366,14 @@ export async function POST(request: Request) {
       );
     }
 
-    if (notes && notes.length > 5000) {
+    if (
+      notes &&
+      notes.length > 5000
+    ) {
       return NextResponse.json(
         {
-          error: "Observațiile sunt prea lungi.",
+          error:
+            "Observațiile sunt prea lungi.",
         },
         {
           status: 400,
@@ -223,17 +381,26 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = await createClient();
+    const supabase =
+      await createClient();
 
     const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+      data: {
+        user,
+      },
+      error:
+        userError,
+    } =
+      await supabase.auth.getUser();
 
-    if (userError || !user) {
+    if (
+      userError ||
+      !user
+    ) {
       return NextResponse.json(
         {
-          error: "Trebuie să fii autentificat pentru a crea o programare.",
+          error:
+            "Trebuie să fii autentificat pentru a crea o programare.",
         },
         {
           status: 401,
@@ -241,18 +408,34 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: profile, error: profileError } = await supabase
+    const {
+      data:
+        profile,
+      error:
+        profileError,
+    } = await supabase
       .from("profiles")
-      .select("id, role, first_name, last_name")
-      .eq("id", user.id)
+      .select(
+        "id, role, first_name, last_name"
+      )
+      .eq(
+        "id",
+        user.id
+      )
       .maybeSingle();
 
-    if (profileError) {
-      console.error("Doctor appointment profile lookup failed:", profileError);
+    if (
+      profileError
+    ) {
+      console.error(
+        "Doctor appointment profile lookup failed:",
+        profileError
+      );
 
       return NextResponse.json(
         {
-          error: "Profilul utilizatorului nu a putut fi verificat.",
+          error:
+            "Profilul utilizatorului nu a putut fi verificat.",
         },
         {
           status: 500,
@@ -260,10 +443,15 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!profile || profile.role !== "doctor") {
+    if (
+      !profile ||
+      profile.role !==
+        "doctor"
+    ) {
       return NextResponse.json(
         {
-          error: "Doar medicii pot adăuga programări prin această pagină.",
+          error:
+            "Doar medicii pot adăuga programări prin această pagină.",
         },
         {
           status: 403,
@@ -271,18 +459,33 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: doctor, error: doctorError } = await supabase
+    const {
+      data: doctor,
+      error:
+        doctorError,
+    } = await supabase
       .from("doctors")
-      .select("id, slug, profile_id, status, account_type")
-      .eq("profile_id", user.id)
+      .select(
+        "id, slug, profile_id, status, account_type"
+      )
+      .eq(
+        "profile_id",
+        user.id
+      )
       .maybeSingle();
 
-    if (doctorError) {
-      console.error("Doctor appointment doctor lookup failed:", doctorError);
+    if (
+      doctorError
+    ) {
+      console.error(
+        "Doctor appointment doctor lookup failed:",
+        doctorError
+      );
 
       return NextResponse.json(
         {
-          error: "Profilul medicului nu a putut fi verificat.",
+          error:
+            "Profilul medicului nu a putut fi verificat.",
         },
         {
           status: 500,
@@ -290,10 +493,13 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!doctor) {
+    if (
+      !doctor
+    ) {
       return NextResponse.json(
         {
-          error: "Contul tău nu este asociat unui profil de medic.",
+          error:
+            "Contul tău nu este asociat unui profil de medic.",
         },
         {
           status: 403,
@@ -301,10 +507,14 @@ export async function POST(request: Request) {
       );
     }
 
-    if (doctor.status === "suspended") {
+    if (
+      doctor.status ===
+      "suspended"
+    ) {
       return NextResponse.json(
         {
-          error: "Profilul medicului este suspendat și nu poate crea programări.",
+          error:
+            "Profilul medicului este suspendat și nu poate crea programări.",
         },
         {
           status: 403,
@@ -312,20 +522,29 @@ export async function POST(request: Request) {
       );
     }
 
-    let clinicIsAllowed = false;
+    let clinicIsAllowed =
+      false;
 
     try {
-      clinicIsAllowed = await doctorCanUseClinic(
-        supabase,
-        doctor as DoctorRow,
-        clinicId
+      clinicIsAllowed =
+        await doctorCanUseClinic(
+          supabase,
+          doctor as
+            DoctorRow,
+          clinicId
+        );
+    } catch (
+      scopeError
+    ) {
+      console.error(
+        "Doctor appointment clinic scope check failed:",
+        scopeError
       );
-    } catch (scopeError) {
-      console.error("Doctor appointment clinic scope check failed:", scopeError);
 
       return NextResponse.json(
         {
-          error: "Clinica selectată nu a putut fi verificată.",
+          error:
+            "Clinica selectată nu a putut fi verificată.",
         },
         {
           status: 500,
@@ -333,10 +552,13 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!clinicIsAllowed) {
+    if (
+      !clinicIsAllowed
+    ) {
       return NextResponse.json(
         {
-          error: "Nu poți crea o programare pentru o clinică neasociată sau neatribuită profilului tău.",
+          error:
+            "Nu poți crea o programare pentru o clinică neasociată sau neatribuită profilului tău.",
         },
         {
           status: 403,
@@ -344,27 +566,39 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: clinicData, error: clinicError } = await supabase
+    const {
+      data:
+        clinicData,
+      error:
+        clinicError,
+    } = await supabase
       .from("clinics")
-      .select(
-        `
-          id,
-          slug,
-          clinic_translations (
-            locale,
-            name
-          )
-        `
+      .select(`
+        id,
+        slug,
+        clinic_translations (
+          locale,
+          name
+        )
+      `)
+      .eq(
+        "id",
+        clinicId
       )
-      .eq("id", clinicId)
       .maybeSingle();
 
-    if (clinicError) {
-      console.error("Doctor appointment clinic lookup failed:", clinicError);
+    if (
+      clinicError
+    ) {
+      console.error(
+        "Doctor appointment clinic lookup failed:",
+        clinicError
+      );
 
       return NextResponse.json(
         {
-          error: "Datele clinicii selectate nu sunt disponibile.",
+          error:
+            "Datele clinicii selectate nu sunt disponibile.",
         },
         {
           status: 500,
@@ -372,10 +606,13 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!clinicData) {
+    if (
+      !clinicData
+    ) {
       return NextResponse.json(
         {
-          error: "Datele clinicii selectate nu sunt disponibile.",
+          error:
+            "Datele clinicii selectate nu sunt disponibile.",
         },
         {
           status: 500,
@@ -383,39 +620,71 @@ export async function POST(request: Request) {
       );
     }
 
-    const clinic = clinicData as ClinicRelation;
-    const appointmentId = crypto.randomUUID();
-    const createdAt = new Date().toISOString();
+    const clinic =
+      clinicData as
+        ClinicRelation;
+
+    const appointmentId =
+      crypto.randomUUID();
+
+    const createdAt =
+      new Date()
+        .toISOString();
 
     const appointment = {
-      id: appointmentId,
-      doctor_id: doctor.id,
-      clinic_id: clinicId,
-      created_by_profile_id: user.id,
+      id:
+        appointmentId,
+      doctor_id:
+        doctor.id,
+      clinic_id:
+        clinicId,
+      created_by_profile_id:
+        user.id,
       source,
-      patient_name: patientName,
-      patient_email: patientEmail,
-      patient_phone: patientPhone,
-      requested_date: scheduledDate,
-      requested_time: scheduledTime,
-      scheduled_date: scheduledDate,
-      scheduled_time: scheduledTime,
-      reschedule_reason: null,
+      patient_name:
+        patientName,
+      patient_email:
+        patientEmail,
+      patient_phone:
+        patientPhone,
+      requested_date:
+        scheduledDate,
+      requested_time:
+        scheduledTime,
+      scheduled_date:
+        scheduledDate,
+      scheduled_time:
+        scheduledTime,
+      reschedule_reason:
+        null,
       notes,
-      status: "confirmed" as const,
-      created_at: createdAt,
+      status:
+        "confirmed" as const,
+      created_at:
+        createdAt,
     };
 
-    const { error: appointmentError } = await supabase
+    const {
+      error:
+        appointmentError,
+    } = await supabase
       .from("appointments")
-      .insert(appointment);
+      .insert(
+        appointment
+      );
 
-    if (appointmentError) {
-      console.error("Doctor-created appointment insert failed:", appointmentError);
+    if (
+      appointmentError
+    ) {
+      console.error(
+        "Doctor-created appointment insert failed:",
+        appointmentError
+      );
 
       return NextResponse.json(
         {
-          error: "Programarea nu a putut fi creată.",
+          error:
+            "Programarea nu a putut fi creată.",
         },
         {
           status: 500,
@@ -423,63 +692,94 @@ export async function POST(request: Request) {
       );
     }
 
-    const profileName = [profile.first_name, profile.last_name]
+    const profileName = [
+      profile.first_name,
+      profile.last_name,
+    ]
       .filter(Boolean)
       .join(" ")
       .trim();
 
-    const doctorName = profileName || formatNameFromSlug(doctor.slug);
-    const clinicName = getClinicName(clinic);
+    const doctorName =
+      profileName ||
+      formatNameFromSlug(
+        doctor.slug
+      );
 
-    const [emailResult, smsResult] =
+    const clinicName =
+      getClinicName(
+        clinic
+      );
+
+    const [
+      emailResult,
+      smsResult,
+    ] =
       await Promise.all([
         sendAppointmentStatusEmail({
-          status: "confirmed",
+          appointmentId,
+          status:
+            "confirmed",
           patientName,
           patientEmail,
           doctorName,
           clinicName,
           scheduledDate,
           scheduledTime,
-          rescheduleReason: null,
+          rescheduleReason:
+            null,
         }),
         sendAppointmentSms({
           appointmentId,
-          event: "confirmed",
-          triggeredByProfileId: user.id,
+          event:
+            "confirmed",
+          triggeredByProfileId:
+            user.id,
         }),
       ]);
 
-    if (!emailResult.sent) {
+    if (
+      !emailResult.sent
+    ) {
       console.error(
         `Doctor-created appointment ${appointmentId} was saved, but its confirmation email was not sent.`
-     );
+      );
     }
 
-    if (!smsResult.sent && !smsResult.skipped) {
+    if (
+      !smsResult.sent &&
+      !smsResult.skipped
+    ) {
       console.error(
         `Doctor-created appointment ${appointmentId} was saved, but its confirmation SMS was not sent.`
-    );
-  }
+      );
+    }
 
     return NextResponse.json(
       {
         success: true,
         appointment,
-        emailSent: emailResult.sent,
-        smsSent: smsResult.sent,
-        smsSkipped: smsResult.skipped,
+        emailSent:
+          emailResult.sent,
+        smsSent:
+          smsResult.sent,
+        smsSkipped:
+          smsResult.skipped,
       },
       {
         status: 201,
       }
     );
   } catch (error) {
-    console.error("Doctor-created appointment API failed:", error);
+    console.error(
+      "Doctor-created appointment API failed:",
+      error
+    );
 
     return NextResponse.json(
       {
-        error: "A apărut o eroare neașteptată. Încearcă din nou.",
+        error:
+          "A apărut o eroare neașteptată. Încearcă din nou.",
       },
       {
         status: 500,

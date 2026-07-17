@@ -3,10 +3,18 @@ import {
   NextResponse,
 } from "next/server";
 
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { sendAppointmentStatusEmail } from "@/lib/appointments/send-appointment-status-email";
-import { logAppointmentNotificationDelivery } from "@/lib/appointments/log-appointment-notification-delivery";
+import {
+  logAppointmentNotificationDelivery,
+} from "@/lib/appointments/log-appointment-notification-delivery";
+import {
+  sendAppointmentStatusEmail,
+} from "@/lib/appointments/send-appointment-status-email";
+import {
+  createAdminClient,
+} from "@/lib/supabase/admin";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
 type RouteContext = {
   params: Promise<{
@@ -25,60 +33,90 @@ function isUuid(value: string) {
 }
 
 async function requireVerifiedPatient() {
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
 
   const {
-    data: { user },
+    data: {
+      user,
+    },
     error: userError,
-  } = await supabase.auth.getUser();
+  } =
+    await supabase.auth.getUser();
 
-  if (userError || !user) {
+  if (
+    userError ||
+    !user
+  ) {
     return {
       supabase,
-      response: NextResponse.json(
-        { error: "Trebuie să fii autentificat." },
-        { status: 401 }
-      ),
+      response:
+        NextResponse.json(
+          {
+            error:
+              "Trebuie să fii autentificat.",
+          },
+          {
+            status: 401,
+          }
+        ),
     };
   }
 
-  if (!user.email_confirmed_at) {
+  if (
+    !user.email_confirmed_at
+  ) {
     return {
       supabase,
-      response: NextResponse.json(
-        {
-          error:
-            "Confirmă adresa de e-mail înainte de a administra programările.",
-        },
-        { status: 403 }
-      ),
+      response:
+        NextResponse.json(
+          {
+            error:
+              "Confirmă adresa de e-mail înainte de a administra programările.",
+          },
+          {
+            status: 403,
+          }
+        ),
     };
   }
 
   const {
-    data: profile,
-    error: profileError,
+    data:
+      profile,
+    error:
+      profileError,
   } = await supabase
     .from("profiles")
-    .select("role, account_status")
-    .eq("id", user.id)
+    .select(
+      "role, account_status"
+    )
+    .eq(
+      "id",
+      user.id
+    )
     .maybeSingle();
 
   if (
     profileError ||
     !profile ||
-    profile.role !== "patient" ||
-    profile.account_status !== "active"
+    profile.role !==
+      "patient" ||
+    profile.account_status !==
+      "active"
   ) {
     return {
       supabase,
-      response: NextResponse.json(
-        {
-          error:
-            "Doar pacienții cu un cont activ pot administra această programare.",
-        },
-        { status: 403 }
-      ),
+      response:
+        NextResponse.json(
+          {
+            error:
+              "Doar pacienții cu un cont activ pot administra această programare.",
+          },
+          {
+            status: 403,
+          }
+        ),
     };
   }
 
@@ -92,67 +130,95 @@ function appointmentErrorResponse(
   message: string,
   code?: string
 ) {
-  const normalized = message.toLowerCase();
+  const normalized =
+    message.toLowerCase();
 
   if (
     code === "P0002" ||
-    normalized.includes("appointment_not_found")
+    normalized.includes(
+      "appointment_not_found"
+    )
   ) {
     return NextResponse.json(
-      { error: "Programarea nu a fost găsită." },
-      { status: 404 }
+      {
+        error:
+          "Programarea nu a fost găsită.",
+      },
+      {
+        status: 404,
+      }
     );
   }
 
   if (
     code === "42501" ||
-    normalized.includes("not_owned") ||
-    normalized.includes("not_permitted")
+    normalized.includes(
+      "not_owned"
+    ) ||
+    normalized.includes(
+      "not_permitted"
+    )
   ) {
     return NextResponse.json(
       {
         error:
           "Nu ai permisiunea de a administra această programare.",
       },
-      { status: 403 }
+      {
+        status: 403,
+      }
     );
   }
 
   if (
-    normalized.includes("appointment_already_started")
+    normalized.includes(
+      "appointment_already_started"
+    )
   ) {
     return NextResponse.json(
       {
         error:
           "Programarea nu mai poate fi anulată deoarece ora programată a început deja.",
       },
-      { status: 409 }
+      {
+        status: 409,
+      }
     );
   }
 
   if (
-    normalized.includes("patient_cannot_cancel_status") ||
-    normalized.includes("invalid_appointment_transition")
+    normalized.includes(
+      "patient_cannot_cancel_status"
+    ) ||
+    normalized.includes(
+      "invalid_appointment_transition"
+    )
   ) {
     return NextResponse.json(
       {
         error:
           "Programarea nu mai poate fi anulată în starea actuală.",
       },
-      { status: 409 }
+      {
+        status: 409,
+      }
     );
   }
 
   if (
     code === "22001" ||
-    normalized.includes("reason_too_long")
+    normalized.includes(
+      "reason_too_long"
+    )
   ) {
     return NextResponse.json(
       {
         error:
           "Motivul anulării poate avea cel mult 1.000 de caractere.",
       },
-      { status: 400 }
+      {
+        status: 400,
+      }
     );
   }
 
@@ -161,7 +227,9 @@ function appointmentErrorResponse(
       error:
         "Programarea nu a putut fi actualizată.",
     },
-    { status: 500 }
+    {
+      status: 500,
+    }
   );
 }
 
@@ -172,29 +240,44 @@ export async function GET(
   const authorization =
     await requireVerifiedPatient();
 
-  if (authorization.response) {
+  if (
+    authorization.response
+  ) {
     return authorization.response;
   }
 
-  const { appointmentId } =
+  const {
+    appointmentId,
+  } =
     await context.params;
 
-  if (!isUuid(appointmentId)) {
+  if (
+    !isUuid(
+      appointmentId
+    )
+  ) {
     return NextResponse.json(
-      { error: "Identificatorul programării nu este valid." },
-      { status: 400 }
+      {
+        error:
+          "Identificatorul programării nu este valid.",
+      },
+      {
+        status: 400,
+      }
     );
   }
 
   const {
     data,
     error,
-  } = await authorization.supabase.rpc(
-    "get_own_appointment_timeline",
-    {
-      target_appointment_id: appointmentId,
-    }
-  );
+  } =
+    await authorization.supabase.rpc(
+      "get_own_appointment_timeline",
+      {
+        target_appointment_id:
+          appointmentId,
+      }
+    );
 
   if (error) {
     console.error(
@@ -210,11 +293,13 @@ export async function GET(
 
   return NextResponse.json(
     {
-      timeline: data ?? [],
+      timeline:
+        data ?? [],
     },
     {
       headers: {
-        "Cache-Control": "no-store",
+        "Cache-Control":
+          "no-store",
       },
     }
   );
@@ -227,51 +312,80 @@ export async function PATCH(
   const authorization =
     await requireVerifiedPatient();
 
-  if (authorization.response) {
+  if (
+    authorization.response
+  ) {
     return authorization.response;
   }
 
-  const { appointmentId } =
+  const {
+    appointmentId,
+  } =
     await context.params;
 
-  if (!isUuid(appointmentId)) {
+  if (
+    !isUuid(
+      appointmentId
+    )
+  ) {
     return NextResponse.json(
-      { error: "Identificatorul programării nu este valid." },
-      { status: 400 }
+      {
+        error:
+          "Identificatorul programării nu este valid.",
+      },
+      {
+        status: 400,
+      }
     );
   }
 
-  let body: CancellationBody;
+  let body:
+    CancellationBody;
 
   try {
-    body = (await request.json()) as CancellationBody;
+    body =
+      (await request.json()) as
+        CancellationBody;
   } catch {
     return NextResponse.json(
-      { error: "Datele trimise nu sunt valide." },
-      { status: 400 }
+      {
+        error:
+          "Datele trimise nu sunt valide.",
+      },
+      {
+        status: 400,
+      }
     );
   }
 
   const reason =
-    typeof body.reason === "string"
+    typeof body.reason ===
+      "string"
       ? body.reason.trim()
       : "";
 
-  if (reason.length > 1000) {
+  if (
+    reason.length > 1000
+  ) {
     return NextResponse.json(
       {
         error:
           "Motivul anulării poate avea cel mult 1.000 de caractere.",
       },
-      { status: 400 }
+      {
+        status: 400,
+      }
     );
   }
 
-  const admin = createAdminClient();
+  const admin =
+    createAdminClient();
 
   const {
-    data: appointment,
-    error: appointmentLookupError,
+    data:
+      appointment,
+    error:
+      appointmentLookupError,
   } = await admin
     .from("appointments")
     .select(`
@@ -293,26 +407,40 @@ export async function PATCH(
         )
       )
     `)
-    .eq("id", appointmentId)
+    .eq(
+      "id",
+      appointmentId
+    )
     .maybeSingle();
 
-  if (appointmentLookupError || !appointment) {
+  if (
+    appointmentLookupError ||
+    !appointment
+  ) {
     return NextResponse.json(
-      { error: "Programarea nu a fost găsită." },
-      { status: 404 }
+      {
+        error:
+          "Programarea nu a fost găsită.",
+      },
+      {
+        status: 404,
+      }
     );
   }
 
   const {
     data,
     error,
-  } = await authorization.supabase.rpc(
-    "patient_cancel_own_appointment",
-    {
-      target_appointment_id: appointmentId,
-      cancellation_reason: reason || null,
-    }
-  );
+  } =
+    await authorization.supabase.rpc(
+      "patient_cancel_own_appointment",
+      {
+        target_appointment_id:
+          appointmentId,
+        cancellation_reason:
+          reason || null,
+      }
+    );
 
   if (error) {
     console.error(
@@ -326,24 +454,38 @@ export async function PATCH(
     );
   }
 
-  const doctorRelation = Array.isArray(
-    appointment.doctors
-  )
-    ? appointment.doctors[0]
-    : appointment.doctors;
+  const doctorRelation =
+    Array.isArray(
+      appointment.doctors
+    )
+      ? appointment
+          .doctors[0]
+      : appointment.doctors;
 
-  const clinicRelation = Array.isArray(
-    appointment.clinics
-  )
-    ? appointment.clinics[0]
-    : appointment.clinics;
+  const clinicRelation =
+    Array.isArray(
+      appointment.clinics
+    )
+      ? appointment
+          .clinics[0]
+      : appointment.clinics;
 
   const clinicName =
-    clinicRelation?.clinic_translations?.find(
-      (translation: { locale: string; name: string }) =>
-        translation.locale === "ro"
-    )?.name ??
-    clinicRelation?.clinic_translations?.[0]?.name ??
+    clinicRelation
+      ?.clinic_translations
+      ?.find(
+        (
+          translation: {
+            locale: string;
+            name: string;
+          }
+        ) =>
+          translation.locale ===
+          "ro"
+      )?.name ??
+    clinicRelation
+      ?.clinic_translations
+      ?.[0]?.name ??
     clinicRelation?.slug ??
     "Clinică";
 
@@ -351,42 +493,69 @@ export async function PATCH(
     doctorRelation?.slug
       ?.split("-")
       .map(
-        (part: string) =>
-          part.charAt(0).toUpperCase() +
+        (
+          part: string
+        ) =>
+          part
+            .charAt(0)
+            .toUpperCase() +
           part.slice(1)
       )
-      .join(" ") ?? "Medic";
+      .join(" ") ??
+    "Medic";
 
   const emailResult =
     await sendAppointmentStatusEmail({
-      status: "cancelled",
-      patientName: appointment.patient_name,
-      patientEmail: appointment.patient_email,
+      appointmentId,
+      status:
+        "cancelled",
+      patientName:
+        appointment
+          .patient_name,
+      patientEmail:
+        appointment
+          .patient_email,
       doctorName,
       clinicName,
       scheduledDate:
-        appointment.scheduled_date ??
-        appointment.requested_date,
+        appointment
+          .scheduled_date ??
+        appointment
+          .requested_date,
       scheduledTime:
-        appointment.scheduled_time ??
-        appointment.requested_time,
-      rescheduleReason: null,
+        appointment
+          .scheduled_time ??
+        appointment
+          .requested_time,
+      rescheduleReason:
+        null,
     });
 
   await logAppointmentNotificationDelivery({
     appointmentId,
-    notificationType: "cancelled",
-    recipientEmail: appointment.patient_email,
-    triggeredByProfileId: (
-      await authorization.supabase.auth.getUser()
-    ).data.user?.id ?? null,
-    result: emailResult,
+    notificationType:
+      "cancelled",
+    recipientEmail:
+      appointment
+        .patient_email,
+    triggeredByProfileId:
+      (
+        await authorization
+          .supabase.auth
+          .getUser()
+      ).data.user?.id ??
+      null,
+    result:
+      emailResult,
   });
 
   return NextResponse.json({
     success: true,
     appointment:
-      Array.isArray(data) ? data[0] ?? null : data,
-    emailSent: emailResult.sent,
+      Array.isArray(data)
+        ? data[0] ?? null
+        : data,
+    emailSent:
+      emailResult.sent,
   });
 }

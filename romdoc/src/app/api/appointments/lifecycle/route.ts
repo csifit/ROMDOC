@@ -4,15 +4,20 @@ import {
 } from "next/server";
 
 import {
-  createAdminClient,
-} from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+  logAppointmentNotificationDelivery,
+} from "@/lib/appointments/log-appointment-notification-delivery";
+import {
+  sendAppointmentSms,
+} from "@/lib/appointments/send-appointment-sms";
 import {
   sendAppointmentStatusEmail,
 } from "@/lib/appointments/send-appointment-status-email";
 import {
-  logAppointmentNotificationDelivery,
-} from "@/lib/appointments/log-appointment-notification-delivery";
+  createAdminClient,
+} from "@/lib/supabase/admin";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -84,7 +89,9 @@ const actionToStatus: Record<
   no_show: "no_show",
 };
 
-function normalizeString(value: unknown) {
+function normalizeString(
+  value: unknown
+) {
   return typeof value === "string"
     ? value.trim()
     : "";
@@ -96,24 +103,41 @@ function isUuid(value: string) {
   );
 }
 
-function isValidDate(value: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+function isValidDate(
+  value: string
+) {
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(
+      value
+    )
+  ) {
     return false;
   }
 
   return !Number.isNaN(
-    new Date(`${value}T12:00:00`).getTime()
+    new Date(
+      `${value}T12:00:00`
+    ).getTime()
   );
 }
 
-function isValidTime(value: string) {
-  return /^\d{2}:\d{2}$/.test(value);
+function isValidTime(
+  value: string
+) {
+  return /^\d{2}:\d{2}$/.test(
+    value
+  );
 }
 
 function getFirstRelation<T>(
-  relation: T | T[] | null
+  relation:
+    | T
+    | T[]
+    | null
 ): T | null {
-  if (Array.isArray(relation)) {
+  if (
+    Array.isArray(relation)
+  ) {
     return relation[0] ?? null;
   }
 
@@ -129,19 +153,24 @@ function getTranslationValue(
   return (
     translations?.find(
       (translation) =>
-        translation.locale === "ro"
+        translation.locale ===
+        "ro"
     )?.[field] ??
     translations?.[0]?.[field] ??
     null
   );
 }
 
-function formatNameFromSlug(slug: string) {
+function formatNameFromSlug(
+  slug: string
+) {
   return slug
     .split("-")
     .map(
       (part) =>
-        part.charAt(0).toUpperCase() +
+        part
+          .charAt(0)
+          .toUpperCase() +
         part.slice(1)
     )
     .join(" ");
@@ -151,29 +180,43 @@ function transitionErrorResponse(
   message: string,
   code?: string
 ) {
-  const normalized = message.toLowerCase();
+  const normalized =
+    message.toLowerCase();
 
   if (
     code === "P0002" ||
-    normalized.includes("appointment_not_found")
+    normalized.includes(
+      "appointment_not_found"
+    )
   ) {
     return NextResponse.json(
-      { error: "Programarea nu a fost găsită." },
-      { status: 404 }
+      {
+        error:
+          "Programarea nu a fost găsită.",
+      },
+      {
+        status: 404,
+      }
     );
   }
 
   if (
     code === "42501" ||
-    normalized.includes("not_permitted") ||
-    normalized.includes("active_profile_required")
+    normalized.includes(
+      "not_permitted"
+    ) ||
+    normalized.includes(
+      "active_profile_required"
+    )
   ) {
     return NextResponse.json(
       {
         error:
           "Nu ai permisiunea de a modifica această programare.",
       },
-      { status: 403 }
+      {
+        status: 403,
+      }
     );
   }
 
@@ -191,7 +234,9 @@ function transitionErrorResponse(
         error:
           "Intervalul selectat nu mai este disponibil. Alege o altă dată sau oră.",
       },
-      { status: 409 }
+      {
+        status: 409,
+      }
     );
   }
 
@@ -205,7 +250,9 @@ function transitionErrorResponse(
         error:
           "Intervalul selectat este în afara programului de lucru al medicului.",
       },
-      { status: 409 }
+      {
+        status: 409,
+      }
     );
   }
 
@@ -219,7 +266,9 @@ function transitionErrorResponse(
         error:
           "Intervalul selectat se suprapune cu o pauză din program.",
       },
-      { status: 409 }
+      {
+        status: 409,
+      }
     );
   }
 
@@ -233,7 +282,9 @@ function transitionErrorResponse(
         error:
           "Medicul este indisponibil în intervalul selectat.",
       },
-      { status: 409 }
+      {
+        status: 409,
+      }
     );
   }
 
@@ -250,7 +301,9 @@ function transitionErrorResponse(
         error:
           "Clinica nu este disponibilă pentru această programare.",
       },
-      { status: 409 }
+      {
+        status: 409,
+      }
     );
   }
 
@@ -267,7 +320,9 @@ function transitionErrorResponse(
         error:
           "Durata programării nu corespunde intervalelor configurate de medic.",
       },
-      { status: 409 }
+      {
+        status: 409,
+      }
     );
   }
 
@@ -281,7 +336,9 @@ function transitionErrorResponse(
         error:
           "Nu poți selecta o dată din trecut.",
       },
-      { status: 400 }
+      {
+        status: 400,
+      }
     );
   }
 
@@ -295,7 +352,9 @@ function transitionErrorResponse(
         error:
           "Programările pot fi stabilite cu maximum 180 de zile în avans.",
       },
-      { status: 400 }
+      {
+        status: 400,
+      }
     );
   }
 
@@ -309,7 +368,9 @@ function transitionErrorResponse(
         error:
           "Această schimbare nu este permisă pentru starea actuală a programării.",
       },
-      { status: 409 }
+      {
+        status: 409,
+      }
     );
   }
 
@@ -326,7 +387,9 @@ function transitionErrorResponse(
         error:
           "Pentru reprogramare trebuie să alegi o dată sau o oră diferită.",
       },
-      { status: 409 }
+      {
+        status: 409,
+      }
     );
   }
 
@@ -343,20 +406,26 @@ function transitionErrorResponse(
         error:
           "Selectează data și ora programării.",
       },
-      { status: 400 }
+      {
+        status: 400,
+      }
     );
   }
 
   if (
     code === "22001" ||
-    normalized.includes("reason_too_long")
+    normalized.includes(
+      "reason_too_long"
+    )
   ) {
     return NextResponse.json(
       {
         error:
           "Motivul sau nota poate avea cel mult 2.000 de caractere.",
       },
-      { status: 400 }
+      {
+        status: 400,
+      }
     );
   }
 
@@ -365,11 +434,15 @@ function transitionErrorResponse(
       error:
         "Programarea nu a putut fi actualizată.",
     },
-    { status: 500 }
+    {
+      status: 500,
+    }
   );
 }
 
-function successMessage(action: LifecycleAction) {
+function successMessage(
+  action: LifecycleAction
+) {
   switch (action) {
     case "confirm":
       return "Programarea a fost confirmată.";
@@ -387,17 +460,29 @@ function successMessage(action: LifecycleAction) {
 export async function PATCH(
   request: NextRequest
 ): Promise<Response> {
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
 
   const {
-    data: { user },
+    data: {
+      user,
+    },
     error: userError,
-  } = await supabase.auth.getUser();
+  } =
+    await supabase.auth.getUser();
 
-  if (userError || !user) {
+  if (
+    userError ||
+    !user
+  ) {
     return NextResponse.json(
-      { error: "Trebuie să fii autentificat." },
-      { status: 401 }
+      {
+        error:
+          "Trebuie să fii autentificat.",
+      },
+      {
+        status: 401,
+      }
     );
   }
 
@@ -406,28 +491,41 @@ export async function PATCH(
     error: profileError,
   } = await supabase
     .from("profiles")
-    .select("role, account_status")
-    .eq("id", user.id)
+    .select(
+      "role, account_status"
+    )
+    .eq(
+      "id",
+      user.id
+    )
     .maybeSingle();
 
   if (
     profileError ||
     !profile ||
-    !["doctor", "staff", "admin"].includes(
+    ![
+      "doctor",
+      "staff",
+      "admin",
+    ].includes(
       profile.role
     ) ||
-    profile.account_status !== "active"
+    profile.account_status !==
+      "active"
   ) {
     return NextResponse.json(
       {
         error:
           "Nu ai un rol activ care poate administra programări.",
       },
-      { status: 403 }
+      {
+        status: 403,
+      }
     );
   }
 
-  let body: LifecycleRequestBody;
+  let body:
+    LifecycleRequestBody;
 
   try {
     body =
@@ -435,13 +533,20 @@ export async function PATCH(
         LifecycleRequestBody;
   } catch {
     return NextResponse.json(
-      { error: "Cererea nu conține date JSON valide." },
-      { status: 400 }
+      {
+        error:
+          "Cererea nu conține date JSON valide.",
+      },
+      {
+        status: 400,
+      }
     );
   }
 
   const appointmentId =
-    normalizeString(body.appointmentId);
+    normalizeString(
+      body.appointmentId
+    );
 
   const action =
     normalizeString(
@@ -449,21 +554,33 @@ export async function PATCH(
     ) as LifecycleAction;
 
   const scheduledDate =
-    normalizeString(body.scheduledDate);
+    normalizeString(
+      body.scheduledDate
+    );
 
   const scheduledTime =
-    normalizeString(body.scheduledTime);
+    normalizeString(
+      body.scheduledTime
+    );
 
   const reason =
-    normalizeString(body.reason);
+    normalizeString(
+      body.reason
+    );
 
-  if (!isUuid(appointmentId)) {
+  if (
+    !isUuid(
+      appointmentId
+    )
+  ) {
     return NextResponse.json(
       {
         error:
           "Identificatorul programării nu este valid.",
       },
-      { status: 400 }
+      {
+        status: 400,
+      }
     );
   }
 
@@ -474,20 +591,33 @@ export async function PATCH(
       "cancel",
       "complete",
       "no_show",
-    ].includes(action)
+    ].includes(
+      action
+    )
   ) {
     return NextResponse.json(
-      { error: "Acțiunea solicitată nu este validă." },
-      { status: 400 }
+      {
+        error:
+          "Acțiunea solicitată nu este validă.",
+      },
+      {
+        status: 400,
+      }
     );
   }
 
   if (
-    (action === "confirm" ||
-      action === "reschedule") &&
     (
-      !isValidDate(scheduledDate) ||
-      !isValidTime(scheduledTime)
+      action === "confirm" ||
+      action === "reschedule"
+    ) &&
+    (
+      !isValidDate(
+        scheduledDate
+      ) ||
+      !isValidTime(
+        scheduledTime
+      )
     )
   ) {
     return NextResponse.json(
@@ -495,7 +625,9 @@ export async function PATCH(
         error:
           "Selectează data și ora programării.",
       },
-      { status: 400 }
+      {
+        status: 400,
+      }
     );
   }
 
@@ -508,7 +640,9 @@ export async function PATCH(
         error:
           "Introdu motivul reprogramării.",
       },
-      { status: 400 }
+      {
+        status: 400,
+      }
     );
   }
 
@@ -520,15 +654,20 @@ export async function PATCH(
         error:
           "Motivul sau nota poate avea cel mult 2.000 de caractere.",
       },
-      { status: 400 }
+      {
+        status: 400,
+      }
     );
   }
 
-  const admin = createAdminClient();
+  const admin =
+    createAdminClient();
 
   const {
-    data: appointmentData,
-    error: appointmentError,
+    data:
+      appointmentData,
+    error:
+      appointmentError,
   } = await admin
     .from("appointments")
     .select(`
@@ -554,7 +693,10 @@ export async function PATCH(
         )
       )
     `)
-    .eq("id", appointmentId)
+    .eq(
+      "id",
+      appointmentId
+    )
     .maybeSingle();
 
   if (
@@ -566,28 +708,38 @@ export async function PATCH(
         error:
           "Programarea nu a fost găsită.",
       },
-      { status: 404 }
+      {
+        status: 404,
+      }
     );
   }
 
   const {
-    data: transitionData,
-    error: transitionError,
+    data:
+      transitionData,
+    error:
+      transitionError,
   } = await supabase.rpc(
     "transition_own_appointment",
     {
       target_appointment_id:
         appointmentId,
       target_status:
-        actionToStatus[action],
+        actionToStatus[
+          action
+        ],
       target_scheduled_date:
-        action === "confirm" ||
-        action === "reschedule"
+        action ===
+          "confirm" ||
+        action ===
+          "reschedule"
           ? scheduledDate
           : null,
       target_scheduled_time:
-        action === "confirm" ||
-        action === "reschedule"
+        action ===
+          "confirm" ||
+        action ===
+          "reschedule"
           ? scheduledTime
           : null,
       transition_reason:
@@ -595,7 +747,9 @@ export async function PATCH(
     }
   );
 
-  if (transitionError) {
+  if (
+    transitionError
+  ) {
     console.error(
       "Unified appointment lifecycle transition failed:",
       transitionError
@@ -608,11 +762,21 @@ export async function PATCH(
   }
 
   const transition =
-    Array.isArray(transitionData)
-      ? transitionData[0] ?? null
+    Array.isArray(
+      transitionData
+    )
+      ? transitionData[0] ??
+        null
       : transitionData;
 
-  let emailSent: boolean | null = null;
+  let emailSent:
+    boolean | null = null;
+
+  let smsSent:
+    boolean | null = null;
+
+  let smsSkipped:
+    boolean | null = null;
 
   if (
     action === "confirm" ||
@@ -644,79 +808,130 @@ export async function PATCH(
 
     const clinicName =
       getTranslationValue(
-        clinic?.clinic_translations ??
+        clinic
+          ?.clinic_translations ??
           null,
         "name"
       ) ??
-      (clinic
-        ? formatNameFromSlug(
-            clinic.slug
-          )
-        : "Clinică");
+      (
+        clinic
+          ? formatNameFromSlug(
+              clinic.slug
+            )
+          : "Clinică"
+      );
+
+    const notificationStatus =
+      action === "confirm"
+        ? "confirmed"
+        : action ===
+            "reschedule"
+          ? "rescheduled"
+          : action ===
+              "cancel"
+            ? "cancelled"
+            : action ===
+                "complete"
+              ? "completed"
+              : "no_show";
 
     const emailResult =
       await sendAppointmentStatusEmail({
+        appointmentId,
         status:
-          action === "confirm"
-            ? "confirmed"
-            : action === "reschedule"
-              ? "rescheduled"
-              : action === "cancel"
-                ? "cancelled"
-                : action === "complete"
-                  ? "completed"
-                  : "no_show",
+          notificationStatus,
         patientName:
-          appointment.patient_name,
+          appointment
+            .patient_name,
         patientEmail:
-          appointment.patient_email,
+          appointment
+            .patient_email,
         doctorName,
         clinicName,
         scheduledDate:
-          transition?.scheduled_date ??
-          appointment.scheduled_date ??
-          appointment.requested_date,
+          transition
+            ?.scheduled_date ??
+          appointment
+            .scheduled_date ??
+          appointment
+            .requested_date,
         scheduledTime:
-          transition?.scheduled_time ??
-          appointment.scheduled_time ??
-          appointment.requested_time,
+          transition
+            ?.scheduled_time ??
+          appointment
+            .scheduled_time ??
+          appointment
+            .requested_time,
         rescheduleReason:
-          action === "reschedule"
+          action ===
+            "reschedule"
             ? reason || null
             : null,
       });
 
-    emailSent = emailResult.sent;
+    emailSent =
+      emailResult.sent;
 
     await logAppointmentNotificationDelivery({
       appointmentId,
       notificationType:
-        action === "confirm"
-          ? "confirmed"
-          : action === "reschedule"
-            ? "rescheduled"
-            : action === "cancel"
-              ? "cancelled"
-              : action === "complete"
-                ? "completed"
-                : "no_show",
+        notificationStatus,
       recipientEmail:
-        appointment.patient_email,
-      triggeredByProfileId: user.id,
-      result: emailResult,
+        appointment
+          .patient_email,
+      triggeredByProfileId:
+        user.id,
+      result:
+        emailResult,
     });
 
-    if (!emailResult.sent) {
+    if (
+      !emailResult.sent
+    ) {
       console.error(
         `Appointment ${appointmentId} transitioned successfully, but the patient email was not sent.`
       );
+    }
+
+    if (
+      action === "confirm"
+    ) {
+      const smsResult =
+        await sendAppointmentSms({
+          appointmentId,
+          event:
+            "confirmed",
+          triggeredByProfileId:
+            user.id,
+        });
+
+      smsSent =
+        smsResult.sent;
+
+      smsSkipped =
+        smsResult.skipped;
+
+      if (
+        !smsResult.sent &&
+        !smsResult.skipped
+      ) {
+        console.error(
+          `Appointment ${appointmentId} was confirmed, but the patient SMS was not sent: ${smsResult.errorCode ?? "UNKNOWN_SMS_ERROR"} - ${smsResult.errorMessage ?? "Unknown SMS error"}`
+        );
+      }
     }
   }
 
   return NextResponse.json({
     success: true,
-    message: successMessage(action),
-    appointment: transition,
+    message:
+      successMessage(
+        action
+      ),
+    appointment:
+      transition,
     emailSent,
+    smsSent,
+    smsSkipped,
   });
 }
