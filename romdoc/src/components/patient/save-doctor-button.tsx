@@ -5,9 +5,6 @@ import {
   useState,
 } from "react";
 import {
-  useLocale,
-} from "next-intl";
-import {
   usePathname,
   useRouter,
 } from "next/navigation";
@@ -165,12 +162,22 @@ export default function SaveDoctorButton({
   compact = false,
   className = "",
 }: SaveDoctorButtonProps) {
-  const locale =
-    useLocale();
   const router =
     useRouter();
   const pathname =
     usePathname();
+
+  const firstPathSegment =
+    pathname
+      .split("/")
+      .filter(Boolean)[0];
+
+  const locale =
+    firstPathSegment === "en" ||
+    firstPathSegment === "de" ||
+    firstPathSegment === "ro"
+      ? firstPathSegment
+      : "ro";
 
   const labels =
     labelsByLocale[locale] ??
