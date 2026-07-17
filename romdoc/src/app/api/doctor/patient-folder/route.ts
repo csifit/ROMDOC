@@ -1,4 +1,4 @@
-import {
+﻿import {
   NextRequest,
   NextResponse,
 } from "next/server";
@@ -10,10 +10,6 @@ import {
   listMedicalFolderDocuments,
   type MedicalFolderAppointment,
 } from "@/lib/medical-folder/folder-operations";
-import {
-  consumeRateLimit,
-  rateLimitResponse,
-} from "@/lib/security/rate-limit";
 import {
   createAdminClient,
 } from "@/lib/supabase/admin";
@@ -245,26 +241,6 @@ export async function POST(
   if (result.response) {
     return result.response;
   }
-
-  const rateLimit =
-    await consumeRateLimit({
-      namespace:
-        "doctor-medical-folder-upload",
-      identifier:
-        result.authorization.userId,
-      limit: 30,
-      windowSeconds:
-        60 * 60,
-    });
-
-  if (
-    !rateLimit.allowed
-  ) {
-    return rateLimitResponse(
-      rateLimit
-    );
-  }
-
   let formData: FormData;
 
   try {

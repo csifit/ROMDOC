@@ -1,4 +1,4 @@
-import {
+﻿import {
   NextRequest,
   NextResponse,
 } from "next/server";
@@ -15,10 +15,6 @@ import {
   requireActiveStaffMedicalFolderAccess,
   staffCanReadMedicalDocument,
 } from "@/lib/medical-folder/staff-access";
-import {
-  consumeRateLimit,
-  rateLimitResponse,
-} from "@/lib/security/rate-limit";
 import {
   createAdminClient,
 } from "@/lib/supabase/admin";
@@ -179,24 +175,6 @@ export async function POST(
   if (result.response) {
     return result.response;
   }
-
-  const rateLimit =
-    await consumeRateLimit({
-      namespace:
-        "staff-medical-folder-pdf",
-      identifier:
-        result.authorization.userId,
-      limit: 20,
-      windowSeconds:
-        60 * 60,
-    });
-
-  if (!rateLimit.allowed) {
-    return rateLimitResponse(
-      rateLimit
-    );
-  }
-
   let body: {
     documentId?: unknown;
     appointmentId?: unknown;

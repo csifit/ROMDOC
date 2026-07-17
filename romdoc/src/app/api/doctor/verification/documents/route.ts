@@ -1,4 +1,4 @@
-import {
+﻿import {
   randomUUID,
 } from "node:crypto";
 import {
@@ -6,10 +6,6 @@ import {
   NextResponse,
 } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import {
-  consumeRateLimit,
-  rateLimitResponse,
-} from "@/lib/security/rate-limit";
 import {
   ALLOWED_DOCUMENT_MIME_TYPES,
   validateUploadFile,
@@ -151,23 +147,6 @@ export async function POST(
     user,
     doctor,
   } = authorization;
-
-  const rateLimit =
-    await consumeRateLimit({
-      namespace:
-        "doctor-verification-upload",
-      identifier: user.id,
-      limit: 20,
-      windowSeconds:
-        60 * 60,
-    });
-
-  if (!rateLimit.allowed) {
-    return rateLimitResponse(
-      rateLimit
-    );
-  }
-
   let formData: FormData;
 
   try {

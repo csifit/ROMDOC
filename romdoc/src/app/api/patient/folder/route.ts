@@ -175,7 +175,7 @@ export async function GET(): Promise<Response> {
       doctors:uploaded_by_doctor_id (
         id,
         slug,
-        profiles (
+        profiles!doctors_profile_id_fkey (
           first_name,
           last_name
         )

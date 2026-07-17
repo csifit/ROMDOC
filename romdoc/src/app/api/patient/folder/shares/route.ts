@@ -1,4 +1,4 @@
-import {
+﻿import {
   NextRequest,
   NextResponse,
 } from "next/server";
@@ -9,11 +9,6 @@ import {
 import {
   createClient,
 } from "@/lib/supabase/server";
-import {
-  consumeRateLimit,
-  rateLimitResponse,
-} from "@/lib/security/rate-limit";
-
 export const runtime = "nodejs";
 
 function isUuid(value: string) {
@@ -270,24 +265,6 @@ export async function POST(
   if (authorization.response) {
     return authorization.response;
   }
-
-  const rateLimit =
-    await consumeRateLimit({
-      namespace:
-        "patient-document-sharing",
-      identifier:
-        authorization.user.id,
-      limit: 30,
-      windowSeconds:
-        60 * 60,
-    });
-
-  if (!rateLimit.allowed) {
-    return rateLimitResponse(
-      rateLimit
-    );
-  }
-
   let body: {
     documentId?: unknown;
     doctorId?: unknown;
@@ -530,24 +507,6 @@ export async function DELETE(
   if (authorization.response) {
     return authorization.response;
   }
-
-  const rateLimit =
-    await consumeRateLimit({
-      namespace:
-        "patient-document-sharing",
-      identifier:
-        authorization.user.id,
-      limit: 30,
-      windowSeconds:
-        60 * 60,
-    });
-
-  if (!rateLimit.allowed) {
-    return rateLimitResponse(
-      rateLimit
-    );
-  }
-
   let body: {
     shareId?: unknown;
   };

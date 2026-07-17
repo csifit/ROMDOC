@@ -1,4 +1,4 @@
-import {
+﻿import {
   NextRequest,
   NextResponse,
 } from "next/server";
@@ -13,11 +13,6 @@ import {
   loadStaffMedicalFolderAppointment,
   requireActiveStaffMedicalFolderAccess,
 } from "@/lib/medical-folder/staff-access";
-import {
-  consumeRateLimit,
-  rateLimitResponse,
-} from "@/lib/security/rate-limit";
-
 export const runtime = "nodejs";
 
 export async function GET(
@@ -83,26 +78,6 @@ export async function POST(
   if (result.response) {
     return result.response;
   }
-
-  const rateLimit =
-    await consumeRateLimit({
-      namespace:
-        "staff-medical-folder-upload",
-      identifier:
-        result.authorization.userId,
-      limit: 30,
-      windowSeconds:
-        60 * 60,
-    });
-
-  if (
-    !rateLimit.allowed
-  ) {
-    return rateLimitResponse(
-      rateLimit
-    );
-  }
-
   let formData: FormData;
 
   try {
