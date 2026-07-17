@@ -37,15 +37,6 @@ type BookingStep =
   | "patient"
   | "review";
 
-type ConfirmationDetails = {
-  appointmentId: string | null;
-  clinicName: string;
-  clinicAddress: string;
-  requestedDate: string;
-  requestedTime: string;
-  durationMinutes: number;
-  emailSent: boolean;
-};
 
 const STEPS: Array<{
   id: BookingStep;
@@ -160,13 +151,6 @@ export default function AppointmentRequestForm({
   const [error, setError] =
     useState<string | null>(null);
 
-  const [
-    confirmation,
-    setConfirmation,
-  ] =
-    useState<ConfirmationDetails | null>(
-      null
-    );
 
   const today = useMemo(
     () =>
@@ -413,20 +397,14 @@ export default function AppointmentRequestForm({
           );
         }
 
-        setConfirmation({
-          appointmentId:
-            result.appointmentId ??
-            null,
-          clinicName:
-            selectedClinic.name,
-          clinicAddress:
-            selectedClinic.address,
-          requestedDate,
-          requestedTime,
-          durationMinutes,
-          emailSent:
-            result.emailSent !== false,
-        });
+        if (!result.appointmentId) {
+          throw new Error(
+            "Cererea a fost salvată, dar pagina de confirmare nu a putut fi deschisă."
+          );
+        }
+
+        window.location.href =
+          `/appointments/${result.appointmentId}/request-received?emailSent=${result.emailSent === false ? "0" : "1"}`;
       } catch (submitError) {
         setError(
           submitError instanceof Error
@@ -443,120 +421,6 @@ export default function AppointmentRequestForm({
         Programările online nu sunt încă
         disponibile pentru acest medic.
       </div>
-    );
-  }
-
-  if (confirmation) {
-    return (
-      <section className="overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm">
-        <div className="bg-emerald-50 px-6 py-8 text-center sm:px-8">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-2xl font-bold text-white">
-            ✓
-          </div>
-
-          <p className="mt-5 text-sm font-semibold uppercase tracking-wide text-emerald-700">
-            Cerere înregistrată
-          </p>
-
-          <h2 className="mt-2 text-2xl font-bold text-gray-900 sm:text-3xl">
-            Programarea a fost solicitată
-          </h2>
-
-          <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-gray-600">
-            Cererea a fost trimisă către{" "}
-            <strong>{doctorName}</strong>.
-            Programarea devine definitivă
-            după confirmarea medicului sau a
-            clinicii.
-          </p>
-        </div>
-
-        <div className="space-y-5 px-6 py-7 sm:px-8">
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-5">
-            <dl className="grid gap-4 text-sm sm:grid-cols-2">
-              <div>
-                <dt className="text-gray-500">
-                  Medic
-                </dt>
-                <dd className="mt-1 font-semibold text-gray-900">
-                  {doctorName}
-                </dd>
-              </div>
-
-              <div>
-                <dt className="text-gray-500">
-                  Clinica
-                </dt>
-                <dd className="mt-1 font-semibold text-gray-900">
-                  {confirmation.clinicName}
-                </dd>
-              </div>
-
-              {confirmation.clinicAddress && (
-                <div className="sm:col-span-2">
-                  <dt className="text-gray-500">
-                    Adresa
-                  </dt>
-                  <dd className="mt-1 font-medium text-gray-900">
-                    {confirmation.clinicAddress}
-                  </dd>
-                </div>
-              )}
-
-              <div>
-                <dt className="text-gray-500">
-                  Data
-                </dt>
-                <dd className="mt-1 font-semibold text-gray-900">
-                  {formatDisplayDate(
-                    confirmation.requestedDate
-                  )}
-                </dd>
-              </div>
-
-              <div>
-                <dt className="text-gray-500">
-                  Ora
-                </dt>
-                <dd className="mt-1 font-semibold text-gray-900">
-                  {confirmation.requestedTime}
-                  {" · "}
-                  {
-                    confirmation.durationMinutes
-                  }{" "}
-                  minute
-                </dd>
-              </div>
-            </dl>
-          </div>
-
-          <div
-            className={
-              confirmation.emailSent
-                ? "rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
-                : "rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-            }
-          >
-            {confirmation.emailSent
-              ? `Detaliile au fost trimise la ${authenticatedEmail}.`
-              : "Cererea a fost salvată, dar e-mailul de confirmare nu a putut fi trimis."}
-          </div>
-
-          {confirmation.appointmentId && (
-            <p className="text-center text-xs text-gray-500">
-              Referință cerere:{" "}
-              {confirmation.appointmentId}
-            </p>
-          )}
-
-          <a
-            href="/patient-dashboard"
-            className="romdoc-button romdoc-button-primary w-full"
-          >
-            Vezi programările mele
-          </a>
-        </div>
-      </section>
     );
   }
 
