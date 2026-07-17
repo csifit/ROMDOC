@@ -701,6 +701,15 @@ export default async function PatientDashboardPage() {
                       )}
 
                       <div className="mt-6 flex flex-wrap gap-3 border-t border-gray-200 pt-5">
+                        <Link
+                          href={`/appointments/${appointment.id}/request-received`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="romdoc-button romdoc-button-secondary romdoc-button-sm"
+                        >
+                          Detaliile programării
+                        </Link>
+                        
                         {doctor && (
                           <Link
                             href={`/doctor/${doctor.slug}`}

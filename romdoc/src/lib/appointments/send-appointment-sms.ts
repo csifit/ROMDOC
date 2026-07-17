@@ -267,10 +267,7 @@ function buildMessage(
     return `RomDoc: Reamintire - ai programare maine, ${formatDate(date)}, ora ${formatTime(time)}, la ${doctorName}, ${clinicName}.`;
   }
 
-  const appointmentUrl =
-    `${getSiteUrl()}/appointments/${appointment.id}/request-received`;
-
-  return `RomDoc: Programarea ta la ${doctorName}, ${clinicName}, a fost confirmata pentru ${formatDate(date)}, ora ${formatTime(time)}. Detalii si calendar: ${appointmentUrl}`;
+  return `RomDoc: Programarea la ${doctorName}, ${clinicName}, a fost confirmata pentru ${formatDate(date)}, ora ${formatTime(time)}.`;
 }
 
 async function logSmsDelivery({
