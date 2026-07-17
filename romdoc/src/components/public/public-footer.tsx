@@ -5,6 +5,11 @@ import CookieInformationLink from "@/components/privacy/cookie-information-link"
 import { getPathname } from "@/i18n/navigation";
 import { type AppLocale } from "@/i18n/routing";
 
+import RecentlyViewedDoctorsPanel from "@/components/public/recently-viewed-doctors-panel";
+import {
+  recentlyViewedFooterCopy,
+} from "@/components/public/recently-viewed-footer-copy";
+
 type FooterLink = {
   href: string;
   label: string;
@@ -156,6 +161,8 @@ export default async function PublicFooter() {
     (await getLocale()) as AppLocale;
   const copy = footerCopy[locale];
 
+  const recentlyViewedCopy = recentlyViewedFooterCopy[locale];
+
   const homeHref = getPathname({ locale, href: "/" });
   const doctorsHref = getPathname({ locale, href: "/medici" });
   const specialtiesHref = getPathname({ locale, href: "/specialitati" });
@@ -202,8 +209,13 @@ export default async function PublicFooter() {
     { href: `${contactHref}#probleme-tehnice`, label: copy.reportProblem },
   ];
 
-  return (
-    <footer className="border-t border-gray-200 bg-white">
+  return ( 
+    <footer className="relative min-h-[430px] overflow-hidden border-t border-gray-200 bg-white">
+        <RecentlyViewedDoctorsPanel
+          doctorsHref={doctorsHref}
+          copy={recentlyViewedCopy}
+        />
+        
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_repeat(4,1fr)]">
           <div>

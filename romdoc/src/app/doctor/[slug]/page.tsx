@@ -12,6 +12,7 @@ import RatingStars from "@/components/reviews/rating-stars";
 import { getNextAvailableAppointment } from "@/lib/appointments/calculate-available-slots";
 import { createClient } from "@/lib/supabase/server";
 import DoctorProfileSaveControl from "@/components/patient/doctor-profile-save-control";
+import RecordRecentlyViewedDoctor from "@/components/public/record-recently-viewed-doctor";
 
 type Props = {
   params: Promise<{
@@ -34,6 +35,24 @@ type ClinicTranslation = {
 type CityTranslation = {
   locale: string;
   name: string;
+};
+
+type SpecialtyTranslation = {
+  locale: string;
+  name: string;
+};
+
+type SpecialtyRelation = {
+  specialty_translations:
+    | SpecialtyTranslation[]
+    | null;
+};
+
+type DoctorSpecialtyRelation = {
+  specialties:
+    | SpecialtyRelation
+    | SpecialtyRelation[]
+    | null;
 };
 
 type CityRelation = {
@@ -87,6 +106,7 @@ type DoctorRecord = {
   review_count: number | null;
   verification_status: string | null;
   doctor_translations: DoctorTranslation[] | null;
+  doctor_specialties: DoctorSpecialtyRelation[] | null;
   doctor_clinics: DoctorClinicRelation[] | null;
   reviews: ReviewRelation[] | null;
 };
@@ -197,6 +217,29 @@ function formatPrice(value: number) {
   }).format(value);
 }
 
+function getRomanianSpecialtyName(
+  doctor: DoctorRecord
+) {
+  const specialty =
+    getFirstRelation(
+      doctor.doctor_specialties?.[0]
+        ?.specialties
+    );
+
+  return (
+    specialty
+      ?.specialty_translations
+      ?.find(
+        (translation) =>
+          translation.locale === "ro"
+      )?.name ??
+    specialty
+      ?.specialty_translations?.[0]
+      ?.name ??
+    "Specialitate medicală"
+  );
+}
+
 export default async function DoctorPage({
   params,
 }: Props) {
@@ -220,6 +263,14 @@ export default async function DoctorPage({
         locale,
         title,
         biography
+      ),
+      doctor_specialties (
+        specialties (
+          specialty_translations (
+          locale,
+          name
+          )
+        )
       ),
       doctor_clinics (
         clinic_id,
@@ -380,6 +431,10 @@ export default async function DoctorPage({
     );
   const doctorName =
     formatDoctorName(doctor.slug);
+  const specialtyName =
+    getRomanianSpecialtyName(
+      doctor
+    );
   const isVerified =
     doctor.verification_status ===
     "verified";
@@ -726,6 +781,23 @@ export default async function DoctorPage({
       <DoctorMobileBookingBar
         consultationPrice={consultationPrice}
       />
+      <RecordRecentlyViewedDoctor
+         doctor={{
+          id: doctor.id,
+          slug: doctor.slug,
+          name: doctorName,
+          title:
+           translation?.title ??
+           "Medic",
+          specialtyName,
+          clinicName:
+            primaryClinicOption?.name ??
+            null,
+          photoUrl:
+            doctor.photo_url,
+          isVerified,
+      }}
+    />
     </main>
   );
 }
