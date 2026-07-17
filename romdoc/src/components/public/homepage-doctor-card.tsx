@@ -6,6 +6,7 @@ import {
   useTranslations,
 } from "next-intl";
 
+import SaveDoctorButton from "@/components/patient/save-doctor-button";
 import PublicDoctorPhoto from "@/components/public/public-doctor-photo";
 import VerifiedDoctorBadge from "@/components/public/verified-doctor-badge";
 
@@ -36,32 +37,49 @@ type HomepageDoctorCardProps = {
   doctor: HomepageDoctorCardData;
 };
 
-function getDateFormatter(locale: string) {
-  return new Intl.DateTimeFormat(locale, {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  });
+function getDateFormatter(
+  locale: string
+) {
+  return new Intl.DateTimeFormat(
+    locale,
+    {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      timeZone: "UTC",
+    }
+  );
 }
 
 export default function HomepageDoctorCard({
   doctor,
 }: HomepageDoctorCardProps) {
-  const locale = useLocale();
-  const t = useTranslations(
-    "HomepageDoctorCard"
-  );
-  const profileHref = `/doctor/${doctor.slug}`;
-  const bookingHref = `${profileHref}#programare`;
-  const formatPrice = (value: number) =>
-    new Intl.NumberFormat(locale, {
-      maximumFractionDigits: 2,
-    }).format(value);
+  const locale =
+    useLocale();
+  const t =
+    useTranslations(
+      "HomepageDoctorCard"
+    );
+  const profileHref =
+    `/doctor/${doctor.slug}`;
+  const bookingHref =
+    `${profileHref}#programare`;
+
+  const formatPrice = (
+    value: number
+  ) =>
+    new Intl.NumberFormat(
+      locale,
+      {
+        maximumFractionDigits: 2,
+      }
+    ).format(value);
 
   const nextAvailableDate =
     doctor.nextAvailableSlot
-      ? getDateFormatter(locale).format(
+      ? getDateFormatter(
+          locale
+        ).format(
           new Date(
             `${doctor.nextAvailableSlot.date}T12:00:00Z`
           )
@@ -72,21 +90,29 @@ export default function HomepageDoctorCard({
     <article className="flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-6">
       <div className="flex items-start gap-4">
         <PublicDoctorPhoto
-          photoUrl={doctor.photoUrl}
-          doctorName={doctor.name}
+          photoUrl={
+            doctor.photoUrl
+          }
+          doctorName={
+            doctor.name
+          }
           size="small"
         />
 
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-sm font-semibold text-[#036661]">
-                {doctor.specialtyName}
+                {
+                  doctor.specialtyName
+                }
               </p>
 
               <h3 className="mt-1 text-xl font-bold tracking-tight text-gray-900">
                 <Link
-                  href={profileHref}
+                  href={
+                    profileHref
+                  }
                   className="romdoc-focus-ring rounded-sm transition hover:text-[#036661]"
                 >
                   {doctor.name}
@@ -98,10 +124,25 @@ export default function HomepageDoctorCard({
               </p>
             </div>
 
-            {doctor.isVerified && (
-              <VerifiedDoctorBadge compact />
-            )}
+            <SaveDoctorButton
+              doctorId={
+                doctor.id
+              }
+              doctorName={
+                doctor.name
+              }
+              compact
+              className="shrink-0"
+            />
           </div>
+
+          {doctor.isVerified && (
+            <div className="mt-3">
+              <VerifiedDoctorBadge
+                compact
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -124,25 +165,34 @@ export default function HomepageDoctorCard({
       <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600">
         <span>
           <span className="font-semibold text-gray-900">
-            {doctor.averageRating.toFixed(1)}
+            {doctor.averageRating.toFixed(
+              1
+            )}
           </span>{" "}
           ({doctor.reviewCount})
         </span>
 
-        {doctor.yearsExperience !== null && (
+        {doctor.yearsExperience !==
+          null && (
           <span>
-            {t("yearsExperience", {
-              years: doctor.yearsExperience,
-            })}
+            {t(
+              "yearsExperience",
+              {
+                years:
+                  doctor.yearsExperience,
+              }
+            )}
           </span>
         )}
 
-        {doctor.consultationPrice !== null && (
+        {doctor.consultationPrice !==
+          null && (
           <span>
             {t("priceFrom", {
-              price: formatPrice(
-                doctor.consultationPrice
-              ),
+              price:
+                formatPrice(
+                  doctor.consultationPrice
+                ),
             })}
           </span>
         )}
@@ -156,14 +206,23 @@ export default function HomepageDoctorCard({
             className="romdoc-focus-ring block rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 transition hover:border-emerald-400 hover:bg-emerald-100"
           >
             <span className="block text-xs font-semibold uppercase tracking-wide text-emerald-700">
-              {t("nextAvailableLabel")}
+              {t(
+                "nextAvailableLabel"
+              )}
             </span>
 
             <span className="mt-1 block text-sm font-bold text-emerald-900">
-              {t("nextAvailableValue", {
-                date: nextAvailableDate,
-                time: doctor.nextAvailableSlot.time,
-              })}
+              {t(
+                "nextAvailableValue",
+                {
+                  date:
+                    nextAvailableDate,
+                  time:
+                    doctor
+                      .nextAvailableSlot
+                      .time,
+                }
+              )}
             </span>
           </Link>
         ) : (
@@ -175,8 +234,12 @@ export default function HomepageDoctorCard({
             }`}
           >
             {doctor.hasOnlineAvailability
-              ? t("onlineAvailable")
-              : t("checkAvailability")}
+              ? t(
+                  "onlineAvailable"
+                )
+              : t(
+                  "checkAvailability"
+                )}
           </span>
         )}
       </div>
@@ -193,7 +256,9 @@ export default function HomepageDoctorCard({
           href={bookingHref}
           className="romdoc-button romdoc-button-primary romdoc-button-full"
         >
-          {t("bookAppointment")}
+          {t(
+            "bookAppointment"
+          )}
         </Link>
       </div>
     </article>

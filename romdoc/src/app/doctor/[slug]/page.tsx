@@ -11,6 +11,7 @@ import PublicDoctorReviews, {
 import RatingStars from "@/components/reviews/rating-stars";
 import { getNextAvailableAppointment } from "@/lib/appointments/calculate-available-slots";
 import { createClient } from "@/lib/supabase/server";
+import DoctorProfileSaveControl from "@/components/patient/doctor-profile-save-control";
 
 type Props = {
   params: Promise<{
@@ -506,11 +507,16 @@ export default async function DoctorPage({
               </div>
             </div>
 
-            {isVerified && (
-              <div className="shrink-0">
-                <VerifiedDoctorBadge />
-              </div>
-            )}
+            <div className="flex shrink-0 flex-col items-start gap-4 sm:items-end">
+              {isVerified && (
+               <VerifiedDoctorBadge />
+              )}
+
+              <DoctorProfileSaveControl
+               doctorId={doctor.id}
+               doctorName={doctorName}
+              />
+          </div>
           </div>
 
           {isVerified && (
