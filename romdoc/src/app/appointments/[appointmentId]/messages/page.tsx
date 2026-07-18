@@ -1,11 +1,18 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import {
+  redirect,
+} from "next/navigation";
 
 import AppointmentMessages from "@/components/appointments/appointment-messages";
 import {
+  getAppointmentMessageAccess,
+} from "@/lib/appointments/get-appointment-message-access";
+import {
   createAdminClient,
 } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
 type PageProps = {
   params: Promise<{
@@ -13,17 +20,10 @@ type PageProps = {
   }>;
 };
 
-type ProfileRow = {
-  id: string;
-  role: string;
-  account_status: string | null;
-  first_name: string | null;
-  last_name: string | null;
-};
-
-type AppointmentRow = {
+type AppointmentDetailsRow = {
   id: string;
   doctor_id: string;
+  clinic_id: string | null;
   patient_profile_id: string | null;
   patient_name: string;
   requested_date: string;
@@ -33,175 +33,142 @@ type AppointmentRow = {
   status: string;
 };
 
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
+function formatDate(
+  value: string
+) {
+  return new Intl.DateTimeFormat(
+    "ro-RO",
+    {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    }
+  ).format(
+    new Date(
+      `${value}T12:00:00`
+    )
   );
 }
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("ro-RO", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(`${value}T12:00:00`));
+function formatTime(
+  value: string | null
+) {
+  return value
+    ? value.slice(
+        0,
+        5
+      )
+    : "—";
 }
 
-function formatTime(value: string | null) {
-  return value ? value.slice(0, 5) : "—";
-}
-
-function getBackHref(role: string) {
-  if (role === "doctor") {
-    return "/doctor-dashboard/appointments";
+function getBackHref(
+  role: string
+) {
+  if (
+    role === "doctor"
+  ) {
+    return "/doctor-dashboard/inbox";
   }
 
-  if (role === "staff") {
+  if (
+    role === "staff"
+  ) {
     return "/staff-dashboard";
   }
 
   return "/patient-dashboard";
 }
 
-async function staffCanAccessAppointment(
-  staffProfileId: string,
-  doctorId: string
+function getStatusLabel(
+  status: string
 ) {
-  const admin = createAdminClient();
-
-  const { data, error } = await admin
-    .from("doctor_staff")
-    .select("id")
-    .eq("staff_profile_id", staffProfileId)
-    .eq("doctor_id", doctorId)
-    .eq("status", "active")
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    console.error(
-      "Appointment messaging staff access lookup failed:",
-      error
-    );
+  switch (status) {
+    case "confirmed":
+      return "Confirmată";
+    case "rescheduled":
+      return "Reprogramată";
+    case "cancelled":
+      return "Anulată";
+    case "completed":
+      return "Finalizată";
+    case "no_show":
+      return "Neprezentare";
+    default:
+      return "În așteptare";
   }
-
-  return Boolean(data) && !error;
 }
 
 export default async function AppointmentMessagesPage({
   params,
 }: PageProps) {
-  const { appointmentId } = await params;
-
-  if (!isUuid(appointmentId)) {
-    redirect("/dashboard");
-  }
-
-  const supabase = await createClient();
-  const admin = createAdminClient();
-
   const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+    appointmentId,
+  } =
+    await params;
 
-  if (userError || !user) {
+  const supabase =
+    await createClient();
+
+  const admin =
+    createAdminClient();
+
+  const accessResult =
+    await getAppointmentMessageAccess({
+      supabase,
+      admin,
+      appointmentId,
+    });
+
+  if (
+    accessResult.error
+  ) {
+    if (
+      accessResult.status ===
+      401
+    ) {
+      redirect(
+        `/login?next=/appointments/${appointmentId}/messages`
+      );
+    }
+
     redirect(
-      `/login?next=/appointments/${appointmentId}/messages`
+      "/dashboard"
     );
   }
 
   const {
-    data: profile,
-    error: profileError,
-  } = await admin
-    .from("profiles")
-    .select(
-      "id, role, account_status, first_name, last_name"
-    )
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileError || !profile) {
-    redirect("/dashboard");
-  }
-
-  const typedProfile = profile as ProfileRow;
-
-  if (
-    typedProfile.account_status &&
-    typedProfile.account_status !== "active"
-  ) {
-    redirect("/dashboard");
-  }
+    access,
+  } =
+    accessResult;
 
   const {
     data: appointment,
-    error: appointmentError,
+    error:
+      appointmentError,
   } = await admin
     .from("appointments")
     .select(
-      "id, doctor_id, patient_profile_id, patient_name, requested_date, requested_time, scheduled_date, scheduled_time, status"
+      "id, doctor_id, clinic_id, patient_profile_id, patient_name, requested_date, requested_time, scheduled_date, scheduled_time, status"
     )
-    .eq("id", appointmentId)
+    .eq(
+      "id",
+      appointmentId
+    )
     .maybeSingle();
 
-  if (appointmentError || !appointment) {
-    redirect(getBackHref(typedProfile.role));
+  if (
+    appointmentError ||
+    !appointment
+  ) {
+    redirect(
+      getBackHref(
+        access?.profile?.role ?? "patient"
+      )
+    );
   }
 
   const typedAppointment =
-    appointment as AppointmentRow;
-
-  let hasAccess =
-    typedProfile.role === "patient" &&
-    typedAppointment.patient_profile_id === user.id;
-
-  if (!hasAccess && typedProfile.role === "doctor") {
-    const { data: doctor } = await admin
-      .from("doctors")
-      .select("id, profile_id")
-      .eq("id", typedAppointment.doctor_id)
-      .maybeSingle();
-
-    hasAccess =
-      !!doctor && doctor.profile_id === user.id;
-  }
-
-  if (!hasAccess && typedProfile.role === "staff") {
-    hasAccess = await staffCanAccessAppointment(
-      user.id,
-      typedAppointment.doctor_id
-    );
-  }
-
-  if (!hasAccess) {
-    redirect("/dashboard");
-  }
-
-  const { error: readStateError } = await admin
-  .from("appointment_message_reads")
-  .upsert(
-    {
-      appointment_id:
-        appointmentId,
-      profile_id:
-        user.id,
-      last_read_at:
-        new Date().toISOString(),
-    },
-    {
-      onConflict:
-        "appointment_id,profile_id",
-    }
-  );
-
-  if (readStateError) {
-    console.error(
-       "Appointment message read-state update failed:",
-       readStateError
-    );
-  }
+    appointment as AppointmentDetailsRow;
 
   const appointmentDate =
     typedAppointment.scheduled_date ??
@@ -212,31 +179,50 @@ export default async function AppointmentMessagesPage({
     typedAppointment.requested_time;
 
   return (
-    <main className="min-h-screen bg-[#F0EEE9] px-4 py-8 sm:px-6">
+    <main className="min-h-screen bg-[#F0EEE9] px-[13px] py-[21px] sm:px-[21px] sm:py-[34px]">
       <div className="mx-auto max-w-5xl">
         <Link
-          href={getBackHref(typedProfile.role)}
-          className="inline-flex rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:border-[#036661] hover:text-[#036661]"
+          href={getBackHref(
+              access?.profile?.role ?? "patient"
+            )}
+          className="romdoc-focus-ring inline-flex min-h-[34px] items-center rounded-[13px] border border-gray-300 bg-white px-[13px] py-[8px] text-sm font-semibold text-gray-700 transition hover:border-[#036661] hover:text-[#036661]"
         >
-          Înapoi la programări
+          Înapoi
         </Link>
 
-        <header className="mt-5 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-          <p className="text-sm font-semibold text-[#036661]">
-            Mesaje programare
-          </p>
+        <header className="mt-[13px] rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm sm:p-[34px]">
+          <div className="flex flex-col gap-[13px] sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-[#036661]">
+                Mesaje programare
+              </p>
 
-          <h1 className="mt-2 text-3xl font-bold text-gray-900">
-            Mesaje și fișiere pentru programare
-          </h1>
+              <h1 className="mt-[5px] text-3xl font-bold text-gray-900">
+                Mesaje și fișiere
+              </h1>
 
-          <div className="mt-5 grid gap-4 text-sm text-gray-700 sm:grid-cols-3">
+              <p className="mt-[8px] max-w-2xl text-sm leading-6 text-gray-600">
+                Conversația este disponibilă numai participanților acestei programări.
+              </p>
+            </div>
+
+            <span className="w-fit rounded-full bg-gray-100 px-[13px] py-[5px] text-sm font-semibold text-gray-700">
+              {getStatusLabel(
+                typedAppointment.status
+              )}
+            </span>
+          </div>
+
+          <div className="mt-[21px] grid gap-[13px] text-sm text-gray-700 sm:grid-cols-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                 Pacient
               </p>
-              <p className="mt-1 font-medium text-gray-900">
-                {typedAppointment.patient_name}
+
+              <p className="mt-[5px] font-medium text-gray-900">
+                {
+                  typedAppointment.patient_name
+                }
               </p>
             </div>
 
@@ -244,8 +230,11 @@ export default async function AppointmentMessagesPage({
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                 Data
               </p>
-              <p className="mt-1 font-medium text-gray-900">
-                {formatDate(appointmentDate)}
+
+              <p className="mt-[5px] font-medium text-gray-900">
+                {formatDate(
+                  appointmentDate
+                )}
               </p>
             </div>
 
@@ -253,16 +242,21 @@ export default async function AppointmentMessagesPage({
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                 Ora
               </p>
-              <p className="mt-1 font-medium text-gray-900">
-                {formatTime(appointmentTime)}
+
+              <p className="mt-[5px] font-medium text-gray-900">
+                {formatTime(
+                  appointmentTime
+                )}
               </p>
             </div>
           </div>
         </header>
 
-        <div className="mt-6">
+        <div className="mt-[21px]">
           <AppointmentMessages
-            appointmentId={appointmentId}
+            appointmentId={
+              appointmentId
+            }
           />
         </div>
       </div>
