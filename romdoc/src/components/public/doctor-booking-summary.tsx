@@ -10,20 +10,38 @@ type Props = {
   nextAvailableSlot: NextAvailableSlot;
 };
 
-function formatPrice(value: number) {
-  return new Intl.NumberFormat("ro-RO", {
-    maximumFractionDigits: 2,
-  }).format(value);
+function formatPrice(
+  value: number
+) {
+  return new Intl.NumberFormat(
+    "ro-RO",
+    {
+      maximumFractionDigits:
+        2,
+    }
+  ).format(
+    value
+  );
 }
 
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat("ro-RO", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "Europe/Bucharest",
-  }).format(new Date(`${date}T12:00:00`));
+function formatDate(
+  date: string
+) {
+  return new Intl.DateTimeFormat(
+    "ro-RO",
+    {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone:
+        "Europe/Bucharest",
+    }
+  ).format(
+    new Date(
+      `${date}T12:00:00`
+    )
+  );
 }
 
 export default function DoctorBookingSummary({
@@ -33,53 +51,81 @@ export default function DoctorBookingSummary({
   nextAvailableSlot,
 }: Props) {
   return (
-    <aside className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm lg:sticky lg:top-24">
-      <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#036661]">
-        Programare online
-      </p>
+    <aside
+      aria-labelledby="doctor-booking-summary-title"
+      className="romdoc-card hidden self-start lg:sticky lg:top-[89px] lg:block lg:max-h-[calc(100vh-110px)] lg:overflow-y-auto"
+    >
+      <div className="border-b border-gray-200 pb-[21px]">
+        <p className="text-sm font-semibold uppercase tracking-[0.13em] text-[#036661]">
+          Programare online
+        </p>
 
-      <h2 className="mt-2 text-2xl font-bold tracking-tight text-gray-900">
-        Informațiile esențiale
-      </h2>
+        <h2
+          id="doctor-booking-summary-title"
+          className="mt-[8px] text-2xl font-bold tracking-tight text-gray-900"
+        >
+          Detalii pentru programare
+        </h2>
 
-      <dl className="mt-6 space-y-5">
-        <div>
+        <p className="mt-[8px] text-sm leading-6 text-gray-600">
+          Verifică informațiile principale, apoi completează formularul de programare.
+        </p>
+      </div>
+
+      <dl className="mt-[21px] space-y-[21px]">
+        <div className="romdoc-panel-muted">
           <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Clinica afișată
+            Clinica
           </dt>
-          <dd className="mt-1 font-semibold text-gray-900">
-            {clinicName ?? "Selectează clinica în formular"}
+
+          <dd className="mt-[5px] font-semibold text-gray-900">
+            {clinicName ??
+              "Selectează clinica în formular"}
           </dd>
+
           {clinicAddress && (
-            <dd className="mt-1 text-sm leading-6 text-gray-600">
-              {clinicAddress}
+            <dd className="mt-[5px] text-sm leading-6 text-gray-600">
+              {
+                clinicAddress
+              }
             </dd>
           )}
         </div>
 
-        <div>
+        <div className="romdoc-panel-muted">
           <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Tarif orientativ
           </dt>
-          <dd className="mt-1 text-lg font-bold text-gray-900">
-            {consultationPrice !== null
-              ? `De la ${formatPrice(consultationPrice)} RON`
+
+          <dd className="mt-[5px] text-lg font-bold text-gray-900">
+            {consultationPrice !==
+            null
+              ? `De la ${formatPrice(
+                  consultationPrice
+                )} RON`
               : "Tariful va fi confirmat de clinică"}
           </dd>
         </div>
 
-        <div>
+        <div className="romdoc-panel-muted">
           <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Următorul interval disponibil
           </dt>
-          <dd className="mt-1">
+
+          <dd className="mt-[5px]">
             {nextAvailableSlot ? (
               <>
                 <span className="block font-semibold capitalize text-[#036661]">
-                  {formatDate(nextAvailableSlot.date)}
+                  {formatDate(
+                    nextAvailableSlot.date
+                  )}
                 </span>
-                <span className="mt-1 block text-sm text-gray-700">
-                  Ora {nextAvailableSlot.time}
+
+                <span className="mt-[5px] block text-sm text-gray-700">
+                  Ora{" "}
+                  {
+                    nextAvailableSlot.time
+                  }
                 </span>
               </>
             ) : (
@@ -93,13 +139,13 @@ export default function DoctorBookingSummary({
 
       <a
         href="#programare"
-        className="romdoc-button romdoc-button-primary mt-7 w-full justify-center"
+        className="romdoc-button romdoc-button-primary mt-[21px] w-full justify-center"
       >
         Solicită o programare
       </a>
 
-      <p className="mt-4 text-xs leading-5 text-gray-500">
-        Programarea online este o solicitare. Medicul sau personalul clinicii o va confirma ulterior.
+      <p className="mt-[13px] text-xs leading-5 text-gray-500">
+        Programarea online este o solicitare. Medicul sau personalul clinicii va confirma ulterior data și ora.
       </p>
     </aside>
   );
