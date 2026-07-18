@@ -102,13 +102,19 @@ const Button = forwardRef<
   ref
 ) {
   const isDisabled =
-    disabled || isLoading;
+    disabled ||
+    isLoading;
 
   return (
     <button
       ref={ref}
       type={type}
       disabled={isDisabled}
+      aria-disabled={
+        isDisabled
+          ? true
+          : undefined
+      }
       aria-busy={
         isLoading
           ? true
@@ -119,7 +125,9 @@ const Button = forwardRef<
         getVariantClass(
           variant
         ),
-        getSizeClass(size),
+        getSizeClass(
+          size
+        ),
         fullWidth &&
           "romdoc-button-full",
         isLoading &&
@@ -135,8 +143,12 @@ const Button = forwardRef<
             className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent"
           />
 
-          <span>
-            {loadingText}
+          <span
+            aria-live="polite"
+          >
+            {
+              loadingText
+            }
           </span>
         </>
       ) : (
@@ -146,18 +158,26 @@ const Button = forwardRef<
               aria-hidden="true"
               className="shrink-0"
             >
-              {leftIcon}
+              {
+                leftIcon
+              }
             </span>
           )}
 
-          <span>{children}</span>
+          <span>
+            {
+              children
+            }
+          </span>
 
           {rightIcon && (
             <span
               aria-hidden="true"
               className="shrink-0"
             >
-              {rightIcon}
+              {
+                rightIcon
+              }
             </span>
           )}
         </>

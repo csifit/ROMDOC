@@ -10,6 +10,7 @@ import {
 } from "next-intl/server";
 
 import "./globals.css";
+import "./romdoc-visual-system.css";
 
 import { Analytics } from "@vercel/analytics/next";
 

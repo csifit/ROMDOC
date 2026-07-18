@@ -7,12 +7,10 @@ import {
   useState,
 } from "react";
 
+import StaffAppointmentsCalendar from "@/components/staff/staff-appointments-calendar";
 import StaffAppointmentsFilteredList, {
   type StaffAppointmentListItem,
 } from "@/components/staff/staff-appointments-filtered-list";
-import StaffAppointmentsWeeklyCalendar, {
-  type StaffWeeklyAppointment,
-} from "@/components/staff/staff-appointments-weekly-calendar";
 import StaffCreateAppointmentForm, {
   type StaffDoctorOption,
 } from "@/components/staff/staff-create-appointment-form";
@@ -256,65 +254,17 @@ export default function StaffAppointmentsManager() {
             createdAt:
               appointment.created_at,
             doctorName:
-              getDoctorName(
-                appointment
-              ),
+              getDoctorName(appointment),
             clinicName:
-              getClinicName(
-                appointment
-              ),
+              getClinicName(appointment),
           })
-        ),
-      [appointments]
-    );
-
-  const calendarAppointments =
-    useMemo<
-      StaffWeeklyAppointment[]
-    >(
-      () =>
-        appointments.flatMap(
-          (appointment) => {
-            const date =
-              appointment.scheduled_date ??
-              appointment.requested_date;
-
-            const time =
-              appointment.scheduled_time ??
-              appointment.requested_time;
-
-            if (!date || !time) {
-              return [];
-            }
-
-            return [
-              {
-                id:
-                  appointment.id,
-                patientName:
-                  appointment.patient_name,
-                doctorName:
-                  getDoctorName(
-                    appointment
-                  ),
-                clinicName:
-                  getClinicName(
-                    appointment
-                  ),
-                date,
-                time,
-                status:
-                  appointment.status,
-              },
-            ];
-          }
         ),
       [appointments]
     );
 
   if (isLoading) {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+      <div className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
         <p className="text-sm text-gray-600">
           Se încarcă programările...
         </p>
@@ -323,17 +273,17 @@ export default function StaffAppointmentsManager() {
   }
 
   return (
-    <div className="space-y-10">
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+    <div className="space-y-[34px]">
+      <section className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
         <p className="text-sm font-semibold text-[#036661]">
           Personal
         </p>
 
-        <h1 className="mt-2 text-3xl font-bold text-gray-900">
+        <h1 className="mt-[8px] text-3xl font-bold text-gray-900">
           Programările medicului
         </h1>
 
-        <p className="mt-3 text-sm leading-6 text-gray-600">
+        <p className="mt-[13px] max-w-4xl text-sm leading-6 text-gray-600">
           Ai acces la toate programările și poți crea, confirma, reprograma, finaliza, marca drept neprezentare sau anula programări pentru medicii pe care îi gestionezi.
         </p>
       </section>
@@ -341,9 +291,25 @@ export default function StaffAppointmentsManager() {
       {error && (
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+          className="rounded-[13px] border border-red-200 bg-red-50 p-[13px] text-sm text-red-800"
         >
-          {error}
+          <p className="font-semibold">
+            Programările nu au putut fi încărcate.
+          </p>
+
+          <p className="mt-[5px]">
+            {error}
+          </p>
+
+          <button
+            type="button"
+            onClick={() =>
+              void loadAppointments()
+            }
+            className="romdoc-focus-ring mt-[13px] inline-flex min-h-[34px] items-center rounded-[13px] border border-red-300 bg-white px-[13px] py-[8px] font-semibold text-red-800"
+          >
+            Reîncearcă
+          </button>
         </div>
       )}
 
@@ -356,9 +322,12 @@ export default function StaffAppointmentsManager() {
             }
           />
 
-          <StaffAppointmentsWeeklyCalendar
+          <StaffAppointmentsCalendar
             appointments={
-              calendarAppointments
+              appointmentListItems
+            }
+            onUpdated={
+              loadAppointments
             }
           />
 

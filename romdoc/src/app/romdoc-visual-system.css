@@ -1,0 +1,429 @@
+/*
+ * RomDoc shared visual system
+ *
+ * Exact path:
+ * ROMDOC/romdoc/src/app/romdoc-visual-system.css
+ *
+ * Fibonacci-inspired spacing:
+ * 5, 8, 13, 21, 34, 55, 89
+ */
+
+:root {
+  --romdoc-color-primary: #036661;
+  --romdoc-color-primary-hover: #024f4b;
+  --romdoc-color-accent: #ff2800;
+
+  --romdoc-color-surface: #ffffff;
+  --romdoc-color-surface-soft: #f9fafb;
+  --romdoc-color-page: #f0eee9;
+
+  --romdoc-color-text: #111827;
+  --romdoc-color-text-muted: #4b5563;
+  --romdoc-color-border: #d1d5db;
+  --romdoc-color-border-soft: #e5e7eb;
+
+  --romdoc-color-danger: #dc2626;
+  --romdoc-color-danger-hover: #b91c1c;
+
+  --romdoc-radius-sm: 8px;
+  --romdoc-radius-md: 13px;
+  --romdoc-radius-lg: 21px;
+
+  --romdoc-space-1: 5px;
+  --romdoc-space-2: 8px;
+  --romdoc-space-3: 13px;
+  --romdoc-space-4: 21px;
+  --romdoc-space-5: 34px;
+  --romdoc-space-6: 55px;
+  --romdoc-space-7: 89px;
+
+  --romdoc-shadow-card:
+    0 1px 2px rgba(17, 24, 39, 0.05),
+    0 8px 21px rgba(17, 24, 39, 0.05);
+
+  --romdoc-focus-ring:
+    0 0 0 3px rgba(3, 102, 97, 0.22);
+}
+
+/* -----------------------------------------------------
+   Cards and panels
+----------------------------------------------------- */
+
+.romdoc-card {
+  border: 1px solid var(--romdoc-color-border-soft);
+  border-radius: var(--romdoc-radius-lg);
+  background: var(--romdoc-color-surface);
+  padding: var(--romdoc-space-4);
+  box-shadow: var(--romdoc-shadow-card);
+}
+
+.romdoc-card-compact {
+  border: 1px solid var(--romdoc-color-border-soft);
+  border-radius: var(--romdoc-radius-md);
+  background: var(--romdoc-color-surface);
+  padding: var(--romdoc-space-3);
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.05);
+}
+
+.romdoc-panel-muted {
+  border: 1px solid var(--romdoc-color-border-soft);
+  border-radius: var(--romdoc-radius-md);
+  background: var(--romdoc-color-surface-soft);
+  padding: var(--romdoc-space-3);
+}
+
+/* -----------------------------------------------------
+   Form controls
+----------------------------------------------------- */
+
+.romdoc-label {
+  display: block;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+}
+
+.romdoc-help-text {
+  margin-top: var(--romdoc-space-1);
+  color: #6b7280;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+}
+
+.romdoc-field-error {
+  margin-top: var(--romdoc-space-1);
+  color: #b91c1c;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+}
+
+.romdoc-input,
+.romdoc-select,
+.romdoc-textarea {
+  width: 100%;
+  border: 1px solid var(--romdoc-color-border);
+  border-radius: var(--romdoc-radius-md);
+  background: var(--romdoc-color-surface);
+  color: var(--romdoc-color-text);
+  font-size: 0.9375rem;
+  line-height: 1.5rem;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background-color 150ms ease;
+}
+
+.romdoc-input,
+.romdoc-select {
+  min-height: 44px;
+  padding: var(--romdoc-space-2) var(--romdoc-space-3);
+}
+
+.romdoc-textarea {
+  min-height: 89px;
+  padding: var(--romdoc-space-3);
+  resize: vertical;
+}
+
+.romdoc-input:hover:not(:disabled),
+.romdoc-select:hover:not(:disabled),
+.romdoc-textarea:hover:not(:disabled) {
+  border-color: #9ca3af;
+}
+
+.romdoc-input:focus,
+.romdoc-select:focus,
+.romdoc-textarea:focus {
+  border-color: var(--romdoc-color-primary);
+  outline: none;
+  box-shadow: var(--romdoc-focus-ring);
+}
+
+.romdoc-input:disabled,
+.romdoc-select:disabled,
+.romdoc-textarea:disabled {
+  cursor: not-allowed;
+  background: #f3f4f6;
+  color: #6b7280;
+  opacity: 0.75;
+}
+
+.romdoc-input[aria-invalid="true"],
+.romdoc-select[aria-invalid="true"],
+.romdoc-textarea[aria-invalid="true"] {
+  border-color: var(--romdoc-color-danger);
+}
+
+.romdoc-input[aria-invalid="true"]:focus,
+.romdoc-select[aria-invalid="true"]:focus,
+.romdoc-textarea[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.18);
+}
+
+/* -----------------------------------------------------
+   Status badges
+----------------------------------------------------- */
+
+.romdoc-status {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: var(--romdoc-space-1);
+  width: fit-content;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  padding: var(--romdoc-space-1) var(--romdoc-space-3);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1rem;
+  white-space: nowrap;
+}
+
+.romdoc-status-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 9999px;
+  background: currentColor;
+}
+
+.romdoc-status-pending {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.romdoc-status-confirmed {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.romdoc-status-rescheduled {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+.romdoc-status-completed {
+  border-color: #d1d5db;
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.romdoc-status-cancelled {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.romdoc-status-no-show {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+/* -----------------------------------------------------
+   Notices and fallback states
+----------------------------------------------------- */
+
+.romdoc-notice {
+  border: 1px solid var(--romdoc-color-border-soft);
+  border-radius: var(--romdoc-radius-md);
+  padding: var(--romdoc-space-3);
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+}
+
+.romdoc-notice-info {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.romdoc-notice-success {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #14532d;
+}
+
+.romdoc-notice-warning {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #78350f;
+}
+
+.romdoc-notice-danger {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #7f1d1d;
+}
+
+.romdoc-empty-state {
+  border: 1px dashed var(--romdoc-color-border);
+  border-radius: var(--romdoc-radius-lg);
+  background: var(--romdoc-color-surface-soft);
+  padding: var(--romdoc-space-5);
+  text-align: center;
+}
+
+/* -----------------------------------------------------
+   Segmented controls
+----------------------------------------------------- */
+
+.romdoc-segmented-control {
+  display: grid;
+  gap: var(--romdoc-space-1);
+  border-radius: var(--romdoc-radius-md);
+  background: #f3f4f6;
+  padding: var(--romdoc-space-1);
+}
+
+.romdoc-segmented-button {
+  min-height: 34px;
+  border-radius: var(--romdoc-radius-sm);
+  padding: var(--romdoc-space-1) var(--romdoc-space-2);
+  color: #4b5563;
+  font-size: 0.875rem;
+  font-weight: 700;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.romdoc-segmented-button:hover {
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--romdoc-color-text);
+}
+
+.romdoc-segmented-button[aria-pressed="true"] {
+  background: #ffffff;
+  color: var(--romdoc-color-primary);
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.08);
+}
+
+.romdoc-segmented-button:focus-visible {
+  outline: none;
+  box-shadow: var(--romdoc-focus-ring);
+}
+
+
+/* -----------------------------------------------------
+   Shared button overrides
+   Loaded after globals.css so every Button component and
+   existing romdoc-button link follows the same behavior.
+----------------------------------------------------- */
+
+.romdoc-button {
+  min-height: 44px;
+  gap: var(--romdoc-space-2);
+  border-radius: var(--romdoc-radius-md);
+  padding: var(--romdoc-space-2) var(--romdoc-space-4);
+  font-weight: 700;
+}
+
+.romdoc-button-primary {
+  border-color: var(--romdoc-color-primary);
+  background: var(--romdoc-color-primary);
+  color: #ffffff;
+}
+
+.romdoc-button-primary:hover:not(:disabled):not([aria-disabled="true"]) {
+  border-color: var(--romdoc-color-primary-hover);
+  background: var(--romdoc-color-primary-hover);
+}
+
+.romdoc-button-secondary {
+  border-color: var(--romdoc-color-primary);
+  background: #ffffff;
+  color: var(--romdoc-color-primary);
+}
+
+.romdoc-button-secondary:hover:not(:disabled):not([aria-disabled="true"]) {
+  border-color: var(--romdoc-color-primary);
+  background: #ecfdf5;
+  color: var(--romdoc-color-primary-hover);
+}
+
+.romdoc-button-muted {
+  border-color: var(--romdoc-color-border);
+  background: #ffffff;
+  color: #374151;
+}
+
+.romdoc-button-muted:hover:not(:disabled):not([aria-disabled="true"]) {
+  border-color: #9ca3af;
+  background: var(--romdoc-color-surface-soft);
+  color: var(--romdoc-color-text);
+}
+
+.romdoc-button-danger {
+  border-color: var(--romdoc-color-danger);
+  background: var(--romdoc-color-danger);
+  color: #ffffff;
+}
+
+.romdoc-button-danger:hover:not(:disabled):not([aria-disabled="true"]) {
+  border-color: var(--romdoc-color-danger-hover);
+  background: var(--romdoc-color-danger-hover);
+}
+
+.romdoc-button-danger-outline {
+  border-color: var(--romdoc-color-danger);
+  background: #ffffff;
+  color: var(--romdoc-color-danger);
+}
+
+.romdoc-button-danger-outline:hover:not(:disabled):not([aria-disabled="true"]) {
+  border-color: var(--romdoc-color-danger);
+  background: #fef2f2;
+  color: var(--romdoc-color-danger-hover);
+}
+
+.romdoc-button-sm {
+  min-height: 34px;
+  border-radius: var(--romdoc-radius-sm);
+  padding: var(--romdoc-space-1) var(--romdoc-space-3);
+}
+
+.romdoc-button-lg {
+  min-height: 55px;
+  border-radius: var(--romdoc-radius-md);
+  padding: var(--romdoc-space-3) var(--romdoc-space-5);
+}
+
+.romdoc-button-icon {
+  min-height: 44px;
+  width: 44px;
+  padding: 0;
+}
+
+.romdoc-button:focus-visible,
+.romdoc-focus-ring:focus-visible {
+  outline: none;
+  box-shadow: var(--romdoc-focus-ring);
+}
+
+.romdoc-button:disabled,
+.romdoc-button[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+/* -----------------------------------------------------
+   Reduced motion
+----------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .romdoc-button,
+  .romdoc-input,
+  .romdoc-select,
+  .romdoc-textarea,
+  .romdoc-segmented-button {
+    transition: none !important;
+  }
+}

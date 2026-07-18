@@ -19,15 +19,13 @@ import type {
 } from "@fullcalendar/core";
 
 import AppointmentActions from "@/components/admin/appointment-actions";
+import AppointmentStatusBadge from "@/components/ui/appointment-status-badge";
 import Button from "@/components/ui/button";
-
-type AppointmentStatus =
-  | "pending"
-  | "confirmed"
-  | "rescheduled"
-  | "completed"
-  | "cancelled"
-  | "no_show";
+import {
+  APPOINTMENT_STATUS,
+  APPOINTMENT_STATUS_ORDER,
+  type AppointmentStatus,
+} from "@/lib/appointments/appointment-status";
 
 type CalendarMode =
   | "agenda"
@@ -59,80 +57,6 @@ export type DoctorCalendarAppointment = {
 
 type AppointmentCalendarProps = {
   appointments: DoctorCalendarAppointment[];
-};
-
-type StatusStyle = {
-  label: string;
-  dotClassName: string;
-  badgeClassName: string;
-  eventBackground: string;
-  eventBorder: string;
-  eventText: string;
-};
-
-const statusStyles: Record<
-  AppointmentStatus,
-  StatusStyle
-> = {
-  pending: {
-    label: "În așteptare",
-    dotClassName: "bg-amber-500",
-    badgeClassName:
-      "border-amber-200 bg-amber-50 text-amber-800",
-    eventBackground: "#F59E0B",
-    eventBorder: "#D97706",
-    eventText: "#111827",
-  },
-
-  confirmed: {
-    label: "Confirmată",
-    dotClassName: "bg-green-600",
-    badgeClassName:
-      "border-green-200 bg-green-50 text-green-800",
-    eventBackground: "#16A34A",
-    eventBorder: "#15803D",
-    eventText: "#FFFFFF",
-  },
-
-  rescheduled: {
-    label: "Reprogramată",
-    dotClassName: "bg-blue-600",
-    badgeClassName:
-      "border-blue-200 bg-blue-50 text-blue-800",
-    eventBackground: "#2563EB",
-    eventBorder: "#1D4ED8",
-    eventText: "#FFFFFF",
-  },
-
-  completed: {
-    label: "Finalizată",
-    dotClassName: "bg-gray-500",
-    badgeClassName:
-      "border-gray-200 bg-gray-100 text-gray-700",
-    eventBackground: "#6B7280",
-    eventBorder: "#4B5563",
-    eventText: "#FFFFFF",
-  },
-
-  cancelled: {
-    label: "Anulată",
-    dotClassName: "bg-red-600",
-    badgeClassName:
-      "border-red-200 bg-red-50 text-red-800",
-    eventBackground: "#DC2626",
-    eventBorder: "#B91C1C",
-    eventText: "#FFFFFF",
-  },
-
-  no_show: {
-    label: "Neprezentare",
-    dotClassName: "bg-orange-700",
-    badgeClassName:
-      "border-orange-200 bg-orange-50 text-orange-900",
-    eventBackground: "#C2410C",
-    eventBorder: "#9A3412",
-    eventText: "#FFFFFF",
-  },
 };
 
 const calendarViewByMode: Record<
@@ -396,7 +320,7 @@ export default function AppointmentCalendar({
             appointment
           ) => {
             const style =
-              statusStyles[
+              APPOINTMENT_STATUS[
                 appointment.status
               ];
 
@@ -410,11 +334,11 @@ export default function AppointmentCalendar({
                   appointment.calendarTime
                 )}`,
               backgroundColor:
-                style.eventBackground,
+                style.calendarBackground,
               borderColor:
-                style.eventBorder,
+                style.calendarBorder,
               textColor:
-                style.eventText,
+                style.calendarText,
               extendedProps: {
                 appointmentId:
                   appointment.id,
@@ -562,7 +486,7 @@ export default function AppointmentCalendar({
 
   return (
     <div className="space-y-[21px]">
-      <section className="rounded-[21px] border border-gray-200 bg-white p-[13px] shadow-sm sm:p-[21px]">
+      <section className="romdoc-card p-[13px] sm:p-[21px]">
         <div className="flex flex-col gap-[13px] border-b border-gray-200 pb-[13px] lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-sm font-semibold text-[#036661]">
@@ -578,7 +502,7 @@ export default function AppointmentCalendar({
           </div>
 
           <div
-            className="grid grid-cols-4 gap-[5px] rounded-[13px] bg-gray-100 p-[5px]"
+            className="romdoc-segmented-control grid-cols-4"
             aria-label="Alege vizualizarea calendarului"
           >
             {(
@@ -624,7 +548,7 @@ export default function AppointmentCalendar({
                     mode ===
                     value
                   }
-                  className={`romdoc-focus-ring min-h-[34px] rounded-[8px] px-[8px] py-[5px] text-sm font-semibold transition ${
+                  className={`romdoc-segmented-button ${
                     mode ===
                     value
                       ? "bg-white text-[#036661] shadow-sm"
@@ -642,14 +566,16 @@ export default function AppointmentCalendar({
 
         <div className="mt-[13px] flex flex-wrap gap-x-[13px] gap-y-[8px]">
           {(
-            Object.entries(
-              statusStyles
-            ) as Array<
-              [
-                AppointmentStatus,
-                StatusStyle,
-              ]
-            >
+            APPOINTMENT_STATUS_ORDER.map(
+              (
+                status
+              ) => [
+                status,
+                APPOINTMENT_STATUS[
+                  status
+                ],
+              ] as const
+            )
           ).map(
             ([
               status,
@@ -667,7 +593,7 @@ export default function AppointmentCalendar({
 
                 <span>
                   {
-                    style.label
+                    style.labelRo
                   }
                 </span>
               </div>
@@ -875,7 +801,7 @@ export default function AppointmentCalendar({
                   locale={
                     roLocale
                   }
-                  initialView={calendarViewByMode[mode as Exclude<CalendarMode, "agenda">]}
+                  initialView={calendarViewByMode[mode]}
                   headerToolbar={
                     false
                   }
@@ -991,11 +917,6 @@ function AgendaCard({
   appointment: DoctorCalendarAppointment;
   onOpen: () => void;
 }) {
-  const style =
-    statusStyles[
-      appointment.status
-    ];
-
   return (
     <button
       type="button"
@@ -1029,13 +950,11 @@ function AgendaCard({
               </p>
             </div>
 
-            <span
-              className={`inline-flex min-h-[34px] items-center rounded-full border px-[13px] py-[5px] text-xs font-semibold ${style.badgeClassName}`}
-            >
-              {
-                style.label
+            <AppointmentStatusBadge
+              status={
+                appointment.status
               }
-            </span>
+            />
           </div>
 
           <div className="mt-[8px] flex flex-wrap gap-x-[13px] gap-y-[5px] text-xs text-gray-500">
@@ -1080,11 +999,6 @@ function AppointmentDetails({
   appointment: DoctorCalendarAppointment;
   onClose: () => void;
 }) {
-  const style =
-    statusStyles[
-      appointment.status
-    ];
-
   return (
     <section
       id={`calendar-appointment-${appointment.id}`}
@@ -1103,13 +1017,11 @@ function AppointmentDetails({
           </h2>
 
           <div className="mt-[8px] flex flex-wrap items-center gap-[8px]">
-            <span
-              className={`inline-flex min-h-[34px] items-center rounded-full border px-[13px] py-[5px] text-xs font-semibold ${style.badgeClassName}`}
-            >
-              {
-                style.label
+            <AppointmentStatusBadge
+              status={
+                appointment.status
               }
-            </span>
+            />
 
             <span className="text-sm text-gray-500">
               {formatCompactDate(
