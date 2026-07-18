@@ -13,10 +13,10 @@ function CheckIcon() {
     <svg
       viewBox="0 0 24 24"
       aria-hidden="true"
-      className="h-5 w-5"
+      className="h-4 w-4"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="2.2"
     >
       <path
         strokeLinecap="round"
@@ -32,16 +32,13 @@ function PendingIcon() {
     <svg
       viewBox="0 0 24 24"
       aria-hidden="true"
-      className="h-5 w-5"
+      className="h-4 w-4"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="1.9"
     >
       <circle cx="12" cy="12" r="8.5" />
-      <path
-        strokeLinecap="round"
-        d="M12 7.5v5l3 2"
-      />
+      <path strokeLinecap="round" d="M12 7.5v5l3 2" />
     </svg>
   );
 }
@@ -49,229 +46,228 @@ function PendingIcon() {
 function verificationLabel(status: string) {
   switch (status) {
     case "verified":
-      return "Medic verificat de RomDoc";
+      return "Verificat";
     case "pending":
-      return "Verificare în curs";
+      return "În verificare";
     case "rejected":
-      return "Verificare respinsă";
+      return "Respins";
     case "expired":
-      return "Verificare expirată";
+      return "Expirat";
     default:
-      return "Verificare netrimisă";
+      return "Netrimis";
+  }
+}
+
+function verificationClasses(status: string) {
+  switch (status) {
+    case "verified":
+      return "border-emerald-200 bg-emerald-50 text-emerald-800";
+    case "pending":
+      return "border-amber-200 bg-amber-50 text-amber-800";
+    case "rejected":
+    case "expired":
+      return "border-red-200 bg-red-50 text-red-800";
+    default:
+      return "border-gray-200 bg-gray-50 text-gray-700";
   }
 }
 
 export default function DoctorOnboardingChecklist({
   completion,
 }: DoctorOnboardingChecklistProps) {
+  const nextIncompleteItem = completion.items.find(
+    (item) => !item.completed
+  );
+
   return (
-    <div className="space-y-6">
-      <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="p-6 sm:p-8">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-[#036661]">
-                Configurarea profilului
-              </p>
+    <section
+      aria-labelledby="doctor-profile-checklist-title"
+      className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
+    >
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#036661]">
+              Profil medic
+            </p>
 
-              <h2 className="mt-2 text-2xl font-bold text-gray-900">
-                {completion.isReadyForPatients
-                  ? "Profilul este pregătit pentru pacienți"
-                  : completion.isComplete
-                    ? "Profilul este complet, dar nu este încă pregătit"
-                    : "Finalizează profilul pentru pacienți"}
-              </h2>
-
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-600">
-                {completion.readinessMessage}
-              </p>
-            </div>
-
-            <div className="shrink-0 rounded-2xl bg-[#F0EEE9] px-6 py-4 text-center">
-              <p className="text-3xl font-bold text-[#036661]">
-                {completion.percentage}%
-              </p>
-              <p className="mt-1 text-xs font-medium text-gray-600">
-                {completion.completedItems} din{" "}
-                {completion.totalItems} pași
-              </p>
-            </div>
-          </div>
-
-          <div
-            className="mt-6 h-3 overflow-hidden rounded-full bg-gray-200"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={completion.percentage}
-            aria-label={`Profil completat ${completion.percentage}%`}
-          >
-            <div
-              className="h-full rounded-full bg-[#036661] transition-all"
-              style={{
-                width: `${completion.percentage}%`,
-              }}
-            />
-          </div>
-
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              href={`/doctor/${completion.doctorSlug}`}
-              target="_blank"
-              rel="noreferrer"
-              className="romdoc-button romdoc-button-secondary"
+            <span
+              className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                completion.isReadyForPatients
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : "border-amber-200 bg-amber-50 text-amber-800"
+              }`}
             >
-              Vezi profilul public
-            </Link>
-
-            {!completion.isComplete && (
-              <Link
-                href={
-                  completion.items.find(
-                    (item) => !item.completed
-                  )?.href ?? "/doctor-dashboard/profile"
-                }
-                className="romdoc-button romdoc-button-primary"
-              >
-                Continuă configurarea
-              </Link>
-            )}
-          </div>
-        </div>
-
-        {completion.doctorStatus !== "active" && (
-          <div className="border-t border-amber-200 bg-amber-50 px-6 py-4 text-sm text-amber-900 sm:px-8">
-            Profilul medicului are momentan starea{" "}
-            <strong>{completion.doctorStatus}</strong>. Poți continua
-            configurarea, însă vizibilitatea publică poate fi limitată.
-          </div>
-        )}
-      </section>
-
-      <section
-        className={`rounded-2xl border p-5 shadow-sm ${
-          completion.isReadyForPatients
-            ? "border-emerald-200 bg-emerald-50"
-            : "border-amber-200 bg-amber-50"
-        }`}
-      >
-        <div className="flex items-start gap-4">
-          <span
-            className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-              completion.isReadyForPatients
-                ? "bg-emerald-600 text-white"
-                : "bg-amber-100 text-amber-800"
-            }`}
-          >
-            {completion.isReadyForPatients ? (
-              <CheckIcon />
-            ) : (
-              <PendingIcon />
-            )}
-          </span>
-
-          <div>
-            <h2 className="font-semibold text-gray-900">
               {completion.isReadyForPatients
                 ? "Pregătit pentru programări"
                 : "Configurare în curs"}
+            </span>
+          </div>
+
+          <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h2
+              id="doctor-profile-checklist-title"
+              className="text-lg font-bold text-gray-900"
+            >
+              Checklist configurare
             </h2>
 
-            <p className="mt-1 text-sm leading-6 text-gray-700">
-              {completion.readinessMessage}
+            <p className="text-sm text-gray-500">
+              {completion.completedItems} din {completion.totalItems} pași
             </p>
           </div>
         </div>
-      </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        {completion.items.map((item) => (
-          <article
-            key={item.key}
-            className={`rounded-2xl border p-5 shadow-sm ${
-              item.completed
-                ? "border-emerald-200 bg-emerald-50/60"
-                : "border-gray-200 bg-white"
-            }`}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 rounded-xl bg-[#F0EEE9] px-3 py-2">
+            <span className="text-lg font-bold text-[#036661]">
+              {completion.percentage}%
+            </span>
+
+            <div
+              className="h-1.5 w-24 overflow-hidden rounded-full bg-gray-300"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={completion.percentage}
+              aria-label={`Profil completat ${completion.percentage}%`}
+            >
+              <div
+                className="h-full rounded-full bg-[#036661] transition-all"
+                style={{ width: `${completion.percentage}%` }}
+              />
+            </div>
+          </div>
+
+          <Link
+            href={`/doctor/${completion.doctorSlug}`}
+            target="_blank"
+            rel="noreferrer"
+            className="romdoc-button romdoc-button-secondary romdoc-button-sm"
           >
-            <div className="flex items-start gap-4">
-              <span
-                className={`mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-                  item.completed
-                    ? "bg-emerald-600 text-white"
-                    : "bg-gray-100 text-gray-500"
+            Profil public
+          </Link>
+
+          {nextIncompleteItem && (
+            <Link
+              href={nextIncompleteItem.href}
+              className="romdoc-button romdoc-button-primary romdoc-button-sm"
+            >
+              Continuă
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {completion.doctorStatus !== "active" && (
+        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+          Profilul are starea <strong>{completion.doctorStatus}</strong>.
+          Vizibilitatea publică poate fi limitată.
+        </div>
+      )}
+
+      <div className="relative mt-4 min-h-[230px] pt-4">
+        <div className="overflow-x-auto overflow-y-hidden px-2 pb-8 pt-3">
+          <div className="flex min-w-max items-start">
+            {completion.items.map((item, index) => (
+              <article
+                key={item.key}
+                className={`group relative z-10 h-[178px] w-44 shrink-0 overflow-hidden rounded-2xl border p-3 shadow-sm transition-all duration-200 ease-out hover:!z-50 hover:h-auto hover:min-h-[210px] hover:-translate-y-3 hover:scale-[1.08] hover:overflow-visible hover:shadow-2xl focus-within:!z-50 focus-within:h-auto focus-within:min-h-[210px] focus-within:-translate-y-3 focus-within:scale-[1.08] focus-within:overflow-visible focus-within:shadow-2xl ${
+                 index === 0 ? "" : "-ml-8"
+                } ${
+                 item.completed
+                 ? "border-emerald-200 bg-emerald-50"
+                  : "border-gray-200 bg-white"
                 }`}
               >
-                {item.completed ? (
+                
+              <div className="flex items-start gap-2">
+                <span
+                  className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+                    item.completed
+                      ? "bg-emerald-600 text-white"
+                      : "bg-amber-100 text-amber-800"
+                  }`}
+                >
+                  {item.completed ? <CheckIcon /> : <PendingIcon />}
+                </span>
+
+                <div className="min-w-0">
+                  <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-gray-900">
+                    {item.title}
+                  </h3>
+
+                  <span
+                    className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                      item.completed
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
+                    {item.completed ? "Complet" : "De completat"}
+                  </span>
+                </div>
+              </div>
+
+              <p className="mt-2 line-clamp-2 text-xs leading-5 text-gray-600 transition-all group-hover:line-clamp-none group-focus-within:line-clamp-none">
+                {item.description}
+              </p>
+
+              {!item.completed && (
+                <Link
+                  href={item.href}
+                  className="romdoc-focus-ring mt-2 inline-flex rounded-md text-xs font-semibold text-[#036661] underline-offset-4 hover:underline"
+                >
+                  {item.actionLabel}
+                </Link>
+              )}
+            </article>
+          ))}
+
+          <article
+            className={`group relative -ml-8 w-44 shrink-0 rounded-2xl border p-3 shadow-sm transition-all duration-200 ease-out hover:z-30 hover:-translate-y-2 hover:scale-[1.06] hover:shadow-xl focus-within:z-30 focus-within:-translate-y-2 focus-within:scale-[1.06] focus-within:shadow-xl ${verificationClasses(
+              completion.verificationStatus
+            )}`}
+          >
+            <div className="flex items-start gap-2">
+              <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/80">
+                {completion.verificationStatus === "verified" ? (
                   <CheckIcon />
                 ) : (
                   <PendingIcon />
                 )}
               </span>
 
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-semibold text-gray-900">
-                    {item.title}
-                  </h3>
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold leading-5">
+                  Verificare profesională
+                </h3>
 
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                      item.completed
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-amber-100 text-amber-800"
-                    }`}
-                  >
-                    {item.completed
-                      ? "Complet"
-                      : "De completat"}
-                  </span>
-                </div>
-
-                <p className="mt-2 text-sm leading-6 text-gray-600">
-                  {item.description}
-                </p>
-
-                {!item.completed && (
-                  <Link
-                    href={item.href}
-                    className="romdoc-focus-ring mt-4 inline-flex rounded-md text-sm font-semibold text-[#036661] underline-offset-4 hover:underline"
-                  >
-                    {item.actionLabel}
-                  </Link>
-                )}
+                <span className="mt-1 inline-flex rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-semibold">
+                  {verificationLabel(completion.verificationStatus)}
+                </span>
               </div>
             </div>
-          </article>
-        ))}
-      </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">
-              Verificare profesională
-            </h2>
-
-            <p className="mt-2 text-sm text-gray-600">
-              {verificationLabel(completion.verificationStatus)}
+            <p className="mt-2 line-clamp-2 text-xs leading-5 opacity-80 transition-all group-hover:line-clamp-none group-focus-within:line-clamp-none">
+              Semnal suplimentar de încredere. Nu influențează procentul profilului.
             </p>
 
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
-              Verificarea profesională este un semnal suplimentar de
-              încredere. Nu este inclusă în procentul de completare și
-              nu controlează accesul la funcțiile plătite.
-            </p>
+            <Link
+              href="/doctor-dashboard/verification"
+              className="romdoc-focus-ring mt-2 inline-flex rounded-md text-xs font-semibold underline-offset-4 hover:underline"
+            >
+              Gestionează
+            </Link>
+            </article>
           </div>
-
-          <Link
-            href="/doctor-dashboard/verification"
-            className="romdoc-button romdoc-button-secondary"
-          >
-            Gestionează verificarea
-          </Link>
         </div>
-      </section>
-    </div>
+      </div>
+
+      <p className="mt-1 text-xs text-gray-500">
+        Pe desktop, mută cursorul peste un card pentru a-l aduce în față.
+        Pe mobil, glisează orizontal.
+      </p>
+    </section>
   );
 }
