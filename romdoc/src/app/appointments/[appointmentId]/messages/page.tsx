@@ -179,6 +179,30 @@ export default async function AppointmentMessagesPage({
     redirect("/dashboard");
   }
 
+  const { error: readStateError } = await admin
+  .from("appointment_message_reads")
+  .upsert(
+    {
+      appointment_id:
+        appointmentId,
+      profile_id:
+        user.id,
+      last_read_at:
+        new Date().toISOString(),
+    },
+    {
+      onConflict:
+        "appointment_id,profile_id",
+    }
+  );
+
+  if (readStateError) {
+    console.error(
+       "Appointment message read-state update failed:",
+       readStateError
+    );
+  }
+
   const appointmentDate =
     typedAppointment.scheduled_date ??
     typedAppointment.requested_date;
