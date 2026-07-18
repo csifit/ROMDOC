@@ -36,12 +36,13 @@ type LogAppointmentNotificationInput = {
 export function reminderTypeToNotificationType(
   reminderType: AppointmentReminderType
 ): AppointmentNotificationType {
-  return reminderType === "48_hours"
+  return reminderType ===
+    "48_hours"
     ? "reminder_48_hours"
     : "reminder_24_hours";
 }
 
-async function sendSmsSideEffect({
+async function sendReminderSmsSideEffect({
   appointmentId,
   notificationType,
   triggeredByProfileId,
@@ -50,25 +51,25 @@ async function sendSmsSideEffect({
   notificationType: AppointmentNotificationType;
   triggeredByProfileId: string | null;
 }) {
-  try {
-    if (notificationType === "confirmed") {
-      await sendAppointmentSms({
-        appointmentId,
-        event: "confirmed",
-        triggeredByProfileId,
-      });
-    }
+  if (
+    notificationType !==
+    "reminder_24_hours"
+  ) {
+    return;
+  }
 
-    if (notificationType === "reminder_24_hours") {
-      await sendAppointmentSms({
-        appointmentId,
-        event: "reminder_24_hours",
-        triggeredByProfileId,
-      });
-    }
-  } catch (error) {
+  try {
+    await sendAppointmentSms({
+      appointmentId,
+      event:
+        "reminder_24_hours",
+      triggeredByProfileId,
+    });
+  } catch (
+    error
+  ) {
     console.error(
-      "Appointment SMS side-effect failed:",
+      "Appointment reminder SMS side-effect failed:",
       error
     );
   }
@@ -84,7 +85,8 @@ export async function logAppointmentNotificationDelivery({
   appointmentOccurrenceAt = null,
   idempotencyKey = null,
 }: LogAppointmentNotificationInput) {
-  const admin = createAdminClient();
+  const admin =
+    createAdminClient();
 
   const deliveryStatus =
     result.sent
@@ -93,20 +95,36 @@ export async function logAppointmentNotificationDelivery({
         ? "skipped"
         : "failed";
 
-  const { error } = await admin
-    .from("appointment_notification_deliveries")
+  const {
+    error,
+  } = await admin
+    .from(
+      "appointment_notification_deliveries"
+    )
     .insert({
-      appointment_id: appointmentId,
-      notification_type: notificationType,
-      channel: "email",
-      recipient_email: recipientEmail,
-      delivery_status: deliveryStatus,
-      provider: "resend",
+      appointment_id:
+        appointmentId,
+      notification_type:
+        notificationType,
+      channel:
+        "email",
+      recipient_email:
+        recipientEmail,
+      delivery_status:
+        deliveryStatus,
+      provider:
+        "resend",
       provider_message_id:
         result.providerMessageId,
-      error_code: result.errorCode,
+      error_code:
+        result.errorCode,
       error_message:
-        result.errorMessage?.slice(0, 2000) ?? null,
+        result.errorMessage
+          ?.slice(
+            0,
+            2000
+          ) ??
+        null,
       triggered_by_profile_id:
         triggeredByProfileId,
       reminder_schedule_id:
@@ -118,23 +136,27 @@ export async function logAppointmentNotificationDelivery({
     });
 
   if (error) {
-    const isDuplicateSuccessfulReminder =
-      error.code === "23505" &&
-      deliveryStatus === "sent" &&
-      reminderScheduleId !== null;
+    const isDuplicate =
+      error.code ===
+      "23505";
 
-    if (isDuplicateSuccessfulReminder) {
+    if (
+      isDuplicate
+    ) {
       console.info(
-        "Duplicate successful reminder delivery log ignored:",
+        "Duplicate notification delivery log ignored:",
         {
+          notificationType,
           reminderScheduleId,
           idempotencyKey,
         }
       );
 
       return {
-        logged: false,
-        duplicate: true,
+        logged:
+          false,
+        duplicate:
+          true,
       };
     }
 
@@ -144,19 +166,23 @@ export async function logAppointmentNotificationDelivery({
     );
 
     return {
-      logged: false,
-      duplicate: false,
+      logged:
+        false,
+      duplicate:
+        false,
     };
   }
 
-  await sendSmsSideEffect({
+  await sendReminderSmsSideEffect({
     appointmentId,
     notificationType,
     triggeredByProfileId,
   });
 
   return {
-    logged: true,
-    duplicate: false,
+    logged:
+      true,
+    duplicate:
+      false,
   };
 }

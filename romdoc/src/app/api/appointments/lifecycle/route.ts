@@ -4,22 +4,14 @@ import {
 } from "next/server";
 
 import {
-  logAppointmentNotificationDelivery,
-} from "@/lib/appointments/log-appointment-notification-delivery";
-import {
-  sendAppointmentSms,
-} from "@/lib/appointments/send-appointment-sms";
-import {
-  sendAppointmentStatusEmail,
-} from "@/lib/appointments/send-appointment-status-email";
-import {
-  createAdminClient,
-} from "@/lib/supabase/admin";
+  notifyAppointmentLifecycle,
+} from "@/lib/appointments/notify-appointment-lifecycle";
 import {
   createClient,
 } from "@/lib/supabase/server";
 
-export const runtime = "nodejs";
+export const runtime =
+  "nodejs";
 
 type LifecycleAction =
   | "confirm"
@@ -36,44 +28,6 @@ type LifecycleRequestBody = {
   reason?: unknown;
 };
 
-type Translation = {
-  locale: string;
-  name?: string;
-  title?: string;
-};
-
-type DoctorRelation = {
-  slug: string;
-  doctor_translations:
-    | Translation[]
-    | null;
-};
-
-type ClinicRelation = {
-  slug: string;
-  clinic_translations:
-    | Translation[]
-    | null;
-};
-
-type AppointmentForNotification = {
-  id: string;
-  patient_name: string;
-  patient_email: string;
-  scheduled_date: string | null;
-  scheduled_time: string | null;
-  requested_date: string | null;
-  requested_time: string | null;
-  doctors:
-    | DoctorRelation
-    | DoctorRelation[]
-    | null;
-  clinics:
-    | ClinicRelation
-    | ClinicRelation[]
-    | null;
-};
-
 const actionToStatus: Record<
   LifecycleAction,
   | "confirmed"
@@ -82,22 +36,30 @@ const actionToStatus: Record<
   | "completed"
   | "no_show"
 > = {
-  confirm: "confirmed",
-  reschedule: "rescheduled",
-  cancel: "cancelled",
-  complete: "completed",
-  no_show: "no_show",
+  confirm:
+    "confirmed",
+  reschedule:
+    "rescheduled",
+  cancel:
+    "cancelled",
+  complete:
+    "completed",
+  no_show:
+    "no_show",
 };
 
 function normalizeString(
   value: unknown
 ) {
-  return typeof value === "string"
+  return typeof value ===
+    "string"
     ? value.trim()
     : "";
 }
 
-function isUuid(value: string) {
+function isUuid(
+  value: string
+) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value
   );
@@ -127,53 +89,6 @@ function isValidTime(
   return /^\d{2}:\d{2}$/.test(
     value
   );
-}
-
-function getFirstRelation<T>(
-  relation:
-    | T
-    | T[]
-    | null
-): T | null {
-  if (
-    Array.isArray(relation)
-  ) {
-    return relation[0] ?? null;
-  }
-
-  return relation;
-}
-
-function getTranslationValue(
-  translations:
-    | Translation[]
-    | null,
-  field: "name" | "title"
-) {
-  return (
-    translations?.find(
-      (translation) =>
-        translation.locale ===
-        "ro"
-    )?.[field] ??
-    translations?.[0]?.[field] ??
-    null
-  );
-}
-
-function formatNameFromSlug(
-  slug: string
-) {
-  return slug
-    .split("-")
-    .map(
-      (part) =>
-        part
-          .charAt(0)
-          .toUpperCase() +
-        part.slice(1)
-    )
-    .join(" ");
 }
 
 function transitionErrorResponse(
@@ -443,15 +358,21 @@ function transitionErrorResponse(
 function successMessage(
   action: LifecycleAction
 ) {
-  switch (action) {
+  switch (
+    action
+  ) {
     case "confirm":
       return "Programarea a fost confirmată.";
+
     case "reschedule":
       return "Programarea a fost reprogramată.";
+
     case "cancel":
       return "Programarea a fost anulată.";
+
     case "complete":
       return "Programarea a fost marcată ca finalizată.";
+
     case "no_show":
       return "Programarea a fost marcată ca neprezentare.";
   }
@@ -467,7 +388,8 @@ export async function PATCH(
     data: {
       user,
     },
-    error: userError,
+    error:
+      userError,
   } =
     await supabase.auth.getUser();
 
@@ -487,8 +409,10 @@ export async function PATCH(
   }
 
   const {
-    data: profile,
-    error: profileError,
+    data:
+      profile,
+    error:
+      profileError,
   } = await supabase
     .from("profiles")
     .select(
@@ -608,8 +532,10 @@ export async function PATCH(
 
   if (
     (
-      action === "confirm" ||
-      action === "reschedule"
+      action ===
+        "confirm" ||
+      action ===
+        "reschedule"
     ) &&
     (
       !isValidDate(
@@ -632,8 +558,10 @@ export async function PATCH(
   }
 
   if (
-    action === "reschedule" &&
-    reason.length < 3
+    action ===
+      "reschedule" &&
+    reason.length <
+      3
   ) {
     return NextResponse.json(
       {
@@ -647,7 +575,8 @@ export async function PATCH(
   }
 
   if (
-    reason.length > 2000
+    reason.length >
+    2000
   ) {
     return NextResponse.json(
       {
@@ -656,60 +585,6 @@ export async function PATCH(
       },
       {
         status: 400,
-      }
-    );
-  }
-
-  const admin =
-    createAdminClient();
-
-  const {
-    data:
-      appointmentData,
-    error:
-      appointmentError,
-  } = await admin
-    .from("appointments")
-    .select(`
-      id,
-      patient_name,
-      patient_email,
-      scheduled_date,
-      scheduled_time,
-      requested_date,
-      requested_time,
-      doctors (
-        slug,
-        doctor_translations (
-          locale,
-          title
-        )
-      ),
-      clinics (
-        slug,
-        clinic_translations (
-          locale,
-          name
-        )
-      )
-    `)
-    .eq(
-      "id",
-      appointmentId
-    )
-    .maybeSingle();
-
-  if (
-    appointmentError ||
-    !appointmentData
-  ) {
-    return NextResponse.json(
-      {
-        error:
-          "Programarea nu a fost găsită.",
-      },
-      {
-        status: 404,
       }
     );
   }
@@ -743,7 +618,8 @@ export async function PATCH(
           ? scheduledTime
           : null,
       transition_reason:
-        reason || null,
+        reason ||
+        null,
     }
   );
 
@@ -769,157 +645,48 @@ export async function PATCH(
         null
       : transitionData;
 
-  let emailSent:
-    boolean | null = null;
-
-  let smsSent:
-    boolean | null = null;
-
-  let smsSkipped:
-    boolean | null = null;
-
-  if (
-    action === "confirm" ||
-    action === "reschedule" ||
-    action === "cancel" ||
-    action === "complete" ||
-    action === "no_show"
-  ) {
-    const appointment =
-      appointmentData as unknown as
-        AppointmentForNotification;
-
-    const doctor =
-      getFirstRelation(
-        appointment.doctors
-      );
-
-    const clinic =
-      getFirstRelation(
-        appointment.clinics
-      );
-
-    const doctorName =
-      doctor
-        ? formatNameFromSlug(
-            doctor.slug
-          )
-        : "Medic";
-
-    const clinicName =
-      getTranslationValue(
-        clinic
-          ?.clinic_translations ??
-          null,
-        "name"
-      ) ??
-      (
-        clinic
-          ? formatNameFromSlug(
-              clinic.slug
-            )
-          : "Clinică"
-      );
-
-    const notificationStatus =
-      action === "confirm"
-        ? "confirmed"
+  const notificationStatus =
+    action ===
+      "confirm"
+      ? "confirmed"
+      : action ===
+          "reschedule"
+        ? "rescheduled"
         : action ===
-            "reschedule"
-          ? "rescheduled"
+            "cancel"
+          ? "cancelled"
           : action ===
-              "cancel"
-            ? "cancelled"
-            : action ===
-                "complete"
-              ? "completed"
-              : "no_show";
+              "complete"
+            ? "completed"
+            : "no_show";
 
-    const emailResult =
-      await sendAppointmentStatusEmail({
+  let notificationResult = {
+    dashboardCreated:
+      false,
+    emailSent:
+      null as boolean | null,
+    smsSent:
+      null as boolean | null,
+    smsSkipped:
+      null as boolean | null,
+  };
+
+  try {
+    notificationResult =
+      await notifyAppointmentLifecycle({
         appointmentId,
         status:
           notificationStatus,
-        patientName:
-          appointment
-            .patient_name,
-        patientEmail:
-          appointment
-            .patient_email,
-        doctorName,
-        clinicName,
-        scheduledDate:
-          transition
-            ?.scheduled_date ??
-          appointment
-            .scheduled_date ??
-          appointment
-            .requested_date,
-        scheduledTime:
-          transition
-            ?.scheduled_time ??
-          appointment
-            .scheduled_time ??
-          appointment
-            .requested_time,
-        rescheduleReason:
-          action ===
-            "reschedule"
-            ? reason || null
-            : null,
+        triggeredByProfileId:
+          user.id,
       });
-
-    emailSent =
-      emailResult.sent;
-
-    await logAppointmentNotificationDelivery({
-      appointmentId,
-      notificationType:
-        notificationStatus,
-      recipientEmail:
-        appointment
-          .patient_email,
-      triggeredByProfileId:
-        user.id,
-      result:
-        emailResult,
-    });
-
-    if (
-      !emailResult.sent
-    ) {
-      console.error(
-        `Appointment ${appointmentId} transitioned successfully, but the patient email was not sent.`
-      );
-    }
-
-    if (
-      action === "confirm"
-    ) {
-      const smsResult =
-        await sendAppointmentSms({
-          appointmentId,
-          event:
-            "confirmed",
-          triggeredByProfileId:
-            user.id,
-        });
-
-      smsSent =
-        smsResult.sent;
-
-      smsSkipped =
-        smsResult.skipped;
-
-      if (
-        !smsResult.sent &&
-        !smsResult.skipped
-      ) {
-        console.error(
-          `Appointment ${appointmentId} was confirmed, but the patient SMS was not sent: ${smsResult.errorCode ?? "UNKNOWN_SMS_ERROR"} - ${smsResult.errorMessage ?? "Unknown SMS error"}`
-        );
-      }
-    }
+  } catch (
+    notificationError
+  ) {
+    console.error(
+      `Appointment ${appointmentId} transitioned successfully, but lifecycle notifications failed:`,
+      notificationError
+    );
   }
 
   return NextResponse.json({
@@ -930,8 +697,13 @@ export async function PATCH(
       ),
     appointment:
       transition,
-    emailSent,
-    smsSent,
-    smsSkipped,
+    dashboardCreated:
+      notificationResult.dashboardCreated,
+    emailSent:
+      notificationResult.emailSent,
+    smsSent:
+      notificationResult.smsSent,
+    smsSkipped:
+      notificationResult.smsSkipped,
   });
 }

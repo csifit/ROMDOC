@@ -7,6 +7,7 @@ import { getDoctorProfileCompletion } from "@/lib/doctors/get-doctor-profile-com
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import DoctorDashboardOperationalOverview from "@/components/doctor/doctor-dashboard-operational-overview";
+import DashboardNotifications from "@/components/notifications/dashboard-notifications";
 
 type SmsUsageLogRow = {
   status: string;
@@ -433,6 +434,10 @@ export default async function DoctorDashboardPage() {
            }
           />
        )}
+
+        <section className="mt-[21px]">
+          <DashboardNotifications />
+        </section>
 
         <div className="mt-8">
           <DoctorOnboardingChecklist completion={completion} />

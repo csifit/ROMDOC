@@ -4,14 +4,8 @@ import {
 } from "next/server";
 
 import {
-  logAppointmentNotificationDelivery,
-} from "@/lib/appointments/log-appointment-notification-delivery";
-import {
-  sendAppointmentStatusEmail,
-} from "@/lib/appointments/send-appointment-status-email";
-import {
-  createAdminClient,
-} from "@/lib/supabase/admin";
+  notifyAppointmentLifecycle,
+} from "@/lib/appointments/notify-appointment-lifecycle";
 import {
   createClient,
 } from "@/lib/supabase/server";
@@ -26,13 +20,25 @@ type CancellationBody = {
   reason?: unknown;
 };
 
-function isUuid(value: string) {
+type VerifiedPatientAuthorization = {
+  supabase: Awaited<
+    ReturnType<
+      typeof createClient
+    >
+  >;
+  userId: string | null;
+  response: NextResponse | null;
+};
+
+function isUuid(
+  value: string
+) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value
   );
 }
 
-async function requireVerifiedPatient() {
+async function requireVerifiedPatient(): Promise<VerifiedPatientAuthorization> {
   const supabase =
     await createClient();
 
@@ -40,7 +46,8 @@ async function requireVerifiedPatient() {
     data: {
       user,
     },
-    error: userError,
+    error:
+      userError,
   } =
     await supabase.auth.getUser();
 
@@ -50,6 +57,8 @@ async function requireVerifiedPatient() {
   ) {
     return {
       supabase,
+      userId:
+        null,
       response:
         NextResponse.json(
           {
@@ -68,6 +77,8 @@ async function requireVerifiedPatient() {
   ) {
     return {
       supabase,
+      userId:
+        user.id,
       response:
         NextResponse.json(
           {
@@ -107,6 +118,8 @@ async function requireVerifiedPatient() {
   ) {
     return {
       supabase,
+      userId:
+        user.id,
       response:
         NextResponse.json(
           {
@@ -122,7 +135,10 @@ async function requireVerifiedPatient() {
 
   return {
     supabase,
-    response: null,
+    userId:
+      user.id,
+    response:
+      null,
   };
 }
 
@@ -279,7 +295,9 @@ export async function GET(
       }
     );
 
-  if (error) {
+  if (
+    error
+  ) {
     console.error(
       "Patient appointment timeline failed:",
       error
@@ -294,7 +312,8 @@ export async function GET(
   return NextResponse.json(
     {
       timeline:
-        data ?? [],
+        data ??
+        [],
     },
     {
       headers: {
@@ -365,7 +384,8 @@ export async function PATCH(
       : "";
 
   if (
-    reason.length > 1000
+    reason.length >
+    1000
   ) {
     return NextResponse.json(
       {
@@ -374,56 +394,6 @@ export async function PATCH(
       },
       {
         status: 400,
-      }
-    );
-  }
-
-  const admin =
-    createAdminClient();
-
-  const {
-    data:
-      appointment,
-    error:
-      appointmentLookupError,
-  } = await admin
-    .from("appointments")
-    .select(`
-      id,
-      patient_name,
-      patient_email,
-      scheduled_date,
-      scheduled_time,
-      requested_date,
-      requested_time,
-      doctors (
-        slug
-      ),
-      clinics (
-        slug,
-        clinic_translations (
-          locale,
-          name
-        )
-      )
-    `)
-    .eq(
-      "id",
-      appointmentId
-    )
-    .maybeSingle();
-
-  if (
-    appointmentLookupError ||
-    !appointment
-  ) {
-    return NextResponse.json(
-      {
-        error:
-          "Programarea nu a fost găsită.",
-      },
-      {
-        status: 404,
       }
     );
   }
@@ -438,11 +408,14 @@ export async function PATCH(
         target_appointment_id:
           appointmentId,
         cancellation_reason:
-          reason || null,
+          reason ||
+          null,
       }
     );
 
-  if (error) {
+  if (
+    error
+  ) {
     console.error(
       "Patient appointment cancellation failed:",
       error
@@ -454,108 +427,47 @@ export async function PATCH(
     );
   }
 
-  const doctorRelation =
-    Array.isArray(
-      appointment.doctors
-    )
-      ? appointment
-          .doctors[0]
-      : appointment.doctors;
+  let notificationResult = {
+    dashboardCreated:
+      false,
+    emailSent:
+      null as boolean | null,
+    smsSent:
+      null as boolean | null,
+    smsSkipped:
+      null as boolean | null,
+  };
 
-  const clinicRelation =
-    Array.isArray(
-      appointment.clinics
-    )
-      ? appointment
-          .clinics[0]
-      : appointment.clinics;
-
-  const clinicName =
-    clinicRelation
-      ?.clinic_translations
-      ?.find(
-        (
-          translation: {
-            locale: string;
-            name: string;
-          }
-        ) =>
-          translation.locale ===
-          "ro"
-      )?.name ??
-    clinicRelation
-      ?.clinic_translations
-      ?.[0]?.name ??
-    clinicRelation?.slug ??
-    "Clinică";
-
-  const doctorName =
-    doctorRelation?.slug
-      ?.split("-")
-      .map(
-        (
-          part: string
-        ) =>
-          part
-            .charAt(0)
-            .toUpperCase() +
-          part.slice(1)
-      )
-      .join(" ") ??
-    "Medic";
-
-  const emailResult =
-    await sendAppointmentStatusEmail({
-      appointmentId,
-      status:
-        "cancelled",
-      patientName:
-        appointment
-          .patient_name,
-      patientEmail:
-        appointment
-          .patient_email,
-      doctorName,
-      clinicName,
-      scheduledDate:
-        appointment
-          .scheduled_date ??
-        appointment
-          .requested_date,
-      scheduledTime:
-        appointment
-          .scheduled_time ??
-        appointment
-          .requested_time,
-      rescheduleReason:
-        null,
-    });
-
-  await logAppointmentNotificationDelivery({
-    appointmentId,
-    notificationType:
-      "cancelled",
-    recipientEmail:
-      appointment
-        .patient_email,
-    triggeredByProfileId:
-      (
-        await authorization
-          .supabase.auth
-          .getUser()
-      ).data.user?.id ??
-      null,
-    result:
-      emailResult,
-  });
+  try {
+    notificationResult =
+      await notifyAppointmentLifecycle({
+        appointmentId,
+        status:
+          "cancelled",
+        triggeredByProfileId:
+          authorization.userId,
+      });
+  } catch (
+    notificationError
+  ) {
+    console.error(
+      `Patient appointment ${appointmentId} was cancelled successfully, but lifecycle notifications failed:`,
+      notificationError
+    );
+  }
 
   return NextResponse.json({
     success: true,
     appointment:
-      Array.isArray(data)
-        ? data[0] ?? null
+      Array.isArray(
+        data
+      )
+        ? data[0] ??
+          null
         : data,
+    dashboardCreated:
+      notificationResult.dashboardCreated,
     emailSent:
-      emailResult.sent,
+      notificationResult.emailSent,
   });
 }

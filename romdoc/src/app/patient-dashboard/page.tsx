@@ -7,6 +7,7 @@ import PatientReviewForm from "@/components/reviews/patient-review-form";
 import RatingStars from "@/components/reviews/rating-stars";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import DashboardNotifications from "@/components/notifications/dashboard-notifications";
 
 type DoctorTranslation = {
   locale: string;
@@ -486,6 +487,10 @@ export default async function PatientDashboardPage() {
             Vezi toate programările tale trecute și viitoare, notele medicale disponibile și publică o recenzie după finalizarea consultației.
           </p>
         </header>
+
+        <section className="mt-[21px]">
+           <DashboardNotifications />
+        </section>
 
         <PatientFolderShortcut />
 
