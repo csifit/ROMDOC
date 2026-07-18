@@ -1,9 +1,9 @@
 import {
-  createClient,
-} from "@/lib/supabase/server";
-import {
   type AppLocale,
 } from "@/i18n/routing";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
 type Translation = {
   locale: string;
@@ -16,7 +16,8 @@ type Translation = {
 type CityRelation = {
   slug: string;
   city_translations:
-    Translation[] | null;
+    | Translation[]
+    | null;
 };
 
 type ClinicRelation = {
@@ -26,10 +27,17 @@ type ClinicRelation = {
   website: string | null;
   street_address: string | null;
   formatted_address: string | null;
-  latitude: number | string | null;
-  longitude: number | string | null;
+  latitude:
+    | number
+    | string
+    | null;
+  longitude:
+    | number
+    | string
+    | null;
   clinic_translations:
-    Translation[] | null;
+    | Translation[]
+    | null;
   cities:
     | CityRelation
     | CityRelation[]
@@ -42,16 +50,6 @@ type DoctorClinicRelation = {
     | ClinicRelation
     | ClinicRelation[]
     | null;
-};
-
-type ReviewRelation = {
-  id: string;
-  patient_name: string;
-  rating: number;
-  review_text: string | null;
-  created_at: string;
-  status: string;
-  approved: boolean;
 };
 
 type DoctorRecord = {
@@ -70,11 +68,19 @@ type DoctorRecord = {
     | string
     | null;
   doctor_translations:
-    Translation[] | null;
+    | Translation[]
+    | null;
   doctor_clinics:
-    DoctorClinicRelation[] | null;
-  reviews:
-    ReviewRelation[] | null;
+    | DoctorClinicRelation[]
+    | null;
+};
+
+type PublicReviewRow = {
+  id: string;
+  rating: number;
+  review_text: string | null;
+  created_at: string;
+  verified_appointment: boolean;
 };
 
 type Props = {
@@ -93,8 +99,15 @@ function getFirstRelation<T>(
     return null;
   }
 
-  if (Array.isArray(relation)) {
-    return relation[0] ?? null;
+  if (
+    Array.isArray(
+      relation
+    )
+  ) {
+    return (
+      relation[0] ??
+      null
+    );
   }
 
   return relation;
@@ -109,12 +122,18 @@ function getTranslation(
 ) {
   return (
     translations?.find(
-      (translation) =>
-        translation.locale === locale
+      (
+        translation
+      ) =>
+        translation.locale ===
+        locale
     ) ??
     translations?.find(
-      (translation) =>
-        translation.locale === "ro"
+      (
+        translation
+      ) =>
+        translation.locale ===
+        "ro"
     ) ??
     translations?.[0] ??
     null
@@ -124,12 +143,18 @@ function getTranslation(
 function formatDoctorName(
   slug: string
 ) {
-  return decodeURIComponent(slug)
+  return decodeURIComponent(
+    slug
+  )
     .split("-")
     .filter(Boolean)
     .map(
-      (part) =>
-        part.charAt(0).toUpperCase() +
+      (
+        part
+      ) =>
+        part
+          .charAt(0)
+          .toUpperCase() +
         part.slice(1)
     )
     .join(" ");
@@ -150,11 +175,16 @@ function normalizeNumber(
   }
 
   const parsed =
-    typeof value === "number"
+    typeof value ===
+      "number"
       ? value
-      : Number(value);
+      : Number(
+          value
+        );
 
-  return Number.isFinite(parsed)
+  return Number.isFinite(
+    parsed
+  )
     ? parsed
     : null;
 }
@@ -176,12 +206,15 @@ function absoluteUrl(
 function safeJsonLd(
   value: unknown
 ) {
-  return JSON.stringify(value)
-    .replace(/</g, "\\u003c");
+  return JSON.stringify(
+    value
+  ).replace(
+    /</g,
+    "\\u003c"
+  );
 }
 
-export default async function
-DoctorStructuredData({
+export default async function DoctorStructuredData({
   locale,
   slug,
 }: Props) {
@@ -192,7 +225,9 @@ DoctorStructuredData({
     data,
     error,
   } = await supabase
-    .from("doctors")
+    .from(
+      "doctors"
+    )
     .select(`
       id,
       slug,
@@ -232,22 +267,21 @@ DoctorStructuredData({
             )
           )
         )
-      ),
-      reviews (
-        id,
-        patient_name,
-        rating,
-        review_text,
-        created_at,
-        status,
-        approved
       )
     `)
-    .eq("slug", slug)
-    .eq("status", "active")
+    .eq(
+      "slug",
+      slug
+    )
+    .eq(
+      "status",
+      "active"
+    )
     .maybeSingle();
 
-  if (error) {
+  if (
+    error
+  ) {
     console.error(
       "Doctor structured data lookup failed:",
       error
@@ -256,13 +290,43 @@ DoctorStructuredData({
     return null;
   }
 
-  if (!data) {
+  if (
+    !data
+  ) {
     return null;
   }
 
   const doctor =
     data as unknown as
       DoctorRecord;
+
+  const {
+    data:
+      publicReviewData,
+    error:
+      publicReviewError,
+  } = await supabase.rpc(
+    "get_public_doctor_reviews",
+    {
+      target_doctor_id:
+        doctor.id,
+    }
+  );
+
+  if (
+    publicReviewError
+  ) {
+    console.error(
+      "Doctor structured-data reviews lookup failed:",
+      publicReviewError
+    );
+  }
+
+  const publishedReviews =
+    (
+      publicReviewData ??
+      []
+    ) as PublicReviewRow[];
 
   const doctorName =
     formatDoctorName(
@@ -275,35 +339,22 @@ DoctorStructuredData({
       locale
     );
 
-  const publishedReviews =
-    (doctor.reviews ?? [])
-      .filter(
-        (review) =>
-          review.status ===
-            "published" &&
-          review.approved === true
-      )
-      .sort(
-        (first, second) =>
-          new Date(
-            second.created_at
-          ).getTime() -
-          new Date(
-            first.created_at
-          ).getTime()
-      );
-
   const reviewCount =
     publishedReviews.length;
 
   const calculatedAverage =
-    reviewCount > 0
+    reviewCount >
+    0
       ? publishedReviews.reduce(
-          (total, review) =>
+          (
+            total,
+            review
+          ) =>
             total +
             review.rating,
           0
-        ) / reviewCount
+        ) /
+        reviewCount
       : null;
 
   const storedAverage =
@@ -314,8 +365,11 @@ DoctorStructuredData({
   const averageRating =
     calculatedAverage ??
     (
-      (doctor.review_count ?? 0) >
+      (
+        doctor.review_count ??
         0
+      ) >
+      0
         ? storedAverage
         : null
     );
@@ -326,27 +380,35 @@ DoctorStructuredData({
     )}`;
 
   const profileUrl =
-    absoluteUrl(profilePath);
+    absoluteUrl(
+      profilePath
+    );
 
   const doctorId =
     `${profileUrl}#physician`;
 
   const clinicNodes =
-    (doctor.doctor_clinics ?? [])
-      .flatMap((relation) => {
+    (
+      doctor.doctor_clinics ??
+      []
+    ).flatMap(
+      (
+        relation
+      ) => {
         const clinic =
           getFirstRelation(
             relation.clinics
           );
 
-        if (!clinic) {
+        if (
+          !clinic
+        ) {
           return [];
         }
 
         const translation =
           getTranslation(
-            clinic
-              .clinic_translations,
+            clinic.clinic_translations,
             locale
           );
 
@@ -357,10 +419,10 @@ DoctorStructuredData({
 
         const cityName =
           getTranslation(
-            city
-              ?.city_translations,
+            city?.city_translations,
             locale
-          )?.name ?? null;
+          )?.name ??
+          null;
 
         const latitude =
           normalizeNumber(
@@ -384,11 +446,13 @@ DoctorStructuredData({
           {
             "@type":
               "MedicalClinic",
-            "@id": clinicId,
+            "@id":
+              clinicId,
             name:
               translation?.name ??
               (
-                locale === "en"
+                locale ===
+                "en"
                   ? "Medical clinic"
                   : "Clinică medicală"
               ),
@@ -396,8 +460,7 @@ DoctorStructuredData({
               ?.description
               ? {
                   description:
-                    translation
-                      .description,
+                    translation.description,
                 }
               : {}),
             ...(clinic.phone
@@ -430,8 +493,10 @@ DoctorStructuredData({
                   },
                 }
               : {}),
-            ...(latitude !== null &&
-            longitude !== null
+            ...(latitude !==
+              null &&
+            longitude !==
+              null
               ? {
                   geo: {
                     "@type":
@@ -443,139 +508,202 @@ DoctorStructuredData({
               : {}),
           },
         ];
-      });
+      }
+    );
 
   const reviewNodes =
     publishedReviews
-      .slice(0, 20)
-      .map((review) => ({
-        "@type": "Review",
-        "@id":
-          `${profileUrl}#review-${review.id}`,
-        itemReviewed: {
-          "@id": doctorId,
-        },
-        author: {
-          "@type": "Person",
-          name:
-            review.patient_name ||
-            (
-              locale === "en"
-                ? "RomDoc patient"
-                : "Pacient RomDoc"
-            ),
-        },
-        datePublished:
-          review.created_at,
-        reviewRating: {
-          "@type": "Rating",
-          ratingValue:
-            review.rating,
-          bestRating: 5,
-          worstRating: 1,
-        },
-        ...(review.review_text
-          ? {
-              reviewBody:
-                review.review_text,
-            }
-          : {}),
-      }));
+      .slice(
+        0,
+        20
+      )
+      .map(
+        (
+          review
+        ) => ({
+          "@type":
+            "Review",
+          "@id":
+            `${profileUrl}#review-${review.id}`,
+          itemReviewed: {
+            "@id":
+              doctorId,
+          },
+
+          // Never expose Patient identity in public JSON-LD.
+          author: {
+            "@type":
+              "Person",
+            name:
+              locale ===
+              "en"
+                ? "Anonymous patient"
+                : "Pacient anonim",
+          },
+
+          datePublished:
+            review.created_at,
+
+          reviewRating: {
+            "@type":
+              "Rating",
+            ratingValue:
+              review.rating,
+            bestRating:
+              5,
+            worstRating:
+              1,
+          },
+
+          ...(review.review_text
+            ? {
+                reviewBody:
+                  review.review_text,
+              }
+            : {}),
+
+          ...(review
+            .verified_appointment
+            ? {
+                reviewAspect:
+                  locale ===
+                  "en"
+                    ? "Verified appointment"
+                    : "Programare verificată",
+              }
+            : {}),
+        })
+      );
 
   const physicianNode = {
-    "@type": "Physician",
-    "@id": doctorId,
-    name: doctorName,
-    url: profileUrl,
+    "@type":
+      "Physician",
+    "@id":
+      doctorId,
+    name:
+      doctorName,
+    url:
+      profileUrl,
+
     ...(doctor.photo_url
       ? {
           image:
             doctor.photo_url,
         }
       : {}),
+
     ...(doctorTranslation?.title
       ? {
           jobTitle:
             doctorTranslation.title,
         }
       : {}),
+
     ...(doctorTranslation
       ?.biography
       ? {
           description:
-            doctorTranslation
-              .biography,
+            doctorTranslation.biography,
         }
       : {}),
+
     ...(doctor.phone
       ? {
           telephone:
             doctor.phone,
         }
       : {}),
+
     ...(doctor.email
       ? {
           email:
             doctor.email,
         }
       : {}),
+
     ...(doctor
-      .years_experience !== null
+      .years_experience !==
+      null
       ? {
           knowsAbout:
-            locale === "en"
+            locale ===
+            "en"
               ? `${doctor.years_experience} years of medical experience`
               : `${doctor.years_experience} ani de experiență medicală`,
         }
       : {}),
+
     ...(doctor
       .verification_status ===
       "verified"
       ? {
           award:
-            locale === "en"
+            locale ===
+            "en"
               ? "Licensed Medical Professional verified by RomDoc"
               : "Profesionist medical licențiat, verificat de RomDoc",
         }
       : {}),
-    ...(clinicNodes.length > 0
+
+    ...(clinicNodes.length >
+      0
       ? {
           worksFor:
             clinicNodes.map(
-              (clinic) => ({
+              (
+                clinic
+              ) => ({
                 "@id":
-                  clinic["@id"],
+                  clinic[
+                    "@id"
+                  ],
               })
             ),
         }
       : {}),
-    ...(averageRating !== null &&
-    (doctor.review_count ?? 0) > 0
+
+    ...(averageRating !==
+      null &&
+    (
+      doctor.review_count ??
+      0
+    ) >
+      0
       ? {
           aggregateRating: {
             "@type":
               "AggregateRating",
             ratingValue:
               Math.round(
-                averageRating * 10
-              ) / 10,
+                averageRating *
+                  10
+              ) /
+              10,
             reviewCount:
-              reviewCount > 0
+              reviewCount >
+              0
                 ? reviewCount
-                : doctor
-                    .review_count,
-            bestRating: 5,
-            worstRating: 1,
+                : doctor.review_count,
+            bestRating:
+              5,
+            worstRating:
+              1,
           },
         }
       : {}),
-    ...(reviewNodes.length > 0
+
+    ...(reviewNodes.length >
+      0
       ? {
           review:
             reviewNodes.map(
-              (review) => ({
+              (
+                review
+              ) => ({
                 "@id":
-                  review["@id"],
+                  review[
+                    "@id"
+                  ],
               })
             ),
         }
@@ -597,7 +725,9 @@ DoctorStructuredData({
       type="application/ld+json"
       dangerouslySetInnerHTML={{
         __html:
-          safeJsonLd(graph),
+          safeJsonLd(
+            graph
+          ),
       }}
     />
   );
