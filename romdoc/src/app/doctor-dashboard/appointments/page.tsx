@@ -1,8 +1,5 @@
 import { redirect } from "next/navigation";
 
-import ConfirmedAppointmentsWeeklyCalendar, {
-  type ConfirmedWeeklyAppointment,
-} from "@/components/doctor/confirmed-appointments-weekly-calendar";
 import CreateAppointmentForm from "@/components/doctor/create-appointment-form";
 import DoctorAppointmentsFilteredList, {
   type DoctorAppointmentListItem,
@@ -368,44 +365,6 @@ export default async function DoctorAppointmentsPage() {
       };
     });
 
-  const confirmedCalendarAppointments: ConfirmedWeeklyAppointment[] =
-    appointments.flatMap((appointment: Appointment) => {
-      if (appointment.status !== "confirmed") {
-        return [];
-      }
-
-      const date =
-        appointment.scheduled_date ?? appointment.requested_date;
-      const time =
-        appointment.scheduled_time ?? appointment.requested_time;
-
-      if (!date || !time) {
-        return [];
-      }
-
-      const clinic = getFirstRelation(appointment.clinics);
-
-      return [
-        {
-          id: appointment.id,
-          patientProfileId: appointment.patient_profile_id,
-          patientName: appointment.patient_name,
-          patientEmail: appointment.patient_email,
-          patientPhone: appointment.patient_phone,
-          requestedDate: appointment.requested_date,
-          requestedTime: appointment.requested_time,
-          scheduledDate: appointment.scheduled_date,
-          scheduledTime: appointment.scheduled_time,
-          rescheduleReason: appointment.reschedule_reason,
-          notes: appointment.notes,
-          source: appointment.source,
-          status: appointment.status,
-          createdAt: appointment.created_at,
-          clinicName: getClinicName(clinic),
-        },
-      ];
-    });
-
   return (
     <main className="min-h-screen bg-gray-50 px-6 py-12">
       <div className="mx-auto max-w-6xl">
@@ -450,10 +409,6 @@ export default async function DoctorAppointmentsPage() {
         <CreateAppointmentForm
           doctorId={doctor.id}
           clinics={clinicOptions}
-        />
-
-        <ConfirmedAppointmentsWeeklyCalendar
-          appointments={confirmedCalendarAppointments}
         />
 
         <section className="mt-10">
