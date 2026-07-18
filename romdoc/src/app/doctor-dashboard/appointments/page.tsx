@@ -58,7 +58,9 @@ type Appointment = {
   clinics: ClinicRelation | ClinicRelation[] | null;
 };
 
-function getFirstRelation<T>(relation: T | T[] | null | undefined): T | null {
+function getFirstRelation<T>(
+  relation: T | T[] | null | undefined
+): T | null {
   if (!relation) {
     return null;
   }
@@ -73,7 +75,10 @@ function getFirstRelation<T>(relation: T | T[] | null | undefined): T | null {
 function formatDoctorName(slug: string) {
   return slug
     .split("-")
-    .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
+    .map(
+      (part: string) =>
+        part.charAt(0).toUpperCase() + part.slice(1)
+    )
     .join(" ");
 }
 
@@ -82,11 +87,14 @@ function getClinicName(clinic: ClinicRelation | null) {
     return "Clinică indisponibilă";
   }
 
-  const romanianTranslation = clinic.clinic_translations?.find(
-    (translation: ClinicTranslation) => translation.locale === "ro"
-  );
+  const romanianTranslation =
+    clinic.clinic_translations?.find(
+      (translation: ClinicTranslation) =>
+        translation.locale === "ro"
+    );
 
-  const fallbackTranslation = clinic.clinic_translations?.[0];
+  const fallbackTranslation =
+    clinic.clinic_translations?.[0];
 
   return (
     romanianTranslation?.name ??
@@ -107,21 +115,30 @@ export default async function DoctorAppointmentsPage() {
     redirect("/login");
   }
 
-  const { data: profile, error: profileError } = await supabase
+  const {
+    data: profile,
+    error: profileError,
+  } = await supabase
     .from("profiles")
     .select("role, first_name, last_name")
     .eq("id", user.id)
     .maybeSingle();
 
   if (profileError) {
-    console.error("Doctor dashboard profile query failed:", profileError);
+    console.error(
+      "Doctor dashboard profile query failed:",
+      profileError
+    );
   }
 
   if (!profile || profile.role !== "doctor") {
     redirect("/");
   }
 
-  const { data: doctorData, error: doctorError } = await supabase
+  const {
+    data: doctorData,
+    error: doctorError,
+  } = await supabase
     .from("doctors")
     .select(
       `
@@ -136,15 +153,21 @@ export default async function DoctorAppointmentsPage() {
     .maybeSingle();
 
   if (doctorError) {
-    console.error("Doctor dashboard ownership query failed:", doctorError);
+    console.error(
+      "Doctor dashboard ownership query failed:",
+      doctorError
+    );
   }
 
   const doctor = doctorData as DoctorAccount | null;
-  const isClinicSubAccount = doctor?.account_type === "clinic_sub_account";
+  const isClinicSubAccount =
+    doctor?.account_type === "clinic_sub_account";
 
   const displayName =
     profile.first_name || profile.last_name
-      ? [profile.first_name, profile.last_name].filter(Boolean).join(" ")
+      ? [profile.first_name, profile.last_name]
+          .filter(Boolean)
+          .join(" ")
       : doctor
         ? formatDoctorName(doctor.slug)
         : "Medic";
@@ -154,7 +177,9 @@ export default async function DoctorAppointmentsPage() {
       <main className="min-h-screen bg-gray-50 px-6 py-12">
         <div className="mx-auto max-w-4xl">
           <header>
-            <p className="text-sm font-medium text-gray-500">Panou medic</p>
+            <p className="text-sm font-medium text-gray-500">
+              Panou medic
+            </p>
 
             <h1 className="mt-2 text-4xl font-bold text-gray-900">
               Programările mele
@@ -185,9 +210,16 @@ export default async function DoctorAppointmentsPage() {
   let allowedClinicIds: string[] | null = null;
 
   try {
-    allowedClinicIds = await getAllowedClinicIdsForDoctor(supabase, doctor);
+    allowedClinicIds = await getAllowedClinicIdsForDoctor(
+      supabase,
+      doctor
+    );
   } catch (scopeError) {
-    console.error("Doctor appointment clinic scope lookup failed:", scopeError);
+    console.error(
+      "Doctor appointment clinic scope lookup failed:",
+      scopeError
+    );
+
     allowedClinicIds = isClinicSubAccount ? [] : null;
   }
 
@@ -211,33 +243,46 @@ export default async function DoctorAppointmentsPage() {
   if (allowedClinicIds) {
     doctorClinicQuery = allowedClinicIds.length
       ? doctorClinicQuery.in("clinic_id", allowedClinicIds)
-      : doctorClinicQuery.eq("clinic_id", "00000000-0000-0000-0000-000000000000");
+      : doctorClinicQuery.eq(
+          "clinic_id",
+          "00000000-0000-0000-0000-000000000000"
+        );
   }
 
-  const { data: doctorClinicData, error: doctorClinicsError } =
-    await doctorClinicQuery;
+  const {
+    data: doctorClinicData,
+    error: doctorClinicsError,
+  } = await doctorClinicQuery;
 
   if (doctorClinicsError) {
-    console.error("Doctor dashboard clinic query failed:", doctorClinicsError);
+    console.error(
+      "Doctor dashboard clinic query failed:",
+      doctorClinicsError
+    );
   }
 
   const doctorClinicRows =
     (doctorClinicData as unknown as DoctorClinicRow[] | null) ?? [];
 
   const clinicOptions: ClinicOption[] = doctorClinicRows
-    .map((doctorClinic: DoctorClinicRow): ClinicOption | null => {
-      const clinic = getFirstRelation(doctorClinic.clinics);
+    .map(
+      (doctorClinic: DoctorClinicRow): ClinicOption | null => {
+        const clinic = getFirstRelation(doctorClinic.clinics);
 
-      if (!clinic) {
-        return null;
+        if (!clinic) {
+          return null;
+        }
+
+        return {
+          id: doctorClinic.clinic_id,
+          name: getClinicName(clinic),
+        };
       }
-
-      return {
-        id: doctorClinic.clinic_id,
-        name: getClinicName(clinic),
-      };
-    })
-    .filter((clinic: ClinicOption | null): clinic is ClinicOption => clinic !== null)
+    )
+    .filter(
+      (clinic: ClinicOption | null): clinic is ClinicOption =>
+        clinic !== null
+    )
     .sort((firstClinic: ClinicOption, secondClinic: ClinicOption) =>
       firstClinic.name.localeCompare(secondClinic.name, "ro")
     );
@@ -279,20 +324,29 @@ export default async function DoctorAppointmentsPage() {
   if (allowedClinicIds) {
     appointmentsQuery = allowedClinicIds.length
       ? appointmentsQuery.in("clinic_id", allowedClinicIds)
-      : appointmentsQuery.eq("clinic_id", "00000000-0000-0000-0000-000000000000");
+      : appointmentsQuery.eq(
+          "clinic_id",
+          "00000000-0000-0000-0000-000000000000"
+        );
   }
 
-  const { data: appointmentsData, error: appointmentsError } =
-    await appointmentsQuery;
+  const {
+    data: appointmentsData,
+    error: appointmentsError,
+  } = await appointmentsQuery;
 
   if (appointmentsError) {
-    console.error("Doctor appointments query failed:", appointmentsError);
+    console.error(
+      "Doctor appointments query failed:",
+      appointmentsError
+    );
   }
 
-  const appointments = (appointmentsData as unknown as Appointment[] | null) ?? [];
+  const appointments =
+    (appointmentsData as unknown as Appointment[] | null) ?? [];
 
-  const appointmentListItems: DoctorAppointmentListItem[] = appointments.map(
-    (appointment: Appointment) => {
+  const appointmentListItems: DoctorAppointmentListItem[] =
+    appointments.map((appointment: Appointment) => {
       const clinic = getFirstRelation(appointment.clinics);
 
       return {
@@ -312,8 +366,7 @@ export default async function DoctorAppointmentsPage() {
         createdAt: appointment.created_at,
         clinicName: getClinicName(clinic),
       };
-    }
-  );
+    });
 
   const confirmedCalendarAppointments: ConfirmedWeeklyAppointment[] =
     appointments.flatMap((appointment: Appointment) => {
@@ -321,8 +374,10 @@ export default async function DoctorAppointmentsPage() {
         return [];
       }
 
-      const date = appointment.scheduled_date ?? appointment.requested_date;
-      const time = appointment.scheduled_time ?? appointment.requested_time;
+      const date =
+        appointment.scheduled_date ?? appointment.requested_date;
+      const time =
+        appointment.scheduled_time ?? appointment.requested_time;
 
       if (!date || !time) {
         return [];
@@ -333,10 +388,20 @@ export default async function DoctorAppointmentsPage() {
       return [
         {
           id: appointment.id,
+          patientProfileId: appointment.patient_profile_id,
           patientName: appointment.patient_name,
+          patientEmail: appointment.patient_email,
+          patientPhone: appointment.patient_phone,
+          requestedDate: appointment.requested_date,
+          requestedTime: appointment.requested_time,
+          scheduledDate: appointment.scheduled_date,
+          scheduledTime: appointment.scheduled_time,
+          rescheduleReason: appointment.reschedule_reason,
+          notes: appointment.notes,
+          source: appointment.source,
+          status: appointment.status,
+          createdAt: appointment.created_at,
           clinicName: getClinicName(clinic),
-          date,
-          time,
         },
       ];
     });
@@ -382,9 +447,14 @@ export default async function DoctorAppointmentsPage() {
           </div>
         )}
 
-        <CreateAppointmentForm doctorId={doctor.id} clinics={clinicOptions} />
+        <CreateAppointmentForm
+          doctorId={doctor.id}
+          clinics={clinicOptions}
+        />
 
-        <ConfirmedAppointmentsWeeklyCalendar appointments={confirmedCalendarAppointments} />
+        <ConfirmedAppointmentsWeeklyCalendar
+          appointments={confirmedCalendarAppointments}
+        />
 
         <section className="mt-10">
           {appointmentsError ? (
@@ -393,7 +463,9 @@ export default async function DoctorAppointmentsPage() {
               și încearcă din nou.
             </div>
           ) : (
-            <DoctorAppointmentsFilteredList appointments={appointmentListItems} />
+            <DoctorAppointmentsFilteredList
+              appointments={appointmentListItems}
+            />
           )}
         </section>
       </div>
