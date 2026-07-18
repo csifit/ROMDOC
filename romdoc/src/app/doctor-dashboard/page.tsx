@@ -6,6 +6,7 @@ import DoctorSmsBillingPaymentButton from "@/components/doctor/doctor-sms-billin
 import { getDoctorProfileCompletion } from "@/lib/doctors/get-doctor-profile-completion";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import DoctorDashboardOperationalOverview from "@/components/doctor/doctor-dashboard-operational-overview";
 
 type SmsUsageLogRow = {
   status: string;
@@ -32,7 +33,10 @@ type SmsBillingPeriodRow = {
 };
 
 type DoctorAccountRow = {
+  id: string;
+  status: string | null;
   account_type: string | null;
+  clinic_organization_id: string | null;
 };
 
 const VAT_RATE_BASIS_POINTS = 2100;
@@ -275,7 +279,13 @@ export default async function DoctorDashboardPage() {
 
   const { data: doctorAccount, error: doctorAccountError } = await supabase
     .from("doctors")
-    .select("account_type")
+    .select(`
+      id,
+      status,
+      account_type,
+      clinic_organization_id
+   `)
+
     .eq("id", completion.doctorId)
     .maybeSingle();
 
@@ -393,12 +403,11 @@ export default async function DoctorDashboardPage() {
           <p className="text-sm font-semibold text-[#036661]">Panou medic</p>
 
           <h1 className="mt-2 text-4xl font-bold tracking-tight text-gray-900">
-            Bun venit în RomDoc
+            Bun venit, {profile.first_name || "doctore"}
           </h1>
 
           <p className="mt-3 max-w-3xl leading-7 text-gray-600">
-            Urmărește pașii necesari pentru un profil medical complet, clar și
-            pregătit pentru programările pacienților.
+            Vezi rapid cererile noi, programul de astăzi și acțiunile importante.
           </p>
         </header>
 
@@ -415,6 +424,15 @@ export default async function DoctorDashboardPage() {
             </p>
           </section>
         ) : null}
+
+        {typedDoctorAccount && (
+          <DoctorDashboardOperationalOverview
+             doctor={typedDoctorAccount}
+             profileCompletionPercent={
+               completion.percentage
+           }
+          />
+       )}
 
         <div className="mt-8">
           <DoctorOnboardingChecklist completion={completion} />
