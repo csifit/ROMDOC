@@ -22,6 +22,7 @@ type RegisterPageProps = {
   searchParams: Promise<{
     type?: string;
     role?: string;
+    next?: string;
   }>;
 };
 
@@ -61,6 +62,20 @@ function resolveRegistrationType(
   return "patient";
 }
 
+function getSafeNextPath(
+  value?: string
+) {
+  if (
+    !value ||
+    !value.startsWith("/") ||
+    value.startsWith("//")
+  ) {
+    return "/patient-dashboard";
+  }
+
+  return value;
+}
+
 function getLocalizedName(
   translations:
     | TranslationRow[]
@@ -94,6 +109,11 @@ export default async function RegisterPage({
     resolveRegistrationType(
       parameters.type,
       parameters.role
+    );
+
+  const initialNextPath =
+    getSafeNextPath(
+      parameters.next
     );
 
   const locale =
@@ -166,6 +186,9 @@ export default async function RegisterPage({
           locale={locale}
           initialRegistrationType={
             initialRegistrationType
+          }
+          initialNextPath={
+            initialNextPath
           }
         />
       </div>

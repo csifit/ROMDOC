@@ -1,10 +1,9 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import {
   type FormEvent,
   type ReactNode,
-  useMemo,
   useState,
   useTransition,
 } from "react";
@@ -38,6 +37,7 @@ type RegisterFormProps = {
   locale: AppLocale;
   initialRegistrationType:
     RegistrationType;
+  initialNextPath: string;
 };
 
 type FieldProps = {
@@ -164,31 +164,17 @@ function inputClassName() {
   return "mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-wait disabled:bg-gray-100";
 }
 
-function getSafeNextPath() {
+function getSafeNextPath(
+  value: string
+) {
   if (
-    typeof window ===
-    "undefined"
+    !value.startsWith("/") ||
+    value.startsWith("//")
   ) {
     return "/patient-dashboard";
   }
 
-  const searchParams =
-    new URLSearchParams(
-      window.location.search
-    );
-
-  const nextPath =
-    searchParams.get("next");
-
-  if (
-    !nextPath ||
-    !nextPath.startsWith("/") ||
-    nextPath.startsWith("//")
-  ) {
-    return "/patient-dashboard";
-  }
-
-  return nextPath;
+  return value;
 }
 
 function validatePassword(
@@ -217,6 +203,7 @@ export default function RegisterForm({
   specialties,
   locale,
   initialRegistrationType,
+  initialNextPath,
 }: RegisterFormProps) {
   const independentCopy =
     INDEPENDENT_COPY[locale] ??
@@ -371,29 +358,18 @@ export default function RegisterForm({
   const isClinic =
     registrationType === "clinic";
 
+  const safeNextPath =
+    getSafeNextPath(
+      initialNextPath
+    );
+
   const loginPath =
-    useMemo(() => {
-      if (
-        typeof window ===
-        "undefined"
-      ) {
-        return "/login";
-      }
-
-      const nextPath =
-        getSafeNextPath();
-
-      if (
-        nextPath ===
-        "/patient-dashboard"
-      ) {
-        return "/login";
-      }
-
-      return `/login?next=${encodeURIComponent(
-        nextPath
-      )}`;
-    }, []);
+    safeNextPath ===
+    "/patient-dashboard"
+      ? "/login"
+      : `/login?next=${encodeURIComponent(
+          safeNextPath
+        )}`;
 
   function selectRegistrationType(
     type: RegistrationType
@@ -648,7 +624,7 @@ export default function RegisterForm({
               ? "/doctor-application"
               : isClinic
                 ? "/dashboard"
-                : getSafeNextPath();
+                : safeNextPath;
 
           const confirmationUrl =
             new URL(
