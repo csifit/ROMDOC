@@ -1,19 +1,22 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
+import {
+  useTranslations,
+} from "next-intl";
+import {
+  useRouter,
+} from "next/navigation";
 import {
   type FormEvent,
   type ReactNode,
   useState,
   useTransition,
 } from "react";
-import {
-  useRouter,
-} from "next/navigation";
 
 import Button from "@/components/ui/button";
-import {
-  type AppLocale,
+import type {
+  AppLocale,
 } from "@/i18n/routing";
 import {
   getIndependentDoctorRegistrationMetadata,
@@ -43,104 +46,20 @@ type RegisterFormProps = {
 type FieldProps = {
   label: string;
   optional?: boolean;
+  optionalLabel: string;
   children: ReactNode;
 };
 
-type IndependentCopy = {
-  tabLabel: string;
-  submitLabel: string;
-  title: string;
-  description: string;
-  billing: string;
-  immutable: string;
-  acknowledgement: string;
-  acknowledgementError: string;
-};
-
-const INDEPENDENT_COPY:
-  Record<AppLocale, IndependentCopy> = {
-    ro: {
-      tabLabel:
-        "Sunt medic independent",
-
-      submitLabel:
-        "Continuă ca medic independent",
-
-      title:
-        "Cont de medic independent",
-
-      description:
-        "Acest formular creează un cont profesional independent, asociat exclusiv adresei de e-mail introduse aici.",
-
-      billing:
-        "Abonamentul RomDoc este plătit direct de medic: 60 RON/lună + TVA sau 600 RON/an + TVA.",
-
-      immutable:
-        "Contul nu poate fi transformat ulterior într-un cont plătit de clinică. Pentru acoperire plătită de clinică este necesară o invitație separată, trimisă la o altă adresă de e-mail, care va crea un alt utilizator RomDoc.",
-
-      acknowledgement:
-        "Înțeleg că acest cont rămâne independent și nu poate primi ulterior acoperire plătită de clinică.",
-
-      acknowledgementError:
-        "Confirmă că ai înțeles caracterul independent și permanent al acestui cont.",
-    },
-
-    en: {
-      tabLabel:
-        "I am an independent doctor",
-
-      submitLabel:
-        "Continue as an independent doctor",
-
-      title:
-        "Independent doctor account",
-
-      description:
-        "This form creates an independent professional account associated exclusively with the email address entered here.",
-
-      billing:
-        "The RomDoc subscription is paid directly by the doctor: RON 60/month plus VAT or RON 600/year plus VAT.",
-
-      immutable:
-        "This account cannot later be converted into a clinic-paid account. Clinic-paid coverage requires a separate invitation sent to another email address, creating another RomDoc user.",
-
-      acknowledgement:
-        "I understand that this account remains independent and cannot later receive clinic-paid coverage.",
-
-      acknowledgementError:
-        "Confirm that you understand the independent and permanent nature of this account.",
-    },
-
-    de: {
-      tabLabel:
-        "Ich bin selbstständiger Arzt",
-
-      submitLabel:
-        "Als selbstständiger Arzt fortfahren",
-
-      title:
-        "Konto für selbstständige Ärzte",
-
-      description:
-        "Dieses Formular erstellt ein unabhängiges berufliches Konto, das ausschließlich mit der hier angegebenen E-Mail-Adresse verknüpft ist.",
-
-      billing:
-        "Das RomDoc-Abonnement wird direkt vom Arzt bezahlt: 60 RON pro Monat zuzüglich Mehrwertsteuer oder 600 RON pro Jahr zuzüglich Mehrwertsteuer.",
-
-      immutable:
-        "Dieses Konto kann später nicht in ein von einer Klinik bezahltes Konto umgewandelt werden. Eine von einer Klinik bezahlte Abdeckung erfordert eine separate Einladung an eine andere E-Mail-Adresse und erstellt einen weiteren RomDoc-Benutzer.",
-
-      acknowledgement:
-        "Ich verstehe, dass dieses Konto unabhängig bleibt und später keine von einer Klinik bezahlte Abdeckung erhalten kann.",
-
-      acknowledgementError:
-        "Bestätigen Sie, dass Sie den unabhängigen und dauerhaften Charakter dieses Kontos verstanden haben.",
-    },
-  };
+type PasswordValidationKey =
+  | "passwordLength"
+  | "passwordUppercase"
+  | "passwordLowercase"
+  | "passwordNumber";
 
 function Field({
   label,
   optional = false,
+  optionalLabel,
   children,
 }: FieldProps) {
   return (
@@ -151,7 +70,7 @@ function Field({
 
       {optional ? (
         <span className="ml-2 text-xs text-gray-500">
-          Opțional
+          {optionalLabel}
         </span>
       ) : null}
 
@@ -177,26 +96,69 @@ function getSafeNextPath(
   return value;
 }
 
-function validatePassword(
+function getPasswordValidationKey(
   password: string
-) {
+): PasswordValidationKey | null {
   if (password.length < 8) {
-    return "Parola trebuie să conțină cel puțin 8 caractere.";
+    return "passwordLength";
   }
 
   if (!/[A-Z]/.test(password)) {
-    return "Parola trebuie să conțină cel puțin o literă mare.";
+    return "passwordUppercase";
   }
 
   if (!/[a-z]/.test(password)) {
-    return "Parola trebuie să conțină cel puțin o literă mică.";
+    return "passwordLowercase";
   }
 
   if (!/[0-9]/.test(password)) {
-    return "Parola trebuie să conțină cel puțin o cifră.";
+    return "passwordNumber";
   }
 
   return null;
+}
+
+function getDefaultCountry(
+  locale: AppLocale
+) {
+  if (locale === "de") {
+    return "Rumänien";
+  }
+
+  if (locale === "en") {
+    return "Romania";
+  }
+
+  return "România";
+}
+
+function getLegalPaths(
+  locale: AppLocale
+) {
+  if (locale === "de") {
+    return {
+      terms:
+        "/de/allgemeine-geschaeftsbedingungen",
+      privacy:
+        "/de/datenschutz",
+    };
+  }
+
+  if (locale === "en") {
+    return {
+      terms:
+        "/en/terms-and-conditions",
+      privacy:
+        "/en/privacy-policy",
+    };
+  }
+
+  return {
+    terms:
+      "/ro/termeni-si-conditii",
+    privacy:
+      "/ro/confidentialitate",
+  };
 }
 
 export default function RegisterForm({
@@ -205,9 +167,15 @@ export default function RegisterForm({
   initialRegistrationType,
   initialNextPath,
 }: RegisterFormProps) {
-  const independentCopy =
-    INDEPENDENT_COPY[locale] ??
-    INDEPENDENT_COPY.ro;
+  const t =
+    useTranslations(
+      "Auth.register"
+    );
+
+  const validation =
+    useTranslations(
+      "Auth.validation"
+    );
 
   const router =
     useRouter();
@@ -317,7 +285,9 @@ export default function RegisterForm({
   const [
     billingCountry,
     setBillingCountry,
-  ] = useState("România");
+  ] = useState(
+    getDefaultCountry(locale)
+  );
 
   const [
     billingEmail,
@@ -347,10 +317,9 @@ export default function RegisterForm({
   const [
     error,
     setError,
-  ] =
-    useState<string | null>(
-      null
-    );
+  ] = useState<string | null>(
+    null
+  );
 
   const isDoctor =
     registrationType === "doctor";
@@ -363,13 +332,26 @@ export default function RegisterForm({
       initialNextPath
     );
 
-  const loginPath =
-    safeNextPath ===
+  const loginParameters =
+    new URLSearchParams({
+      locale,
+    });
+
+  if (
+    safeNextPath !==
     "/patient-dashboard"
-      ? "/login"
-      : `/login?next=${encodeURIComponent(
-          safeNextPath
-        )}`;
+  ) {
+    loginParameters.set(
+      "next",
+      safeNextPath
+    );
+  }
+
+  const loginPath =
+    `/login?${loginParameters.toString()}`;
+
+  const legalPaths =
+    getLegalPaths(locale);
 
   function selectRegistrationType(
     type: RegistrationType
@@ -441,7 +423,7 @@ export default function RegisterForm({
       2
     ) {
       setError(
-        "Introdu un prenume valid."
+        validation("firstName")
       );
       return;
     }
@@ -451,7 +433,7 @@ export default function RegisterForm({
       2
     ) {
       setError(
-        "Introdu un nume de familie valid."
+        validation("lastName")
       );
       return;
     }
@@ -461,16 +443,22 @@ export default function RegisterForm({
       !normalizedEmail.includes("@")
     ) {
       setError(
-        "Introdu o adresă de e-mail validă."
+        validation("email")
       );
       return;
     }
 
-    const passwordError =
-      validatePassword(password);
+    const passwordValidationKey =
+      getPasswordValidationKey(
+        password
+      );
 
-    if (passwordError) {
-      setError(passwordError);
+    if (passwordValidationKey) {
+      setError(
+        validation(
+          passwordValidationKey
+        )
+      );
       return;
     }
 
@@ -479,7 +467,9 @@ export default function RegisterForm({
       passwordConfirmation
     ) {
       setError(
-        "Parolele introduse nu coincid."
+        validation(
+          "passwordMismatch"
+        )
       );
       return;
     }
@@ -490,14 +480,16 @@ export default function RegisterForm({
         7
       ) {
         setError(
-          "Introdu un număr de telefon valid."
+          validation("phone")
         );
         return;
       }
 
       if (!specialtyId) {
         setError(
-          "Selectează specialitatea medicală."
+          validation(
+            "specialty"
+          )
         );
         return;
       }
@@ -506,8 +498,9 @@ export default function RegisterForm({
         !acceptedIndependentAccount
       ) {
         setError(
-          independentCopy
-            .acknowledgementError
+          validation(
+            "independentAcknowledgement"
+          )
         );
         return;
       }
@@ -519,7 +512,9 @@ export default function RegisterForm({
         7
       ) {
         setError(
-          "Introdu un număr de telefon valid pentru persoana de contact."
+          validation(
+            "contactPhone"
+          )
         );
         return;
       }
@@ -529,7 +524,9 @@ export default function RegisterForm({
         2
       ) {
         setError(
-          "Introdu denumirea clinicii sau organizației."
+          validation(
+            "clinicName"
+          )
         );
         return;
       }
@@ -539,7 +536,9 @@ export default function RegisterForm({
         2
       ) {
         setError(
-          "Introdu orașul clinicii."
+          validation(
+            "clinicCity"
+          )
         );
         return;
       }
@@ -549,7 +548,9 @@ export default function RegisterForm({
           .trim().length < 2
       ) {
         setError(
-          "Introdu denumirea firmei pentru facturare."
+          validation(
+            "billingCompanyName"
+          )
         );
         return;
       }
@@ -559,7 +560,9 @@ export default function RegisterForm({
           .trim().length < 2
       ) {
         setError(
-          "Introdu CUI-ul firmei."
+          validation(
+            "billingTaxId"
+          )
         );
         return;
       }
@@ -569,7 +572,9 @@ export default function RegisterForm({
           .trim().length < 5
       ) {
         setError(
-          "Introdu adresa de facturare."
+          validation(
+            "billingAddress"
+          )
         );
         return;
       }
@@ -579,7 +584,9 @@ export default function RegisterForm({
         2
       ) {
         setError(
-          "Introdu orașul de facturare."
+          validation(
+            "billingCity"
+          )
         );
         return;
       }
@@ -589,7 +596,9 @@ export default function RegisterForm({
           .trim().length < 2
       ) {
         setError(
-          "Introdu județul de facturare."
+          validation(
+            "billingCounty"
+          )
         );
         return;
       }
@@ -600,7 +609,9 @@ export default function RegisterForm({
           .includes("@")
       ) {
         setError(
-          "Introdu o adresă de e-mail validă pentru facturare."
+          validation(
+            "billingEmail"
+          )
         );
         return;
       }
@@ -608,7 +619,9 @@ export default function RegisterForm({
 
     if (!acceptedTerms) {
       setError(
-        "Trebuie să accepți termenii și politica de confidențialitate."
+        validation(
+          "termsRequired"
+        )
       );
       return;
     }
@@ -638,6 +651,13 @@ export default function RegisterForm({
             .set(
               "next",
               nextPath
+            );
+
+          confirmationUrl
+            .searchParams
+            .set(
+              "locale",
+              locale
             );
 
           const independentMetadata =
@@ -800,7 +820,9 @@ export default function RegisterForm({
                 )
             ) {
               setError(
-                "Există deja un cont pentru această adresă de e-mail."
+                validation(
+                  "accountExists"
+                )
               );
               return;
             }
@@ -812,7 +834,9 @@ export default function RegisterForm({
                 )
             ) {
               setError(
-                "Contul nu a putut fi creat. Verifică migrarea bazei de date pentru înregistrare."
+                validation(
+                  "databaseRegistration"
+                )
               );
               return;
             }
@@ -827,7 +851,7 @@ export default function RegisterForm({
             data.user &&
             !data.session
           ) {
-            const searchParams =
+            const searchParameters =
               new URLSearchParams({
                 email:
                   normalizedEmail,
@@ -837,10 +861,12 @@ export default function RegisterForm({
 
                 next:
                   nextPath,
+
+                locale,
               });
 
             router.replace(
-              `/check-email?${searchParams.toString()}`
+              `/check-email?${searchParameters.toString()}`
             );
 
             router.refresh();
@@ -857,7 +883,9 @@ export default function RegisterForm({
           }
 
           setError(
-            "Contul nu a putut fi creat. Încearcă din nou."
+            validation(
+              "accountCreation"
+            )
           );
         } catch (
           registrationError
@@ -868,7 +896,9 @@ export default function RegisterForm({
           );
 
           setError(
-            "Înregistrarea nu a putut fi finalizată."
+            validation(
+              "registrationFailed"
+            )
           );
         }
       }
@@ -877,35 +907,36 @@ export default function RegisterForm({
 
   const submitLabel =
     isDoctor
-      ? independentCopy
-          .submitLabel
+      ? t("submitDoctor")
       : isClinic
-        ? "Trimite cererea clinicii"
-        : "Creează cont de pacient";
+        ? t("submitClinic")
+        : t("submitPatient");
+
+  const optionalLabel =
+    t("optional");
 
   return (
     <div className="w-full max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
       <header className="text-center">
         <Link
-          href="/"
+          href={`/${locale}`}
           className="inline-block text-3xl font-bold text-gray-900"
         >
           RomDoc
         </Link>
 
         <h1 className="mt-6 text-2xl font-bold text-gray-900">
-          Creează un cont
+          {t("title")}
         </h1>
 
         <p className="mt-2 text-sm leading-6 text-gray-600">
-          Alege tipul contului pe
-          care dorești să îl creezi.
+          {t("description")}
         </p>
       </header>
 
       <div
         role="tablist"
-        aria-label="Tip cont"
+        aria-label={t("description")}
         className="mt-8 grid grid-cols-1 gap-1 rounded-xl bg-[#F0EEE9] p-1 sm:grid-cols-3"
       >
         <button
@@ -927,7 +958,7 @@ export default function RegisterForm({
               : "text-gray-600 hover:text-gray-900"
           }`}
         >
-          Sunt pacient
+          {t("patientTab")}
         </button>
 
         <button
@@ -945,7 +976,7 @@ export default function RegisterForm({
               : "text-gray-600 hover:text-gray-900"
           }`}
         >
-          {independentCopy.tabLabel}
+          {t("doctorTab")}
         </button>
 
         <button
@@ -963,59 +994,45 @@ export default function RegisterForm({
               : "text-gray-600 hover:text-gray-900"
           }`}
         >
-          Suntem clinică
+          {t("clinicTab")}
         </button>
       </div>
 
       {isDoctor ? (
         <section className="mt-6 space-y-3 rounded-2xl border border-[#036661]/25 bg-[#F0EEE9] p-5">
           <h2 className="text-base font-bold text-gray-950">
-            {independentCopy.title}
+            {t(
+              "independentTitle"
+            )}
           </h2>
 
           <p className="text-sm leading-6 text-gray-700">
-            {
-              independentCopy
-                .description
-            }
+            {t(
+              "independentDescription"
+            )}
           </p>
 
           <p className="text-sm leading-6 text-gray-700">
-            {
-              independentCopy
-                .billing
-            }
+            {t(
+              "independentBilling"
+            )}
           </p>
 
           <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium leading-6 text-amber-950">
-            {
-              independentCopy
-                .immutable
-            }
+            {t(
+              "independentImmutable"
+            )}
           </p>
         </section>
       ) : (
         <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm leading-6 text-gray-700">
-          {isClinic ? (
-            <>
-              Contul de clinică este
-              pentru organizații care
-              doresc să invite medici,
-              să centralizeze
-              abonamentele acoperite
-              de clinică și să
-              urmărească datele de
-              facturare.
-            </>
-          ) : (
-            <>
-              Contul de pacient îți
-              permite să soliciți
-              programări și să
-              consulți istoricul
-              acestora.
-            </>
-          )}
+          {isClinic
+            ? t(
+                "clinicDescription"
+              )
+            : t(
+                "patientDescription"
+              )}
         </div>
       )}
 
@@ -1025,11 +1042,20 @@ export default function RegisterForm({
       >
         <section className="space-y-5">
           <h2 className="text-base font-semibold text-gray-900">
-            Date cont
+            {t(
+              "accountDetails"
+            )}
           </h2>
 
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Prenume">
+            <Field
+              label={t(
+                "firstName"
+              )}
+              optionalLabel={
+                optionalLabel
+              }
+            >
               <input
                 type="text"
                 required
@@ -1049,7 +1075,14 @@ export default function RegisterForm({
               />
             </Field>
 
-            <Field label="Nume">
+            <Field
+              label={t(
+                "lastName"
+              )}
+              optionalLabel={
+                optionalLabel
+              }
+            >
               <input
                 type="text"
                 required
@@ -1070,7 +1103,12 @@ export default function RegisterForm({
             </Field>
           </div>
 
-          <Field label="E-mail">
+          <Field
+            label={t("email")}
+            optionalLabel={
+              optionalLabel
+            }
+          >
             <input
               type="email"
               required
@@ -1090,7 +1128,12 @@ export default function RegisterForm({
 
           {(isDoctor ||
             isClinic) ? (
-            <Field label="Telefon">
+            <Field
+              label={t("phone")}
+              optionalLabel={
+                optionalLabel
+              }
+            >
               <input
                 type="tel"
                 required
@@ -1115,10 +1158,19 @@ export default function RegisterForm({
         {isDoctor ? (
           <section className="space-y-5 rounded-2xl border border-gray-200 bg-gray-50 p-5">
             <h2 className="text-base font-semibold text-gray-900">
-              Date medic independent
+              {t(
+                "doctorDetails"
+              )}
             </h2>
 
-            <Field label="Specialitate">
+            <Field
+              label={t(
+                "specialty"
+              )}
+              optionalLabel={
+                optionalLabel
+              }
+            >
               <select
                 required
                 value={specialtyId}
@@ -1133,8 +1185,9 @@ export default function RegisterForm({
                 }
               >
                 <option value="">
-                  Selectează
-                  specialitatea
+                  {t(
+                    "chooseSpecialty"
+                  )}
                 </option>
 
                 {specialties.map(
@@ -1157,8 +1210,13 @@ export default function RegisterForm({
             </Field>
 
             <Field
-              label="Număr profesional"
+              label={t(
+                "professionalRegistrationNumber"
+              )}
               optional
+              optionalLabel={
+                optionalLabel
+              }
             >
               <input
                 type="text"
@@ -1172,25 +1230,20 @@ export default function RegisterForm({
                     event.target.value
                   )
                 }
-                placeholder="Număr de parafă sau identificator profesional"
                 className={
                   inputClassName()
                 }
               />
             </Field>
 
-            <p className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-xs leading-5 text-gray-600">
-              Numărul profesional este
-              informativ. RomDoc nu
-              compară automat conturile
-              cu același număr, nu
-              afișează avertismente și
-              nu unește conturi.
-            </p>
-
             <Field
-              label="Mesaj"
+              label={t(
+                "message"
+              )}
               optional
+              optionalLabel={
+                optionalLabel
+              }
             >
               <textarea
                 rows={4}
@@ -1202,7 +1255,6 @@ export default function RegisterForm({
                     event.target.value
                   )
                 }
-                placeholder="Alte informații relevante"
                 className={`${inputClassName()} resize-y`}
               />
             </Field>
@@ -1225,10 +1277,9 @@ export default function RegisterForm({
               />
 
               <span className="text-sm font-medium leading-6 text-gray-800">
-                {
-                  independentCopy
-                    .acknowledgement
-                }
+                {t(
+                  "independentAcknowledgement"
+                )}
               </span>
             </label>
           </section>
@@ -1238,11 +1289,19 @@ export default function RegisterForm({
           <>
             <section className="space-y-5 rounded-2xl border border-gray-200 bg-gray-50 p-5">
               <h2 className="text-base font-semibold text-gray-900">
-                Date clinică /
-                organizație
+                {t(
+                  "clinicDetails"
+                )}
               </h2>
 
-              <Field label="Denumire clinică / organizație">
+              <Field
+                label={t(
+                  "clinicName"
+                )}
+                optionalLabel={
+                  optionalLabel
+                }
+              >
                 <input
                   type="text"
                   required
@@ -1263,7 +1322,14 @@ export default function RegisterForm({
               </Field>
 
               <div className="grid gap-5 sm:grid-cols-2">
-                <Field label="Oraș">
+                <Field
+                  label={t(
+                    "clinicCity"
+                  )}
+                  optionalLabel={
+                    optionalLabel
+                  }
+                >
                   <input
                     type="text"
                     required
@@ -1284,8 +1350,13 @@ export default function RegisterForm({
                 </Field>
 
                 <Field
-                  label="Website"
+                  label={t(
+                    "clinicWebsite"
+                  )}
                   optional
+                  optionalLabel={
+                    optionalLabel
+                  }
                 >
                   <input
                     type="url"
@@ -1300,7 +1371,7 @@ export default function RegisterForm({
                           .value
                       )
                     }
-                    placeholder="https://clinica.ro"
+                    placeholder="https://example.com"
                     className={
                       inputClassName()
                     }
@@ -1309,8 +1380,13 @@ export default function RegisterForm({
               </div>
 
               <Field
-                label="Mesaj"
+                label={t(
+                  "message"
+                )}
                 optional
+                optionalLabel={
+                  optionalLabel
+                }
               >
                 <textarea
                   rows={4}
@@ -1323,7 +1399,6 @@ export default function RegisterForm({
                         .value
                     )
                   }
-                  placeholder="Exemplu: numărul aproximativ de medici, orașe sau întrebări despre oferta pentru clinici"
                   className={`${inputClassName()} resize-y`}
                 />
               </Field>
@@ -1331,10 +1406,19 @@ export default function RegisterForm({
 
             <section className="space-y-5 rounded-2xl border border-gray-200 bg-gray-50 p-5">
               <h2 className="text-base font-semibold text-gray-900">
-                Date de facturare
+                {t(
+                  "billingDetails"
+                )}
               </h2>
 
-              <Field label="Denumire firmă">
+              <Field
+                label={t(
+                  "billingCompanyName"
+                )}
+                optionalLabel={
+                  optionalLabel
+                }
+              >
                 <input
                   type="text"
                   required
@@ -1357,7 +1441,14 @@ export default function RegisterForm({
               </Field>
 
               <div className="grid gap-5 sm:grid-cols-2">
-                <Field label="CUI">
+                <Field
+                  label={t(
+                    "billingTaxId"
+                  )}
+                  optionalLabel={
+                    optionalLabel
+                  }
+                >
                   <input
                     type="text"
                     required
@@ -1379,8 +1470,13 @@ export default function RegisterForm({
                 </Field>
 
                 <Field
-                  label="Nr. Registrul Comerțului"
+                  label={t(
+                    "billingTradeRegisterNumber"
+                  )}
                   optional
+                  optionalLabel={
+                    optionalLabel
+                  }
                 >
                   <input
                     type="text"
@@ -1403,7 +1499,14 @@ export default function RegisterForm({
                 </Field>
               </div>
 
-              <Field label="Adresă de facturare">
+              <Field
+                label={t(
+                  "billingAddress"
+                )}
+                optionalLabel={
+                  optionalLabel
+                }
+              >
                 <input
                   type="text"
                   required
@@ -1426,7 +1529,14 @@ export default function RegisterForm({
               </Field>
 
               <div className="grid gap-5 sm:grid-cols-2">
-                <Field label="Oraș facturare">
+                <Field
+                  label={t(
+                    "billingCity"
+                  )}
+                  optionalLabel={
+                    optionalLabel
+                  }
+                >
                   <input
                     type="text"
                     required
@@ -1448,7 +1558,14 @@ export default function RegisterForm({
                   />
                 </Field>
 
-                <Field label="Județ">
+                <Field
+                  label={t(
+                    "billingCounty"
+                  )}
+                  optionalLabel={
+                    optionalLabel
+                  }
+                >
                   <input
                     type="text"
                     required
@@ -1472,7 +1589,14 @@ export default function RegisterForm({
               </div>
 
               <div className="grid gap-5 sm:grid-cols-2">
-                <Field label="Țară">
+                <Field
+                  label={t(
+                    "billingCountry"
+                  )}
+                  optionalLabel={
+                    optionalLabel
+                  }
+                >
                   <input
                     type="text"
                     required
@@ -1493,7 +1617,14 @@ export default function RegisterForm({
                   />
                 </Field>
 
-                <Field label="E-mail facturare">
+                <Field
+                  label={t(
+                    "billingEmail"
+                  )}
+                  optionalLabel={
+                    optionalLabel
+                  }
+                >
                   <input
                     type="email"
                     required
@@ -1532,16 +1663,22 @@ export default function RegisterForm({
                   />
 
                   <span className="text-sm leading-6 text-gray-700">
-                    Firma este
-                    plătitoare de TVA
+                    {t(
+                      "vatPayer"
+                    )}
                   </span>
                 </label>
 
                 {isVatPayer ? (
                   <div className="mt-4">
                     <Field
-                      label="Cod TVA"
+                      label={t(
+                        "vatNumber"
+                      )}
                       optional
+                      optionalLabel={
+                        optionalLabel
+                      }
                     >
                       <input
                         type="text"
@@ -1575,7 +1712,14 @@ export default function RegisterForm({
         ) : null}
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Parolă">
+          <Field
+            label={t(
+              "password"
+            )}
+            optionalLabel={
+              optionalLabel
+            }
+          >
             <input
               type="password"
               required
@@ -1594,7 +1738,14 @@ export default function RegisterForm({
             />
           </Field>
 
-          <Field label="Confirmă parola">
+          <Field
+            label={t(
+              "confirmPassword"
+            )}
+            optionalLabel={
+              optionalLabel
+            }
+          >
             <input
               type="password"
               required
@@ -1616,12 +1767,28 @@ export default function RegisterForm({
           </Field>
         </div>
 
-        <p className="text-xs leading-5 text-gray-500">
-          Parola trebuie să conțină
-          minimum 8 caractere, o literă
-          mare, o literă mică și o
-          cifră.
-        </p>
+        <ul className="space-y-1 text-xs leading-5 text-gray-500">
+          <li>
+            {validation(
+              "passwordLength"
+            )}
+          </li>
+          <li>
+            {validation(
+              "passwordUppercase"
+            )}
+          </li>
+          <li>
+            {validation(
+              "passwordLowercase"
+            )}
+          </li>
+          <li>
+            {validation(
+              "passwordNumber"
+            )}
+          </li>
+        </ul>
 
         <div className="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
           <input
@@ -1647,28 +1814,37 @@ export default function RegisterForm({
               htmlFor="accepted-terms"
               className="cursor-pointer"
             >
-              Sunt de acord cu{" "}
+              {t(
+                "termsPrefix"
+              )}{" "}
             </label>
 
             <Link
-              href="/termeni-si-conditii"
+              href={
+                legalPaths.terms
+              }
               target="_blank"
               rel="noopener noreferrer"
               className="font-semibold text-[#036661] underline underline-offset-4 transition-colors hover:text-[#ff2800]"
             >
-              termenii și condițiile
+              {t("terms")}
             </Link>{" "}
-            și{" "}
+
+            {t(
+              "privacyConnector"
+            )}{" "}
+
             <Link
-              href="/confidentialitate"
+              href={
+                legalPaths.privacy
+              }
               target="_blank"
               rel="noopener noreferrer"
               className="font-semibold text-[#036661] underline underline-offset-4 transition-colors hover:text-[#ff2800]"
             >
-              politica de
-              confidențialitate
-            </Link>{" "}
-            RomDoc.
+              {t("privacy")}
+            </Link>
+            {" "}RomDoc.
           </p>
         </div>
 
@@ -1685,20 +1861,24 @@ export default function RegisterForm({
           type="submit"
           fullWidth
           isLoading={isPending}
-          loadingText="Se creează contul..."
+          loadingText={
+            t("submitting")
+          }
         >
           {submitLabel}
         </Button>
       </form>
 
       <p className="mt-6 text-center text-sm text-gray-600">
-        Ai deja un cont?{" "}
+        {t(
+          "alreadyHaveAccount"
+        )}{" "}
 
         <Link
           href={loginPath}
           className="romdoc-link underline-offset-4 hover:underline"
         >
-          Autentificare
+          {t("signIn")}
         </Link>
       </p>
     </div>

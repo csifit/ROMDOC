@@ -1063,6 +1063,7 @@ export default async function DoctorPage({
             nextAvailableSlot={
               nextAvailableSlot
             }
+            locale={locale}
           />
         </div>
       </div>
@@ -1071,6 +1072,7 @@ export default async function DoctorPage({
         consultationPrice={
           consultationPrice
         }
+        locale={locale}
       />
 
       <RecordRecentlyViewedDoctor

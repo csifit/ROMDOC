@@ -1,17 +1,22 @@
 import {
-  getLocale,
-} from "next-intl/server";
+  NextIntlClientProvider,
+} from "next-intl";
 import {
   redirect,
 } from "next/navigation";
 
 import RegisterForm from "@/components/auth/register-form";
+import PublicFooter from "@/components/public/public-footer";
 import {
-  type AppLocale,
-} from "@/i18n/routing";
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
 import {
   createClient,
 } from "@/lib/supabase/server";
+
+import roMessages from "../../../messages/ro.json";
+import enMessages from "../../../messages/en.json";
+import deMessages from "../../../messages/de.json";
 
 type RegistrationType =
   | "patient"
@@ -23,6 +28,7 @@ type RegisterPageProps = {
     type?: string;
     role?: string;
     next?: string;
+    locale?: string;
   }>;
 };
 
@@ -38,6 +44,12 @@ type SpecialtyRow = {
     | TranslationRow[]
     | null;
 };
+
+const messagesByLocale = {
+  ro: roMessages,
+  en: enMessages,
+  de: deMessages,
+} as const;
 
 function resolveRegistrationType(
   type?: string,
@@ -80,7 +92,10 @@ function getLocalizedName(
   translations:
     | TranslationRow[]
     | null,
-  locale: AppLocale,
+  locale:
+    | "ro"
+    | "en"
+    | "de",
   fallback: string
 ) {
   return (
@@ -117,7 +132,12 @@ export default async function RegisterPage({
     );
 
   const locale =
-    (await getLocale()) as AppLocale;
+    normalizeAppLocale(
+      parameters.locale
+    );
+
+  const messages =
+    messagesByLocale[locale];
 
   const supabase =
     await createClient();
@@ -179,19 +199,30 @@ export default async function RegisterPage({
       );
 
   return (
-    <main className="min-h-screen bg-[#F0EEE9] px-6 py-12">
-      <div className="mx-auto flex min-h-[calc(100vh-6rem)] items-center justify-center">
-        <RegisterForm
-          specialties={specialties}
+    <NextIntlClientProvider
+      locale={locale}
+      messages={messages}
+    >
+      <div className="flex min-h-screen flex-col bg-[#F0EEE9]">
+        <main className="flex-1 px-6 py-12">
+          <div className="mx-auto flex min-h-[calc(100vh-6rem)] items-center justify-center">
+            <RegisterForm
+              specialties={specialties}
+              locale={locale}
+              initialRegistrationType={
+                initialRegistrationType
+              }
+              initialNextPath={
+                initialNextPath
+              }
+            />
+          </div>
+        </main>
+
+        <PublicFooter
           locale={locale}
-          initialRegistrationType={
-            initialRegistrationType
-          }
-          initialNextPath={
-            initialNextPath
-          }
         />
       </div>
-    </main>
+    </NextIntlClientProvider>
   );
 }

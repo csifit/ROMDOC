@@ -2,6 +2,7 @@
 
 import NextLink from "next/link";
 import {
+  useLocale,
   useTranslations,
 } from "next-intl";
 import {
@@ -43,6 +44,9 @@ export default function PublicHeader({
   userName,
   userEmail,
 }: PublicHeaderProps) {
+  const locale =
+    useLocale();
+
   const t =
     useTranslations(
       "PublicNavigation"
@@ -52,6 +56,12 @@ export default function PublicHeader({
     isSidebarOpen,
     setIsSidebarOpen,
   ] = useState(false);
+
+  const loginHref =
+    `/login?locale=${locale}`;
+
+  const registerHref =
+    `/register?locale=${locale}`;
 
   return (
     <>
@@ -100,14 +110,18 @@ export default function PublicHeader({
             ) : (
               <>
                 <NextLink
-                  href="/login"
+                  href={
+                    loginHref
+                  }
                   className="romdoc-button romdoc-button-secondary romdoc-button-sm hidden sm:inline-flex"
                 >
                   {t("signIn")}
                 </NextLink>
 
                 <NextLink
-                  href="/register"
+                  href={
+                    registerHref
+                  }
                   className="romdoc-button romdoc-button-primary romdoc-button-sm"
                 >
                   {t(

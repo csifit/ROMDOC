@@ -1,14 +1,23 @@
 import NextLink from "next/link";
-import { getLocale } from "next-intl/server";
+import {
+  getLocale,
+} from "next-intl/server";
 
 import CookieInformationLink from "@/components/privacy/cookie-information-link";
-import { getPathname } from "@/i18n/navigation";
-import { type AppLocale } from "@/i18n/routing";
-
 import RecentlyViewedDoctorsPanel from "@/components/public/recently-viewed-doctors-panel";
 import {
   recentlyViewedFooterCopy,
 } from "@/components/public/recently-viewed-footer-copy";
+import {
+  getPathname,
+} from "@/i18n/navigation";
+import {
+  type AppLocale,
+} from "@/i18n/routing";
+
+type PublicFooterProps = {
+  locale?: AppLocale;
+};
 
 type FooterLink = {
   href: string;
@@ -43,7 +52,10 @@ type FooterCopy = {
   serviceDescription: string;
 };
 
-const footerCopy: Record<AppLocale, FooterCopy> = {
+const footerCopy: Record<
+  AppLocale,
+  FooterCopy
+> = {
   ro: {
     home: "Acasă",
     doctors: "Medici",
@@ -141,81 +153,235 @@ function FooterColumn({
       </h2>
 
       <ul className="mt-4 space-y-3">
-        {links.map((link) => (
-          <li key={link.href}>
-            <NextLink
-              href={link.href}
-              className="romdoc-focus-ring rounded-sm text-sm text-gray-600 transition hover:text-[#036661]"
-            >
-              {link.label}
-            </NextLink>
-          </li>
-        ))}
+        {links.map(
+          (link) => (
+            <li key={link.href}>
+              <NextLink
+                href={link.href}
+                className="romdoc-focus-ring rounded-sm text-sm text-gray-600 transition hover:text-[#036661]"
+              >
+                {link.label}
+              </NextLink>
+            </li>
+          )
+        )}
       </ul>
     </div>
   );
 }
 
-export default async function PublicFooter() {
+export default async function PublicFooter({
+  locale: localeProp,
+}: PublicFooterProps = {}) {
   const locale =
-    (await getLocale()) as AppLocale;
-  const copy = footerCopy[locale];
+    localeProp ??
+    ((await getLocale()) as AppLocale);
 
-  const recentlyViewedCopy = recentlyViewedFooterCopy[locale];
+  const copy =
+    footerCopy[locale];
 
-  const homeHref = getPathname({ locale, href: "/" });
-  const doctorsHref = getPathname({ locale, href: "/medici" });
-  const specialtiesHref = getPathname({ locale, href: "/specialitati" });
-  const patientGuideHref = getPathname({ locale, href: "/ghid-pacienti" });
-  const doctorStaffGuideHref = getPathname({ locale, href: "/ghid-medici-personal" });
-  const clinicOfferHref = getPathname({ locale, href: "/oferta-clinici" });
-  const legalInformationHref = getPathname({ locale, href: "/informatii-legale" });
-  const termsHref = getPathname({ locale, href: "/termeni-si-conditii" });
-  const privacyHref = getPathname({ locale, href: "/confidentialitate" });
-  const cookiesHref = getPathname({ locale, href: "/cookies" });
-  const contactHref = getPathname({ locale, href: "/contact" });
+  const recentlyViewedCopy =
+    recentlyViewedFooterCopy[
+      locale
+    ];
 
-  const platformLinks: FooterLink[] = [
-    { href: homeHref, label: copy.home },
-    { href: doctorsHref, label: copy.doctors },
-    { href: specialtiesHref, label: copy.specialties },
-    { href: patientGuideHref, label: copy.patientGuide },
-    { href: "/register", label: copy.createAccount },
-    { href: "/login", label: copy.signIn },
-  ];
+  const homeHref =
+    getPathname({
+      locale,
+      href: "/",
+    });
 
-  const doctorLinks: FooterLink[] = [
-    { href: "/register?role=doctor", label: copy.joinAsDoctor },
-    { href: clinicOfferHref, label: copy.clinicOffer },
-    { href: doctorStaffGuideHref, label: copy.doctorStaffGuide },
-    { href: `${doctorStaffGuideHref}#abonament`, label: copy.doctorSubscription },
-    { href: "/login", label: copy.doctorSignIn },
-    {
-      href: `${legalInformationHref}#verificare-profesionala`,
-      label: copy.professionalVerification,
-    },
-  ];
+  const doctorsHref =
+    getPathname({
+      locale,
+      href: "/medici",
+    });
 
-  const legalLinks: FooterLink[] = [
-    { href: termsHref, label: copy.terms },
-    { href: privacyHref, label: copy.privacy },
-    { href: cookiesHref, label: copy.cookies },
-    { href: legalInformationHref, label: copy.legalInformation },
-  ];
+  const specialtiesHref =
+    getPathname({
+      locale,
+      href: "/specialitati",
+    });
 
-  const supportLinks: FooterLink[] = [
-    { href: contactHref, label: "Contact" },
-    { href: `${contactHref}#suport-pacienti`, label: copy.support },
-    { href: `${contactHref}#probleme-tehnice`, label: copy.reportProblem },
-  ];
+  const patientGuideHref =
+    getPathname({
+      locale,
+      href: "/ghid-pacienti",
+    });
 
-  return ( 
+  const doctorStaffGuideHref =
+    getPathname({
+      locale,
+      href:
+        "/ghid-medici-personal",
+    });
+
+  const clinicOfferHref =
+    getPathname({
+      locale,
+      href: "/oferta-clinici",
+    });
+
+  const legalInformationHref =
+    getPathname({
+      locale,
+      href: "/informatii-legale",
+    });
+
+  const termsHref =
+    getPathname({
+      locale,
+      href: "/termeni-si-conditii",
+    });
+
+  const privacyHref =
+    getPathname({
+      locale,
+      href: "/confidentialitate",
+    });
+
+  const cookiesHref =
+    getPathname({
+      locale,
+      href: "/cookies",
+    });
+
+  const contactHref =
+    getPathname({
+      locale,
+      href: "/contact",
+    });
+
+  const loginHref =
+    `/login?locale=${locale}`;
+
+  const registerHref =
+    `/register?locale=${locale}`;
+
+  const doctorRegisterHref =
+    `/register?locale=${locale}&role=doctor&type=doctor`;
+
+  const platformLinks:
+    FooterLink[] = [
+      {
+        href: homeHref,
+        label: copy.home,
+      },
+      {
+        href: doctorsHref,
+        label: copy.doctors,
+      },
+      {
+        href: specialtiesHref,
+        label:
+          copy.specialties,
+      },
+      {
+        href: patientGuideHref,
+        label:
+          copy.patientGuide,
+      },
+      {
+        href: registerHref,
+        label:
+          copy.createAccount,
+      },
+      {
+        href: loginHref,
+        label: copy.signIn,
+      },
+    ];
+
+  const doctorLinks:
+    FooterLink[] = [
+      {
+        href:
+          doctorRegisterHref,
+        label:
+          copy.joinAsDoctor,
+      },
+      {
+        href: clinicOfferHref,
+        label:
+          copy.clinicOffer,
+      },
+      {
+        href:
+          doctorStaffGuideHref,
+        label:
+          copy.doctorStaffGuide,
+      },
+      {
+        href:
+          `${doctorStaffGuideHref}#abonament`,
+        label:
+          copy.doctorSubscription,
+      },
+      {
+        href: loginHref,
+        label:
+          copy.doctorSignIn,
+      },
+      {
+        href:
+          `${legalInformationHref}#verificare-profesionala`,
+        label:
+          copy.professionalVerification,
+      },
+    ];
+
+  const legalLinks:
+    FooterLink[] = [
+      {
+        href: termsHref,
+        label: copy.terms,
+      },
+      {
+        href: privacyHref,
+        label: copy.privacy,
+      },
+      {
+        href: cookiesHref,
+        label: copy.cookies,
+      },
+      {
+        href:
+          legalInformationHref,
+        label:
+          copy.legalInformation,
+      },
+    ];
+
+  const supportLinks:
+    FooterLink[] = [
+      {
+        href: contactHref,
+        label: "Contact",
+      },
+      {
+        href:
+          `${contactHref}#suport-pacienti`,
+        label: copy.support,
+      },
+      {
+        href:
+          `${contactHref}#probleme-tehnice`,
+        label:
+          copy.reportProblem,
+      },
+    ];
+
+  return (
     <footer className="relative min-h-[430px] overflow-hidden border-t border-gray-200 bg-white">
-        <RecentlyViewedDoctorsPanel
-          doctorsHref={doctorsHref}
-          copy={recentlyViewedCopy}
-        />
-        
+      <RecentlyViewedDoctorsPanel
+        doctorsHref={
+          doctorsHref
+        }
+        copy={
+          recentlyViewedCopy
+        }
+      />
+
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_repeat(4,1fr)]">
           <div>
@@ -236,37 +402,59 @@ export default async function PublicFooter() {
           </div>
 
           <FooterColumn
-            title={copy.platform}
-            links={platformLinks}
+            title={
+              copy.platform
+            }
+            links={
+              platformLinks
+            }
           />
 
           <FooterColumn
-            title={copy.forDoctors}
-            links={doctorLinks}
+            title={
+              copy.forDoctors
+            }
+            links={
+              doctorLinks
+            }
           />
 
           <div>
             <FooterColumn
               title="Legal"
-              links={legalLinks}
+              links={
+                legalLinks
+              }
             />
 
             <div className="mt-3">
               <CookieInformationLink
-                label={copy.cookieInformation}
+                label={
+                  copy.cookieInformation
+                }
               />
             </div>
           </div>
 
           <FooterColumn
             title="Contact"
-            links={supportLinks}
+            links={
+              supportLinks
+            }
           />
         </div>
 
         <div className="mt-10 flex flex-col gap-3 border-t border-gray-200 pt-6 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between">
-          <p>© 2026 RomDoc. {copy.rights}</p>
-          <p>{copy.serviceDescription}</p>
+          <p>
+            © 2026 RomDoc.{" "}
+            {copy.rights}
+          </p>
+
+          <p>
+            {
+              copy.serviceDescription
+            }
+          </p>
         </div>
       </div>
     </footer>

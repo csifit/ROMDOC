@@ -56,12 +56,17 @@ export default function HomepageDoctorCard({
 }: HomepageDoctorCardProps) {
   const locale =
     useLocale();
+
   const t =
     useTranslations(
       "HomepageDoctorCard"
     );
+
   const profileHref =
-    `/doctor/${doctor.slug}`;
+    locale === "de"
+      ? `/de/arzt/${doctor.slug}`
+      : `/${locale}/doctor/${doctor.slug}`;
+
   const bookingHref =
     `${profileHref}#programare`;
 

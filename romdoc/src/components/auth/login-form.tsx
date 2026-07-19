@@ -1,31 +1,40 @@
 "use client";
 
+import Link from "next/link";
+import {
+  useTranslations,
+} from "next-intl";
+import {
+  useRouter,
+} from "next/navigation";
 import {
   type FormEvent,
   useEffect,
   useState,
   useTransition,
 } from "react";
-import Link from "next/link";
-import {
-  useRouter,
-} from "next/navigation";
 
 import Button from "@/components/ui/button";
+import type {
+  AppLocale,
+} from "@/lib/i18n/app-locale";
 import {
   createClient,
 } from "@/lib/supabase/client";
 
 type LoginFormProps = {
   initialMessage?: string | null;
+  locale: AppLocale;
 };
 
-function getSafeNextPath() {
+function getSafeNextPath(
+  locale: AppLocale
+) {
   if (
     typeof window ===
     "undefined"
   ) {
-    return "/dashboard";
+    return `/${locale}/dashboard`;
   }
 
   const searchParams =
@@ -41,7 +50,7 @@ function getSafeNextPath() {
     !nextPath.startsWith("/") ||
     nextPath.startsWith("//")
   ) {
-    return "/dashboard";
+    return `/${locale}/dashboard`;
   }
 
   return nextPath;
@@ -49,7 +58,18 @@ function getSafeNextPath() {
 
 export default function LoginForm({
   initialMessage = null,
+  locale,
 }: LoginFormProps) {
+  const t =
+    useTranslations(
+      "Auth.login"
+    );
+
+  const validation =
+    useTranslations(
+      "Auth.validation"
+    );
+
   const router =
     useRouter();
 
@@ -93,7 +113,7 @@ export default function LoginForm({
       ) === "1"
     ) {
       setMessage(
-        "Parola a fost actualizată. Te poți autentifica folosind noua parolă."
+        t("passwordUpdated")
       );
     }
 
@@ -102,10 +122,10 @@ export default function LoginForm({
       "confirmation_failed"
     ) {
       setError(
-        "Linkul de autentificare nu este valid sau a expirat. Solicită un link nou."
+        t("confirmationFailed")
       );
     }
-  }, []);
+  }, [t]);
 
   function handleSubmit(
     event:
@@ -123,14 +143,18 @@ export default function LoginForm({
 
     if (!normalizedEmail) {
       setError(
-        "Introdu adresa de e-mail."
+        validation(
+          "emailRequired"
+        )
       );
       return;
     }
 
     if (!password) {
       setError(
-        "Introdu parola."
+        validation(
+          "passwordRequired"
+        )
       );
       return;
     }
@@ -159,13 +183,17 @@ export default function LoginForm({
             ) {
               case "invalid login credentials":
                 setError(
-                  "Adresa de e-mail sau parola este incorectă."
+                  validation(
+                    "invalidCredentials"
+                  )
                 );
                 return;
 
               case "email not confirmed":
                 setError(
-                  "Adresa de e-mail nu a fost confirmată."
+                  validation(
+                    "emailNotConfirmed"
+                  )
                 );
                 return;
 
@@ -178,7 +206,9 @@ export default function LoginForm({
           }
 
           const destination =
-            getSafeNextPath();
+            getSafeNextPath(
+              locale
+            );
 
           const {
             data: factors,
@@ -195,7 +225,9 @@ export default function LoginForm({
             );
 
             setError(
-              "Starea autentificării în doi pași nu a putut fi verificată."
+              validation(
+                "mfaFailed"
+              )
             );
             return;
           }
@@ -205,7 +237,7 @@ export default function LoginForm({
             0
           ) {
             router.replace(
-              `/mfa/verify?next=${encodeURIComponent(
+              `/mfa/verify?locale=${locale}&next=${encodeURIComponent(
                 destination
               )}`
             );
@@ -226,29 +258,37 @@ export default function LoginForm({
           );
 
           setError(
-            "Autentificarea nu a putut fi finalizată. Încearcă din nou."
+            validation(
+              "loginFailed"
+            )
           );
         }
       }
     );
   }
 
+  const forgotPasswordPath =
+    `/forgot-password?locale=${locale}`;
+
+  const registerPath =
+    `/register?locale=${locale}`;
+
   return (
     <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
       <header className="text-center">
         <Link
-          href="/"
+          href={`/${locale}`}
           className="inline-block text-3xl font-bold text-gray-900"
         >
           RomDoc
         </Link>
 
         <h1 className="mt-6 text-2xl font-bold text-gray-900">
-          Autentificare
+          {t("title")}
         </h1>
 
         <p className="mt-2 text-sm leading-6 text-gray-600">
-          Introdu adresa de e-mail și parola pentru a accesa contul.
+          {t("description")}
         </p>
       </header>
 
@@ -260,7 +300,7 @@ export default function LoginForm({
       >
         <label className="block">
           <span className="text-sm font-medium text-gray-700">
-            E-mail
+            {t("email")}
           </span>
 
           <input
@@ -278,7 +318,11 @@ export default function LoginForm({
                 event.target.value
               )
             }
-            placeholder="nume@example.com"
+            placeholder={
+              t(
+                "emailPlaceholder"
+              )
+            }
             className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-not-allowed disabled:opacity-60"
           />
         </label>
@@ -286,14 +330,18 @@ export default function LoginForm({
         <label className="block">
           <span className="flex items-center justify-between gap-3">
             <span className="text-sm font-medium text-gray-700">
-              Parolă
+              {t("password")}
             </span>
 
             <Link
-              href="/forgot-password"
+              href={
+                forgotPasswordPath
+              }
               className="text-sm font-semibold text-[#036661] underline-offset-4 hover:underline"
             >
-              Am uitat parola
+              {t(
+                "forgotPassword"
+              )}
             </Link>
           </span>
 
@@ -312,7 +360,11 @@ export default function LoginForm({
                 event.target.value
               )
             }
-            placeholder="Parola contului"
+            placeholder={
+              t(
+                "passwordPlaceholder"
+              )
+            }
             className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-not-allowed disabled:opacity-60"
           />
         </label>
@@ -341,20 +393,26 @@ export default function LoginForm({
           isLoading={
             isPending
           }
-          loadingText="Se autentifică..."
+          loadingText={
+            t("submitting")
+          }
         >
-          Autentificare
+          {t("submit")}
         </Button>
       </form>
 
       <div className="mt-6 text-center text-sm text-gray-600">
-        Nu ai încă un cont?{" "}
+        {t("noAccount")}{" "}
 
         <Link
-          href="/register"
+          href={
+            registerPath
+          }
           className="romdoc-link underline-offset-4 hover:underline"
         >
-          Creează cont
+          {t(
+            "createAccount"
+          )}
         </Link>
       </div>
     </div>

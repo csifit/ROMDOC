@@ -39,6 +39,11 @@ export const routing =
         de: "/arzt/[slug]",
       },
 
+
+
+
+
+
       "/specialitati": {
         ro: "/specialitati",
         en: "/specialties",

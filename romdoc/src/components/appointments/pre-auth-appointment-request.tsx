@@ -76,10 +76,14 @@ export default function PreAuthAppointmentRequest({
     `${getDoctorProfilePath(locale, doctorSlug)}#programare`;
 
   const loginPath =
-    `/${locale}/login?next=${encodeURIComponent(returnPath)}`;
+    `/login?locale=${locale}&next=${encodeURIComponent(
+      returnPath
+    )}`;
 
   const registerPath =
-    `/${locale}/register?type=patient&role=patient&next=${encodeURIComponent(returnPath)}`;
+    `/register?locale=${locale}&type=patient&role=patient&next=${encodeURIComponent(
+      returnPath
+    )}`;
 
   const handleDateChange = useCallback((date: string) => {
     setRequestedDate(date);
