@@ -1,4 +1,7 @@
 import {
+  getLocale,
+} from "next-intl/server";
+import {
   notFound,
 } from "next/navigation";
 
@@ -16,6 +19,11 @@ import RatingStars from "@/components/reviews/rating-stars";
 import {
   getNextAvailableAppointment,
 } from "@/lib/appointments/calculate-available-slots";
+import {
+  normalizeAppLocale,
+  selectTranslation,
+  type AppLocale,
+} from "@/lib/i18n/app-locale";
 import {
   createClient,
 } from "@/lib/supabase/server";
@@ -180,46 +188,34 @@ function getFirstRelation<T>(
   return relation;
 }
 
-function getRomanianClinicTranslation(
-  clinic: ClinicRelation
+function getClinicTranslation(
+  clinic: ClinicRelation,
+  locale: AppLocale
 ) {
-  return (
-    clinic.clinic_translations?.find(
-      (
-        translation
-      ) =>
-        translation.locale ===
-        "ro"
-    ) ??
-    clinic.clinic_translations?.[0] ??
-    null
+  return selectTranslation(
+    clinic.clinic_translations,
+    locale
   );
 }
 
-function getRomanianCityName(
-  clinic: ClinicRelation
+function getCityName(
+  clinic: ClinicRelation,
+  locale: AppLocale
 ) {
   const city =
     getFirstRelation(
       clinic.cities
     );
 
-  return (
-    city?.city_translations?.find(
-      (
-        translation
-      ) =>
-        translation.locale ===
-        "ro"
-    )?.name ??
-    city?.city_translations?.[0]
-      ?.name ??
-    null
-  );
+  return selectTranslation(
+    city?.city_translations,
+    locale
+  )?.name ?? null;
 }
 
 function getClinicAddress(
-  clinic: ClinicRelation
+  clinic: ClinicRelation,
+  locale: AppLocale
 ) {
   if (
     clinic.formatted_address?.trim()
@@ -229,8 +225,9 @@ function getClinicAddress(
 
   return [
     clinic.street_address,
-    getRomanianCityName(
-      clinic
+    getCityName(
+      clinic,
+      locale
     ),
   ]
     .filter(
@@ -298,8 +295,41 @@ function formatPrice(
   );
 }
 
-function getRomanianSpecialtyName(
-  doctor: DoctorRecord
+const profileFallbacks:
+  Record<
+    AppLocale,
+    {
+      doctorTitle: string;
+      medicalSpecialty: string;
+      medicalClinic: string;
+    }
+  > = {
+    ro: {
+      doctorTitle: "Medic",
+      medicalSpecialty:
+        "Specialitate medicală",
+      medicalClinic:
+        "Clinică medicală",
+    },
+    en: {
+      doctorTitle: "Doctor",
+      medicalSpecialty:
+        "Medical specialty",
+      medicalClinic:
+        "Medical clinic",
+    },
+    de: {
+      doctorTitle: "Arzt",
+      medicalSpecialty:
+        "Medizinische Fachrichtung",
+      medicalClinic:
+        "Medizinische Klinik",
+    },
+  };
+
+function getSpecialtyName(
+  doctor: DoctorRecord,
+  locale: AppLocale
 ) {
   const specialty =
     getFirstRelation(
@@ -308,19 +338,13 @@ function getRomanianSpecialtyName(
     );
 
   return (
-    specialty
-      ?.specialty_translations
-      ?.find(
-        (
-          translation
-        ) =>
-          translation.locale ===
-          "ro"
-      )?.name ??
-    specialty
-      ?.specialty_translations?.[0]
-      ?.name ??
-    "Specialitate medicală"
+    selectTranslation(
+      specialty
+        ?.specialty_translations,
+      locale
+    )?.name ??
+    profileFallbacks[locale]
+      .medicalSpecialty
   );
 }
 
@@ -331,6 +355,11 @@ export default async function DoctorPage({
     slug,
   } =
     await params;
+
+  const locale =
+    normalizeAppLocale(
+      await getLocale()
+    );
 
   const supabase =
     await createClient();
@@ -469,15 +498,10 @@ export default async function DoctorPage({
       );
 
   const translation =
-    doctor.doctor_translations?.find(
-      (
-        item
-      ) =>
-        item.locale ===
-        "ro"
-    ) ??
-    doctor.doctor_translations?.[0] ??
-    null;
+    selectTranslation(
+      doctor.doctor_translations,
+      locale
+    );
 
   const approvedClinicRelations =
     (
@@ -518,8 +542,9 @@ export default async function DoctorPage({
           }
 
           const clinicTranslation =
-            getRomanianClinicTranslation(
-              clinic
+            getClinicTranslation(
+              clinic,
+              locale
             );
 
           return [
@@ -528,10 +553,12 @@ export default async function DoctorPage({
                 clinic.id,
               name:
                 clinicTranslation?.name ??
-                "Clinică medicală",
+                profileFallbacks[locale]
+                  .medicalClinic,
               address:
                 getClinicAddress(
-                  clinic
+                  clinic,
+                  locale
                 ),
             },
           ];
@@ -590,8 +617,9 @@ export default async function DoctorPage({
     );
 
   const specialtyName =
-    getRomanianSpecialtyName(
-      doctor
+    getSpecialtyName(
+      doctor,
+      locale
     );
 
   const isVerified =
@@ -683,7 +711,8 @@ export default async function DoctorPage({
 
                 <p className="mt-3 text-lg text-gray-700">
                   {translation?.title ??
-                    "Medic"}
+                    profileFallbacks[locale]
+                      .doctorTitle}
                 </p>
 
                 <div className="mt-5 flex flex-wrap items-center gap-x-7 gap-y-4 text-sm text-gray-600">
@@ -817,13 +846,15 @@ export default async function DoctorPage({
                       }
 
                       const clinicTranslation =
-                        getRomanianClinicTranslation(
-                          clinic
+                        getClinicTranslation(
+                          clinic,
+                          locale
                         );
 
                       const address =
                         getClinicAddress(
-                          clinic
+                          clinic,
+                          locale
                         );
 
                       return (
@@ -835,7 +866,8 @@ export default async function DoctorPage({
                         >
                           <h3 className="text-xl font-semibold text-gray-900">
                             {clinicTranslation?.name ??
-                              "Clinică medicală"}
+                              profileFallbacks[locale]
+                                .medicalClinic}
                           </h3>
 
                           {address && (

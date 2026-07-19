@@ -1,3 +1,7 @@
+import type {
+  AppLocale,
+} from "@/lib/i18n/app-locale";
+
 export type AppointmentStatus =
   | "pending"
   | "confirmed"
@@ -7,8 +11,13 @@ export type AppointmentStatus =
   | "no_show";
 
 export type AppointmentStatusDefinition = {
+  labels: Record<
+    AppLocale,
+    string
+  >;
   labelRo: string;
   labelEn: string;
+  labelDe: string;
   badgeClassName: string;
   dotClassName: string;
   calendarBackground: string;
@@ -32,10 +41,17 @@ export const APPOINTMENT_STATUS:
     AppointmentStatusDefinition
   > = {
     pending: {
+      labels: {
+        ro: "În așteptare",
+        en: "Pending",
+        de: "Ausstehend",
+      },
       labelRo:
         "În așteptare",
       labelEn:
         "Pending",
+      labelDe:
+        "Ausstehend",
       badgeClassName:
         "romdoc-status-pending",
       dotClassName:
@@ -49,10 +65,17 @@ export const APPOINTMENT_STATUS:
     },
 
     confirmed: {
+      labels: {
+        ro: "Confirmată",
+        en: "Confirmed",
+        de: "Bestätigt",
+      },
       labelRo:
         "Confirmată",
       labelEn:
         "Confirmed",
+      labelDe:
+        "Bestätigt",
       badgeClassName:
         "romdoc-status-confirmed",
       dotClassName:
@@ -66,10 +89,17 @@ export const APPOINTMENT_STATUS:
     },
 
     rescheduled: {
+      labels: {
+        ro: "Reprogramată",
+        en: "Rescheduled",
+        de: "Verschoben",
+      },
       labelRo:
         "Reprogramată",
       labelEn:
         "Rescheduled",
+      labelDe:
+        "Verschoben",
       badgeClassName:
         "romdoc-status-rescheduled",
       dotClassName:
@@ -83,10 +113,17 @@ export const APPOINTMENT_STATUS:
     },
 
     completed: {
+      labels: {
+        ro: "Finalizată",
+        en: "Completed",
+        de: "Abgeschlossen",
+      },
       labelRo:
         "Finalizată",
       labelEn:
         "Completed",
+      labelDe:
+        "Abgeschlossen",
       badgeClassName:
         "romdoc-status-completed",
       dotClassName:
@@ -100,10 +137,17 @@ export const APPOINTMENT_STATUS:
     },
 
     cancelled: {
+      labels: {
+        ro: "Anulată",
+        en: "Cancelled",
+        de: "Storniert",
+      },
       labelRo:
         "Anulată",
       labelEn:
         "Cancelled",
+      labelDe:
+        "Storniert",
       badgeClassName:
         "romdoc-status-cancelled",
       dotClassName:
@@ -117,10 +161,17 @@ export const APPOINTMENT_STATUS:
     },
 
     no_show: {
+      labels: {
+        ro: "Neprezentare",
+        en: "No-show",
+        de: "Nicht erschienen",
+      },
       labelRo:
         "Neprezentare",
       labelEn:
         "No-show",
+      labelDe:
+        "Nicht erschienen",
       badgeClassName:
         "romdoc-status-no-show",
       dotClassName:
@@ -162,17 +213,9 @@ export function getAppointmentStatus(
 export function getAppointmentStatusLabel(
   value: string,
   locale:
-    | "ro"
-    | "en" =
-    "ro"
+    AppLocale = "ro"
 ) {
-  const status =
-    getAppointmentStatus(
-      value
-    );
-
-  return locale ===
-    "en"
-    ? status.labelEn
-    : status.labelRo;
+  return getAppointmentStatus(
+    value
+  ).labels[locale];
 }

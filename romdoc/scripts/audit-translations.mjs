@@ -88,6 +88,51 @@ function isEmptyTranslation(value) {
   );
 }
 
+function extractPlaceholders(value) {
+  if (
+    typeof value !== "string"
+  ) {
+    return [];
+  }
+
+  const placeholders =
+    new Set();
+
+  const pattern =
+    /\{([a-zA-Z0-9_]+)(?:\s*,[^}]*)?\}/g;
+
+  for (
+    const match of
+    value.matchAll(pattern)
+  ) {
+    placeholders.add(
+      match[1]
+    );
+  }
+
+  return [
+    ...placeholders,
+  ].sort();
+}
+
+function sameStringArray(
+  first,
+  second
+) {
+  return (
+    first.length ===
+      second.length &&
+    first.every(
+      (
+        value,
+        index
+      ) =>
+        value ===
+        second[index]
+    )
+  );
+}
+
 async function loadLocale(locale) {
   const filePath =
     join(
@@ -163,6 +208,13 @@ async function main() {
       locales.map(loadLocale)
     );
 
+  const referenceLocale =
+    loadedLocales.find(
+      ({ locale }) =>
+        locale === "ro"
+    ) ??
+    loadedLocales[0];
+
   const allKeys =
     new Set(
       loadedLocales.flatMap(
@@ -237,6 +289,57 @@ async function main() {
         }
       }
     }
+
+    const referenceValue =
+      referenceLocale
+        .flattened
+        .get(key);
+
+    if (
+      typeof referenceValue ===
+        "string"
+    ) {
+      const expectedPlaceholders =
+        extractPlaceholders(
+          referenceValue
+        );
+
+      for (
+        const {
+          locale,
+          hasKey,
+          value,
+        } of localeValues
+      ) {
+        if (
+          !hasKey ||
+          typeof value !==
+            "string"
+        ) {
+          continue;
+        }
+
+        const actualPlaceholders =
+          extractPlaceholders(
+            value
+          );
+
+        if (
+          !sameStringArray(
+            expectedPlaceholders,
+            actualPlaceholders
+          )
+        ) {
+          problems.push(
+            `[${locale}] Placeholder mismatch at ${key}: expected {${expectedPlaceholders.join(
+              ", "
+            )}}, received {${actualPlaceholders.join(
+              ", "
+            )}}`
+          );
+        }
+      }
+    }
   }
 
   if (problems.length > 0) {
@@ -263,7 +366,7 @@ async function main() {
   }
 
   console.log(
-    `Translation audit passed: ${allKeys.size} keys are present and non-empty in ${locales.join(", ")}.`
+    `Translation audit passed: ${allKeys.size} keys are present, non-empty and placeholder-compatible in ${locales.join(", ")}.`
   );
 }
 
