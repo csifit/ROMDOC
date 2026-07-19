@@ -25,6 +25,10 @@ import {
   type AppLocale,
 } from "@/lib/i18n/app-locale";
 import {
+  DOCTOR_PROFILE_COPY,
+  interpolatePublicCopy,
+} from "@/lib/public/doctor-profile-copy";
+import {
   createClient,
 } from "@/lib/supabase/server";
 
@@ -361,6 +365,9 @@ export default async function DoctorPage({
       await getLocale()
     );
 
+  const profileCopy =
+    DOCTOR_PROFILE_COPY[locale];
+
   const supabase =
     await createClient();
 
@@ -684,7 +691,10 @@ export default async function DoctorPage({
                     src={
                       doctor.photo_url
                     }
-                    alt={`Fotografie de profil pentru ${doctorName}`}
+                    alt={interpolatePublicCopy(
+                      profileCopy.photoAlt,
+                      {doctorName}
+                    )}
                     className="h-full w-full object-cover"
                   />
                 ) : (
@@ -700,7 +710,7 @@ export default async function DoctorPage({
 
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#036661]">
-                  Profil medical
+                  {profileCopy.profileEyebrow}
                 </p>
 
                 <h1 className="mt-2 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
@@ -722,9 +732,10 @@ export default async function DoctorPage({
                         displayedAverageRating
                       )}
                       size="small"
-                      label={`Evaluare ${displayedAverageRating.toFixed(
-                        1
-                      )} din 5`}
+                      label={interpolatePublicCopy(
+                        profileCopy.ratingLabel,
+                        {rating: displayedAverageRating.toFixed(1)}
+                      )}
                     />
 
                     <span className="font-semibold text-gray-900">
@@ -742,29 +753,36 @@ export default async function DoctorPage({
                       }{" "}
                       {displayedReviewCount ===
                       1
-                        ? "recenzie"
-                        : "recenzii"}
+                        ? profileCopy.reviewSingular
+                        : profileCopy.reviewPlural}
                     </a>
                   </div>
 
                   {doctor.years_experience !==
                     null && (
                     <span>
-                      {
-                        doctor.years_experience
-                      }{" "}
-                      ani experiență
+                      {interpolatePublicCopy(
+                        profileCopy.yearsExperience,
+                        {
+                          years: String(
+                            doctor.years_experience
+                          ),
+                        }
+                      )}
                     </span>
                   )}
 
                   {consultationPrice !==
                     null && (
                     <span className="font-semibold text-gray-900">
-                      De la{" "}
-                      {formatPrice(
-                        consultationPrice
-                      )}{" "}
-                      RON
+                      {interpolatePublicCopy(
+                        profileCopy.priceFrom,
+                        {
+                          price: formatPrice(
+                            consultationPrice
+                          ),
+                        }
+                      )}
                     </span>
                   )}
                 </div>
@@ -789,7 +807,7 @@ export default async function DoctorPage({
 
           {isVerified && (
             <p className="mt-6 max-w-4xl text-sm leading-6 text-gray-600">
-              RomDoc a verificat informațiile profesionale și documentele transmise de acest medic. Insigna nu înseamnă că RomDoc a emis licența medicală.
+              {profileCopy.verifiedDescription}
             </p>
           )}
         </section>
@@ -798,15 +816,15 @@ export default async function DoctorPage({
           <div className="space-y-8">
             <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
               <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#036661]">
-                Servicii
+                {profileCopy.servicesEyebrow}
               </p>
 
               <h2 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
-                Servicii și tarife
+                {profileCopy.servicesEyebrow} și tarife
               </h2>
 
               <p className="mt-3 text-sm leading-6 text-gray-600">
-                Tarifele afișate sunt orientative. Clinica poate confirma prețul final în funcție de serviciul selectat.
+                {profileCopy.servicesDescription}
               </p>
 
               <div className="mt-6">
@@ -814,17 +832,20 @@ export default async function DoctorPage({
                   doctorId={
                     doctor.id
                   }
+                  locale={
+                    locale
+                  }
                 />
               </div>
             </section>
 
             <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
               <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#036661]">
-                Clinici
+                {profileCopy.clinicsEyebrow}
               </p>
 
               <h2 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
-                Locații disponibile
+                {profileCopy.clinicsTitle}
               </h2>
 
               {approvedClinicRelations.length >
@@ -896,7 +917,7 @@ export default async function DoctorPage({
                                 rel="noreferrer"
                                 className="romdoc-button romdoc-button-secondary romdoc-button-sm"
                               >
-                                Deschide în Google Maps
+                                {profileCopy.openMaps}
                               </a>
                             )}
 
@@ -909,7 +930,7 @@ export default async function DoctorPage({
                                 rel="noreferrer"
                                 className="romdoc-button romdoc-button-secondary romdoc-button-sm"
                               >
-                                Website clinică
+                                {profileCopy.clinicWebsite}
                               </a>
                             )}
                           </div>
@@ -920,7 +941,7 @@ export default async function DoctorPage({
                 </div>
               ) : (
                 <div className="mt-6 rounded-2xl border border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
-                  Locațiile aprobate ale acestui medic nu sunt încă disponibile.
+                  {profileCopy.clinicsEmpty}
                 </div>
               )}
             </section>
@@ -947,16 +968,16 @@ export default async function DoctorPage({
 
             <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
               <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#036661]">
-                Despre medic
+                {profileCopy.aboutEyebrow}
               </p>
 
               <h2 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
-                Experiență profesională
+                {profileCopy.aboutTitle}
               </h2>
 
               <p className="mt-5 whitespace-pre-line leading-7 text-gray-700">
                 {translation?.biography ??
-                  "Informațiile despre acest medic vor fi disponibile în curând."}
+                  profileCopy.biographyFallback}
               </p>
             </section>
 
@@ -964,18 +985,18 @@ export default async function DoctorPage({
               doctor.email) && (
               <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
                 <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#036661]">
-                  Contact
+                  {profileCopy.contactEyebrow}
                 </p>
 
                 <h2 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
-                  Date de contact
+                  {profileCopy.contactTitle}
                 </h2>
 
                 <div className="mt-6 grid gap-4 sm:grid-cols-2">
                   {doctor.phone && (
                     <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
                       <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Telefon
+                        {profileCopy.phone}
                       </p>
 
                       <a
@@ -995,7 +1016,7 @@ export default async function DoctorPage({
                   {doctor.email && (
                     <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
                       <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        E-mail
+                        {profileCopy.email}
                       </p>
 
                       <a
@@ -1019,6 +1040,9 @@ export default async function DoctorPage({
               <PublicDoctorReviews
                 reviews={
                   publishedReviews
+                }
+                locale={
+                  locale
                 }
               />
             </div>
