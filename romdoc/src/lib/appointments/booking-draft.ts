@@ -41,32 +41,22 @@ function isValidDraft(
 
   return (
     draft.version === 1 &&
-    isNonEmptyString(
-      draft.doctorId
-    ) &&
-    isNonEmptyString(
-      draft.doctorSlug
-    ) &&
-    isNonEmptyString(
-      draft.clinicId
-    ) &&
-    isNonEmptyString(
-      draft.requestedDate
-    ) &&
-    isNonEmptyString(
-      draft.requestedTime
-    ) &&
-    typeof draft.durationMinutes ===
-      "number" &&
-    Number.isFinite(
-      draft.durationMinutes
-    ) &&
+    isNonEmptyString(draft.doctorId) &&
+    isNonEmptyString(draft.doctorSlug) &&
+    isNonEmptyString(draft.clinicId) &&
+    isNonEmptyString(draft.requestedDate) &&
+    isNonEmptyString(draft.requestedTime) &&
+    typeof draft.durationMinutes === "number" &&
+    Number.isFinite(draft.durationMinutes) &&
     draft.durationMinutes > 0 &&
-    typeof draft.createdAt ===
-      "number" &&
-    Number.isFinite(
-      draft.createdAt
-    )
+    typeof draft.createdAt === "number" &&
+    Number.isFinite(draft.createdAt)
+  );
+}
+
+function removeLegacySessionDraft() {
+  window.sessionStorage.removeItem(
+    BOOKING_DRAFT_STORAGE_KEY
   );
 }
 
@@ -86,16 +76,15 @@ export function saveBookingDraft(
   const value: BookingDraft = {
     version: 1,
     ...draft,
-    createdAt:
-      Date.now(),
+    createdAt: Date.now(),
   };
 
-  window.sessionStorage.setItem(
+  window.localStorage.setItem(
     BOOKING_DRAFT_STORAGE_KEY,
-    JSON.stringify(
-      value
-    )
+    JSON.stringify(value)
   );
+
+  removeLegacySessionDraft();
 }
 
 export function readBookingDraft(
@@ -110,6 +99,9 @@ export function readBookingDraft(
   }
 
   const raw =
+    window.localStorage.getItem(
+      BOOKING_DRAFT_STORAGE_KEY
+    ) ??
     window.sessionStorage.getItem(
       BOOKING_DRAFT_STORAGE_KEY
     );
@@ -122,11 +114,7 @@ export function readBookingDraft(
     const parsed: unknown =
       JSON.parse(raw);
 
-    if (
-      !isValidDraft(
-        parsed
-      )
-    ) {
+    if (!isValidDraft(parsed)) {
       clearBookingDraft();
       return null;
     }
@@ -137,10 +125,8 @@ export function readBookingDraft(
       BOOKING_DRAFT_MAX_AGE_MS;
 
     const belongsToDoctor =
-      parsed.doctorId ===
-        doctorId &&
-      parsed.doctorSlug ===
-        doctorSlug;
+      parsed.doctorId === doctorId &&
+      parsed.doctorSlug === doctorSlug;
 
     if (
       expired ||
@@ -149,6 +135,13 @@ export function readBookingDraft(
       clearBookingDraft();
       return null;
     }
+
+    window.localStorage.setItem(
+      BOOKING_DRAFT_STORAGE_KEY,
+      JSON.stringify(parsed)
+    );
+
+    removeLegacySessionDraft();
 
     return parsed;
   } catch {
@@ -165,7 +158,9 @@ export function clearBookingDraft() {
     return;
   }
 
-  window.sessionStorage.removeItem(
+  window.localStorage.removeItem(
     BOOKING_DRAFT_STORAGE_KEY
   );
+
+  removeLegacySessionDraft();
 }
