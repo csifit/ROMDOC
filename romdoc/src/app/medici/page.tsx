@@ -86,7 +86,7 @@ const labels = {
   },
   en: {
     eyebrow: "RomDoc medical directory",
-    title: "Find doctors and clinics in Romania",
+    title: "Find doctors and clinics.",
     description:
       "Explore approved clinics on the map, filter doctors by city and specialty, or search near an address.",
     national: "National directory",
@@ -103,7 +103,7 @@ const labels = {
   },
   de: {
     eyebrow: "RomDoc Ärzteverzeichnis",
-    title: "Ärzte und Kliniken in Rumänien finden",
+    title: "Ärzte und Kliniken finden",
     description:
       "Entdecken Sie zugelassene Kliniken auf der Karte, filtern Sie Ärzte nach Stadt und Fachrichtung oder suchen Sie in der Nähe einer Adresse.",
     national: "Landesweites Verzeichnis",
