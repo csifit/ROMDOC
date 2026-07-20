@@ -1,28 +1,35 @@
 "use client";
 
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import FullCalendar from "@fullcalendar/react";
-import dayGridPlugin from "@fullcalendar/daygrid";
-import timeGridPlugin from "@fullcalendar/timegrid";
-import interactionPlugin from "@fullcalendar/interaction";
-import roLocale from "@fullcalendar/core/locales/ro";
+import allLocales from "@fullcalendar/core/locales-all";
 import type {
   DatesSetArg,
   EventClickArg,
   EventContentArg,
   EventInput,
 } from "@fullcalendar/core";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import interactionPlugin from "@fullcalendar/interaction";
+import FullCalendar from "@fullcalendar/react";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
+import {
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import StaffAppointmentActions from "@/components/staff/staff-appointment-actions";
 import type {
   StaffAppointmentListItem,
 } from "@/components/staff/staff-appointments-filtered-list";
 import Button from "@/components/ui/button";
+import {
+  type AppLocale,
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
 
 type CalendarMode =
   | "agenda"
@@ -39,7 +46,6 @@ type AppointmentStatus =
   | "no_show";
 
 type StatusStyle = {
-  label: string;
   dotClassName: string;
   badgeClassName: string;
   eventBackground: string;
@@ -48,83 +54,172 @@ type StatusStyle = {
 };
 
 type Props = {
-  appointments: StaffAppointmentListItem[];
-  onUpdated: () => void | Promise<void>;
+  appointments:
+    StaffAppointmentListItem[];
+
+  onUpdated:
+    () =>
+      void |
+      Promise<void>;
 };
 
-const statusStyles: Record<
-  AppointmentStatus,
-  StatusStyle
-> = {
-  pending: {
-    label: "În așteptare",
-    dotClassName: "bg-amber-500",
-    badgeClassName:
-      "border-amber-200 bg-amber-50 text-amber-800",
-    eventBackground: "#F59E0B",
-    eventBorder: "#D97706",
-    eventText: "#111827",
-  },
-  confirmed: {
-    label: "Confirmată",
-    dotClassName: "bg-green-600",
-    badgeClassName:
-      "border-green-200 bg-green-50 text-green-800",
-    eventBackground: "#16A34A",
-    eventBorder: "#15803D",
-    eventText: "#FFFFFF",
-  },
-  rescheduled: {
-    label: "Reprogramată",
-    dotClassName: "bg-blue-600",
-    badgeClassName:
-      "border-blue-200 bg-blue-50 text-blue-800",
-    eventBackground: "#2563EB",
-    eventBorder: "#1D4ED8",
-    eventText: "#FFFFFF",
-  },
-  completed: {
-    label: "Finalizată",
-    dotClassName: "bg-gray-500",
-    badgeClassName:
-      "border-gray-200 bg-gray-100 text-gray-700",
-    eventBackground: "#6B7280",
-    eventBorder: "#4B5563",
-    eventText: "#FFFFFF",
-  },
-  cancelled: {
-    label: "Anulată",
-    dotClassName: "bg-red-600",
-    badgeClassName:
-      "border-red-200 bg-red-50 text-red-800",
-    eventBackground: "#DC2626",
-    eventBorder: "#B91C1C",
-    eventText: "#FFFFFF",
-  },
-  no_show: {
-    label: "Neprezentare",
-    dotClassName: "bg-orange-700",
-    badgeClassName:
-      "border-orange-200 bg-orange-50 text-orange-900",
-    eventBackground: "#C2410C",
-    eventBorder: "#9A3412",
-    eventText: "#FFFFFF",
-  },
-};
+const STATUS_STYLES:
+  Record<
+    AppointmentStatus,
+    StatusStyle
+  > = {
+    pending: {
+      dotClassName:
+        "bg-amber-500",
 
-const calendarViewByMode: Record<
-  CalendarMode,
-  string
-> = {
-  agenda: "timeGridWeek",
-  day: "timeGridDay",
-  week: "timeGridWeek",
-  month: "dayGridMonth",
-};
+      badgeClassName:
+        "border-amber-200 bg-amber-50 text-amber-800",
+
+      eventBackground:
+        "#F59E0B",
+
+      eventBorder:
+        "#D97706",
+
+      eventText:
+        "#111827",
+    },
+
+    confirmed: {
+      dotClassName:
+        "bg-green-600",
+
+      badgeClassName:
+        "border-green-200 bg-green-50 text-green-800",
+
+      eventBackground:
+        "#16A34A",
+
+      eventBorder:
+        "#15803D",
+
+      eventText:
+        "#FFFFFF",
+    },
+
+    rescheduled: {
+      dotClassName:
+        "bg-blue-600",
+
+      badgeClassName:
+        "border-blue-200 bg-blue-50 text-blue-800",
+
+      eventBackground:
+        "#2563EB",
+
+      eventBorder:
+        "#1D4ED8",
+
+      eventText:
+        "#FFFFFF",
+    },
+
+    completed: {
+      dotClassName:
+        "bg-gray-500",
+
+      badgeClassName:
+        "border-gray-200 bg-gray-100 text-gray-700",
+
+      eventBackground:
+        "#6B7280",
+
+      eventBorder:
+        "#4B5563",
+
+      eventText:
+        "#FFFFFF",
+    },
+
+    cancelled: {
+      dotClassName:
+        "bg-red-600",
+
+      badgeClassName:
+        "border-red-200 bg-red-50 text-red-800",
+
+      eventBackground:
+        "#DC2626",
+
+      eventBorder:
+        "#B91C1C",
+
+      eventText:
+        "#FFFFFF",
+    },
+
+    no_show: {
+      dotClassName:
+        "bg-orange-700",
+
+      badgeClassName:
+        "border-orange-200 bg-orange-50 text-orange-900",
+
+      eventBackground:
+        "#C2410C",
+
+      eventBorder:
+        "#9A3412",
+
+      eventText:
+        "#FFFFFF",
+    },
+  };
+
+const CALENDAR_VIEW:
+  Record<
+    Exclude<
+      CalendarMode,
+      "agenda"
+    >,
+    string
+  > = {
+    day:
+      "timeGridDay",
+
+    week:
+      "timeGridWeek",
+
+    month:
+      "dayGridMonth",
+  };
+
+const DATE_LOCALE:
+  Record<
+    AppLocale,
+    string
+  > = {
+    ro:
+      "ro-RO",
+    en:
+      "en-GB",
+    de:
+      "de-DE",
+  };
+
+const FULLCALENDAR_LOCALE:
+  Record<
+    AppLocale,
+    string
+  > = {
+    ro:
+      "ro",
+    en:
+      "en-gb",
+    de:
+      "de",
+  };
 
 function isAppointmentStatus(
-  status: string
-): status is AppointmentStatus {
+  status:
+    string
+): status is
+  AppointmentStatus {
   return [
     "pending",
     "confirmed",
@@ -132,50 +227,70 @@ function isAppointmentStatus(
     "completed",
     "cancelled",
     "no_show",
-  ].includes(status);
-}
-
-function getStatusStyle(
-  status: string
-) {
-  return isAppointmentStatus(status)
-    ? statusStyles[status]
-    : statusStyles.pending;
-}
-
-function getEffectiveDate(
-  appointment: StaffAppointmentListItem
-) {
-  return (
-    appointment.scheduledDate ??
-    appointment.requestedDate
+  ].includes(
+    status
   );
 }
 
-function getEffectiveTime(
-  appointment: StaffAppointmentListItem
+function statusStyle(
+  status:
+    string
+) {
+  return isAppointmentStatus(
+    status
+  )
+    ? STATUS_STYLES[
+        status
+      ]
+    : STATUS_STYLES
+        .pending;
+}
+
+function effectiveDate(
+  appointment:
+    StaffAppointmentListItem
 ) {
   return (
-    appointment.scheduledTime ??
-    appointment.requestedTime
+    appointment
+      .scheduledDate ??
+    appointment
+      .requestedDate
+  );
+}
+
+function effectiveTime(
+  appointment:
+    StaffAppointmentListItem
+) {
+  return (
+    appointment
+      .scheduledTime ??
+    appointment
+      .requestedTime
   );
 }
 
 function normalizeTime(
-  value: string | null
+  value:
+    | string
+    | null
 ) {
   if (!value) {
     return "09:00:00";
   }
 
   if (
-    /^\d{2}:\d{2}:\d{2}$/.test(value)
+    /^\d{2}:\d{2}:\d{2}$/.test(
+      value
+    )
   ) {
     return value;
   }
 
   if (
-    /^\d{2}:\d{2}$/.test(value)
+    /^\d{2}:\d{2}$/.test(
+      value
+    )
   ) {
     return `${value}:00`;
   }
@@ -183,84 +298,50 @@ function normalizeTime(
   return "09:00:00";
 }
 
-function formatTime(
-  value: string | null
+function shortTime(
+  value:
+    | string
+    | null
 ) {
   return value
-    ? value.slice(0, 5)
+    ? value.slice(
+        0,
+        5
+      )
     : "—";
 }
 
-function formatDate(
-  value: string
-) {
-  return new Intl.DateTimeFormat(
-    "ro-RO",
-    {
-      weekday: "short",
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }
-  ).format(
-    new Date(`${value}T12:00:00`)
-  );
-}
-
-function formatLongDate(
-  value: string
-) {
-  return new Intl.DateTimeFormat(
-    "ro-RO",
-    {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    }
-  ).format(
-    new Date(`${value}T12:00:00`)
-  );
-}
-
-function getSourceLabel(
-  source: string | null
-) {
-  switch (source) {
-    case "phone":
-      return "Telefon";
-    case "walk_in":
-      return "Direct la clinică";
-    case "email":
-      return "E-mail";
-    case "other":
-      return "Altă sursă";
-    default:
-      return "Cerere online";
-  }
-}
-
-function toTimestamp(
-  appointment: StaffAppointmentListItem
+function timestamp(
+  appointment:
+    StaffAppointmentListItem
 ) {
   return new Date(
-    `${getEffectiveDate(
+    `${effectiveDate(
       appointment
     )}T${normalizeTime(
-      getEffectiveTime(appointment)
+      effectiveTime(
+        appointment
+      )
     )}`
   ).getTime();
 }
 
 function isUpcoming(
-  appointment: StaffAppointmentListItem
+  appointment:
+    StaffAppointmentListItem
 ) {
   return (
-    toTimestamp(appointment) >= Date.now() &&
+    timestamp(
+      appointment
+    ) >=
+      Date.now() &&
     ![
       "cancelled",
       "completed",
       "no_show",
-    ].includes(appointment.status)
+    ].includes(
+      appointment.status
+    )
   );
 }
 
@@ -268,70 +349,184 @@ export default function StaffAppointmentsCalendar({
   appointments,
   onUpdated,
 }: Props) {
-  const calendarRef =
-    useRef<FullCalendar | null>(null);
+  const locale =
+    normalizeAppLocale(
+      useLocale()
+    );
 
-  const [mode, setMode] =
-    useState<CalendarMode>("agenda");
+  const t =
+    useTranslations(
+      "StaffOperationalDashboard.calendar"
+    );
+
+  const calendarRef =
+    useRef<
+      FullCalendar | null
+    >(
+      null
+    );
+
+  const [
+    mode,
+    setMode,
+  ] =
+    useState<CalendarMode>(
+      "agenda"
+    );
 
   const [
     agendaFilter,
     setAgendaFilter,
-  ] = useState<"upcoming" | "all">(
-    "upcoming"
-  );
+  ] =
+    useState<
+      "upcoming" |
+      "all"
+    >(
+      "upcoming"
+    );
 
   const [
     calendarTitle,
     setCalendarTitle,
-  ] = useState("Calendar");
+  ] =
+    useState(
+      t(
+        "agendaTitle"
+      )
+    );
 
   const [
     selectedAppointmentId,
     setSelectedAppointmentId,
-  ] = useState<string | null>(null);
+  ] =
+    useState<
+      string | null
+    >(
+      null
+    );
 
-  useEffect(() => {
-    if (
-      window.matchMedia(
-        "(min-width: 1024px)"
-      ).matches
-    ) {
-      setMode("week");
-    }
-  }, []);
-
-  useEffect(() => {
-    if (
-      selectedAppointmentId &&
-      !appointments.some(
-        (appointment) =>
-          appointment.id ===
-          selectedAppointmentId
+  function statusLabel(
+    status:
+      string
+  ) {
+    const normalized =
+      isAppointmentStatus(
+        status
       )
-    ) {
-      setSelectedAppointmentId(null);
-    }
-  }, [
-    appointments,
-    selectedAppointmentId,
-  ]);
+        ? status
+        : "pending";
+
+    return t(
+      `statuses.${normalized}`
+    );
+  }
+
+  function sourceLabel(
+    source:
+      string | null
+  ) {
+    const normalized =
+      source &&
+      [
+        "phone",
+        "walk_in",
+        "email",
+        "other",
+      ].includes(
+        source
+      )
+        ? source
+        : "online";
+
+    return t(
+      `sources.${normalized}`
+    );
+  }
+
+  function formatDate(
+    value:
+      string
+  ) {
+    return new Intl
+      .DateTimeFormat(
+        DATE_LOCALE[
+          locale
+        ],
+        {
+          weekday:
+            "short",
+
+          day:
+            "2-digit",
+
+          month:
+            "short",
+
+          year:
+            "numeric",
+        }
+      )
+      .format(
+        new Date(
+          `${value}T12:00:00`
+        )
+      );
+  }
+
+  function formatLongDate(
+    value:
+      string
+  ) {
+    return new Intl
+      .DateTimeFormat(
+        DATE_LOCALE[
+          locale
+        ],
+        {
+          day:
+            "2-digit",
+
+          month:
+            "long",
+
+          year:
+            "numeric",
+        }
+      )
+      .format(
+        new Date(
+          `${value}T12:00:00`
+        )
+      );
+  }
 
   const sortedAppointments =
     useMemo(
       () =>
-        [...appointments].sort(
-          (first, second) =>
-            toTimestamp(first) -
-            toTimestamp(second)
+        [
+          ...appointments,
+        ].sort(
+          (
+            first,
+            second
+          ) =>
+            timestamp(
+              first
+            ) -
+            timestamp(
+              second
+            )
         ),
-      [appointments]
+      [
+        appointments,
+      ]
     );
 
   const agendaAppointments =
     useMemo(
       () =>
-        agendaFilter === "upcoming"
+        agendaFilter ===
+        "upcoming"
           ? sortedAppointments.filter(
               isUpcoming
             )
@@ -343,68 +538,108 @@ export default function StaffAppointmentsCalendar({
     );
 
   const groupedAgenda =
-    useMemo(() => {
-      const groups = new Map<
-        string,
-        StaffAppointmentListItem[]
-      >();
+    useMemo(
+      () => {
+        const groups =
+          new Map<
+            string,
+            StaffAppointmentListItem[]
+          >();
 
-      for (
-        const appointment of
-        agendaAppointments
-      ) {
-        const date =
-          getEffectiveDate(appointment);
+        for (
+          const appointment of
+            agendaAppointments
+        ) {
+          const date =
+            effectiveDate(
+              appointment
+            );
 
-        groups.set(date, [
-          ...(groups.get(date) ?? []),
-          appointment,
-        ]);
-      }
+          groups.set(
+            date,
+            [
+              ...(
+                groups.get(
+                  date
+                ) ??
+                []
+              ),
+              appointment,
+            ]
+          );
+        }
 
-      return Array.from(groups.entries());
-    }, [agendaAppointments]);
+        return Array.from(
+          groups.entries()
+        );
+      },
+      [
+        agendaAppointments,
+      ]
+    );
 
   const selectedAppointment =
     useMemo(
       () =>
         appointments.find(
-          (appointment) =>
+          (
+            appointment
+          ) =>
             appointment.id ===
             selectedAppointmentId
-        ) ?? null,
+        ) ??
+        null,
       [
         appointments,
         selectedAppointmentId,
       ]
     );
 
-  const events = useMemo<EventInput[]>(
-    () =>
-      appointments.map((appointment) => {
-        const style =
-          getStatusStyle(
-            appointment.status
-          );
-
-        return {
-          id: appointment.id,
-          title: appointment.patientName,
-          start: `${getEffectiveDate(
+  const events =
+    useMemo<
+      EventInput[]
+    >(
+      () =>
+        appointments.map(
+          (
             appointment
-          )}T${normalizeTime(
-            getEffectiveTime(appointment)
-          )}`,
-          backgroundColor:
-            style.eventBackground,
-          borderColor:
-            style.eventBorder,
-          textColor:
-            style.eventText,
-        };
-      }),
-    [appointments]
-  );
+          ) => {
+            const style =
+              statusStyle(
+                appointment.status
+              );
+
+            return {
+              id:
+                appointment.id,
+
+              title:
+                appointment.patientName,
+
+              start:
+                `${effectiveDate(
+                  appointment
+                )}T${normalizeTime(
+                  effectiveTime(
+                    appointment
+                  )
+                )}`,
+
+              backgroundColor:
+                style.eventBackground,
+
+              borderColor:
+                style.eventBorder,
+
+              textColor:
+                style.eventText,
+            };
+          }
+        ),
+      [
+        appointments,
+      ]
+    );
 
   function moveCalendar(
     direction:
@@ -413,15 +648,22 @@ export default function StaffAppointmentsCalendar({
       | "next"
   ) {
     const api =
-      calendarRef.current?.getApi();
+      calendarRef.current
+        ?.getApi();
 
     if (!api) {
       return;
     }
 
-    if (direction === "previous") {
+    if (
+      direction ===
+      "previous"
+    ) {
       api.prev();
-    } else if (direction === "next") {
+    } else if (
+      direction ===
+      "next"
+    ) {
       api.next();
     } else {
       api.today();
@@ -429,29 +671,42 @@ export default function StaffAppointmentsCalendar({
   }
 
   function handleDatesSet(
-    dateInfo: DatesSetArg
+    dateInfo:
+      DatesSetArg
   ) {
-    setCalendarTitle(dateInfo.view.title);
+    setCalendarTitle(
+      dateInfo.view
+        .title
+    );
   }
 
   function handleEventClick(
-    clickInfo: EventClickArg
+    clickInfo:
+      EventClickArg
   ) {
     setSelectedAppointmentId(
-      clickInfo.event.id
+      clickInfo.event
+        .id
     );
   }
 
   function renderEventContent(
-    eventInfo: EventContentArg
+    eventInfo:
+      EventContentArg
   ) {
     const appointment =
       appointments.find(
-        (item) =>
-          item.id === eventInfo.event.id
+        (
+          item
+        ) =>
+          item.id ===
+          eventInfo.event
+            .id
       );
 
-    if (!appointment) {
+    if (
+      !appointment
+    ) {
       return null;
     }
 
@@ -460,95 +715,150 @@ export default function StaffAppointmentsCalendar({
         <div className="truncate font-semibold">
           {eventInfo.timeText && (
             <span>
-              {eventInfo.timeText}{" "}
+              {
+                eventInfo.timeText
+              }{" "}
             </span>
           )}
-          {appointment.patientName}
+
+          {
+            appointment.patientName
+          }
         </div>
 
         <div className="truncate opacity-90">
-          {appointment.doctorName}
+          {
+            appointment.doctorName
+          }
         </div>
       </div>
     );
   }
+
+  const modes:
+    CalendarMode[] =
+    [
+      "agenda",
+      "day",
+      "week",
+      "month",
+    ];
+
+  const statuses:
+    AppointmentStatus[] =
+    [
+      "pending",
+      "confirmed",
+      "rescheduled",
+      "completed",
+      "cancelled",
+      "no_show",
+    ];
 
   return (
     <section className="rounded-[21px] border border-gray-200 bg-white p-[13px] shadow-sm sm:p-[21px]">
       <div className="flex flex-col gap-[13px] border-b border-gray-200 pb-[13px] xl:flex-row xl:items-center xl:justify-between">
         <div>
           <p className="text-sm font-semibold text-[#036661]">
-            Calendar operațional
+            {t(
+              "eyebrow"
+            )}
           </p>
 
           <h2 className="mt-[5px] text-xl font-bold text-gray-900">
-            {mode === "agenda"
-              ? "Agenda programărilor"
+            {mode ===
+            "agenda"
+              ? t(
+                  "agendaTitle"
+                )
               : calendarTitle}
           </h2>
         </div>
 
         <div className="grid grid-cols-4 gap-[5px] rounded-[13px] bg-gray-100 p-[5px]">
-          {(
-            [
-              ["agenda", "Agenda"],
-              ["day", "Zi"],
-              ["week", "Săpt."],
-              ["month", "Lună"],
-            ] as Array<
-              [CalendarMode, string]
-            >
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setMode(value)}
-              aria-pressed={mode === value}
-              className={`romdoc-focus-ring min-h-[34px] rounded-[8px] px-[8px] py-[5px] text-xs font-semibold transition ${
-                mode === value
-                  ? "bg-white text-[#036661] shadow-sm"
-                  : "text-gray-600 hover:bg-white/70"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+          {modes.map(
+            (
+              value
+            ) => (
+              <button
+                key={
+                  value
+                }
+                type="button"
+                onClick={() =>
+                  setMode(
+                    value
+                  )
+                }
+                aria-pressed={
+                  mode ===
+                  value
+                }
+                className={`romdoc-focus-ring min-h-[34px] rounded-[8px] px-[8px] py-[5px] text-xs font-semibold ${
+                  mode ===
+                  value
+                    ? "bg-white text-[#036661] shadow-sm"
+                    : "text-gray-600 hover:bg-white/70"
+                }`}
+              >
+                {t(
+                  `modes.${value}`
+                )}
+              </button>
+            )
+          )}
         </div>
       </div>
 
       <div className="mt-[13px] flex flex-wrap gap-x-[13px] gap-y-[8px]">
-        {(
-          Object.entries(statusStyles) as Array<
-            [AppointmentStatus, StatusStyle]
-          >
-        ).map(([status, style]) => (
-          <div
-            key={status}
-            className="flex items-center gap-[5px] text-[11px] text-gray-600"
-          >
-            <span
-              className={`h-[8px] w-[8px] rounded-full ${style.dotClassName}`}
-            />
-            <span>{style.label}</span>
-          </div>
-        ))}
+        {statuses.map(
+          (
+            status
+          ) => (
+            <div
+              key={
+                status
+              }
+              className="flex items-center gap-[5px] text-[11px] text-gray-600"
+            >
+              <span
+                className={`h-[8px] w-[8px] rounded-full ${STATUS_STYLES[
+                  status
+                ].dotClassName}`}
+              />
+
+              <span>
+                {statusLabel(
+                  status
+                )}
+              </span>
+            </div>
+          )
+        )}
       </div>
 
-      {appointments.length === 0 ? (
+      {appointments.length ===
+      0 ? (
         <div className="mt-[21px] rounded-[13px] border border-dashed border-gray-300 bg-gray-50 p-[21px] text-center text-sm text-gray-600">
-          Nu există încă programări.
+          {t(
+            "empty"
+          )}
         </div>
       ) : (
         <div className="mt-[21px] grid gap-[21px] lg:grid-cols-[minmax(0,1.618fr)_minmax(320px,1fr)] lg:items-start">
           <div className="min-w-0">
-            {mode === "agenda" ? (
+            {mode ===
+            "agenda" ? (
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-[8px]">
                   <p className="text-sm text-gray-600">
-                    {agendaAppointments.length}{" "}
-                    {agendaAppointments.length === 1
-                      ? "programare"
-                      : "programări"}
+                    {t(
+                      "appointmentCount",
+                      {
+                        count:
+                          agendaAppointments.length,
+                      }
+                    )}
                   </p>
 
                   <div className="flex rounded-[13px] border border-gray-200 p-[3px]">
@@ -566,42 +876,58 @@ export default function StaffAppointmentsCalendar({
                           : "text-gray-600"
                       }`}
                     >
-                      Viitoare
+                      {t(
+                        "upcoming"
+                      )}
                     </button>
 
                     <button
                       type="button"
                       onClick={() =>
-                        setAgendaFilter("all")
+                        setAgendaFilter(
+                          "all"
+                        )
                       }
                       className={`romdoc-focus-ring min-h-[34px] rounded-[8px] px-[13px] py-[5px] text-xs font-semibold ${
-                        agendaFilter === "all"
+                        agendaFilter ===
+                        "all"
                           ? "bg-[#036661] text-white"
                           : "text-gray-600"
                       }`}
                     >
-                      Toate
+                      {t(
+                        "all"
+                      )}
                     </button>
                   </div>
                 </div>
 
                 <div className="mt-[13px] max-h-[610px] space-y-[13px] overflow-y-auto pr-[5px]">
-                  {groupedAgenda.length > 0 ? (
+                  {groupedAgenda.length >
+                  0 ? (
                     groupedAgenda.map(
                       ([
                         date,
                         dateAppointments,
                       ]) => (
-                        <div key={date}>
+                        <div
+                          key={
+                            date
+                          }
+                        >
                           <h3 className="sticky top-0 z-10 rounded-[8px] bg-gray-50 px-[13px] py-[8px] text-xs font-bold capitalize text-gray-700">
-                            {formatDate(date)}
+                            {formatDate(
+                              date
+                            )}
                           </h3>
 
                           <div className="mt-[5px] space-y-[5px]">
                             {dateAppointments.map(
-                              (appointment) => {
+                              (
+                                appointment
+                              ) => {
                                 const style =
-                                  getStatusStyle(
+                                  statusStyle(
                                     appointment.status
                                   );
 
@@ -620,7 +946,7 @@ export default function StaffAppointmentsCalendar({
                                         appointment.id
                                       )
                                     }
-                                    className={`romdoc-focus-ring block w-full rounded-[13px] border p-[13px] text-left transition ${
+                                    className={`romdoc-focus-ring block w-full rounded-[13px] border p-[13px] text-left ${
                                       selected
                                         ? "border-[#036661] bg-[#036661]/5 shadow-sm"
                                         : "border-gray-200 bg-white hover:border-[#036661]/40"
@@ -629,8 +955,8 @@ export default function StaffAppointmentsCalendar({
                                     <div className="flex items-start gap-[13px]">
                                       <div className="w-[55px] shrink-0 rounded-[8px] bg-gray-50 px-[5px] py-[8px] text-center">
                                         <p className="font-bold text-gray-900">
-                                          {formatTime(
-                                            getEffectiveTime(
+                                          {shortTime(
+                                            effectiveTime(
                                               appointment
                                             )
                                           )}
@@ -645,11 +971,13 @@ export default function StaffAppointmentsCalendar({
                                                 appointment.patientName
                                               }
                                             </p>
+
                                             <p className="mt-[3px] truncate text-xs text-gray-600">
                                               {
                                                 appointment.doctorName
                                               }
                                             </p>
+
                                             <p className="mt-[3px] truncate text-xs text-gray-500">
                                               {
                                                 appointment.clinicName
@@ -658,9 +986,11 @@ export default function StaffAppointmentsCalendar({
                                           </div>
 
                                           <span
-                                            className={`inline-flex min-h-[21px] items-center rounded-full border px-[8px] py-[3px] text-[11px] font-semibold ${style.badgeClassName}`}
+                                            className={`rounded-full border px-[8px] py-[3px] text-[11px] font-semibold ${style.badgeClassName}`}
                                           >
-                                            {style.label}
+                                            {statusLabel(
+                                              appointment.status
+                                            )}
                                           </span>
                                         </div>
                                       </div>
@@ -675,7 +1005,9 @@ export default function StaffAppointmentsCalendar({
                     )
                   ) : (
                     <div className="rounded-[13px] border border-dashed border-gray-300 bg-gray-50 p-[21px] text-center text-sm text-gray-600">
-                      Nu există programări viitoare.
+                      {t(
+                        "noUpcoming"
+                      )}
                     </div>
                   )}
                 </div>
@@ -702,10 +1034,14 @@ export default function StaffAppointmentsCalendar({
                       variant="secondary"
                       size="sm"
                       onClick={() =>
-                        moveCalendar("today")
+                        moveCalendar(
+                          "today"
+                        )
                       }
                     >
-                      Astăzi
+                      {t(
+                        "today"
+                      )}
                     </Button>
 
                     <Button
@@ -713,7 +1049,9 @@ export default function StaffAppointmentsCalendar({
                       variant="secondary"
                       size="sm"
                       onClick={() =>
-                        moveCalendar("next")
+                        moveCalendar(
+                          "next"
+                        )
                       }
                     >
                       →
@@ -721,32 +1059,53 @@ export default function StaffAppointmentsCalendar({
                   </div>
 
                   <p className="text-sm font-semibold capitalize text-gray-900">
-                    {calendarTitle}
+                    {
+                      calendarTitle
+                    }
                   </p>
                 </div>
 
                 <div className="staff-calendar overflow-x-auto rounded-[13px] border border-gray-200">
                   <div
                     className={
-                      mode === "week"
+                      mode ===
+                      "week"
                         ? "min-w-[690px]"
-                        : mode === "day"
+                        : mode ===
+                            "day"
                           ? "min-w-[390px]"
                           : "min-w-[610px]"
                     }
                   >
                     <FullCalendar
-                      key={mode}
-                      ref={calendarRef}
+                      key={`${mode}-${locale}`}
+                      ref={
+                        calendarRef
+                      }
                       plugins={[
                         dayGridPlugin,
                         timeGridPlugin,
                         interactionPlugin,
                       ]}
-                      locale={roLocale}
-                      initialView={calendarViewByMode[mode]}
-                      headerToolbar={false}
-                      events={events}
+                      locales={
+                        allLocales
+                      }
+                      locale={
+                        FULLCALENDAR_LOCALE[
+                          locale
+                        ]
+                      }
+                      initialView={
+                        CALENDAR_VIEW[
+                          mode
+                        ]
+                      }
+                      headerToolbar={
+                        false
+                      }
+                      events={
+                        events
+                      }
                       eventClick={
                         handleEventClick
                       }
@@ -759,13 +1118,19 @@ export default function StaffAppointmentsCalendar({
                       height="auto"
                       nowIndicator
                       dayMaxEvents
-                      firstDay={1}
+                      firstDay={
+                        1
+                      }
                       slotMinTime="06:00:00"
                       slotMaxTime="22:00:00"
                       slotDuration="00:30:00"
-                      allDaySlot={false}
+                      allDaySlot={
+                        false
+                      }
                       eventDisplay="block"
-                      displayEventEnd={false}
+                      displayEventEnd={
+                        false
+                      }
                     />
                   </div>
                 </div>
@@ -775,17 +1140,193 @@ export default function StaffAppointmentsCalendar({
 
           <aside className="lg:sticky lg:top-[21px]">
             {selectedAppointment ? (
-              <AppointmentDetailPanel
-                appointment={
-                  selectedAppointment
-                }
-                onUpdated={onUpdated}
-                onClose={() =>
-                  setSelectedAppointmentId(
-                    null
-                  )
-                }
-              />
+              <div className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
+                <div className="flex items-start justify-between gap-[13px]">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#036661]">
+                      {t(
+                        "details"
+                      )}
+                    </p>
+
+                    <h3 className="mt-[5px] truncate text-xl font-bold text-gray-900">
+                      {
+                        selectedAppointment.patientName
+                      }
+                    </h3>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedAppointmentId(
+                        null
+                      )
+                    }
+                    aria-label={t(
+                      "closeDetails"
+                    )}
+                    className="romdoc-focus-ring flex h-[34px] w-[34px] items-center justify-center rounded-full border border-gray-200 text-gray-500"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="mt-[13px] flex flex-wrap items-center gap-[8px]">
+                  <span
+                    className={`rounded-full border px-[13px] py-[5px] text-xs font-semibold ${statusStyle(
+                      selectedAppointment.status
+                    ).badgeClassName}`}
+                  >
+                    {statusLabel(
+                      selectedAppointment.status
+                    )}
+                  </span>
+
+                  <span className="text-sm text-gray-600">
+                    {formatLongDate(
+                      effectiveDate(
+                        selectedAppointment
+                      )
+                    )}
+                    ,{" "}
+                    {shortTime(
+                      effectiveTime(
+                        selectedAppointment
+                      )
+                    )}
+                  </span>
+                </div>
+
+                <div className="mt-[21px] space-y-[13px]">
+                  {[
+                    [
+                      t(
+                        "doctor"
+                      ),
+                      selectedAppointment.doctorName,
+                    ],
+                    [
+                      t(
+                        "clinic"
+                      ),
+                      selectedAppointment.clinicName,
+                    ],
+                    [
+                      t(
+                        "phone"
+                      ),
+                      selectedAppointment.patientPhone,
+                    ],
+                    [
+                      t(
+                        "email"
+                      ),
+                      selectedAppointment.patientEmail,
+                    ],
+                    [
+                      t(
+                        "source"
+                      ),
+                      sourceLabel(
+                        selectedAppointment.source
+                      ),
+                    ],
+                    [
+                      t(
+                        "requestedDate"
+                      ),
+                      `${formatLongDate(
+                        selectedAppointment.requestedDate
+                      )}, ${shortTime(
+                        selectedAppointment.requestedTime
+                      )}`,
+                    ],
+                  ].map(
+                    ([
+                      label,
+                      value,
+                    ]) => (
+                      <div
+                        key={
+                          label
+                        }
+                      >
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                          {
+                            label
+                          }
+                        </p>
+
+                        <p className="mt-[3px] break-all text-sm text-gray-900">
+                          {
+                            value
+                          }
+                        </p>
+                      </div>
+                    )
+                  )}
+                </div>
+
+                {selectedAppointment.notes && (
+                  <div className="mt-[13px] rounded-[13px] bg-gray-50 p-[13px]">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                      {t(
+                        "notes"
+                      )}
+                    </p>
+
+                    <p className="mt-[5px] whitespace-pre-wrap text-sm leading-6 text-gray-700">
+                      {
+                        selectedAppointment.notes
+                      }
+                    </p>
+                  </div>
+                )}
+
+                {selectedAppointment.rescheduleReason && (
+                  <div className="mt-[13px] rounded-[13px] border border-blue-200 bg-blue-50 p-[13px]">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-700">
+                      {t(
+                        "rescheduleReason"
+                      )}
+                    </p>
+
+                    <p className="mt-[5px] whitespace-pre-wrap text-sm leading-6 text-blue-900">
+                      {
+                        selectedAppointment.rescheduleReason
+                      }
+                    </p>
+                  </div>
+                )}
+
+                <StaffAppointmentActions
+                  appointmentId={
+                    selectedAppointment.id
+                  }
+                  currentStatus={
+                    selectedAppointment.status
+                  }
+                  requestedDate={
+                    selectedAppointment.requestedDate
+                  }
+                  requestedTime={
+                    selectedAppointment.requestedTime
+                  }
+                  scheduledDate={
+                    selectedAppointment.scheduledDate
+                  }
+                  scheduledTime={
+                    selectedAppointment.scheduledTime
+                  }
+                  currentReason={
+                    selectedAppointment.rescheduleReason
+                  }
+                  onUpdated={
+                    onUpdated
+                  }
+                />
+              </div>
             ) : (
               <div className="rounded-[21px] border border-dashed border-gray-300 bg-gray-50 p-[21px] text-center">
                 <div className="mx-auto flex h-[55px] w-[55px] items-center justify-center rounded-full bg-white text-2xl shadow-sm">
@@ -793,11 +1334,15 @@ export default function StaffAppointmentsCalendar({
                 </div>
 
                 <h3 className="mt-[13px] font-bold text-gray-900">
-                  Selectează o programare
+                  {t(
+                    "selectTitle"
+                  )}
                 </h3>
 
                 <p className="mt-[8px] text-sm leading-6 text-gray-600">
-                  Detaliile și acțiunile vor apărea aici, fără să părăsești calendarul.
+                  {t(
+                    "selectDescription"
+                  )}
                 </p>
               </div>
             )}
@@ -852,229 +1397,5 @@ export default function StaffAppointmentsCalendar({
         }
       `}</style>
     </section>
-  );
-}
-
-function AppointmentDetailPanel({
-  appointment,
-  onUpdated,
-  onClose,
-}: {
-  appointment: StaffAppointmentListItem;
-  onUpdated: () => void | Promise<void>;
-  onClose: () => void;
-}) {
-  const style =
-    getStatusStyle(
-      appointment.status
-    );
-
-  const effectiveDate =
-    getEffectiveDate(appointment);
-
-  const effectiveTime =
-    getEffectiveTime(appointment);
-
-  return (
-    <div className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
-      <div className="flex items-start justify-between gap-[13px]">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#036661]">
-            Detalii programare
-          </p>
-
-          <h3 className="mt-[5px] truncate text-xl font-bold text-gray-900">
-            {appointment.patientName}
-          </h3>
-        </div>
-
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Închide detaliile"
-          className="romdoc-focus-ring flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-900"
-        >
-          ×
-        </button>
-      </div>
-
-      <div className="mt-[13px] flex flex-wrap items-center gap-[8px]">
-        <span
-          className={`inline-flex min-h-[34px] items-center rounded-full border px-[13px] py-[5px] text-xs font-semibold ${style.badgeClassName}`}
-        >
-          {style.label}
-        </span>
-
-        <span className="text-sm text-gray-600">
-          {formatLongDate(effectiveDate)},{" "}
-          {formatTime(effectiveTime)}
-        </span>
-      </div>
-
-      <div className="mt-[21px] space-y-[13px]">
-        <Detail
-          label="Medic"
-          value={appointment.doctorName}
-        />
-
-        <Detail
-          label="Clinică"
-          value={appointment.clinicName}
-        />
-
-        <div className="grid gap-[13px] sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
-          <ContactDetail
-            label="Telefon"
-            value={appointment.patientPhone}
-            href={`tel:${appointment.patientPhone.replace(
-              /\s+/g,
-              ""
-            )}`}
-          />
-
-          <ContactDetail
-            label="E-mail"
-            value={appointment.patientEmail}
-            href={`mailto:${appointment.patientEmail}`}
-          />
-        </div>
-
-        <Detail
-          label="Sursă"
-          value={getSourceLabel(
-            appointment.source
-          )}
-        />
-
-        <Detail
-          label="Data solicitată"
-          value={`${formatLongDate(
-            appointment.requestedDate
-          )}, ${formatTime(
-            appointment.requestedTime
-          )}`}
-        />
-      </div>
-
-      {appointment.notes && (
-        <InfoBox
-          label="Observații"
-          value={appointment.notes}
-        />
-      )}
-
-      {appointment.rescheduleReason && (
-        <InfoBox
-          label="Motivul reprogramării"
-          value={
-            appointment.rescheduleReason
-          }
-          blue
-        />
-      )}
-
-      <StaffAppointmentActions
-        appointmentId={appointment.id}
-        currentStatus={appointment.status}
-        requestedDate={
-          appointment.requestedDate
-        }
-        requestedTime={
-          appointment.requestedTime
-        }
-        scheduledDate={
-          appointment.scheduledDate
-        }
-        scheduledTime={
-          appointment.scheduledTime
-        }
-        currentReason={
-          appointment.rescheduleReason
-        }
-        onUpdated={onUpdated}
-      />
-    </div>
-  );
-}
-
-function Detail({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div>
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-        {label}
-      </p>
-      <p className="mt-[3px] text-sm text-gray-900">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function ContactDetail({
-  label,
-  value,
-  href,
-}: {
-  label: string;
-  value: string;
-  href: string;
-}) {
-  return (
-    <div>
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-        {label}
-      </p>
-      <a
-        href={href}
-        className="romdoc-focus-ring mt-[3px] block break-all rounded-[5px] text-sm text-[#036661] underline-offset-4 hover:underline"
-      >
-        {value}
-      </a>
-    </div>
-  );
-}
-
-function InfoBox({
-  label,
-  value,
-  blue = false,
-}: {
-  label: string;
-  value: string;
-  blue?: boolean;
-}) {
-  return (
-    <div
-      className={`mt-[13px] rounded-[13px] p-[13px] ${
-        blue
-          ? "border border-blue-200 bg-blue-50"
-          : "bg-gray-50"
-      }`}
-    >
-      <p
-        className={`text-[11px] font-semibold uppercase tracking-wide ${
-          blue
-            ? "text-blue-700"
-            : "text-gray-500"
-        }`}
-      >
-        {label}
-      </p>
-      <p
-        className={`mt-[5px] whitespace-pre-wrap text-sm leading-6 ${
-          blue
-            ? "text-blue-900"
-            : "text-gray-700"
-        }`}
-      >
-        {value}
-      </p>
-    </div>
   );
 }

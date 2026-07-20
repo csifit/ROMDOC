@@ -1,13 +1,20 @@
 "use client";
 
 import {
-  FormEvent,
+  useLocale,
+  useTranslations,
+} from "next-intl";
+import {
+  type FormEvent,
   useEffect,
   useMemo,
   useState,
 } from "react";
 
 import Button from "@/components/ui/button";
+import {
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
 
 export type StaffClinicOption = {
   id: string;
@@ -17,7 +24,9 @@ export type StaffClinicOption = {
 export type StaffDoctorOption = {
   id: string;
   name: string;
-  clinics: StaffClinicOption[];
+
+  clinics:
+    StaffClinicOption[];
 };
 
 type AppointmentSource =
@@ -27,15 +36,20 @@ type AppointmentSource =
   | "other";
 
 type StaffCreateAppointmentFormProps = {
-  doctors: StaffDoctorOption[];
+  doctors:
+    StaffDoctorOption[];
+
   onCreated:
-    () => void | Promise<void>;
+    () =>
+      void |
+      Promise<void>;
 };
 
 type CreateAppointmentResponse = {
   success?: boolean;
   emailSent?: boolean;
   error?: string;
+
   appointment?: {
     id: string;
   };
@@ -47,222 +61,403 @@ type AvailableSlot = {
 };
 
 type AvailableSlotsResponse = {
-  slots?: AvailableSlot[];
+  slots?:
+    AvailableSlot[];
+
   error?: string;
 };
 
 function getLocalDateString() {
-  const today = new Date();
+  const today =
+    new Date();
 
   const year =
     today.getFullYear();
 
-  const month = String(
-    today.getMonth() + 1
-  ).padStart(2, "0");
+  const month =
+    String(
+      today.getMonth() +
+        1
+    ).padStart(
+      2,
+      "0"
+    );
 
-  const day = String(
-    today.getDate()
-  ).padStart(2, "0");
+  const day =
+    String(
+      today.getDate()
+    ).padStart(
+      2,
+      "0"
+    );
 
   return `${year}-${month}-${day}`;
-}
-
-function formatSlotDuration(
-  durationMinutes: number
-) {
-  return `${durationMinutes} min`;
 }
 
 export default function StaffCreateAppointmentForm({
   doctors,
   onCreated,
 }: StaffCreateAppointmentFormProps) {
-  const [isOpen, setIsOpen] =
-    useState(false);
+  const locale =
+    normalizeAppLocale(
+      useLocale()
+    );
 
-  const [doctorId, setDoctorId] =
+  const t =
+    useTranslations(
+      "StaffOperationalDashboard.create"
+    );
+
+  const [
+    isOpen,
+    setIsOpen,
+  ] =
     useState(
-      doctors[0]?.id ?? ""
+      false
+    );
+
+  const [
+    doctorId,
+    setDoctorId,
+  ] =
+    useState(
+      doctors[0]?.id ??
+      ""
     );
 
   const selectedDoctor =
     useMemo(
       () =>
         doctors.find(
-          (doctor) =>
-            doctor.id === doctorId
+          (
+            doctor
+          ) =>
+            doctor.id ===
+            doctorId
         ) ??
         doctors[0] ??
         null,
-      [doctorId, doctors]
+      [
+        doctorId,
+        doctors,
+      ]
     );
 
   const clinics =
-    selectedDoctor?.clinics ?? [];
+    selectedDoctor
+      ?.clinics ??
+    [];
 
-  const [clinicId, setClinicId] =
+  const [
+    clinicId,
+    setClinicId,
+  ] =
     useState(
-      doctors[0]?.clinics[0]?.id ??
-        ""
+      doctors[0]
+        ?.clinics[0]
+        ?.id ??
+      ""
     );
 
-  const [patientName, setPatientName] =
-    useState("");
+  const [
+    patientName,
+    setPatientName,
+  ] =
+    useState(
+      ""
+    );
 
-  const [patientEmail, setPatientEmail] =
-    useState("");
+  const [
+    patientEmail,
+    setPatientEmail,
+  ] =
+    useState(
+      ""
+    );
 
-  const [patientPhone, setPatientPhone] =
-    useState("");
+  const [
+    patientPhone,
+    setPatientPhone,
+  ] =
+    useState(
+      ""
+    );
 
-  const [scheduledDate, setScheduledDate] =
-    useState("");
+  const [
+    scheduledDate,
+    setScheduledDate,
+  ] =
+    useState(
+      ""
+    );
 
-  const [scheduledTime, setScheduledTime] =
-    useState("");
+  const [
+    scheduledTime,
+    setScheduledTime,
+  ] =
+    useState(
+      ""
+    );
 
-  const [selectedDurationMinutes, setSelectedDurationMinutes] =
-    useState<number | null>(null);
+  const [
+    selectedDurationMinutes,
+    setSelectedDurationMinutes,
+  ] =
+    useState<
+      number | null
+    >(
+      null
+    );
 
-  const [availableSlots, setAvailableSlots] =
-    useState<AvailableSlot[]>([]);
+  const [
+    availableSlots,
+    setAvailableSlots,
+  ] =
+    useState<
+      AvailableSlot[]
+    >(
+      []
+    );
 
-  const [slotsAreLoading, setSlotsAreLoading] =
-    useState(false);
+  const [
+    slotsAreLoading,
+    setSlotsAreLoading,
+  ] =
+    useState(
+      false
+    );
 
-  const [slotsError, setSlotsError] =
-    useState("");
+  const [
+    slotsError,
+    setSlotsError,
+  ] =
+    useState(
+      ""
+    );
 
-  const [source, setSource] =
+  const [
+    source,
+    setSource,
+  ] =
     useState<AppointmentSource>(
       "phone"
     );
 
-  const [notes, setNotes] =
-    useState("");
+  const [
+    notes,
+    setNotes,
+  ] =
+    useState(
+      ""
+    );
 
-  const [isSubmitting, setIsSubmitting] =
-    useState(false);
+  const [
+    isSubmitting,
+    setIsSubmitting,
+  ] =
+    useState(
+      false
+    );
 
-  const [successMessage, setSuccessMessage] =
-    useState("");
+  const [
+    successMessage,
+    setSuccessMessage,
+  ] =
+    useState(
+      ""
+    );
 
-  const [warningMessage, setWarningMessage] =
-    useState("");
+  const [
+    warningMessage,
+    setWarningMessage,
+  ] =
+    useState(
+      ""
+    );
 
-  const [errorMessage, setErrorMessage] =
-    useState("");
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] =
+    useState(
+      ""
+    );
 
   const today =
     getLocalDateString();
 
   useEffect(() => {
     if (
-      doctors.length === 0
+      doctors.length ===
+      0
     ) {
-      setDoctorId("");
-      setClinicId("");
+      setDoctorId(
+        ""
+      );
+
+      setClinicId(
+        ""
+      );
+
       return;
     }
 
-    setDoctorId((currentDoctorId) => {
-      if (
+    setDoctorId(
+      (
+        currentDoctorId
+      ) =>
         doctors.some(
-          (doctor) =>
+          (
+            doctor
+          ) =>
             doctor.id ===
             currentDoctorId
         )
-      ) {
-        return currentDoctorId;
-      }
-
-      return doctors[0]?.id ?? "";
-    });
-  }, [doctors]);
+          ? currentDoctorId
+          : doctors[0]
+              ?.id ??
+            ""
+    );
+  }, [
+    doctors,
+  ]);
 
   useEffect(() => {
-    setClinicId((currentClinicId) => {
-      if (
+    setClinicId(
+      (
+        currentClinicId
+      ) =>
         clinics.some(
-          (clinic) =>
+          (
+            clinic
+          ) =>
             clinic.id ===
             currentClinicId
         )
-      ) {
-        return currentClinicId;
-      }
-
-      return clinics[0]?.id ?? "";
-    });
-  }, [clinics]);
+          ? currentClinicId
+          : clinics[0]
+              ?.id ??
+            ""
+    );
+  }, [
+    clinics,
+  ]);
 
   useEffect(() => {
-    setScheduledTime("");
-    setSelectedDurationMinutes(null);
-    setAvailableSlots([]);
-    setSlotsError("");
+    setScheduledTime(
+      ""
+    );
+
+    setSelectedDurationMinutes(
+      null
+    );
+
+    setAvailableSlots(
+      []
+    );
+
+    setSlotsError(
+      ""
+    );
 
     if (
       !doctorId ||
       !clinicId ||
       !scheduledDate
     ) {
-      setSlotsAreLoading(false);
+      setSlotsAreLoading(
+        false
+      );
+
       return;
     }
 
-    const controller = new AbortController();
+    const controller =
+      new AbortController();
 
     async function loadSlots() {
-      setSlotsAreLoading(true);
-      setSlotsError("");
+      setSlotsAreLoading(
+        true
+      );
+
+      setSlotsError(
+        ""
+      );
 
       try {
-        const params = new URLSearchParams({
-          doctorId,
-          clinicId,
-          date: scheduledDate,
-        });
+        const parameters =
+          new URLSearchParams({
+            doctorId,
+            clinicId,
+            date:
+              scheduledDate,
+          });
 
-        const response = await fetch(
-          `/api/availability/slots?${params.toString()}`,
-          {
-            method: "GET",
-            cache: "no-store",
-            signal: controller.signal,
-          }
-        );
+        const response =
+          await fetch(
+            `/api/availability/slots?${parameters.toString()}`,
+            {
+              method:
+                "GET",
+
+              cache:
+                "no-store",
+
+              signal:
+                controller.signal,
+            }
+          );
 
         const result =
-          (await response.json()) as AvailableSlotsResponse;
+          (await response.json()) as
+            AvailableSlotsResponse;
 
-        if (!response.ok) {
+        if (
+          !response.ok
+        ) {
           throw new Error(
-            result.error ??
-              "Intervalele disponibile nu au putut fi încărcate."
+            locale ===
+              "ro" &&
+            result.error
+              ? result.error
+              : t(
+                  "slotsLoadError"
+                )
           );
         }
 
         setAvailableSlots(
-          result.slots ?? []
+          result.slots ??
+          []
         );
-      } catch (error) {
+      } catch (
+        loadError
+      ) {
         if (
-          error instanceof DOMException &&
-          error.name === "AbortError"
+          loadError instanceof
+            DOMException &&
+          loadError.name ===
+            "AbortError"
         ) {
           return;
         }
 
         setSlotsError(
-          error instanceof Error
-            ? error.message
-            : "Intervalele disponibile nu au putut fi încărcate."
+          loadError instanceof
+            Error
+            ? loadError.message
+            : t(
+                "slotsLoadError"
+              )
         );
       } finally {
-        if (!controller.signal.aborted) {
-          setSlotsAreLoading(false);
+        if (
+          !controller.signal
+            .aborted
+        ) {
+          setSlotsAreLoading(
+            false
+          );
         }
       }
     }
@@ -272,14 +467,23 @@ export default function StaffCreateAppointmentForm({
     return () => {
       controller.abort();
     };
-  }, [clinicId, doctorId, scheduledDate]);
+  }, [
+    clinicId,
+    doctorId,
+    locale,
+    scheduledDate,
+    t,
+  ]);
 
   function handleDoctorChange(
-    nextDoctorId: string
+    nextDoctorId:
+      string
   ) {
     const nextDoctor =
       doctors.find(
-        (doctor) =>
+        (
+          doctor
+        ) =>
           doctor.id ===
           nextDoctorId
       );
@@ -289,28 +493,73 @@ export default function StaffCreateAppointmentForm({
     );
 
     setClinicId(
-      nextDoctor?.clinics[0]?.id ??
-        ""
+      nextDoctor
+        ?.clinics[0]
+        ?.id ??
+      ""
     );
 
-    setScheduledDate("");
-    setScheduledTime("");
-    setSelectedDurationMinutes(null);
-    setAvailableSlots([]);
-    setSlotsError("");
+    setScheduledDate(
+      ""
+    );
+
+    setScheduledTime(
+      ""
+    );
+
+    setSelectedDurationMinutes(
+      null
+    );
+
+    setAvailableSlots(
+      []
+    );
+
+    setSlotsError(
+      ""
+    );
   }
 
   function resetPatientFields() {
-    setPatientName("");
-    setPatientEmail("");
-    setPatientPhone("");
-    setScheduledDate("");
-    setScheduledTime("");
-    setSelectedDurationMinutes(null);
-    setAvailableSlots([]);
-    setSlotsError("");
-    setSource("phone");
-    setNotes("");
+    setPatientName(
+      ""
+    );
+
+    setPatientEmail(
+      ""
+    );
+
+    setPatientPhone(
+      ""
+    );
+
+    setScheduledDate(
+      ""
+    );
+
+    setScheduledTime(
+      ""
+    );
+
+    setSelectedDurationMinutes(
+      null
+    );
+
+    setAvailableSlots(
+      []
+    );
+
+    setSlotsError(
+      ""
+    );
+
+    setSource(
+      "phone"
+    );
+
+    setNotes(
+      ""
+    );
   }
 
   async function handleSubmit(
@@ -319,31 +568,53 @@ export default function StaffCreateAppointmentForm({
   ) {
     event.preventDefault();
 
-    setSuccessMessage("");
-    setWarningMessage("");
-    setErrorMessage("");
+    setSuccessMessage(
+      ""
+    );
 
-    if (!doctorId) {
-      setErrorMessage(
-        "Selectează medicul."
-      );
-      return;
-    }
+    setWarningMessage(
+      ""
+    );
 
-    if (!clinicId) {
+    setErrorMessage(
+      ""
+    );
+
+    if (
+      !doctorId
+    ) {
       setErrorMessage(
-        "Selectează clinica programării."
+        t(
+          "doctorRequired"
+        )
       );
+
       return;
     }
 
     if (
-      patientName.trim().length <
-      2
+      !clinicId
     ) {
       setErrorMessage(
-        "Introdu numele pacientului."
+        t(
+          "clinicRequired"
+        )
       );
+
+      return;
+    }
+
+    if (
+      patientName
+        .trim()
+        .length < 2
+    ) {
+      setErrorMessage(
+        t(
+          "patientNameRequired"
+        )
+      );
+
       return;
     }
 
@@ -351,18 +622,25 @@ export default function StaffCreateAppointmentForm({
       !patientEmail.trim()
     ) {
       setErrorMessage(
-        "Introdu adresa de e-mail a pacientului."
+        t(
+          "patientEmailRequired"
+        )
       );
+
       return;
     }
 
     if (
-      patientPhone.trim().length <
-      7
+      patientPhone
+        .trim()
+        .length < 7
     ) {
       setErrorMessage(
-        "Introdu un număr de telefon valid."
+        t(
+          "patientPhoneRequired"
+        )
       );
+
       return;
     }
 
@@ -371,41 +649,57 @@ export default function StaffCreateAppointmentForm({
       !scheduledTime
     ) {
       setErrorMessage(
-        "Selectează data și unul dintre intervalele disponibile."
+        t(
+          "slotRequired"
+        )
       );
+
       return;
     }
 
-    setIsSubmitting(true);
+    setIsSubmitting(
+      true
+    );
 
     try {
       const response =
         await fetch(
           "/api/staff/appointments",
           {
-            method: "POST",
+            method:
+              "POST",
+
             headers: {
               "Content-Type":
                 "application/json",
             },
-            body: JSON.stringify({
-              doctorId,
-              clinicId,
-              patientName:
-                patientName.trim(),
-              patientEmail:
-                patientEmail
-                  .trim()
-                  .toLowerCase(),
-              patientPhone:
-                patientPhone.trim(),
-              scheduledDate,
-              scheduledTime,
-              source,
-              notes:
-                notes.trim() ||
-                null,
-            }),
+
+            body:
+              JSON.stringify({
+                doctorId,
+                clinicId,
+
+                patientName:
+                  patientName
+                    .trim(),
+
+                patientEmail:
+                  patientEmail
+                    .trim()
+                    .toLowerCase(),
+
+                patientPhone:
+                  patientPhone
+                    .trim(),
+
+                scheduledDate,
+                scheduledTime,
+                source,
+
+                notes:
+                  notes.trim() ||
+                  null,
+              }),
           }
         );
 
@@ -413,57 +707,91 @@ export default function StaffCreateAppointmentForm({
         (await response.json()) as
           CreateAppointmentResponse;
 
-      if (!response.ok) {
+      if (
+        !response.ok
+      ) {
         setErrorMessage(
-          result.error ??
-            "Programarea nu a putut fi creată."
+          locale ===
+            "ro" &&
+          result.error
+            ? result.error
+            : t(
+                "createError"
+              )
         );
+
         return;
       }
 
       setSuccessMessage(
-        "Programarea a fost creată și confirmată."
+        t(
+          "created"
+        )
       );
 
       if (
-        result.emailSent === false
+        result.emailSent ===
+        false
       ) {
         setWarningMessage(
-          "Programarea a fost salvată, dar e-mailul de confirmare nu a putut fi trimis."
+          t(
+            "emailWarning"
+          )
         );
       }
 
       resetPatientFields();
+
       await onCreated();
-    } catch (requestError) {
+    } catch (
+      requestError
+    ) {
       console.error(
         "Staff appointment form request failed:",
         requestError
       );
 
       setErrorMessage(
-        "Nu s-a putut comunica cu serverul. Încearcă din nou."
+        t(
+          "networkError"
+        )
       );
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(
+        false
+      );
     }
   }
 
   if (
-    doctors.length === 0
+    doctors.length ===
+    0
   ) {
     return (
       <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
         <h2 className="text-lg font-semibold text-amber-950">
-          Nu există medici disponibili
+          {t(
+            "noDoctorsTitle"
+          )}
         </h2>
 
         <p className="mt-2 text-sm leading-6 text-amber-900">
-          Poți adăuga programări după ce ai o atribuire activă pentru un medic care are cel puțin o clinică aprobată.
+          {t(
+            "noDoctorsDescription"
+          )}
         </p>
       </section>
     );
   }
+
+  const sourceOptions:
+    AppointmentSource[] =
+    [
+      "phone",
+      "walk_in",
+      "email",
+      "other",
+    ];
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -471,23 +799,40 @@ export default function StaffCreateAppointmentForm({
         type="button"
         onClick={() => {
           setIsOpen(
-            (currentValue) =>
-              !currentValue
+            (
+              current
+            ) =>
+              !current
           );
-          setSuccessMessage("");
-          setWarningMessage("");
-          setErrorMessage("");
+
+          setSuccessMessage(
+            ""
+          );
+
+          setWarningMessage(
+            ""
+          );
+
+          setErrorMessage(
+            ""
+          );
         }}
         className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
-        aria-expanded={isOpen}
+        aria-expanded={
+          isOpen
+        }
       >
         <div>
           <h2 className="text-xl font-semibold text-gray-900">
-            Adaugă o programare
+            {t(
+              "title"
+            )}
           </h2>
 
           <p className="mt-1 text-sm text-gray-600">
-            Creează o programare confirmată pentru unul dintre medicii pe care îi gestionezi. Ora se alege din intervalele disponibile.
+            {t(
+              "description"
+            )}
           </p>
         </div>
 
@@ -495,7 +840,9 @@ export default function StaffCreateAppointmentForm({
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F0EEE9] text-xl font-medium text-gray-800"
           aria-hidden="true"
         >
-          {isOpen ? "−" : "+"}
+          {isOpen
+            ? "−"
+            : "+"}
         </span>
       </button>
 
@@ -508,30 +855,35 @@ export default function StaffCreateAppointmentForm({
             className="space-y-5"
           >
             <div className="grid gap-5 md:grid-cols-2">
-              <div>
-                <label
-                  htmlFor="staff-appointment-doctor"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Medic
-                </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">
+                  {t(
+                    "doctor"
+                  )}
+                </span>
 
                 <select
-                  id="staff-appointment-doctor"
-                  value={doctorId}
-                  onChange={(event) =>
+                  value={
+                    doctorId
+                  }
+                  onChange={(
+                    event
+                  ) =>
                     handleDoctorChange(
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
                   required
                   disabled={
                     isSubmitting
                   }
-                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900"
                 >
                   {doctors.map(
-                    (doctor) => (
+                    (
+                      doctor
+                    ) => (
                       <option
                         key={
                           doctor.id
@@ -547,37 +899,41 @@ export default function StaffCreateAppointmentForm({
                     )
                   )}
                 </select>
-              </div>
+              </label>
 
-              <div>
-                <label
-                  htmlFor="staff-appointment-clinic"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Clinică
-                </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">
+                  {t(
+                    "clinic"
+                  )}
+                </span>
 
                 <select
-                  id="staff-appointment-clinic"
-                  value={clinicId}
-                  onChange={(event) => {
+                  value={
+                    clinicId
+                  }
+                  onChange={(
+                    event
+                  ) => {
                     setClinicId(
-                      event.target.value
+                      event.target
+                        .value
                     );
-                    setScheduledDate("");
-                    setScheduledTime("");
-                    setSelectedDurationMinutes(null);
-                    setAvailableSlots([]);
-                    setSlotsError("");
+
+                    setScheduledDate(
+                      ""
+                    );
                   }}
                   required
                   disabled={
                     isSubmitting
                   }
-                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900"
                 >
                   {clinics.map(
-                    (clinic) => (
+                    (
+                      clinic
+                    ) => (
                       <option
                         key={
                           clinic.id
@@ -593,68 +949,75 @@ export default function StaffCreateAppointmentForm({
                     )
                   )}
                 </select>
-              </div>
+              </label>
             </div>
 
             <div className="grid gap-5 md:grid-cols-2">
-              <div>
-                <label
-                  htmlFor="staff-appointment-source"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Sursa programării
-                </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">
+                  {t(
+                    "source"
+                  )}
+                </span>
 
                 <select
-                  id="staff-appointment-source"
-                  value={source}
-                  onChange={(event) =>
+                  value={
+                    source
+                  }
+                  onChange={(
+                    event
+                  ) =>
                     setSource(
                       event.target
-                        .value as AppointmentSource
+                        .value as
+                        AppointmentSource
                     )
                   }
                   required
                   disabled={
                     isSubmitting
                   }
-                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900"
                 >
-                  <option value="phone">
-                    Telefon
-                  </option>
-
-                  <option value="walk_in">
-                    Direct la clinică
-                  </option>
-
-                  <option value="email">
-                    E-mail
-                  </option>
-
-                  <option value="other">
-                    Altă sursă
-                  </option>
+                  {sourceOptions.map(
+                    (
+                      option
+                    ) => (
+                      <option
+                        key={
+                          option
+                        }
+                        value={
+                          option
+                        }
+                      >
+                        {t(
+                          `sources.${option}`
+                        )}
+                      </option>
+                    )
+                  )}
                 </select>
-              </div>
+              </label>
 
-              <div>
-                <label
-                  htmlFor="staff-appointment-patient-name"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Numele pacientului
-                </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">
+                  {t(
+                    "patientName"
+                  )}
+                </span>
 
                 <input
-                  id="staff-appointment-patient-name"
                   type="text"
                   value={
                     patientName
                   }
-                  onChange={(event) =>
+                  onChange={(
+                    event
+                  ) =>
                     setPatientName(
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
                   required
@@ -662,30 +1025,33 @@ export default function StaffCreateAppointmentForm({
                     isSubmitting
                   }
                   autoComplete="name"
-                  placeholder="Exemplu: Maria Ionescu"
-                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  placeholder={t(
+                    "patientNamePlaceholder"
+                  )}
+                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900"
                 />
-              </div>
+              </label>
             </div>
 
             <div className="grid gap-5 md:grid-cols-2">
-              <div>
-                <label
-                  htmlFor="staff-appointment-patient-phone"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Telefon
-                </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">
+                  {t(
+                    "phone"
+                  )}
+                </span>
 
                 <input
-                  id="staff-appointment-patient-phone"
                   type="tel"
                   value={
                     patientPhone
                   }
-                  onChange={(event) =>
+                  onChange={(
+                    event
+                  ) =>
                     setPatientPhone(
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
                   required
@@ -693,28 +1059,31 @@ export default function StaffCreateAppointmentForm({
                     isSubmitting
                   }
                   autoComplete="tel"
-                  placeholder="Exemplu: 0712 345 678"
-                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  placeholder={t(
+                    "phonePlaceholder"
+                  )}
+                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900"
                 />
-              </div>
+              </label>
 
-              <div>
-                <label
-                  htmlFor="staff-appointment-patient-email"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  E-mail
-                </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">
+                  {t(
+                    "email"
+                  )}
+                </span>
 
                 <input
-                  id="staff-appointment-patient-email"
                   type="email"
                   value={
                     patientEmail
                   }
-                  onChange={(event) =>
+                  onChange={(
+                    event
+                  ) =>
                     setPatientEmail(
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
                   required
@@ -722,134 +1091,189 @@ export default function StaffCreateAppointmentForm({
                     isSubmitting
                   }
                   autoComplete="email"
-                  placeholder="Exemplu: maria@example.com"
-                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  placeholder={t(
+                    "emailPlaceholder"
+                  )}
+                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900"
                 />
-              </div>
+              </label>
             </div>
 
             <div className="grid gap-5 md:grid-cols-2">
-              <div>
-                <label
-                  htmlFor="staff-appointment-date"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Data programării
-                </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">
+                  {t(
+                    "date"
+                  )}
+                </span>
 
                 <input
-                  id="staff-appointment-date"
                   type="date"
-                  min={today}
+                  min={
+                    today
+                  }
                   value={
                     scheduledDate
                   }
-                  onChange={(event) =>
+                  onChange={(
+                    event
+                  ) =>
                     setScheduledDate(
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
                   required
                   disabled={
                     isSubmitting
                   }
-                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900"
                 />
-              </div>
+              </label>
 
               <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
                 <p className="text-sm font-semibold text-gray-700">
-                  Ora programării
+                  {t(
+                    "time"
+                  )}
                 </p>
 
                 {!scheduledDate ? (
                   <p className="mt-2 text-sm text-gray-600">
-                    Selectează mai întâi data pentru a vedea intervalele disponibile.
+                    {t(
+                      "selectDateFirst"
+                    )}
                   </p>
                 ) : slotsAreLoading ? (
                   <p className="mt-2 text-sm text-gray-600">
-                    Se încarcă intervalele disponibile...
+                    {t(
+                      "loadingSlots"
+                    )}
                   </p>
                 ) : slotsError ? (
                   <p className="mt-2 text-sm text-red-700">
-                    {slotsError}
+                    {
+                      slotsError
+                    }
                   </p>
-                ) : availableSlots.length === 0 ? (
+                ) : availableSlots
+                    .length ===
+                  0 ? (
                   <p className="mt-2 text-sm text-gray-600">
-                    Nu există intervale disponibile pentru data selectată.
+                    {t(
+                      "noSlots"
+                    )}
                   </p>
                 ) : (
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {availableSlots.map((slot) => (
-                      <button
-                        key={`${slot.time}-${slot.durationMinutes}`}
-                        type="button"
-                        onClick={() => {
-                          setScheduledTime(slot.time);
-                          setSelectedDurationMinutes(
-                            slot.durationMinutes
-                          );
-                        }}
-                        disabled={isSubmitting}
-                        className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-                          scheduledTime === slot.time
-                            ? "border-[#036661] bg-[#036661] text-white"
-                            : "border-gray-300 bg-white text-gray-800 hover:border-[#036661] hover:text-[#036661]"
-                        }`}
-                      >
-                        <span>{slot.time}</span>
-                        <span className="ml-2 text-xs opacity-80">
-                          {formatSlotDuration(
-                            slot.durationMinutes
-                          )}
-                        </span>
-                      </button>
-                    ))}
+                    {availableSlots.map(
+                      (
+                        slot
+                      ) => (
+                        <button
+                          key={`${slot.time}-${slot.durationMinutes}`}
+                          type="button"
+                          onClick={() => {
+                            setScheduledTime(
+                              slot.time
+                            );
+
+                            setSelectedDurationMinutes(
+                              slot.durationMinutes
+                            );
+                          }}
+                          disabled={
+                            isSubmitting
+                          }
+                          className={`rounded-xl border px-3 py-2 text-sm font-semibold ${
+                            scheduledTime ===
+                            slot.time
+                              ? "border-[#036661] bg-[#036661] text-white"
+                              : "border-gray-300 bg-white text-gray-800"
+                          }`}
+                        >
+                          {
+                            slot.time
+                          }
+
+                          <span className="ml-2 text-xs opacity-80">
+                            {
+                              slot.durationMinutes
+                            }{" "}
+                            min
+                          </span>
+                        </button>
+                      )
+                    )}
                   </div>
                 )}
 
                 {scheduledTime && (
                   <p className="mt-3 text-xs text-gray-600">
-                    Interval selectat: {scheduledTime}
-                    {selectedDurationMinutes
-                      ? ` · ${formatSlotDuration(
+                    {t(
+                      "selectedSlot",
+                      {
+                        time:
+                          scheduledTime,
+
+                        duration:
                           selectedDurationMinutes
-                        )}`
-                      : ""}
+                            ? t(
+                                "durationSuffix",
+                                {
+                                  duration:
+                                    selectedDurationMinutes,
+                                }
+                              )
+                            : "",
+                      }
+                    )}
                   </p>
                 )}
               </div>
             </div>
 
-            <div>
-              <label
-                htmlFor="staff-appointment-notes"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Observații
-              </label>
+            <label className="block">
+              <span className="text-sm font-medium text-gray-700">
+                {t(
+                  "notes"
+                )}
+              </span>
 
               <textarea
-                id="staff-appointment-notes"
-                rows={4}
-                maxLength={5000}
-                value={notes}
-                onChange={(event) =>
+                rows={
+                  4
+                }
+                maxLength={
+                  5000
+                }
+                value={
+                  notes
+                }
+                onChange={(
+                  event
+                ) =>
                   setNotes(
-                    event.target.value
+                    event.target
+                      .value
                   )
                 }
                 disabled={
                   isSubmitting
                 }
-                placeholder="Detalii opționale despre programare."
-                className="mt-2 w-full resize-y rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                placeholder={t(
+                  "notesPlaceholder"
+                )}
+                className="mt-2 w-full resize-y rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900"
               />
 
-              <p className="mt-1 text-right text-xs text-gray-500">
-                {notes.length}/5000
-              </p>
-            </div>
+              <span className="mt-1 block text-right text-xs text-gray-500">
+                {
+                  notes.length
+                }
+                /5000
+              </span>
+            </label>
 
             {errorMessage && (
               <div
@@ -893,8 +1317,12 @@ export default function StaffCreateAppointmentForm({
                 }
               >
                 {isSubmitting
-                  ? "Se creează..."
-                  : "Creează programarea"}
+                  ? t(
+                      "creating"
+                    )
+                  : t(
+                      "create"
+                    )}
               </Button>
 
               <Button
@@ -904,13 +1332,24 @@ export default function StaffCreateAppointmentForm({
                 }
                 onClick={() => {
                   resetPatientFields();
-                  setErrorMessage("");
-                  setWarningMessage("");
-                  setSuccessMessage("");
+
+                  setErrorMessage(
+                    ""
+                  );
+
+                  setWarningMessage(
+                    ""
+                  );
+
+                  setSuccessMessage(
+                    ""
+                  );
                 }}
                 variant="secondary"
               >
-                Golește formularul
+                {t(
+                  "clear"
+                )}
               </Button>
             </div>
           </form>

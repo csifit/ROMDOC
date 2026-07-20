@@ -1,28 +1,55 @@
 "use client";
 
 import {
-  FormEvent,
+  useLocale,
+  useTranslations,
+} from "next-intl";
+import {
+  type FormEvent,
   useEffect,
   useState,
 } from "react";
 
 import Button from "@/components/ui/button";
+import {
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
 
 type StaffAppointmentActionsProps = {
   appointmentId: string;
   currentStatus: string;
   requestedDate: string;
-  requestedTime: string | null;
-  scheduledDate: string | null;
-  scheduledTime: string | null;
-  currentReason: string | null;
-  onUpdated: () => void | Promise<void>;
+
+  requestedTime:
+    | string
+    | null;
+
+  scheduledDate:
+    | string
+    | null;
+
+  scheduledTime:
+    | string
+    | null;
+
+  currentReason:
+    | string
+    | null;
+
+  onUpdated:
+    () =>
+      void |
+      Promise<void>;
 };
 
 type LifecycleResponse = {
   success?: boolean;
   message?: string;
-  emailSent?: boolean | null;
+
+  emailSent?:
+    | boolean
+    | null;
+
   error?: string;
 };
 
@@ -43,41 +70,96 @@ export default function StaffAppointmentActions({
   currentReason,
   onUpdated,
 }: StaffAppointmentActionsProps) {
-  const [date, setDate] = useState(
-    scheduledDate ?? requestedDate
-  );
-
-  const [time, setTime] = useState(
-    scheduledTime?.slice(0, 5) ??
-      requestedTime?.slice(0, 5) ??
-      ""
-  );
-
-  const [reason, setReason] = useState(
-    currentReason ?? ""
-  );
-
-  const [isSaving, setIsSaving] =
-    useState(false);
-
-  const [message, setMessage] =
-    useState("");
-
-  const [errorMessage, setErrorMessage] =
-    useState("");
-
-  useEffect(() => {
-    setDate(
-      scheduledDate ?? requestedDate
+  const locale =
+    normalizeAppLocale(
+      useLocale()
     );
 
-    setTime(
-      scheduledTime?.slice(0, 5) ??
-        requestedTime?.slice(0, 5) ??
+  const t =
+    useTranslations(
+      "StaffOperationalDashboard.actions"
+    );
+
+  const [
+    date,
+    setDate,
+  ] =
+    useState(
+      scheduledDate ??
+      requestedDate
+    );
+
+  const [
+    time,
+    setTime,
+  ] =
+    useState(
+      scheduledTime?.slice(
+        0,
+        5
+      ) ??
+        requestedTime?.slice(
+          0,
+          5
+        ) ??
         ""
     );
 
-    setReason(currentReason ?? "");
+  const [
+    reason,
+    setReason,
+  ] =
+    useState(
+      currentReason ??
+      ""
+    );
+
+  const [
+    isSaving,
+    setIsSaving,
+  ] =
+    useState(
+      false
+    );
+
+  const [
+    message,
+    setMessage,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] =
+    useState(
+      ""
+    );
+
+  useEffect(() => {
+    setDate(
+      scheduledDate ??
+      requestedDate
+    );
+
+    setTime(
+      scheduledTime?.slice(
+        0,
+        5
+      ) ??
+        requestedTime?.slice(
+          0,
+          5
+        ) ??
+        ""
+    );
+
+    setReason(
+      currentReason ??
+      ""
+    );
   }, [
     currentReason,
     requestedDate,
@@ -86,48 +168,79 @@ export default function StaffAppointmentActions({
     scheduledTime,
   ]);
 
-  const terminalStatus = [
-    "cancelled",
-    "completed",
-    "no_show",
-  ].includes(currentStatus);
+  const terminalStatus =
+    [
+      "cancelled",
+      "completed",
+      "no_show",
+    ].includes(
+      currentStatus
+    );
 
   const today =
-    new Date().toISOString().split("T")[0];
+    new Date()
+      .toISOString()
+      .split(
+        "T"
+      )[0];
 
   async function updateAppointment(
-    action: LifecycleAction
+    action:
+      LifecycleAction
   ) {
-    setMessage("");
-    setErrorMessage("");
+    setMessage(
+      ""
+    );
 
-    if (terminalStatus) {
+    setErrorMessage(
+      ""
+    );
+
+    if (
+      terminalStatus
+    ) {
       setErrorMessage(
-        "Această programare este într-o stare finală și nu mai poate fi modificată."
+        t(
+          "terminalError"
+        )
       );
+
       return;
     }
 
     if (
       (
-        action === "confirm" ||
-        action === "reschedule"
+        action ===
+          "confirm" ||
+        action ===
+          "reschedule"
       ) &&
-      (!date || !time)
+      (
+        !date ||
+        !time
+      )
     ) {
       setErrorMessage(
-        "Selectează data și ora programării."
+        t(
+          "dateTimeRequired"
+        )
       );
+
       return;
     }
 
     if (
-      action === "reschedule" &&
-      reason.trim().length < 3
+      action ===
+        "reschedule" &&
+      reason.trim()
+        .length < 3
     ) {
       setErrorMessage(
-        "Adaugă motivul reprogramării."
+        t(
+          "reasonRequired"
+        )
       );
+
       return;
     }
 
@@ -135,21 +248,34 @@ export default function StaffAppointmentActions({
       reason.trim();
 
     if (
-      action === "cancel" ||
-      action === "complete" ||
-      action === "no_show"
+      action ===
+        "cancel" ||
+      action ===
+        "complete" ||
+      action ===
+        "no_show"
     ) {
-      const label =
-        action === "cancel"
-          ? "Motivul anulării — opțional:"
-          : action === "complete"
-            ? "Notă operațională — opțional:"
-            : "Notă despre neprezentare — opțional:";
+      const promptKey =
+        action ===
+        "cancel"
+          ? "cancelPrompt"
+          : action ===
+              "complete"
+            ? "completePrompt"
+            : "noShowPrompt";
 
       const enteredReason =
-        window.prompt(label, "");
+        window.prompt(
+          t(
+            promptKey
+          ),
+          ""
+        );
 
-      if (enteredReason === null) {
+      if (
+        enteredReason ===
+        null
+      ) {
         return;
       }
 
@@ -157,82 +283,135 @@ export default function StaffAppointmentActions({
         enteredReason.trim();
     }
 
-    setIsSaving(true);
+    setIsSaving(
+      true
+    );
 
     try {
-      const response = await fetch(
-        "/api/appointments/lifecycle",
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            appointmentId,
-            action,
-            scheduledDate:
-              action === "confirm" ||
-              action === "reschedule"
-                ? date
-                : null,
-            scheduledTime:
-              action === "confirm" ||
-              action === "reschedule"
-                ? time
-                : null,
-            reason:
-              transitionReason || null,
-          }),
-        }
-      );
+      const response =
+        await fetch(
+          "/api/appointments/lifecycle",
+          {
+            method:
+              "PATCH",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                appointmentId,
+                action,
+
+                scheduledDate:
+                  action ===
+                    "confirm" ||
+                  action ===
+                    "reschedule"
+                    ? date
+                    : null,
+
+                scheduledTime:
+                  action ===
+                    "confirm" ||
+                  action ===
+                    "reschedule"
+                    ? time
+                    : null,
+
+                reason:
+                  transitionReason ||
+                  null,
+              }),
+          }
+        );
 
       const result =
         (await response.json()) as
           LifecycleResponse;
 
-      if (!response.ok) {
+      if (
+        !response.ok
+      ) {
         throw new Error(
-          result.error ??
-            "Programarea nu a putut fi actualizată."
+          locale ===
+            "ro" &&
+          result.error
+            ? result.error
+            : t(
+                "updateError"
+              )
         );
       }
 
+      const localizedSuccess =
+        t(
+          `success.${action}`
+        );
+
+      const baseMessage =
+        locale ===
+          "ro" &&
+        result.message
+          ? result.message
+          : localizedSuccess;
+
       setMessage(
-        result.emailSent === false
-          ? `${result.message ?? "Programarea a fost actualizată."} E-mailul pacientului nu a putut fi trimis.`
-          : result.message ??
-              "Programarea a fost actualizată."
+        result.emailSent ===
+          false
+          ? `${baseMessage} ${t(
+              "emailWarning"
+            )}`
+          : baseMessage
       );
 
       await onUpdated();
-    } catch (error) {
+    } catch (
+      updateError
+    ) {
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Programarea nu a putut fi actualizată."
+        updateError instanceof
+          Error
+          ? updateError.message
+          : t(
+              "updateError"
+            )
       );
     } finally {
-      setIsSaving(false);
+      setIsSaving(
+        false
+      );
     }
   }
 
   function handleSubmit(
-    event: FormEvent<HTMLFormElement>
+    event:
+      FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
     const originalDate =
-      scheduledDate ?? requestedDate;
+      scheduledDate ??
+      requestedDate;
 
     const originalTime =
-      scheduledTime?.slice(0, 5) ??
-      requestedTime?.slice(0, 5) ??
+      scheduledTime?.slice(
+        0,
+        5
+      ) ??
+      requestedTime?.slice(
+        0,
+        5
+      ) ??
       "";
 
     const slotChanged =
-      date !== originalDate ||
-      time !== originalTime;
+      date !==
+        originalDate ||
+      time !==
+        originalTime;
 
     void updateAppointment(
       slotChanged
@@ -241,10 +420,14 @@ export default function StaffAppointmentActions({
     );
   }
 
-  if (terminalStatus) {
+  if (
+    terminalStatus
+  ) {
     return (
       <div className="mt-6 rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
-        Programarea este închisă și nu mai poate fi modificată.
+        {t(
+          "closed"
+        )}
       </div>
     );
   }
@@ -252,83 +435,112 @@ export default function StaffAppointmentActions({
   return (
     <div className="mt-6 border-t border-gray-200 pt-6">
       <h3 className="text-lg font-semibold text-gray-900">
-        Gestionare programare
+        {t(
+          "title"
+        )}
       </h3>
 
       <form
-        onSubmit={handleSubmit}
+        onSubmit={
+          handleSubmit
+        }
         className="mt-4"
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label
-              htmlFor={`staff-scheduled-date-${appointmentId}`}
-              className="block text-sm font-medium text-gray-700"
-            >
-              Data confirmată
-            </label>
+          <label>
+            <span className="block text-sm font-medium text-gray-700">
+              {t(
+                "confirmedDate"
+              )}
+            </span>
 
             <input
-              id={`staff-scheduled-date-${appointmentId}`}
               type="date"
-              min={today}
-              value={date}
-              onChange={(event) =>
-                setDate(event.target.value)
+              min={
+                today
+              }
+              value={
+                date
+              }
+              onChange={(
+                event
+              ) =>
+                setDate(
+                  event.target
+                    .value
+                )
               }
               required
               className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900"
             />
-          </div>
-
-          <div>
-            <label
-              htmlFor={`staff-scheduled-time-${appointmentId}`}
-              className="block text-sm font-medium text-gray-700"
-            >
-              Ora confirmată
-            </label>
-
-            <input
-              id={`staff-scheduled-time-${appointmentId}`}
-              type="time"
-              value={time}
-              onChange={(event) =>
-                setTime(event.target.value)
-              }
-              required
-              className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900"
-            />
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <label
-            htmlFor={`staff-reschedule-reason-${appointmentId}`}
-            className="block text-sm font-medium text-gray-700"
-          >
-            Motivul reprogramării
           </label>
 
+          <label>
+            <span className="block text-sm font-medium text-gray-700">
+              {t(
+                "confirmedTime"
+              )}
+            </span>
+
+            <input
+              type="time"
+              value={
+                time
+              }
+              onChange={(
+                event
+              ) =>
+                setTime(
+                  event.target
+                    .value
+                )
+              }
+              required
+              className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900"
+            />
+          </label>
+        </div>
+
+        <label className="mt-4 block">
+          <span className="block text-sm font-medium text-gray-700">
+            {t(
+              "rescheduleReason"
+            )}
+          </span>
+
           <textarea
-            id={`staff-reschedule-reason-${appointmentId}`}
-            rows={3}
-            maxLength={2000}
-            value={reason}
-            onChange={(event) =>
-              setReason(event.target.value)
+            rows={
+              3
             }
-            placeholder="Completează acest câmp dacă modifici data sau ora."
+            maxLength={
+              2000
+            }
+            value={
+              reason
+            }
+            onChange={(
+              event
+            ) =>
+              setReason(
+                event.target
+                  .value
+              )
+            }
+            placeholder={t(
+              "reasonPlaceholder"
+            )}
             className="romdoc-focus-ring mt-2 w-full resize-y rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900"
           />
-        </div>
+        </label>
 
         {errorMessage && (
           <div
             role="alert"
             className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
           >
-            {errorMessage}
+            {
+              errorMessage
+            }
           </div>
         )}
 
@@ -344,18 +556,29 @@ export default function StaffAppointmentActions({
         <div className="mt-5 flex flex-wrap gap-3">
           <Button
             type="submit"
-            disabled={isSaving}
+            disabled={
+              isSaving
+            }
           >
             {isSaving
-              ? "Se salvează..."
-              : currentStatus === "pending"
-                ? "Confirmă programarea"
-                : "Salvează data și ora"}
+              ? t(
+                  "saving"
+                )
+              : currentStatus ===
+                  "pending"
+                ? t(
+                    "confirm"
+                  )
+                : t(
+                    "saveDateTime"
+                  )}
           </Button>
 
           <Button
             type="button"
-            disabled={isSaving}
+            disabled={
+              isSaving
+            }
             onClick={() =>
               void updateAppointment(
                 "complete"
@@ -363,12 +586,16 @@ export default function StaffAppointmentActions({
             }
             variant="secondary"
           >
-            Marchează finalizată
+            {t(
+              "complete"
+            )}
           </Button>
 
           <Button
             type="button"
-            disabled={isSaving}
+            disabled={
+              isSaving
+            }
             onClick={() =>
               void updateAppointment(
                 "no_show"
@@ -376,12 +603,16 @@ export default function StaffAppointmentActions({
             }
             variant="secondary"
           >
-            Marchează neprezentare
+            {t(
+              "noShow"
+            )}
           </Button>
 
           <Button
             type="button"
-            disabled={isSaving}
+            disabled={
+              isSaving
+            }
             onClick={() =>
               void updateAppointment(
                 "cancel"
@@ -389,7 +620,9 @@ export default function StaffAppointmentActions({
             }
             variant="danger-outline"
           >
-            Anulează
+            {t(
+              "cancel"
+            )}
           </Button>
         </div>
       </form>
