@@ -1,6 +1,14 @@
 import {
+  NextRequest,
   NextResponse,
 } from "next/server";
+
+import type {
+  AppLocale,
+} from "@/lib/i18n/app-locale";
+import {
+  getRequestAppLocale,
+} from "@/lib/i18n/request-app-locale";
 import {
   createAdminClient,
 } from "@/lib/supabase/admin";
@@ -11,39 +19,24 @@ export const runtime =
 export const dynamic =
   "force-dynamic";
 
-type ClinicTranslationRow = {
+type TranslationRow = {
   locale: string;
   name: string;
 };
 
-type CityTranslationRow = {
-  locale: string;
-  name: string;
+type CityRelation = {
+  slug:
+    | string
+    | null;
+
+  city_translations:
+    | TranslationRow[]
+    | null;
 };
-
-type CityRelation =
-  | {
-      slug:
-        | string
-        | null;
-
-      city_translations:
-        | CityTranslationRow[]
-        | null;
-    }
-  | Array<{
-      slug:
-        | string
-        | null;
-
-      city_translations:
-        | CityTranslationRow[]
-        | null;
-    }>
-  | null;
 
 type ClinicRow = {
   id: string;
+
   slug:
     | string
     | null;
@@ -71,11 +64,13 @@ type ClinicRow = {
     | null;
 
   clinic_translations:
-    | ClinicTranslationRow[]
+    | TranslationRow[]
     | null;
 
   cities:
-    CityRelation;
+    | CityRelation
+    | CityRelation[]
+    | null;
 };
 
 type DoctorClinicRow = {
@@ -85,9 +80,6 @@ type DoctorClinicRow = {
 
 type DoctorRow = {
   id: string;
-  status:
-    | string
-    | null;
 };
 
 type DoctorSpecialtyRow = {
@@ -95,25 +87,16 @@ type DoctorSpecialtyRow = {
   specialty_id: string;
 };
 
-export type PublicClinicMapItem = {
-  id: string;
-  slug: string;
-  name: string;
-  cityName: string;
-  citySlug:
-    | string
-    | null;
+const errorCopy = {
+  ro:
+    "Harta clinicilor nu a putut fi încărcată.",
 
-  formattedAddress: string;
-  latitude: number;
-  longitude: number;
-  googleMapsUri:
-    | string
-    | null;
+  en:
+    "The clinic map could not be loaded.",
 
-  doctorCount: number;
-  specialtyCount: number;
-};
+  de:
+    "Die Klinikkarte konnte nicht geladen werden.",
+} as const;
 
 function getSingleRelation<T>(
   relation:
@@ -122,36 +105,63 @@ function getSingleRelation<T>(
     | null
     | undefined
 ): T | null {
-  if (Array.isArray(relation)) {
-    return relation[0] ?? null;
+  if (
+    Array.isArray(
+      relation
+    )
+  ) {
+    return (
+      relation[0] ??
+      null
+    );
   }
 
-  return relation ?? null;
+  return (
+    relation ??
+    null
+  );
 }
 
-function getRomanianTranslationName(
+function getTranslatedName(
   translations:
-    | Array<{
-        locale: string;
-        name: string;
-      }>
+    | TranslationRow[]
     | null
-    | undefined
+    | undefined,
+  locale: AppLocale
 ) {
-  if (!translations?.length) {
+  if (
+    !translations
+      ?.length
+  ) {
     return null;
   }
 
+  const requested =
+    translations.find(
+      (
+        translation
+      ) =>
+        translation.locale ===
+        locale
+    );
+
   const romanian =
     translations.find(
-      (translation) =>
+      (
+        translation
+      ) =>
         translation.locale ===
         "ro"
     );
 
   return (
-    romanian?.name?.trim() ||
-    translations[0]?.name?.trim() ||
+    requested?.name
+      ?.trim() ||
+    romanian?.name
+      ?.trim() ||
+    translations[0]
+      ?.name
+      ?.trim() ||
     null
   );
 }
@@ -163,20 +173,26 @@ function toCoordinate(
     | null
 ) {
   if (
-    typeof value === "number"
+    typeof value ===
+    "number"
   ) {
-    return Number.isFinite(value)
+    return Number.isFinite(
+      value
+    )
       ? value
       : null;
   }
 
   if (
-    typeof value === "string"
+    typeof value ===
+    "string"
   ) {
     const parsed =
       Number(value);
 
-    return Number.isFinite(parsed)
+    return Number.isFinite(
+      parsed
+    )
       ? parsed
       : null;
   }
@@ -184,73 +200,48 @@ function toCoordinate(
   return null;
 }
 
-function isValidLatitude(
-  latitude: number
+function mapError(
+  locale: AppLocale,
+  context: string,
+  error: unknown
 ) {
-  return (
-    latitude >= -90 &&
-    latitude <= 90
+  console.error(
+    context,
+    error
   );
-}
 
-function isValidLongitude(
-  longitude: number
-) {
-  return (
-    longitude >= -180 &&
-    longitude <= 180
-  );
-}
-
-function createCountMap(
-  rows: DoctorClinicRow[],
-  activeDoctorIds:
-    Set<string>
-) {
-  const doctorIdsByClinic =
-    new Map<
-      string,
-      Set<string>
-    >();
-
-  for (const row of rows) {
-    if (
-      !activeDoctorIds.has(
-        row.doctor_id
-      )
-    ) {
-      continue;
+  return NextResponse.json(
+    {
+      error:
+        errorCopy[locale],
+    },
+    {
+      status: 500,
     }
-
-    const existing =
-      doctorIdsByClinic.get(
-        row.clinic_id
-      ) ??
-      new Set<string>();
-
-    existing.add(
-      row.doctor_id
-    );
-
-    doctorIdsByClinic.set(
-      row.clinic_id,
-      existing
-    );
-  }
-
-  return doctorIdsByClinic;
+  );
 }
 
-export async function GET(): Promise<Response> {
+export async function GET(
+  request: NextRequest
+): Promise<Response> {
+  const locale =
+    getRequestAppLocale(
+      request
+    );
+
   try {
     const admin =
       createAdminClient();
 
     const {
-      data: clinicData,
-      error: clinicsError,
+      data:
+        clinicData,
+      error:
+        clinicsError,
     } = await admin
-      .from("clinics")
+      .from(
+        "clinics"
+      )
       .select(`
         id,
         slug,
@@ -292,29 +283,26 @@ export async function GET(): Promise<Response> {
         }
       );
 
-    if (clinicsError) {
-      console.error(
+    if (
+      clinicsError
+    ) {
+      return mapError(
+        locale,
         "Public clinic map query failed:",
         clinicsError
-      );
-
-      return NextResponse.json(
-        {
-          error:
-            "Clinicile nu au putut fi încărcate.",
-        },
-        {
-          status: 500,
-        }
       );
     }
 
     const clinics =
-      (clinicData ??
-        []) as ClinicRow[];
+      (
+        clinicData ??
+        []
+      ) as
+        ClinicRow[];
 
     if (
-      clinics.length === 0
+      clinics.length ===
+      0
     ) {
       return NextResponse.json(
         {
@@ -331,7 +319,9 @@ export async function GET(): Promise<Response> {
 
     const clinicIds =
       clinics.map(
-        (clinic) =>
+        (
+          clinic
+        ) =>
           clinic.id
       );
 
@@ -341,11 +331,12 @@ export async function GET(): Promise<Response> {
       error:
         doctorClinicsError,
     } = await admin
-      .from("doctor_clinics")
-      .select(`
-        clinic_id,
-        doctor_id
-      `)
+      .from(
+        "doctor_clinics"
+      )
+      .select(
+        "clinic_id, doctor_id"
+      )
       .in(
         "clinic_id",
         clinicIds
@@ -354,31 +345,27 @@ export async function GET(): Promise<Response> {
     if (
       doctorClinicsError
     ) {
-      console.error(
-        "Public clinic doctor-link query failed:",
+      return mapError(
+        locale,
+        "Public clinic map doctor-link query failed:",
         doctorClinicsError
-      );
-
-      return NextResponse.json(
-        {
-          error:
-            "Asocierile medicilor nu au putut fi încărcate.",
-        },
-        {
-          status: 500,
-        }
       );
     }
 
     const doctorClinics =
-      (doctorClinicData ??
-        []) as DoctorClinicRow[];
+      (
+        doctorClinicData ??
+        []
+      ) as
+        DoctorClinicRow[];
 
     const linkedDoctorIds =
       Array.from(
         new Set(
           doctorClinics.map(
-            (row) =>
+            (
+              row
+            ) =>
               row.doctor_id
           )
         )
@@ -400,11 +387,12 @@ export async function GET(): Promise<Response> {
       ] =
         await Promise.all([
           admin
-            .from("doctors")
-            .select(`
-              id,
-              status
-            `)
+            .from(
+              "doctors"
+            )
+            .select(
+              "id"
+            )
             .in(
               "id",
               linkedDoctorIds
@@ -418,10 +406,9 @@ export async function GET(): Promise<Response> {
             .from(
               "doctor_specialties"
             )
-            .select(`
-              doctor_id,
-              specialty_id
-            `)
+            .select(
+              "doctor_id, specialty_id"
+            )
             .in(
               "doctor_id",
               linkedDoctorIds
@@ -431,38 +418,20 @@ export async function GET(): Promise<Response> {
       if (
         doctorsResult.error
       ) {
-        console.error(
-          "Public clinic active-doctor query failed:",
+        return mapError(
+          locale,
+          "Public clinic map active-doctor query failed:",
           doctorsResult.error
-        );
-
-        return NextResponse.json(
-          {
-            error:
-              "Medicii clinicilor nu au putut fi încărcați.",
-          },
-          {
-            status: 500,
-          }
         );
       }
 
       if (
         specialtiesResult.error
       ) {
-        console.error(
-          "Public clinic specialties query failed:",
+        return mapError(
+          locale,
+          "Public clinic map specialty query failed:",
           specialtiesResult.error
-        );
-
-        return NextResponse.json(
-          {
-            error:
-              "Specialitățile clinicilor nu au putut fi încărcate.",
-          },
-          {
-            status: 500,
-          }
         );
       }
 
@@ -471,73 +440,101 @@ export async function GET(): Promise<Response> {
           (
             doctorsResult.data ??
             []
+          ).map(
+            (
+              doctor:
+                DoctorRow
+            ) =>
+              doctor.id
           )
-            .filter(
-              (
-                doctor
-              ): doctor is DoctorRow =>
-                Boolean(
-                  doctor?.id
-                )
-            )
-            .map(
-              (doctor) =>
-                doctor.id
-            )
         );
 
       doctorSpecialties =
         (
-          specialtiesResult.data ??
+          specialtiesResult
+            .data ??
           []
-        ) as DoctorSpecialtyRow[];
+        ) as
+          DoctorSpecialtyRow[];
     }
 
-    const doctorIdsByClinic =
-      createCountMap(
-        doctorClinics,
-        activeDoctorIds
-      );
-
-    const specialtiesByDoctor =
+    const activeDoctorIdsByClinic =
       new Map<
         string,
         Set<string>
       >();
 
     for (
-      const row of
-        doctorSpecialties
+      const link of
+        doctorClinics
     ) {
       if (
         !activeDoctorIds.has(
-          row.doctor_id
+          link.doctor_id
         )
       ) {
         continue;
       }
 
-      const existing =
-        specialtiesByDoctor.get(
-          row.doctor_id
-        ) ??
+      const clinicDoctors =
+        activeDoctorIdsByClinic
+          .get(
+            link.clinic_id
+          ) ??
         new Set<string>();
 
-      existing.add(
-        row.specialty_id
+      clinicDoctors.add(
+        link.doctor_id
       );
 
-      specialtiesByDoctor.set(
-        row.doctor_id,
-        existing
+      activeDoctorIdsByClinic
+        .set(
+          link.clinic_id,
+          clinicDoctors
+        );
+    }
+
+    const specialtyIdsByDoctor =
+      new Map<
+        string,
+        Set<string>
+      >();
+
+    for (
+      const relation of
+        doctorSpecialties
+    ) {
+      if (
+        !activeDoctorIds.has(
+          relation.doctor_id
+        )
+      ) {
+        continue;
+      }
+
+      const specialties =
+        specialtyIdsByDoctor
+          .get(
+            relation.doctor_id
+          ) ??
+        new Set<string>();
+
+      specialties.add(
+        relation.specialty_id
       );
+
+      specialtyIdsByDoctor
+        .set(
+          relation.doctor_id,
+          specialties
+        );
     }
 
     const publicClinics =
       clinics.flatMap(
         (
           clinic
-        ): PublicClinicMapItem[] => {
+        ) => {
           const latitude =
             toCoordinate(
               clinic.latitude
@@ -549,14 +546,14 @@ export async function GET(): Promise<Response> {
             );
 
           if (
-            latitude === null ||
-            longitude === null ||
-            !isValidLatitude(
-              latitude
-            ) ||
-            !isValidLongitude(
-              longitude
-            )
+            latitude ===
+              null ||
+            longitude ===
+              null ||
+            latitude < -90 ||
+            latitude > 90 ||
+            longitude < -180 ||
+            longitude > 180
           ) {
             return [];
           }
@@ -567,15 +564,17 @@ export async function GET(): Promise<Response> {
             );
 
           const clinicName =
-            getRomanianTranslationName(
+            getTranslatedName(
               clinic
-                .clinic_translations
+                .clinic_translations,
+              locale
             );
 
           const cityName =
-            getRomanianTranslationName(
+            getTranslatedName(
               city
-                ?.city_translations
+                ?.city_translations,
+              locale
             );
 
           const formattedAddress =
@@ -594,10 +593,11 @@ export async function GET(): Promise<Response> {
             return [];
           }
 
-          const activeClinicDoctors =
-            doctorIdsByClinic.get(
-              clinic.id
-            ) ??
+          const clinicDoctorIds =
+            activeDoctorIdsByClinic
+              .get(
+                clinic.id
+              ) ??
             new Set<string>();
 
           const clinicSpecialtyIds =
@@ -605,24 +605,28 @@ export async function GET(): Promise<Response> {
 
           for (
             const doctorId of
-              activeClinicDoctors
+              clinicDoctorIds
           ) {
-            const specialtyIds =
-              specialtiesByDoctor.get(
-                doctorId
-              );
+            const specialties =
+              specialtyIdsByDoctor
+                .get(
+                  doctorId
+                );
 
-            if (!specialtyIds) {
+            if (
+              !specialties
+            ) {
               continue;
             }
 
             for (
               const specialtyId of
-                specialtyIds
+                specialties
             ) {
-              clinicSpecialtyIds.add(
-                specialtyId
-              );
+              clinicSpecialtyIds
+                .add(
+                  specialtyId
+                );
             }
           }
 
@@ -647,34 +651,41 @@ export async function GET(): Promise<Response> {
               formattedAddress,
 
               latitude,
-
               longitude,
 
               googleMapsUri:
-                clinic.google_maps_uri
+                clinic
+                  .google_maps_uri
                   ?.trim() ??
                 null,
 
               doctorCount:
-                activeClinicDoctors.size,
+                clinicDoctorIds
+                  .size,
 
               specialtyCount:
-                clinicSpecialtyIds.size,
+                clinicSpecialtyIds
+                  .size,
             },
           ];
         }
       );
 
     publicClinics.sort(
-      (first, second) =>
-        first.cityName.localeCompare(
-          second.cityName,
-          "ro"
-        ) ||
-        first.name.localeCompare(
-          second.name,
-          "ro"
-        )
+      (
+        first,
+        second
+      ) =>
+        first.cityName
+          .localeCompare(
+            second.cityName,
+            locale
+          ) ||
+        first.name
+          .localeCompare(
+            second.name,
+            locale
+          )
     );
 
     return NextResponse.json(
@@ -689,20 +700,13 @@ export async function GET(): Promise<Response> {
         },
       }
     );
-  } catch (error) {
-    console.error(
+  } catch (
+    error
+  ) {
+    return mapError(
+      locale,
       "Public clinic map API failed:",
       error
-    );
-
-    return NextResponse.json(
-      {
-        error:
-          "Harta clinicilor nu a putut fi încărcată.",
-      },
-      {
-        status: 500,
-      }
     );
   }
 }

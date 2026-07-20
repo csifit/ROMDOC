@@ -11,17 +11,9 @@ const CALLBACK_NAME =
 const INITIALIZATION_TIMEOUT_MS =
   15000;
 
-type PlaceAutocompleteElementConstructor =
-  new (
-    options?: {
-      includedRegionCodes?:
-        string[];
-    }
-  ) => HTMLElement;
-
 type PlacesLibrary = {
   PlaceAutocompleteElement?:
-    PlaceAutocompleteElementConstructor;
+    new () => HTMLElement;
 };
 
 type GoogleMapsRuntime = {
@@ -31,7 +23,7 @@ type GoogleMapsRuntime = {
 
   places?: {
     PlaceAutocompleteElement?:
-      PlaceAutocompleteElementConstructor;
+      new () => HTMLElement;
   };
 };
 
@@ -57,7 +49,7 @@ function getImportLibrary() {
     ?.importLibrary;
 }
 
-function hasPlacesAutocompleteElement() {
+function hasAutocompleteElement() {
   return Boolean(
     getGoogleWindow()
       .google
@@ -70,7 +62,9 @@ function hasPlacesAutocompleteElement() {
 function waitForImportLibrary():
   Promise<
     NonNullable<
-      GoogleMapsRuntime["importLibrary"]
+      GoogleMapsRuntime[
+        "importLibrary"
+      ]
     >
   > {
   return new Promise(
@@ -81,7 +75,7 @@ function waitForImportLibrary():
       const startedAt =
         Date.now();
 
-      const checkAvailability =
+      const check =
         () => {
           const importLibrary =
             getImportLibrary();
@@ -90,7 +84,6 @@ function waitForImportLibrary():
             resolve(
               importLibrary
             );
-
             return;
           }
 
@@ -104,24 +97,23 @@ function waitForImportLibrary():
                 "Google Maps s-a încărcat, dar funcția importLibrary nu a devenit disponibilă."
               )
             );
-
             return;
           }
 
           window.setTimeout(
-            checkAvailability,
+            check,
             50
           );
         };
 
-      checkAvailability();
+      check();
     }
   );
 }
 
-async function importPlacesLibrary() {
+async function ensurePlacesLibrary() {
   if (
-    hasPlacesAutocompleteElement()
+    hasAutocompleteElement()
   ) {
     return;
   }
@@ -151,12 +143,11 @@ async function importPlacesLibrary() {
 }
 
 function removeFailedScript() {
-  const script =
-    document.getElementById(
+  document
+    .getElementById(
       SCRIPT_ID
-    );
-
-  script?.remove();
+    )
+    ?.remove();
 }
 
 function loadGoogleMapsScript(
@@ -170,58 +161,18 @@ function loadGoogleMapsScript(
       const googleWindow =
         getGoogleWindow();
 
-      let hasFinished =
+      let finished =
         false;
 
       let timeoutId:
         | number
         | null = null;
 
-      const finishSuccessfully =
-        async () => {
-          if (hasFinished) {
-            return;
-          }
-
-          try {
-            await importPlacesLibrary();
-
-            hasFinished =
-              true;
-
-            if (
-              timeoutId !== null
-            ) {
-              window.clearTimeout(
-                timeoutId
-              );
-            }
-
-            delete googleWindow[
-              CALLBACK_NAME
-            ];
-
-            resolve();
-          } catch (error) {
-            finishWithError(
-              error
-            );
-          }
-        };
-
-      const finishWithError =
-        (
-          error: unknown
-        ) => {
-          if (hasFinished) {
-            return;
-          }
-
-          hasFinished =
-            true;
-
+      const clearState =
+        () => {
           if (
-            timeoutId !== null
+            timeoutId !==
+            null
           ) {
             window.clearTimeout(
               timeoutId
@@ -231,7 +182,20 @@ function loadGoogleMapsScript(
           delete googleWindow[
             CALLBACK_NAME
           ];
+        };
 
+      const fail =
+        (
+          error: unknown
+        ) => {
+          if (finished) {
+            return;
+          }
+
+          finished =
+            true;
+
+          clearState();
           removeFailedScript();
 
           reject(
@@ -244,8 +208,29 @@ function loadGoogleMapsScript(
           );
         };
 
+      const succeed =
+        async () => {
+          if (finished) {
+            return;
+          }
+
+          try {
+            await ensurePlacesLibrary();
+
+            finished =
+              true;
+
+            clearState();
+            resolve();
+          } catch (
+            error
+          ) {
+            fail(error);
+          }
+        };
+
       if (
-        hasPlacesAutocompleteElement()
+        hasAutocompleteElement()
       ) {
         resolve();
         return;
@@ -254,7 +239,7 @@ function loadGoogleMapsScript(
       if (
         getImportLibrary()
       ) {
-        void finishSuccessfully();
+        void succeed();
         return;
       }
 
@@ -268,13 +253,13 @@ function loadGoogleMapsScript(
       googleWindow[
         CALLBACK_NAME
       ] = () => {
-        void finishSuccessfully();
+        void succeed();
       };
 
       timeoutId =
         window.setTimeout(
           () => {
-            finishWithError(
+            fail(
               new Error(
                 "Google Maps nu a răspuns în timpul permis."
               )
@@ -284,42 +269,36 @@ function loadGoogleMapsScript(
         );
 
       if (existingScript) {
-        existingScript.addEventListener(
-          "error",
-          () => {
-            finishWithError(
-              new Error(
-                "Google Maps nu a putut fi încărcat."
-              )
-            );
-          },
-          {
-            once: true,
-          }
-        );
+        existingScript
+          .addEventListener(
+            "error",
+            () => {
+              fail(
+                new Error(
+                  "Google Maps nu a putut fi încărcat."
+                )
+              );
+            },
+            {
+              once: true,
+            }
+          );
 
-        /*
-         * During development, the script may already have loaded
-         * before the current React effect attached its listeners.
-         * Poll for importLibrary in addition to waiting for callback.
-         */
         void waitForImportLibrary()
-          .then(() =>
-            finishSuccessfully()
+          .then(
+            () =>
+              succeed()
           )
-          .catch(() => {
-            /*
-             * The main timeout handles the final error.
-             */
-          });
+          .catch(
+            () => {
+              /*
+               * The main timeout reports the final error.
+               */
+            }
+          );
 
         return;
       }
-
-      const script =
-        document.createElement(
-          "script"
-        );
 
       const query =
         new URLSearchParams({
@@ -337,13 +316,19 @@ function loadGoogleMapsScript(
 
           callback:
             CALLBACK_NAME,
-
-          language:
-            "ro",
-
-          region:
-            "RO",
         });
+
+      /*
+       * Do not force language=ro or region=RO.
+       *
+       * The browser may load the international Maps interface
+       * without a Romania-specific bias. Selected Place Details
+       * are localized separately by the RomDoc API.
+       */
+      const script =
+        document.createElement(
+          "script"
+        );
 
       script.id =
         SCRIPT_ID;
@@ -364,7 +349,7 @@ function loadGoogleMapsScript(
       script.addEventListener(
         "error",
         () => {
-          finishWithError(
+          fail(
             new Error(
               "Google Maps nu a putut fi încărcat. Verifică cheia API și restricțiile Google Cloud."
             )
@@ -375,9 +360,10 @@ function loadGoogleMapsScript(
         }
       );
 
-      document.head.appendChild(
-        script
-      );
+      document.head
+        .appendChild(
+          script
+        );
     }
   );
 }
@@ -399,7 +385,8 @@ export function loadGoogleMaps():
 
   const apiKey =
     process.env
-      .NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+      .NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+      ?.trim();
 
   if (!apiKey) {
     return Promise.reject(
@@ -410,7 +397,7 @@ export function loadGoogleMaps():
   }
 
   if (
-    hasPlacesAutocompleteElement()
+    hasAutocompleteElement()
   ) {
     return Promise.resolve();
   }
@@ -419,12 +406,16 @@ export function loadGoogleMaps():
     googleMapsPromise =
       loadGoogleMapsScript(
         apiKey
-      ).catch((error) => {
-        googleMapsPromise =
-          null;
+      ).catch(
+        (
+          error
+        ) => {
+          googleMapsPromise =
+            null;
 
-        throw error;
-      });
+          throw error;
+        }
+      );
   }
 
   return googleMapsPromise;

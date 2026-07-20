@@ -1,4 +1,7 @@
 import type {
+  AppLocale,
+} from "@/lib/i18n/app-locale";
+import type {
   GoogleClinicAddress,
 } from "@/lib/locations/google-address";
 
@@ -196,7 +199,8 @@ async function parseGoogleError(
 }
 
 export async function getGooglePlaceDetails(
-  placeId: string
+  placeId: string,
+  locale: AppLocale = "ro"
 ): Promise<GoogleClinicAddress> {
   const apiKey =
     process.env
@@ -226,15 +230,13 @@ export async function getGooglePlaceDetails(
     );
 
   /*
-   * Keep the existing Romanian response language for backward
-   * compatibility with current stored city names.
-   *
-   * Do not set regionCode=RO. A Romanian region preference must
-   * not influence international address handling.
+   * Format the returned address in the active RomDoc language.
+   * Do not set regionCode: the selected country must come from
+   * the Google Place itself, not from a Romania preference.
    */
   endpoint.searchParams.set(
     "languageCode",
-    "ro"
+    locale
   );
 
   let response: Response;
