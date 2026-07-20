@@ -2,20 +2,27 @@
 
 import Link from "next/link";
 import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
+import {
+  useRouter,
+} from "next/navigation";
+import {
   type FormEvent,
   useState,
   useTransition,
 } from "react";
-import {
-  useRouter,
-} from "next/navigation";
 
 import {
-  type AppLocale,
-} from "@/i18n/routing";
+  getPathname,
+} from "@/i18n/navigation";
 import {
   getClinicInvitedDoctorRegistrationMetadata,
 } from "@/lib/doctors/clinic-invited-doctor-registration";
+import {
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
 import {
   createClient,
 } from "@/lib/supabase/client";
@@ -28,236 +35,39 @@ type SelectOption = {
 type ClinicInvitedDoctorRegisterFormProps = {
   token: string;
   invitedEmail: string;
-  specialties: SelectOption[];
-  locale: AppLocale;
+
+  specialties:
+    SelectOption[];
 };
 
 type LinkInviteResponse = {
   message?: string;
   error?: string;
+
   doctor?: {
     id: string;
     slug: string;
   };
 };
 
-type RegistrationCopy = {
-  eyebrow: string;
-  title: string;
-  description: string;
-  paymentNotice: string;
-  accountNotice: string;
-  acknowledgement: string;
-  acknowledgementError: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  specialty: string;
-  selectSpecialty: string;
-  licence: string;
-  licenceHint: string;
-  password: string;
-  confirmPassword: string;
-  accept: string;
-  terms: string;
-  privacy: string;
-  submit: string;
-  submitting: string;
-};
-
-const COPY:
-  Record<AppLocale, RegistrationCopy> = {
-    ro: {
-      eyebrow:
-        "Invitație din partea clinicii",
-
-      title:
-        "Creează un cont separat de medic invitat",
-
-      description:
-        "Această invitație creează un cont RomDoc nou, cu o adresă de e-mail și un ID de utilizator separate de orice cont independent pe care îl ai deja.",
-
-      paymentNotice:
-        "Abonamentul acestui cont este plătit de organizația clinicii. Nu trebuie să activezi un abonament Stripe individual pentru acest cont.",
-
-      accountNotice:
-        "Tipul contului este „medic invitat de clinică” și nu poate fi schimbat ulterior în „medic independent”. Pentru activitate independentă este necesar un alt cont, creat cu o altă adresă de e-mail.",
-
-      acknowledgement:
-        "Înțeleg că acesta este un cont separat, plătit de clinică, și că nu poate fi transformat într-un cont independent.",
-
-      acknowledgementError:
-        "Confirmă că ai înțeles caracterul separat și permanent al contului invitat de clinică.",
-
-      firstName: "Prenume",
-      lastName: "Nume",
-      email: "E-mailul invitației",
-      phone: "Telefon",
-      specialty: "Specialitate",
-      selectSpecialty:
-        "Selectează specialitatea",
-
-      licence:
-        "Cod parafă / număr profesional",
-
-      licenceHint:
-        "Opțional și informativ. RomDoc nu compară, nu avertizează și nu unește conturi care folosesc același număr.",
-
-      password: "Parolă",
-      confirmPassword:
-        "Confirmă parola",
-
-      accept: "Accept",
-      terms: "Termenii și condițiile",
-      privacy:
-        "Politica de confidențialitate",
-
-      submit:
-        "Creează contul invitat de clinică",
-
-      submitting:
-        "Se creează contul...",
-    },
-
-    en: {
-      eyebrow: "Clinic invitation",
-
-      title:
-        "Create a separate clinic-invited doctor account",
-
-      description:
-        "This invitation creates a new RomDoc account with an email address and user ID separate from any independent account you may already have.",
-
-      paymentNotice:
-        "The clinic organisation pays the subscription for this account. You do not need to activate an individual Stripe subscription for it.",
-
-      accountNotice:
-        "The account type is “clinic-invited doctor” and cannot later be changed to “independent doctor”. Independent activity requires another account created with another email address.",
-
-      acknowledgement:
-        "I understand that this is a separate clinic-paid account and cannot be converted into an independent account.",
-
-      acknowledgementError:
-        "Confirm that you understand the separate and permanent nature of the clinic-invited account.",
-
-      firstName: "First name",
-      lastName: "Last name",
-      email: "Invitation email",
-      phone: "Phone",
-      specialty: "Specialty",
-      selectSpecialty:
-        "Select the specialty",
-
-      licence:
-        "Professional registration number",
-
-      licenceHint:
-        "Optional and informational. RomDoc does not compare, warn about or merge accounts using the same number.",
-
-      password: "Password",
-      confirmPassword:
-        "Confirm password",
-
-      accept: "I accept",
-      terms: "Terms and Conditions",
-      privacy: "Privacy Policy",
-
-      submit:
-        "Create clinic-invited account",
-
-      submitting:
-        "Creating account...",
-    },
-
-    de: {
-      eyebrow: "Einladung der Klinik",
-
-      title:
-        "Separates Konto als von einer Klinik eingeladener Arzt erstellen",
-
-      description:
-        "Diese Einladung erstellt ein neues RomDoc-Konto mit einer E-Mail-Adresse und Benutzer-ID, die von jedem bereits bestehenden unabhängigen Konto getrennt sind.",
-
-      paymentNotice:
-        "Die Klinikorganisation bezahlt das Abonnement für dieses Konto. Für dieses Konto müssen Sie kein eigenes Stripe-Abonnement aktivieren.",
-
-      accountNotice:
-        "Der Kontotyp lautet „von einer Klinik eingeladener Arzt“ und kann später nicht in „selbstständiger Arzt“ geändert werden. Für eine unabhängige Tätigkeit ist ein weiteres Konto mit einer anderen E-Mail-Adresse erforderlich.",
-
-      acknowledgement:
-        "Ich verstehe, dass dies ein separates, von der Klinik bezahltes Konto ist und nicht in ein unabhängiges Konto umgewandelt werden kann.",
-
-      acknowledgementError:
-        "Bestätigen Sie, dass Sie den separaten und dauerhaften Charakter des von der Klinik eingeladenen Kontos verstanden haben.",
-
-      firstName: "Vorname",
-      lastName: "Nachname",
-      email: "E-Mail der Einladung",
-      phone: "Telefon",
-      specialty: "Fachrichtung",
-      selectSpecialty:
-        "Fachrichtung auswählen",
-
-      licence:
-        "Berufliche Registrierungsnummer",
-
-      licenceHint:
-        "Optional und rein informativ. RomDoc vergleicht Konten mit derselben Nummer nicht, zeigt keine Warnungen an und führt sie nicht zusammen.",
-
-      password: "Passwort",
-      confirmPassword:
-        "Passwort bestätigen",
-
-      accept: "Ich akzeptiere",
-      terms:
-        "Allgemeinen Geschäftsbedingungen",
-
-      privacy: "Datenschutzerklärung",
-
-      submit:
-        "Klinik-Einladungskonto erstellen",
-
-      submitting:
-        "Konto wird erstellt...",
-    },
-  };
-
-function validatePassword(
-  password: string
-) {
-  if (password.length < 8) {
-    return "Parola trebuie să conțină cel puțin 8 caractere.";
-  }
-
-  if (!/[A-Z]/.test(password)) {
-    return "Parola trebuie să conțină cel puțin o literă mare.";
-  }
-
-  if (!/[a-z]/.test(password)) {
-    return "Parola trebuie să conțină cel puțin o literă mică.";
-  }
-
-  if (!/[0-9]/.test(password)) {
-    return "Parola trebuie să conțină cel puțin o cifră.";
-  }
-
-  return null;
-}
-
 function inputClassName() {
-  return "mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-wait disabled:bg-gray-100";
+  return "romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-wait disabled:bg-gray-100";
 }
 
 export default function ClinicInvitedDoctorRegisterForm({
   token,
   invitedEmail,
   specialties,
-  locale,
 }: ClinicInvitedDoctorRegisterFormProps) {
-  const text =
-    COPY[locale] ??
-    COPY.ro;
+  const locale =
+    normalizeAppLocale(
+      useLocale()
+    );
+
+  const t =
+    useTranslations(
+      "ClinicOrganisationDashboard.invitedDoctorForm"
+    );
 
   const router =
     useRouter();
@@ -265,67 +75,163 @@ export default function ClinicInvitedDoctorRegisterForm({
   const [
     isPending,
     startTransition,
-  ] = useTransition();
+  ] =
+    useTransition();
 
   const [
     firstName,
     setFirstName,
-  ] = useState("");
+  ] =
+    useState(
+      ""
+    );
 
   const [
     lastName,
     setLastName,
-  ] = useState("");
+  ] =
+    useState(
+      ""
+    );
 
   const [
     phone,
     setPhone,
-  ] = useState("");
+  ] =
+    useState(
+      ""
+    );
 
   const [
     specialtyId,
     setSpecialtyId,
-  ] = useState("");
+  ] =
+    useState(
+      ""
+    );
 
   const [
     professionalRegistrationNumber,
     setProfessionalRegistrationNumber,
-  ] = useState("");
+  ] =
+    useState(
+      ""
+    );
 
   const [
     password,
     setPassword,
-  ] = useState("");
+  ] =
+    useState(
+      ""
+    );
 
   const [
     passwordConfirmation,
     setPasswordConfirmation,
-  ] = useState("");
+  ] =
+    useState(
+      ""
+    );
 
   const [
     acceptedAccountModel,
     setAcceptedAccountModel,
-  ] = useState(false);
+  ] =
+    useState(
+      false
+    );
 
   const [
     acceptedTerms,
     setAcceptedTerms,
-  ] = useState(false);
+  ] =
+    useState(
+      false
+    );
 
   const [
     error,
     setError,
   ] =
-    useState<string | null>(
+    useState<
+      string | null
+    >(
       null
     );
+
+  const homeHref =
+    `/${locale}`;
+
+  const termsHref =
+    getPathname({
+      locale,
+      href:
+        "/termeni-si-conditii",
+    });
+
+  const privacyHref =
+    getPathname({
+      locale,
+      href:
+        "/confidentialitate",
+    });
+
+  function validatePassword(
+    value:
+      string
+  ) {
+    if (
+      value.length <
+      8
+    ) {
+      return t(
+        "validation.passwordLength"
+      );
+    }
+
+    if (
+      !/[A-Z]/.test(
+        value
+      )
+    ) {
+      return t(
+        "validation.passwordUppercase"
+      );
+    }
+
+    if (
+      !/[a-z]/.test(
+        value
+      )
+    ) {
+      return t(
+        "validation.passwordLowercase"
+      );
+    }
+
+    if (
+      !/[0-9]/.test(
+        value
+      )
+    ) {
+      return t(
+        "validation.passwordNumber"
+      );
+    }
+
+    return null;
+  }
 
   function handleSubmit(
     event:
       FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
-    setError(null);
+
+    setError(
+      null
+    );
 
     const normalizedFirstName =
       firstName.trim();
@@ -341,10 +247,15 @@ export default function ClinicInvitedDoctorRegisterForm({
     const normalizedPhone =
       phone.trim();
 
-    if (!token) {
+    if (
+      !token
+    ) {
       setError(
-        "Linkul invitației nu conține tokenul necesar."
+        t(
+          "validation.missingToken"
+        )
       );
+
       return;
     }
 
@@ -353,8 +264,11 @@ export default function ClinicInvitedDoctorRegisterForm({
       2
     ) {
       setError(
-        "Introdu un prenume valid."
+        t(
+          "validation.firstName"
+        )
       );
+
       return;
     }
 
@@ -363,42 +277,66 @@ export default function ClinicInvitedDoctorRegisterForm({
       2
     ) {
       setError(
-        "Introdu un nume de familie valid."
+        t(
+          "validation.lastName"
+        )
       );
+
       return;
     }
 
     if (
       !normalizedEmail ||
-      !normalizedEmail.includes("@")
+      !normalizedEmail.includes(
+        "@"
+      )
     ) {
       setError(
-        "Invitația nu conține o adresă de e-mail validă."
+        t(
+          "validation.email"
+        )
       );
+
       return;
     }
 
     if (
-      normalizedPhone.length < 7
+      normalizedPhone.length <
+      7
     ) {
       setError(
-        "Introdu un număr de telefon valid."
+        t(
+          "validation.phone"
+        )
       );
+
       return;
     }
 
-    if (!specialtyId) {
+    if (
+      !specialtyId
+    ) {
       setError(
-        "Selectează specialitatea medicală."
+        t(
+          "validation.specialty"
+        )
       );
+
       return;
     }
 
     const passwordError =
-      validatePassword(password);
+      validatePassword(
+        password
+      );
 
-    if (passwordError) {
-      setError(passwordError);
+    if (
+      passwordError
+    ) {
+      setError(
+        passwordError
+      );
+
       return;
     }
 
@@ -407,22 +345,35 @@ export default function ClinicInvitedDoctorRegisterForm({
       passwordConfirmation
     ) {
       setError(
-        "Parolele introduse nu coincid."
+        t(
+          "validation.passwordMismatch"
+        )
       );
+
       return;
     }
 
-    if (!acceptedAccountModel) {
+    if (
+      !acceptedAccountModel
+    ) {
       setError(
-        text.acknowledgementError
+        t(
+          "acknowledgementError"
+        )
       );
+
       return;
     }
 
-    if (!acceptedTerms) {
+    if (
+      !acceptedTerms
+    ) {
       setError(
-        "Trebuie să accepți termenii și politica de confidențialitate."
+        t(
+          "validation.terms"
+        )
       );
+
       return;
     }
 
@@ -435,14 +386,20 @@ export default function ClinicInvitedDoctorRegisterForm({
           const confirmationUrl =
             new URL(
               "/auth/confirm",
-              window.location.origin
+              window.location
+                .origin
             );
 
-          confirmationUrl
-            .searchParams
+          confirmationUrl.searchParams
             .set(
               "next",
               "/doctor-dashboard/profile"
+            );
+
+          confirmationUrl.searchParams
+            .set(
+              "locale",
+              locale
             );
 
           const {
@@ -450,8 +407,7 @@ export default function ClinicInvitedDoctorRegisterForm({
             error:
               signUpError,
           } =
-            await supabase
-              .auth
+            await supabase.auth
               .signUp({
                 email:
                   normalizedEmail,
@@ -491,49 +447,65 @@ export default function ClinicInvitedDoctorRegisterForm({
                 },
               });
 
-          if (signUpError) {
+          if (
+            signUpError
+          ) {
             const normalizedMessage =
               signUpError.message
                 .toLowerCase();
 
             if (
-              normalizedMessage
-                .includes(
-                  "already registered"
-                ) ||
-              normalizedMessage
-                .includes(
-                  "already been registered"
-                )
+              normalizedMessage.includes(
+                "already registered"
+              ) ||
+              normalizedMessage.includes(
+                "already been registered"
+              )
             ) {
               setError(
-                "Există deja un cont pentru această adresă de e-mail. Invitația clinicii necesită o adresă de e-mail nouă și un ID de utilizator separat."
+                t(
+                  "validation.existingAccount"
+                )
               );
+
               return;
             }
 
             if (
-              normalizedMessage
-                .includes(
-                  "database error saving new user"
-                )
+              normalizedMessage.includes(
+                "database error saving new user"
+              )
             ) {
               setError(
-                "Contul nu a putut fi creat. Verifică migrarea bazei de date pentru înregistrare."
+                t(
+                  "validation.database"
+                )
               );
+
               return;
             }
 
             setError(
-              signUpError.message
+              locale ===
+                "ro"
+                ? signUpError.message
+                : t(
+                    "validation.accountCreation"
+                  )
             );
+
             return;
           }
 
-          if (!data.user) {
+          if (
+            !data.user
+          ) {
             setError(
-              "Contul nu a putut fi creat. Încearcă din nou."
+              t(
+                "validation.accountCreation"
+              )
             );
+
             return;
           }
 
@@ -541,7 +513,8 @@ export default function ClinicInvitedDoctorRegisterForm({
             await fetch(
               "/api/clinic-doctor-invitations/register",
               {
-                method: "POST",
+                method:
+                  "POST",
 
                 headers: {
                   "Content-Type":
@@ -551,33 +524,47 @@ export default function ClinicInvitedDoctorRegisterForm({
                 body:
                   JSON.stringify({
                     token,
+
                     userId:
                       data.user.id,
+
                     email:
                       normalizedEmail,
+
+                    locale,
                   }),
               }
             );
 
           const linkResult =
-            (await linkResponse
-              .json()) as
+            (await linkResponse.json()) as
               LinkInviteResponse;
 
-          if (!linkResponse.ok) {
+          if (
+            !linkResponse.ok
+          ) {
             setError(
-              linkResult.error ??
-                "Contul a fost creat, dar invitația clinicii nu a putut fi conectată. Contactează RomDoc."
+              locale ===
+                "ro" &&
+              linkResult.error
+                ? linkResult.error
+                : t(
+                    "validation.linking"
+                  )
             );
+
             return;
           }
 
-          if (data.session) {
+          if (
+            data.session
+          ) {
             router.replace(
               "/doctor-dashboard/profile"
             );
 
             router.refresh();
+
             return;
           }
 
@@ -586,10 +573,13 @@ export default function ClinicInvitedDoctorRegisterForm({
               email:
                 normalizedEmail,
 
-              type: "doctor",
+              type:
+                "doctor",
 
               next:
                 "/doctor-dashboard/profile",
+
+              locale,
             });
 
           router.replace(
@@ -606,7 +596,9 @@ export default function ClinicInvitedDoctorRegisterForm({
           );
 
           setError(
-            "Înregistrarea nu a putut fi finalizată."
+            t(
+              "validation.registration"
+            )
           );
         }
       }
@@ -614,68 +606,95 @@ export default function ClinicInvitedDoctorRegisterForm({
   }
 
   return (
-    <div className="w-full max-w-2xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+    <div className="w-full max-w-2xl rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm sm:p-[34px]">
       <header className="text-center">
         <Link
-          href="/"
-          className="inline-block text-3xl font-bold text-gray-900"
+          href={
+            homeHref
+          }
+          className="romdoc-focus-ring inline-block rounded-[8px] text-3xl font-bold text-gray-900"
         >
           RomDoc
         </Link>
 
-        <p className="mt-6 text-sm font-semibold text-[#036661]">
-          {text.eyebrow}
+        <p className="mt-[21px] text-sm font-semibold text-[#036661]">
+          {t(
+            "eyebrow"
+          )}
         </p>
 
-        <h1 className="mt-2 text-2xl font-bold text-gray-900">
-          {text.title}
+        <h1 className="mt-[8px] text-2xl font-bold text-gray-900">
+          {t(
+            "title"
+          )}
         </h1>
 
-        <p className="mt-3 text-sm leading-6 text-gray-600">
-          {text.description}
+        <p className="mt-[13px] text-sm leading-6 text-gray-600">
+          {t(
+            "description"
+          )}
         </p>
       </header>
 
-      <div className="mt-6 space-y-3">
-        <p className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm leading-6 text-green-900">
-          {text.paymentNotice}
+      <div className="mt-[21px] space-y-[13px]">
+        <p className="rounded-[13px] border border-green-200 bg-green-50 p-[13px] text-sm leading-6 text-green-900">
+          {t(
+            "paymentNotice"
+          )}
         </p>
 
-        <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium leading-6 text-amber-950">
-          {text.accountNotice}
+        <p className="rounded-[13px] border border-amber-200 bg-amber-50 p-[13px] text-sm font-medium leading-6 text-amber-950">
+          {t(
+            "accountNotice"
+          )}
         </p>
       </div>
 
-      {error ? (
+      {error && (
         <div
           role="alert"
-          className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800"
+          className="mt-[21px] rounded-[13px] border border-red-200 bg-red-50 p-[13px] text-sm leading-6 text-red-800"
         >
           {error}
         </div>
-      ) : null}
+      )}
 
       <form
-        onSubmit={handleSubmit}
-        className="mt-7 space-y-5"
+        onSubmit={
+          handleSubmit
+        }
+        className="mt-[34px] space-y-[21px]"
       >
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-[21px] sm:grid-cols-2">
           <label className="block">
             <span className="text-sm font-medium text-gray-700">
-              {text.firstName}
+              {t(
+                "firstName"
+              )}
             </span>
 
             <input
               type="text"
               required
-              minLength={2}
-              maxLength={100}
+              minLength={
+                2
+              }
+              maxLength={
+                100
+              }
               autoComplete="given-name"
-              value={firstName}
-              disabled={isPending}
-              onChange={(event) =>
+              value={
+                firstName
+              }
+              disabled={
+                isPending
+              }
+              onChange={(
+                event
+              ) =>
                 setFirstName(
-                  event.target.value
+                  event.target
+                    .value
                 )
               }
               className={
@@ -686,20 +705,33 @@ export default function ClinicInvitedDoctorRegisterForm({
 
           <label className="block">
             <span className="text-sm font-medium text-gray-700">
-              {text.lastName}
+              {t(
+                "lastName"
+              )}
             </span>
 
             <input
               type="text"
               required
-              minLength={2}
-              maxLength={100}
+              minLength={
+                2
+              }
+              maxLength={
+                100
+              }
               autoComplete="family-name"
-              value={lastName}
-              disabled={isPending}
-              onChange={(event) =>
+              value={
+                lastName
+              }
+              disabled={
+                isPending
+              }
+              onChange={(
+                event
+              ) =>
                 setLastName(
-                  event.target.value
+                  event.target
+                    .value
                 )
               }
               className={
@@ -711,37 +743,54 @@ export default function ClinicInvitedDoctorRegisterForm({
 
         <label className="block">
           <span className="text-sm font-medium text-gray-700">
-            {text.email}
+            {t(
+              "email"
+            )}
           </span>
 
           <input
             type="email"
             required
             readOnly
-            value={invitedEmail}
+            value={
+              invitedEmail
+            }
             className={`${inputClassName()} cursor-not-allowed`}
           />
 
-          <span className="mt-2 block text-xs leading-5 text-gray-500">
-            Această adresă este fixată de invitație și trebuie să fie diferită de orice cont RomDoc existent.
+          <span className="mt-[8px] block text-xs leading-5 text-gray-500">
+            {t(
+              "emailHint"
+            )}
           </span>
         </label>
 
         <label className="block">
           <span className="text-sm font-medium text-gray-700">
-            {text.phone}
+            {t(
+              "phone"
+            )}
           </span>
 
           <input
             type="tel"
             required
-            minLength={7}
+            minLength={
+              7
+            }
             autoComplete="tel"
-            value={phone}
-            disabled={isPending}
-            onChange={(event) =>
+            value={
+              phone
+            }
+            disabled={
+              isPending
+            }
+            onChange={(
+              event
+            ) =>
               setPhone(
-                event.target.value
+                event.target
+                  .value
               )
             }
             placeholder="+40 700 000 000"
@@ -753,16 +802,25 @@ export default function ClinicInvitedDoctorRegisterForm({
 
         <label className="block">
           <span className="text-sm font-medium text-gray-700">
-            {text.specialty}
+            {t(
+              "specialty"
+            )}
           </span>
 
           <select
             required
-            value={specialtyId}
-            disabled={isPending}
-            onChange={(event) =>
+            value={
+              specialtyId
+            }
+            disabled={
+              isPending
+            }
+            onChange={(
+              event
+            ) =>
               setSpecialtyId(
-                event.target.value
+                event.target
+                  .value
               )
             }
             className={
@@ -770,16 +828,26 @@ export default function ClinicInvitedDoctorRegisterForm({
             }
           >
             <option value="">
-              {text.selectSpecialty}
+              {t(
+                "selectSpecialty"
+              )}
             </option>
 
             {specialties.map(
-              (specialty) => (
+              (
+                specialty
+              ) => (
                 <option
-                  key={specialty.id}
-                  value={specialty.id}
+                  key={
+                    specialty.id
+                  }
+                  value={
+                    specialty.id
+                  }
                 >
-                  {specialty.name}
+                  {
+                    specialty.name
+                  }
                 </option>
               )
             )}
@@ -788,19 +856,28 @@ export default function ClinicInvitedDoctorRegisterForm({
 
         <label className="block">
           <span className="text-sm font-medium text-gray-700">
-            {text.licence}
+            {t(
+              "licence"
+            )}
           </span>
 
           <input
             type="text"
-            maxLength={150}
+            maxLength={
+              150
+            }
             value={
               professionalRegistrationNumber
             }
-            disabled={isPending}
-            onChange={(event) =>
+            disabled={
+              isPending
+            }
+            onChange={(
+              event
+            ) =>
               setProfessionalRegistrationNumber(
-                event.target.value
+                event.target
+                  .value
               )
             }
             className={
@@ -808,119 +885,173 @@ export default function ClinicInvitedDoctorRegisterForm({
             }
           />
 
-          <span className="mt-2 block text-xs leading-5 text-gray-500">
-            {text.licenceHint}
+          <span className="mt-[8px] block text-xs leading-5 text-gray-500">
+            {t(
+              "licenceHint"
+            )}
           </span>
         </label>
 
-        <div className="grid gap-5 sm:grid-cols-2">
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700">
-              {text.password}
-            </span>
+        <div>
+          <div className="grid gap-[21px] sm:grid-cols-2">
+            <label className="block">
+              <span className="text-sm font-medium text-gray-700">
+                {t(
+                  "password"
+                )}
+              </span>
 
-            <input
-              type="password"
-              required
-              minLength={8}
-              autoComplete="new-password"
-              value={password}
-              disabled={isPending}
-              onChange={(event) =>
-                setPassword(
-                  event.target.value
-                )
-              }
-              className={
-                inputClassName()
-              }
-            />
-          </label>
+              <input
+                type="password"
+                required
+                minLength={
+                  8
+                }
+                autoComplete="new-password"
+                value={
+                  password
+                }
+                disabled={
+                  isPending
+                }
+                onChange={(
+                  event
+                ) =>
+                  setPassword(
+                    event.target
+                      .value
+                  )
+                }
+                className={
+                  inputClassName()
+                }
+              />
+            </label>
 
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700">
-              {
-                text.confirmPassword
-              }
-            </span>
+            <label className="block">
+              <span className="text-sm font-medium text-gray-700">
+                {t(
+                  "confirmPassword"
+                )}
+              </span>
 
-            <input
-              type="password"
-              required
-              minLength={8}
-              autoComplete="new-password"
-              value={
-                passwordConfirmation
-              }
-              disabled={isPending}
-              onChange={(event) =>
-                setPasswordConfirmation(
-                  event.target.value
-                )
-              }
-              className={
-                inputClassName()
-              }
-            />
-          </label>
+              <input
+                type="password"
+                required
+                minLength={
+                  8
+                }
+                autoComplete="new-password"
+                value={
+                  passwordConfirmation
+                }
+                disabled={
+                  isPending
+                }
+                onChange={(
+                  event
+                ) =>
+                  setPasswordConfirmation(
+                    event.target
+                      .value
+                  )
+                }
+                className={
+                  inputClassName()
+                }
+              />
+            </label>
+          </div>
+
+          <p className="mt-[8px] text-xs leading-5 text-gray-500">
+            {t(
+              "passwordHelp"
+            )}
+          </p>
         </div>
 
-        <label className="flex items-start gap-3 rounded-xl border border-[#036661]/25 bg-[#F0EEE9] p-4">
+        <label className="flex items-start gap-[13px] rounded-[13px] border border-[#036661]/25 bg-[#F0EEE9] p-[13px]">
           <input
             type="checkbox"
             required
             checked={
               acceptedAccountModel
             }
-            disabled={isPending}
-            onChange={(event) =>
+            disabled={
+              isPending
+            }
+            onChange={(
+              event
+            ) =>
               setAcceptedAccountModel(
-                event.target.checked
+                event.target
+                  .checked
               )
             }
-            className="mt-1 h-4 w-4 shrink-0"
+            className="mt-[5px] h-4 w-4 shrink-0"
           />
 
           <span className="text-sm font-medium leading-6 text-gray-800">
-            {text.acknowledgement}
+            {t(
+              "acknowledgement"
+            )}
           </span>
         </label>
 
-        <label className="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm leading-6 text-gray-700">
+        <label className="flex items-start gap-[13px] rounded-[13px] border border-gray-200 bg-gray-50 p-[13px] text-sm leading-6 text-gray-700">
           <input
             type="checkbox"
             required
-            checked={acceptedTerms}
-            disabled={isPending}
-            onChange={(event) =>
+            checked={
+              acceptedTerms
+            }
+            disabled={
+              isPending
+            }
+            onChange={(
+              event
+            ) =>
               setAcceptedTerms(
-                event.target.checked
+                event.target
+                  .checked
               )
             }
-            className="mt-1 h-4 w-4 shrink-0"
+            className="mt-[5px] h-4 w-4 shrink-0"
           />
 
           <span>
-            {text.accept}{" "}
+            {t(
+              "acceptPrefix"
+            )}{" "}
 
             <Link
-              href="/termeni-si-conditii"
+              href={
+                termsHref
+              }
               target="_blank"
               rel="noopener noreferrer"
               className="font-semibold text-[#036661] underline-offset-4 hover:underline"
             >
-              {text.terms}
+              {t(
+                "terms"
+              )}
             </Link>{" "}
 
-            și{" "}
+            {t(
+              "and"
+            )}{" "}
 
             <Link
-              href="/confidentialitate"
+              href={
+                privacyHref
+              }
               target="_blank"
               rel="noopener noreferrer"
               className="font-semibold text-[#036661] underline-offset-4 hover:underline"
             >
-              {text.privacy}
+              {t(
+                "privacy"
+              )}
             </Link>
             .
           </span>
@@ -928,12 +1059,18 @@ export default function ClinicInvitedDoctorRegisterForm({
 
         <button
           type="submit"
-          disabled={isPending}
-          className="romdoc-focus-ring w-full rounded-xl bg-[#036661] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#024d49] disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={
+            isPending
+          }
+          className="romdoc-focus-ring w-full rounded-[13px] bg-[#036661] px-[21px] py-[13px] text-sm font-semibold text-white transition hover:bg-[#024d49] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isPending
-            ? text.submitting
-            : text.submit}
+            ? t(
+                "submitting"
+              )
+            : t(
+                "submit"
+              )}
         </button>
       </form>
     </div>

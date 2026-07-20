@@ -1,5 +1,14 @@
+import {
+  getTranslations,
+} from "next-intl/server";
+
 import DoctorInvitationsPanel from "@/components/clinic-manager/doctor-invitations-panel";
-import { createClient } from "@/lib/supabase/server";
+import {
+  getStoredAppLocale,
+} from "@/lib/i18n/server-app-locale";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
 type ClinicOrganizationOption = {
   id: string;
@@ -14,53 +23,128 @@ type OrganizationMember = {
 type DoctorInvitation = {
   id: string;
   organization_id: string;
-  invited_doctor_email: string | null;
+
+  invited_doctor_email:
+    | string
+    | null;
+
   invitation_status: string;
   payment_responsibility: string;
   coverage_status: string;
-  expires_at: string | null;
+
+  expires_at:
+    | string
+    | null;
+
   created_at: string;
 };
 
 export default async function ClinicManagerInvitationsPage() {
-  const supabase = await createClient();
+  const locale =
+    await getStoredAppLocale();
+
+  const t =
+    await getTranslations({
+      locale,
+      namespace:
+        "ClinicOrganisationDashboard.invitationsPage",
+    });
+
+  const supabase =
+    await createClient();
 
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: {
+      user,
+    },
+  } =
+    await supabase.auth
+      .getUser();
 
-  const profileId = user?.id;
+  const profileId =
+    user?.id;
 
-  const { data: memberships } = profileId
-    ? await supabase
-        .from("clinic_organization_members")
-        .select("organization_id")
-        .eq("profile_id", profileId)
-        .eq("status", "active")
-    : { data: [] };
+  const {
+    data:
+      memberships,
+  } =
+    profileId
+      ? await supabase
+          .from(
+            "clinic_organization_members"
+          )
+          .select(
+            "organization_id"
+          )
+          .eq(
+            "profile_id",
+            profileId
+          )
+          .eq(
+            "status",
+            "active"
+          )
+      : {
+          data:
+            [],
+        };
 
-  const activeMemberships = (memberships ?? []) as OrganizationMember[];
-  const organizationIds = activeMemberships.map(
-    (membership) => membership.organization_id
-  );
+  const activeMemberships =
+    (
+      memberships ??
+      []
+    ) as
+      OrganizationMember[];
 
-  let organizations: ClinicOrganizationOption[] = [];
-  let invitations: DoctorInvitation[] = [];
+  const organizationIds =
+    activeMemberships.map(
+      (
+        membership
+      ) =>
+        membership.organization_id
+    );
 
-  if (organizationIds.length > 0) {
-    const [organizationsResult, invitationsResult] = await Promise.all([
-      supabase
-        .from("clinic_organizations")
-        .select("id, name, status")
-        .in("id", organizationIds)
-        .order("name", {
-          ascending: true,
-        }),
+  let organizations:
+    ClinicOrganizationOption[] =
+    [];
 
-      supabase
-        .from("clinic_doctor_relationships")
-        .select(
-          `
+  let invitations:
+    DoctorInvitation[] =
+    [];
+
+  if (
+    organizationIds.length >
+    0
+  ) {
+    const [
+      organizationsResult,
+      invitationsResult,
+    ] =
+      await Promise.all([
+        supabase
+          .from(
+            "clinic_organizations"
+          )
+          .select(
+            "id, name, status"
+          )
+          .in(
+            "id",
+            organizationIds
+          )
+          .order(
+            "name",
+            {
+              ascending:
+                true,
+            }
+          ),
+
+        supabase
+          .from(
+            "clinic_doctor_relationships"
+          )
+          .select(`
             id,
             organization_id,
             invited_doctor_email,
@@ -69,39 +153,64 @@ export default async function ClinicManagerInvitationsPage() {
             coverage_status,
             expires_at,
             created_at
-          `
-        )
-        .in("organization_id", organizationIds)
-        .order("created_at", {
-          ascending: false,
-        }),
-    ]);
+          `)
+          .in(
+            "organization_id",
+            organizationIds
+          )
+          .order(
+            "created_at",
+            {
+              ascending:
+                false,
+            }
+          ),
+      ]);
 
     organizations =
-      (organizationsResult.data ?? []) as ClinicOrganizationOption[];
-    invitations = (invitationsResult.data ?? []) as DoctorInvitation[];
+      (
+        organizationsResult.data ??
+        []
+      ) as
+        ClinicOrganizationOption[];
+
+    invitations =
+      (
+        invitationsResult.data ??
+        []
+      ) as
+        DoctorInvitation[];
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-[21px]">
       <header>
         <p className="text-sm font-semibold text-[#9A4F35]">
-          Clinic Manager
+          {t(
+            "eyebrow"
+          )}
         </p>
-        <h1 className="mt-2 text-3xl font-bold text-gray-900">
-          Invitații medici
+
+        <h1 className="mt-[8px] text-3xl font-bold text-gray-900">
+          {t(
+            "title"
+          )}
         </h1>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Invită medici să creeze conturi de medic plătite de clinică și
-          urmărește statusul invitațiilor. Medicul devine activ după acceptarea
-          invitației; RomDoc intervine doar pentru verificare profesională,
-          moderare sau suspendare atunci când este necesar.
+
+        <p className="mt-[13px] max-w-3xl text-sm leading-6 text-gray-600">
+          {t(
+            "description"
+          )}
         </p>
       </header>
 
       <DoctorInvitationsPanel
-        organizations={organizations}
-        invitations={invitations}
+        organizations={
+          organizations
+        }
+        invitations={
+          invitations
+        }
       />
     </div>
   );

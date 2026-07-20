@@ -2066,5 +2066,190 @@
         "online": "Online-Anfrage"
       }
     }
+  },
+  "ClinicOrganisationDashboard": {
+    "layout": {
+      "fallbackName": "Klinikmanager",
+      "unavailableEmail": "E-Mail nicht verfügbar"
+    },
+    "sidebar": {
+      "brand": "RomDoc Klinik",
+      "roleBadge": "Klinikmanager",
+      "navigationLabel": "Navigation Klinikmanager",
+      "expandMenu": "Menü erweitern",
+      "collapseMenu": "Menü einklappen",
+      "openMenu": "Menü öffnen",
+      "closeMenu": "Menü schließen",
+      "signOut": "Abmelden",
+      "signingOut": "Abmeldung läuft...",
+      "navigation": {
+        "overview": "Übersicht",
+        "locations": "Standorte",
+        "doctors": "Ärzte",
+        "invitations": "Einladungen",
+        "billing": "Abrechnung",
+        "sms": "SMS",
+        "security": "Sicherheit",
+        "home": "Startseite"
+      }
+    },
+    "overview": {
+      "eyebrow": "Klinikmanager",
+      "title": "Dashboard der Klinikorganisation",
+      "description": "Verwalten Sie Klinikorganisationen, eingeladene Ärzte, Standorte, Abrechnung und SMS-Nutzung. Der Klinikmanager hat keinen Zugriff auf medizinische Patientenakten.",
+      "stats": {
+        "organizations": "Organisationen",
+        "organizationsHelper": "Klinikkonten, auf die Sie zugreifen können.",
+        "active": "Aktiv",
+        "activeHelper": "Von RomDoc genehmigte Organisationen.",
+        "pending": "Ausstehend",
+        "pendingHelper": "Organisationen, die auf die Prüfung durch RomDoc warten."
+      },
+      "quickActionsTitle": "Schnellaktionen",
+      "quickActionsDescription": "Die häufigsten Aufgaben der Organisation.",
+      "actions": {
+        "inviteDoctor": "Arzt einladen",
+        "inviteDoctorHelper": "Link für ein von der Klinik bezahltes Arztkonto senden.",
+        "manageDoctors": "Ärzte verwalten",
+        "manageDoctorsHelper": "Angenommene Einladungen prüfen und Standorte zuweisen.",
+        "manageLocations": "Standorte verwalten",
+        "manageLocationsHelper": "Betriebsstätten der Organisation beantragen und verfolgen.",
+        "viewBilling": "Kosten anzeigen",
+        "viewBillingHelper": "Arztabonnements und monatliche Schätzungen prüfen."
+      },
+      "noOrganizationsTitle": "Ihrem Konto ist noch keine Organisation zugeordnet",
+      "noOrganizationsDescription": "Details erscheinen, nachdem RomDoc den Klinikantrag genehmigt oder Sie einer bestehenden Organisation zugeordnet hat. Ihr Konto bleibt von Arzt- und Personalkonten getrennt.",
+      "yourRole": "Ihre Rolle",
+      "managerRole": "Manager",
+      "emailUnavailable": "E-Mail nicht verfügbar",
+      "phoneUnavailable": "Telefon nicht verfügbar",
+      "billing": "Abrechnung",
+      "taxId": "Steuer-ID",
+      "vat": "MwSt.",
+      "vatPayer": "Umsatzsteuerpflichtig",
+      "notVatPayer": "Nicht umsatzsteuerpflichtig",
+      "noBilling": "Es sind noch keine Rechnungsdaten zugeordnet.",
+      "medicalAccess": "Medizinischer Zugriff",
+      "medicalAccessDescription": "Der Klinikmanager kann Geschäftsbeziehungen mit Ärzten und Organisationskosten verwalten, jedoch keine medizinischen Patientenakten einsehen.",
+      "statuses": {
+        "active": "Aktiv",
+        "suspended": "Gesperrt",
+        "rejected": "Abgelehnt",
+        "archived": "Archiviert",
+        "pending": "Ausstehend"
+      }
+    },
+    "invitationsPage": {
+      "eyebrow": "Klinikmanager",
+      "title": "Arzteinladungen",
+      "description": "Laden Sie Ärzte ein, separate von der Klinik bezahlte Konten zu erstellen, und verfolgen Sie den Einladungsstatus. Ärzte verwalten ihr eigenes Berufsprofil; RomDoc greift nur bei Prüfung, Moderation oder erforderlicher Sperrung ein."
+    },
+    "invitationsPanel": {
+      "summary": {
+        "pending": "Ausstehend",
+        "pendingHelper": "Gesendete Einladungen, die noch nicht angenommen wurden.",
+        "accepted": "Angenommen",
+        "acceptedHelper": "Ärzte, die ihr Klinik-Einladungskonto erstellt haben.",
+        "activeCoverage": "Aktive Abdeckung",
+        "activeCoverageHelper": "Konten, deren Abonnement von der Klinik bezahlt wird.",
+        "closed": "Geschlossen",
+        "closedHelper": "Abgelehnte, abgelaufene oder stornierte Einladungen."
+      },
+      "inviteTitle": "Arzt einladen",
+      "inviteDescription": "Die Klinik sendet eine Einladung per E-Mail. Nach der Annahme erhält der Arzt ein separates Konto, dessen Abonnement von der Klinikorganisation bezahlt wird.",
+      "noActiveOrganization": "Für dieses Konto gibt es keine aktive Organisation. Ärzte können nach der Aktivierung der Organisation eingeladen werden.",
+      "organization": "Klinikorganisation",
+      "doctorEmail": "E-Mail des Arztes",
+      "sending": "Wird gesendet...",
+      "send": "Einladung senden",
+      "createError": "Die Einladung konnte nicht erstellt werden.",
+      "created": "Die Einladung wurde erstellt und an den Arzt gesendet.",
+      "createdWithoutEmail": "Die Einladung wurde erstellt, aber die E-Mail wurde nicht automatisch gesendet. Kopieren Sie den Link und senden Sie ihn dem Arzt über einen sicheren Kanal.",
+      "emailDeliveryWarning": "Die automatische E-Mail konnte nicht gesendet werden.",
+      "inviteLink": "Einladungslink",
+      "copy": "Kopieren",
+      "copied": "Link kopiert.",
+      "copyManual": "Kopieren Sie den angezeigten Link manuell.",
+      "historyTitle": "Vorhandene Einladungen",
+      "historyDescription": "Verfolgen Sie gesendete Einladungen, Registrierungsstatus und von der Klinik bezahlte Abdeckung.",
+      "count": "{count, plural, one {# Einladung} other {# Einladungen}}",
+      "empty": "Für die Ihrem Konto zugeordneten Organisationen gibt es noch keine Einladungen.",
+      "doctor": "Arzt",
+      "associatedDoctor": "Zugeordneter Arzt",
+      "invitation": "Einladung",
+      "payment": "Zahlung",
+      "coverage": "Abdeckung",
+      "createdAt": "Erstellt",
+      "expiresAt": "Läuft ab",
+      "clinicPaid": "Von der Klinik bezahlt",
+      "individualPaid": "Individuell bezahlt",
+      "statuses": {
+        "invitation": {
+          "pending": "Gesendet",
+          "accepted": "Angenommen",
+          "declined": "Abgelehnt",
+          "expired": "Abgelaufen",
+          "cancelled": "Storniert"
+        },
+        "coverage": {
+          "active": "Aktive Abdeckung",
+          "paused": "Pausiert",
+          "cancelled": "Storniert",
+          "ended": "Beendet",
+          "none": "Keine Abdeckung",
+          "pending": "Registrierung läuft"
+        }
+      }
+    },
+    "invitedDoctorPage": {
+      "invalidTitle": "Ungültiger Einladungslink",
+      "invalidDescription": "Der Einladungslink enthält nicht das erforderliche Token und die E-Mail-Adresse. Bitten Sie die Klinik, eine neue Einladung zu senden."
+    },
+    "invitedDoctorForm": {
+      "eyebrow": "Einladung der Klinik",
+      "title": "Separates Konto als von einer Klinik eingeladener Arzt erstellen",
+      "description": "Diese Einladung erstellt ein neues RomDoc-Konto mit einer E-Mail-Adresse und Benutzer-ID, die von jedem bestehenden unabhängigen Konto getrennt sind.",
+      "paymentNotice": "Die Klinikorganisation bezahlt das Abonnement für dieses Konto. Sie müssen kein individuelles Stripe-Abonnement aktivieren.",
+      "accountNotice": "Der Kontotyp lautet „von einer Klinik eingeladener Arzt“ und kann später nicht in ein unabhängiges Konto umgewandelt werden. Eine unabhängige Tätigkeit erfordert ein anderes Konto und eine andere E-Mail-Adresse.",
+      "acknowledgement": "Ich verstehe, dass dies ein separates, von der Klinik bezahltes Konto ist und nicht in ein unabhängiges Konto umgewandelt werden kann.",
+      "acknowledgementError": "Bestätigen Sie, dass Sie den separaten und dauerhaften Charakter des Klinik-Einladungskontos verstanden haben.",
+      "firstName": "Vorname",
+      "lastName": "Nachname",
+      "email": "E-Mail der Einladung",
+      "emailHint": "Diese Adresse wird durch die Einladung festgelegt und muss sich von jedem bestehenden RomDoc-Konto unterscheiden.",
+      "phone": "Telefon",
+      "specialty": "Fachrichtung",
+      "selectSpecialty": "Fachrichtung auswählen",
+      "licence": "Berufliche Registrierungsnummer",
+      "licenceHint": "Optional und informativ. RomDoc vergleicht Konten mit derselben Nummer nicht, warnt nicht davor und führt sie nicht zusammen.",
+      "password": "Passwort",
+      "confirmPassword": "Passwort bestätigen",
+      "passwordHelp": "Mindestens 8 Zeichen mit Großbuchstaben, Kleinbuchstaben und Zahl.",
+      "acceptPrefix": "Ich akzeptiere",
+      "terms": "Allgemeinen Geschäftsbedingungen",
+      "and": "und",
+      "privacy": "Datenschutzerklärung",
+      "submit": "Klinik-Einladungskonto erstellen",
+      "submitting": "Konto wird erstellt...",
+      "validation": {
+        "missingToken": "Der Einladungslink enthält nicht das erforderliche Token.",
+        "firstName": "Geben Sie einen gültigen Vornamen ein.",
+        "lastName": "Geben Sie einen gültigen Nachnamen ein.",
+        "email": "Die Einladung enthält keine gültige E-Mail-Adresse.",
+        "phone": "Geben Sie eine gültige Telefonnummer ein.",
+        "specialty": "Wählen Sie die medizinische Fachrichtung aus.",
+        "passwordLength": "Das Passwort muss mindestens 8 Zeichen enthalten.",
+        "passwordUppercase": "Das Passwort muss mindestens einen Großbuchstaben enthalten.",
+        "passwordLowercase": "Das Passwort muss mindestens einen Kleinbuchstaben enthalten.",
+        "passwordNumber": "Das Passwort muss mindestens eine Zahl enthalten.",
+        "passwordMismatch": "Die Passwörter stimmen nicht überein.",
+        "terms": "Sie müssen die Allgemeinen Geschäftsbedingungen und die Datenschutzerklärung akzeptieren.",
+        "existingAccount": "Für diese E-Mail-Adresse existiert bereits ein Konto. Eine Klinikeinladung erfordert eine neue E-Mail-Adresse und eine separate Benutzer-ID.",
+        "database": "Das Konto konnte nicht erstellt werden. Prüfen Sie die Registrierungskonfiguration oder kontaktieren Sie RomDoc.",
+        "accountCreation": "Das Konto konnte nicht erstellt werden. Versuchen Sie es erneut.",
+        "linking": "Das Konto wurde erstellt, aber die Klinikeinladung konnte nicht verknüpft werden. Kontaktieren Sie RomDoc.",
+        "registration": "Die Registrierung konnte nicht abgeschlossen werden."
+      }
+    }
   }
 }

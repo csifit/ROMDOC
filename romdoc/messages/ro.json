@@ -2066,5 +2066,190 @@
         "online": "Cerere online"
       }
     }
+  },
+  "ClinicOrganisationDashboard": {
+    "layout": {
+      "fallbackName": "Manager clinică",
+      "unavailableEmail": "E-mail indisponibil"
+    },
+    "sidebar": {
+      "brand": "RomDoc Clinică",
+      "roleBadge": "Manager clinică",
+      "navigationLabel": "Navigare manager clinică",
+      "expandMenu": "Extinde meniul",
+      "collapseMenu": "Restrânge meniul",
+      "openMenu": "Deschide meniul",
+      "closeMenu": "Închide meniul",
+      "signOut": "Deconectare",
+      "signingOut": "Se deconectează...",
+      "navigation": {
+        "overview": "Prezentare generală",
+        "locations": "Locații",
+        "doctors": "Medici",
+        "invitations": "Invitații",
+        "billing": "Facturare",
+        "sms": "SMS",
+        "security": "Securitate",
+        "home": "Pagina principală"
+      }
+    },
+    "overview": {
+      "eyebrow": "Manager clinică",
+      "title": "Dashboard organizație clinică",
+      "description": "Gestionează organizațiile clinicii, medicii invitați, locațiile, facturarea și consumul SMS. Managerul clinicii nu are acces la dosarele medicale ale pacienților.",
+      "stats": {
+        "organizations": "Organizații",
+        "organizationsHelper": "Conturi de clinică la care ai acces.",
+        "active": "Active",
+        "activeHelper": "Organizații aprobate de RomDoc.",
+        "pending": "În așteptare",
+        "pendingHelper": "Organizații care așteaptă verificarea RomDoc."
+      },
+      "quickActionsTitle": "Acțiuni rapide",
+      "quickActionsDescription": "Cele mai frecvente operațiuni ale organizației.",
+      "actions": {
+        "inviteDoctor": "Invită un medic",
+        "inviteDoctorHelper": "Trimite un link pentru un cont de medic plătit de clinică.",
+        "manageDoctors": "Gestionează medicii",
+        "manageDoctorsHelper": "Verifică invitațiile acceptate și atribuie locații.",
+        "manageLocations": "Gestionează locațiile",
+        "manageLocationsHelper": "Solicită și urmărește punctele de lucru ale organizației.",
+        "viewBilling": "Vezi costurile",
+        "viewBillingHelper": "Consultă abonamentele medicilor și estimările lunare."
+      },
+      "noOrganizationsTitle": "Nu există încă o organizație asociată contului tău",
+      "noOrganizationsDescription": "După ce RomDoc aprobă cererea clinicii sau te asociază unei organizații existente, detaliile vor apărea aici. Contul tău rămâne separat de rolurile de medic și personal.",
+      "yourRole": "Rolul tău",
+      "managerRole": "manager",
+      "emailUnavailable": "E-mail indisponibil",
+      "phoneUnavailable": "Telefon indisponibil",
+      "billing": "Facturare",
+      "taxId": "CUI",
+      "vat": "TVA",
+      "vatPayer": "Plătitor TVA",
+      "notVatPayer": "Neplătitor TVA",
+      "noBilling": "Datele de facturare nu sunt încă asociate.",
+      "medicalAccess": "Acces medical",
+      "medicalAccessDescription": "Managerul clinicii poate administra relația comercială cu medicii și costurile organizației, dar nu poate consulta dosarele medicale ale pacienților.",
+      "statuses": {
+        "active": "Activă",
+        "suspended": "Suspendată",
+        "rejected": "Respinsă",
+        "archived": "Arhivată",
+        "pending": "În așteptare"
+      }
+    },
+    "invitationsPage": {
+      "eyebrow": "Manager clinică",
+      "title": "Invitații pentru medici",
+      "description": "Invită medici să creeze conturi separate plătite de clinică și urmărește starea invitațiilor. Medicul își administrează profilul profesional, iar RomDoc intervine doar pentru verificare, moderare sau suspendare atunci când este necesar."
+    },
+    "invitationsPanel": {
+      "summary": {
+        "pending": "În așteptare",
+        "pendingHelper": "Invitații trimise care nu au fost încă acceptate.",
+        "accepted": "Acceptate",
+        "acceptedHelper": "Medici care au creat contul invitat de clinică.",
+        "activeCoverage": "Acoperire activă",
+        "activeCoverageHelper": "Conturi pentru care clinica plătește abonamentul.",
+        "closed": "Închise",
+        "closedHelper": "Invitații refuzate, expirate sau anulate."
+      },
+      "inviteTitle": "Invită un medic",
+      "inviteDescription": "Clinica trimite o invitație pe e-mail. După acceptare, medicul primește un cont separat, iar abonamentul este acoperit de organizația clinicii.",
+      "noActiveOrganization": "Nu există o organizație activă pentru acest cont. Poți invita medici după activarea organizației.",
+      "organization": "Organizație clinică",
+      "doctorEmail": "E-mail medic",
+      "sending": "Se trimite...",
+      "send": "Trimite invitația",
+      "createError": "Invitația nu a putut fi creată.",
+      "created": "Invitația a fost creată și trimisă medicului.",
+      "createdWithoutEmail": "Invitația a fost creată, dar e-mailul nu a fost trimis automat. Copiază linkul și trimite-l medicului printr-un canal sigur.",
+      "emailDeliveryWarning": "E-mailul automat nu a putut fi trimis.",
+      "inviteLink": "Link invitație",
+      "copy": "Copiază",
+      "copied": "Link copiat.",
+      "copyManual": "Copiază manual linkul afișat mai jos.",
+      "historyTitle": "Invitații existente",
+      "historyDescription": "Urmărește invitațiile trimise, starea înregistrării și acoperirea plătită de clinică.",
+      "count": "{count, plural, one {# invitație} few {# invitații} other {# de invitații}}",
+      "empty": "Nu există încă invitații pentru organizațiile asociate contului tău.",
+      "doctor": "Medic",
+      "associatedDoctor": "Medic asociat",
+      "invitation": "Invitație",
+      "payment": "Plată",
+      "coverage": "Acoperire",
+      "createdAt": "Creată",
+      "expiresAt": "Expiră",
+      "clinicPaid": "Plătit de clinică",
+      "individualPaid": "Plătit individual",
+      "statuses": {
+        "invitation": {
+          "pending": "Trimisă",
+          "accepted": "Acceptată",
+          "declined": "Refuzată",
+          "expired": "Expirată",
+          "cancelled": "Anulată"
+        },
+        "coverage": {
+          "active": "Acoperire activă",
+          "paused": "Suspendată",
+          "cancelled": "Anulată",
+          "ended": "Încheiată",
+          "none": "Fără acoperire",
+          "pending": "Înregistrare în curs"
+        }
+      }
+    },
+    "invitedDoctorPage": {
+      "invalidTitle": "Link de invitație invalid",
+      "invalidDescription": "Linkul invitației nu conține tokenul și adresa de e-mail necesare. Solicită clinicii să îți trimită o invitație nouă."
+    },
+    "invitedDoctorForm": {
+      "eyebrow": "Invitație din partea clinicii",
+      "title": "Creează un cont separat de medic invitat",
+      "description": "Această invitație creează un cont RomDoc nou, cu o adresă de e-mail și un ID de utilizator separate de orice cont independent existent.",
+      "paymentNotice": "Abonamentul acestui cont este plătit de organizația clinicii. Nu trebuie să activezi un abonament Stripe individual.",
+      "accountNotice": "Tipul contului este „medic invitat de clinică” și nu poate fi transformat ulterior într-un cont independent. Pentru activitate independentă este necesar un alt cont și o altă adresă de e-mail.",
+      "acknowledgement": "Înțeleg că acesta este un cont separat, plătit de clinică, și că nu poate fi transformat într-un cont independent.",
+      "acknowledgementError": "Confirmă că ai înțeles caracterul separat și permanent al contului invitat de clinică.",
+      "firstName": "Prenume",
+      "lastName": "Nume",
+      "email": "E-mailul invitației",
+      "emailHint": "Această adresă este fixată de invitație și trebuie să fie diferită de orice cont RomDoc existent.",
+      "phone": "Telefon",
+      "specialty": "Specialitate",
+      "selectSpecialty": "Selectează specialitatea",
+      "licence": "Cod parafă / număr profesional",
+      "licenceHint": "Opțional și informativ. RomDoc nu compară, nu avertizează și nu unește conturi care folosesc același număr.",
+      "password": "Parolă",
+      "confirmPassword": "Confirmă parola",
+      "passwordHelp": "Minimum 8 caractere, cu literă mare, literă mică și cifră.",
+      "acceptPrefix": "Accept",
+      "terms": "Termenii și condițiile",
+      "and": "și",
+      "privacy": "Politica de confidențialitate",
+      "submit": "Creează contul invitat de clinică",
+      "submitting": "Se creează contul...",
+      "validation": {
+        "missingToken": "Linkul invitației nu conține tokenul necesar.",
+        "firstName": "Introdu un prenume valid.",
+        "lastName": "Introdu un nume de familie valid.",
+        "email": "Invitația nu conține o adresă de e-mail validă.",
+        "phone": "Introdu un număr de telefon valid.",
+        "specialty": "Selectează specialitatea medicală.",
+        "passwordLength": "Parola trebuie să conțină cel puțin 8 caractere.",
+        "passwordUppercase": "Parola trebuie să conțină cel puțin o literă mare.",
+        "passwordLowercase": "Parola trebuie să conțină cel puțin o literă mică.",
+        "passwordNumber": "Parola trebuie să conțină cel puțin o cifră.",
+        "passwordMismatch": "Parolele introduse nu coincid.",
+        "terms": "Trebuie să accepți termenii și politica de confidențialitate.",
+        "existingAccount": "Există deja un cont pentru această adresă de e-mail. Invitația clinicii necesită o adresă nouă și un ID de utilizator separat.",
+        "database": "Contul nu a putut fi creat. Verifică configurația de înregistrare sau contactează RomDoc.",
+        "accountCreation": "Contul nu a putut fi creat. Încearcă din nou.",
+        "linking": "Contul a fost creat, dar invitația clinicii nu a putut fi conectată. Contactează RomDoc.",
+        "registration": "Înregistrarea nu a putut fi finalizată."
+      }
+    }
   }
 }

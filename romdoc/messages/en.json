@@ -2066,5 +2066,190 @@
         "online": "Online request"
       }
     }
+  },
+  "ClinicOrganisationDashboard": {
+    "layout": {
+      "fallbackName": "Clinic manager",
+      "unavailableEmail": "Email unavailable"
+    },
+    "sidebar": {
+      "brand": "RomDoc Clinic",
+      "roleBadge": "Clinic manager",
+      "navigationLabel": "Clinic manager navigation",
+      "expandMenu": "Expand menu",
+      "collapseMenu": "Collapse menu",
+      "openMenu": "Open menu",
+      "closeMenu": "Close menu",
+      "signOut": "Sign out",
+      "signingOut": "Signing out...",
+      "navigation": {
+        "overview": "Overview",
+        "locations": "Locations",
+        "doctors": "Doctors",
+        "invitations": "Invitations",
+        "billing": "Billing",
+        "sms": "SMS",
+        "security": "Security",
+        "home": "Home"
+      }
+    },
+    "overview": {
+      "eyebrow": "Clinic manager",
+      "title": "Clinic organisation dashboard",
+      "description": "Manage clinic organisations, invited doctors, locations, billing and SMS usage. The clinic manager cannot access patient Medical Folders.",
+      "stats": {
+        "organizations": "Organisations",
+        "organizationsHelper": "Clinic accounts you can access.",
+        "active": "Active",
+        "activeHelper": "Organisations approved by RomDoc.",
+        "pending": "Pending",
+        "pendingHelper": "Organisations awaiting RomDoc review."
+      },
+      "quickActionsTitle": "Quick actions",
+      "quickActionsDescription": "The most common organisation tasks.",
+      "actions": {
+        "inviteDoctor": "Invite a doctor",
+        "inviteDoctorHelper": "Send a link for a clinic-paid doctor account.",
+        "manageDoctors": "Manage doctors",
+        "manageDoctorsHelper": "Review accepted invitations and assign locations.",
+        "manageLocations": "Manage locations",
+        "manageLocationsHelper": "Request and track the organisation's workplaces.",
+        "viewBilling": "View costs",
+        "viewBillingHelper": "Review doctor subscriptions and monthly estimates."
+      },
+      "noOrganizationsTitle": "No organisation is associated with your account yet",
+      "noOrganizationsDescription": "Details will appear after RomDoc approves the clinic request or links you to an existing organisation. Your account remains separate from doctor and staff roles.",
+      "yourRole": "Your role",
+      "managerRole": "manager",
+      "emailUnavailable": "Email unavailable",
+      "phoneUnavailable": "Phone unavailable",
+      "billing": "Billing",
+      "taxId": "Tax ID",
+      "vat": "VAT",
+      "vatPayer": "VAT registered",
+      "notVatPayer": "Not VAT registered",
+      "noBilling": "Billing details are not associated yet.",
+      "medicalAccess": "Medical access",
+      "medicalAccessDescription": "The clinic manager can administer commercial relationships with doctors and organisation costs, but cannot view patient Medical Folders.",
+      "statuses": {
+        "active": "Active",
+        "suspended": "Suspended",
+        "rejected": "Rejected",
+        "archived": "Archived",
+        "pending": "Pending"
+      }
+    },
+    "invitationsPage": {
+      "eyebrow": "Clinic manager",
+      "title": "Doctor invitations",
+      "description": "Invite doctors to create separate clinic-paid accounts and track invitation status. Doctors manage their own professional profiles; RomDoc intervenes only for verification, moderation or suspension when necessary."
+    },
+    "invitationsPanel": {
+      "summary": {
+        "pending": "Pending",
+        "pendingHelper": "Sent invitations that have not yet been accepted.",
+        "accepted": "Accepted",
+        "acceptedHelper": "Doctors who created their clinic-invited account.",
+        "activeCoverage": "Active coverage",
+        "activeCoverageHelper": "Accounts whose subscription is paid by the clinic.",
+        "closed": "Closed",
+        "closedHelper": "Declined, expired or cancelled invitations."
+      },
+      "inviteTitle": "Invite a doctor",
+      "inviteDescription": "The clinic sends an email invitation. After acceptance, the doctor receives a separate account and the clinic organisation covers the subscription.",
+      "noActiveOrganization": "There is no active organisation for this account. Doctors can be invited after the organisation is activated.",
+      "organization": "Clinic organisation",
+      "doctorEmail": "Doctor email",
+      "sending": "Sending...",
+      "send": "Send invitation",
+      "createError": "The invitation could not be created.",
+      "created": "The invitation was created and sent to the doctor.",
+      "createdWithoutEmail": "The invitation was created, but the email was not sent automatically. Copy the link and send it to the doctor through a secure channel.",
+      "emailDeliveryWarning": "The automatic email could not be sent.",
+      "inviteLink": "Invitation link",
+      "copy": "Copy",
+      "copied": "Link copied.",
+      "copyManual": "Copy the displayed link manually.",
+      "historyTitle": "Existing invitations",
+      "historyDescription": "Track sent invitations, registration status and clinic-paid coverage.",
+      "count": "{count, plural, one {# invitation} other {# invitations}}",
+      "empty": "There are no invitations for the organisations associated with your account yet.",
+      "doctor": "Doctor",
+      "associatedDoctor": "Associated doctor",
+      "invitation": "Invitation",
+      "payment": "Payment",
+      "coverage": "Coverage",
+      "createdAt": "Created",
+      "expiresAt": "Expires",
+      "clinicPaid": "Paid by clinic",
+      "individualPaid": "Paid individually",
+      "statuses": {
+        "invitation": {
+          "pending": "Sent",
+          "accepted": "Accepted",
+          "declined": "Declined",
+          "expired": "Expired",
+          "cancelled": "Cancelled"
+        },
+        "coverage": {
+          "active": "Active coverage",
+          "paused": "Paused",
+          "cancelled": "Cancelled",
+          "ended": "Ended",
+          "none": "No coverage",
+          "pending": "Registration in progress"
+        }
+      }
+    },
+    "invitedDoctorPage": {
+      "invalidTitle": "Invalid invitation link",
+      "invalidDescription": "The invitation link does not contain the required token and email address. Ask the clinic to send a new invitation."
+    },
+    "invitedDoctorForm": {
+      "eyebrow": "Clinic invitation",
+      "title": "Create a separate clinic-invited doctor account",
+      "description": "This invitation creates a new RomDoc account with an email address and user ID separate from any existing independent account.",
+      "paymentNotice": "The clinic organisation pays the subscription for this account. You do not need to activate an individual Stripe subscription.",
+      "accountNotice": "The account type is “clinic-invited doctor” and cannot later be converted into an independent account. Independent activity requires another account and another email address.",
+      "acknowledgement": "I understand that this is a separate clinic-paid account and cannot be converted into an independent account.",
+      "acknowledgementError": "Confirm that you understand the separate and permanent nature of the clinic-invited account.",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "email": "Invitation email",
+      "emailHint": "This address is fixed by the invitation and must differ from every existing RomDoc account.",
+      "phone": "Phone",
+      "specialty": "Specialty",
+      "selectSpecialty": "Select the specialty",
+      "licence": "Professional registration number",
+      "licenceHint": "Optional and informational. RomDoc does not compare, warn about or merge accounts using the same number.",
+      "password": "Password",
+      "confirmPassword": "Confirm password",
+      "passwordHelp": "At least 8 characters with an uppercase letter, lowercase letter and number.",
+      "acceptPrefix": "I accept",
+      "terms": "Terms and Conditions",
+      "and": "and",
+      "privacy": "Privacy Policy",
+      "submit": "Create clinic-invited account",
+      "submitting": "Creating account...",
+      "validation": {
+        "missingToken": "The invitation link does not contain the required token.",
+        "firstName": "Enter a valid first name.",
+        "lastName": "Enter a valid last name.",
+        "email": "The invitation does not contain a valid email address.",
+        "phone": "Enter a valid phone number.",
+        "specialty": "Select the medical specialty.",
+        "passwordLength": "The password must contain at least 8 characters.",
+        "passwordUppercase": "The password must contain at least one uppercase letter.",
+        "passwordLowercase": "The password must contain at least one lowercase letter.",
+        "passwordNumber": "The password must contain at least one number.",
+        "passwordMismatch": "The passwords do not match.",
+        "terms": "You must accept the Terms and Privacy Policy.",
+        "existingAccount": "An account already exists for this email address. A clinic invitation requires a new email address and a separate user ID.",
+        "database": "The account could not be created. Check the registration configuration or contact RomDoc.",
+        "accountCreation": "The account could not be created. Try again.",
+        "linking": "The account was created, but the clinic invitation could not be linked. Contact RomDoc.",
+        "registration": "Registration could not be completed."
+      }
+    }
   }
 }
