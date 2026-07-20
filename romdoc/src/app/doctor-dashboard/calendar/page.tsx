@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import {
   redirect,
 } from "next/navigation";
@@ -5,6 +6,8 @@ import {
 import AppointmentCalendar, {
   type DoctorCalendarAppointment,
 } from "@/components/doctor/appointment-calendar";
+import { type AppLocale, selectTranslation } from "@/lib/i18n/app-locale";
+import { getStoredAppLocale } from "@/lib/i18n/server-app-locale";
 import {
   createClient,
 } from "@/lib/supabase/server";
@@ -89,32 +92,20 @@ function formatNameFromSlug(
 }
 
 function getClinicName(
-  clinic: ClinicRelation | null
+  clinic: ClinicRelation | null,
+  locale: AppLocale,
+  fallback: string
 ) {
-  if (
-    !clinic
-  ) {
-    return "Clinică indisponibilă";
+  if (!clinic) {
+    return fallback;
   }
 
-  const romanianTranslation =
-    clinic.clinic_translations?.find(
-      (
-        translation
-      ) =>
-        translation.locale ===
-        "ro"
-    );
-
-  const fallbackTranslation =
-    clinic.clinic_translations?.[0];
-
   return (
-    romanianTranslation?.name ??
-    fallbackTranslation?.name ??
-    formatNameFromSlug(
-      clinic.slug
-    )
+    selectTranslation(
+      clinic.clinic_translations,
+      locale
+    )?.name ??
+    formatNameFromSlug(clinic.slug)
   );
 }
 
@@ -134,6 +125,15 @@ function isAppointmentStatus(
 }
 
 export default async function DoctorCalendarPage() {
+  const locale = await getStoredAppLocale();
+  const t = await getTranslations({
+    locale,
+    namespace: "DoctorAppointmentOperations.calendar.page",
+  });
+  const commonT = await getTranslations({
+    locale,
+    namespace: "DoctorAppointmentOperations.common",
+  });
   const supabase =
     await createClient();
 
@@ -151,7 +151,7 @@ export default async function DoctorCalendarPage() {
     !user
   ) {
     redirect(
-      "/login"
+      `/login?locale=${locale}&next=/doctor-dashboard/calendar`
     );
   }
 
@@ -229,11 +229,11 @@ export default async function DoctorCalendarPage() {
         <div className="mx-auto max-w-5xl">
           <div className="rounded-[21px] border border-amber-200 bg-amber-50 p-[21px] text-amber-900">
             <h1 className="text-xl font-bold">
-              Profil de medic indisponibil
+              {t("missingTitle")}
             </h1>
 
             <p className="mt-[8px] text-sm leading-6">
-              Contul tău este activ, dar nu este asociat unui profil de medic. Contactează suportul RomDoc.
+              {t("missingDescription")}
             </p>
           </div>
         </div>
@@ -362,7 +362,9 @@ export default async function DoctorCalendarPage() {
 
               clinicName:
                 getClinicName(
-                  clinic
+                  clinic,
+                  locale,
+                  commonT("clinicUnavailable")
                 ),
 
               requestedDate:
@@ -420,28 +422,24 @@ export default async function DoctorCalendarPage() {
       <div className="mx-auto max-w-7xl">
         <header className="max-w-3xl">
           <p className="text-sm font-semibold text-[#036661]">
-            Panou medic
+            {commonT("doctorDashboard")}
           </p>
 
           <h1 className="mt-[8px] text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-            Calendar și agendă
+            {t("title")}
           </h1>
 
           <p className="mt-[13px] text-sm leading-6 text-gray-600 sm:text-base">
-            {displayName}, folosește agenda pentru o listă simplă pe telefon sau alege vizualizarea pe zi, săptămână ori lună pe desktop.
+            {t("description", {name: displayName})}
           </p>
         </header>
 
         {doctor.status !==
           "active" && (
           <div className="mt-[21px] rounded-[13px] border border-amber-200 bg-amber-50 p-[13px] text-sm text-amber-900">
-            Profilul medicului are momentan starea{" "}
-            <strong>
-              {
-                doctor.status
-              }
-            </strong>
-            .
+            {t("statusNotice", {
+              status: doctor.status,
+            })}
           </div>
         )}
 
@@ -452,11 +450,11 @@ export default async function DoctorCalendarPage() {
               className="rounded-[21px] border border-red-200 bg-red-50 p-[21px] text-red-900"
             >
               <h2 className="text-lg font-bold">
-                Calendarul nu a putut fi încărcat
+                {t("loadTitle")}
               </h2>
 
               <p className="mt-[8px] text-sm leading-6">
-                Reîncarcă pagina. Dacă problema persistă, programările pot fi administrate în continuare din pagina „Programări”.
+                {t("loadDescription")}
               </p>
 
               <div className="mt-[13px] flex flex-wrap gap-[8px]">
@@ -464,14 +462,14 @@ export default async function DoctorCalendarPage() {
                   href="/doctor-dashboard/calendar"
                   className="romdoc-focus-ring inline-flex min-h-[34px] items-center rounded-[13px] bg-red-700 px-[13px] py-[8px] text-sm font-semibold text-white hover:bg-red-800"
                 >
-                  Reîncarcă
+                  {t("reload")}
                 </a>
 
                 <a
                   href="/doctor-dashboard/appointments"
                   className="romdoc-focus-ring inline-flex min-h-[34px] items-center rounded-[13px] border border-red-300 bg-white px-[13px] py-[8px] text-sm font-semibold text-red-800"
                 >
-                  Deschide programările
+                  {t("openAppointments")}
                 </a>
               </div>
             </div>

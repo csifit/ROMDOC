@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  FormEvent,
+  type FormEvent,
   useState,
 } from "react";
 import {
@@ -9,6 +9,50 @@ import {
 } from "next/navigation";
 
 import Button from "@/components/ui/button";
+import type {
+  AppLocale,
+} from "@/lib/i18n/app-locale";
+
+export type AppointmentActionsCopy = {
+  terminalError: string;
+  updateError: string;
+  updated: string;
+  emailFailed: (
+    message: string
+  ) => string;
+  invalidDateTime: string;
+  confirmComplete: string;
+  confirmNoShow: string;
+  selectDateTime: string;
+  differentSlot: string;
+  reasonRequired: string;
+  confirmCancel: string;
+  closed: string;
+  title: string;
+  description: string;
+  confirming: string;
+  confirm: string;
+  saving: string;
+  complete: string;
+  reschedule: string;
+  noShow: string;
+  cancel: string;
+  rescheduleTitle: string;
+  rescheduleDescription: string;
+  close: string;
+  newDate: string;
+  newTime: string;
+  rescheduleReason: string;
+  reschedulePlaceholder: string;
+  saveReschedule: string;
+  dismiss: string;
+  cancelTitle: string;
+  cancelDescription: string;
+  cancellationReason: string;
+  optional: string;
+  cancelling: string;
+  confirmCancellation: string;
+};
 
 type AppointmentActionsProps = {
   appointmentId: string;
@@ -18,6 +62,8 @@ type AppointmentActionsProps = {
   scheduledDate: string | null;
   scheduledTime: string | null;
   currentReason: string | null;
+  locale?: AppLocale;
+  copy?: AppointmentActionsCopy;
 };
 
 type LifecycleResponse = {
@@ -38,6 +84,83 @@ type OpenForm =
   | "reschedule"
   | "cancel"
   | null;
+
+const DEFAULT_COPY:
+  AppointmentActionsCopy = {
+    terminalError:
+      "Această programare este într-o stare finală și nu mai poate fi modificată.",
+    updateError:
+      "Programarea nu a putut fi actualizată.",
+    updated:
+      "Programarea a fost actualizată.",
+    emailFailed:
+      (message) =>
+        `${message} E-mailul pacientului nu a putut fi trimis.`,
+    invalidDateTime:
+      "Programarea nu are încă o dată și o oră valide.",
+    confirmComplete:
+      "Marchezi această programare ca finalizată?",
+    confirmNoShow:
+      "Confirmi că pacientul nu s-a prezentat?",
+    selectDateTime:
+      "Selectează data și ora programării.",
+    differentSlot:
+      "Pentru reprogramare trebuie să alegi o dată sau o oră diferită.",
+    reasonRequired:
+      "Adaugă motivul reprogramării.",
+    confirmCancel:
+      "Sigur dorești să anulezi această programare?",
+    closed:
+      "Programarea este închisă și nu mai poate fi modificată.",
+    title:
+      "Acțiuni rapide",
+    description:
+      "Folosește acțiunile frecvente fără a deschide un formular mare.",
+    confirming:
+      "Se confirmă...",
+    confirm:
+      "Confirmă",
+    saving:
+      "Se salvează...",
+    complete:
+      "Finalizată",
+    reschedule:
+      "Reprogramează",
+    noShow:
+      "Neprezentare",
+    cancel:
+      "Anulează",
+    rescheduleTitle:
+      "Reprogramează programarea",
+    rescheduleDescription:
+      "Alege noua dată și oră și explică motivul modificării.",
+    close:
+      "Închide",
+    newDate:
+      "Data nouă",
+    newTime:
+      "Ora nouă",
+    rescheduleReason:
+      "Motivul reprogramării",
+    reschedulePlaceholder:
+      "Explică pe scurt motivul reprogramării.",
+    saveReschedule:
+      "Salvează reprogramarea",
+    dismiss:
+      "Renunță",
+    cancelTitle:
+      "Anulează programarea",
+    cancelDescription:
+      "Pacientul va fi informat despre anulare.",
+    cancellationReason:
+      "Motivul anulării",
+    optional:
+      "Opțional",
+    cancelling:
+      "Se anulează...",
+    confirmCancellation:
+      "Confirmă anularea",
+  };
 
 function getDefaultDate({
   scheduledDate,
@@ -60,8 +183,14 @@ function getDefaultTime({
   requestedTime: string | null;
 }) {
   return (
-    scheduledTime?.slice(0, 5) ??
-    requestedTime?.slice(0, 5) ??
+    scheduledTime?.slice(
+      0,
+      5
+    ) ??
+    requestedTime?.slice(
+      0,
+      5
+    ) ??
     ""
   );
 }
@@ -74,6 +203,8 @@ export default function AppointmentActions({
   scheduledDate,
   scheduledTime,
   currentReason,
+  locale = "ro",
+  copy = DEFAULT_COPY,
 }: AppointmentActionsProps) {
   const router =
     useRouter();
@@ -120,10 +251,9 @@ export default function AppointmentActions({
   const [
     activeAction,
     setActiveAction,
-  ] =
-    useState<LifecycleAction | null>(
-      null
-    );
+  ] = useState<
+    LifecycleAction | null
+  >(null);
 
   const [
     message,
@@ -158,9 +288,7 @@ export default function AppointmentActions({
 
   function closeForms() {
     setOpenForm(null);
-    setCancellationReason(
-      ""
-    );
+    setCancellationReason("");
   }
 
   async function updateAppointment({
@@ -180,9 +308,8 @@ export default function AppointmentActions({
       terminalStatus
     ) {
       setErrorMessage(
-        "Această programare este într-o stare finală și nu mai poate fi modificată."
+        copy.terminalError
       );
-
       return;
     }
 
@@ -219,19 +346,30 @@ export default function AppointmentActions({
         (await response.json()) as
           LifecycleResponse;
 
-      if (!response.ok) {
+      if (
+        !response.ok
+      ) {
         throw new Error(
-          result.error ??
-            "Programarea nu a putut fi actualizată."
+          locale === "ro" &&
+          result.error
+            ? result.error
+            : copy.updateError
         );
       }
+
+      const baseMessage =
+        locale === "ro" &&
+        result.message
+          ? result.message
+          : copy.updated;
 
       setMessage(
         result.emailSent ===
           false
-          ? `${result.message ?? "Programarea a fost actualizată."} E-mailul pacientului nu a putut fi trimis.`
-          : result.message ??
-              "Programarea a fost actualizată."
+          ? copy.emailFailed(
+              baseMessage
+            )
+          : baseMessage
       );
 
       closeForms();
@@ -240,7 +378,7 @@ export default function AppointmentActions({
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Programarea nu a putut fi actualizată."
+          : copy.updateError
       );
     } finally {
       setActiveAction(
@@ -255,9 +393,8 @@ export default function AppointmentActions({
       !time
     ) {
       setErrorMessage(
-        "Programarea nu are încă o dată și o oră valide."
+        copy.invalidDateTime
       );
-
       return;
     }
 
@@ -272,12 +409,11 @@ export default function AppointmentActions({
   }
 
   async function completeAppointment() {
-    const confirmed =
-      window.confirm(
-        "Marchezi această programare ca finalizată?"
-      );
-
-    if (!confirmed) {
+    if (
+      !window.confirm(
+        copy.confirmComplete
+      )
+    ) {
       return;
     }
 
@@ -288,12 +424,11 @@ export default function AppointmentActions({
   }
 
   async function markNoShow() {
-    const confirmed =
-      window.confirm(
-        "Confirmi că pacientul nu s-a prezentat?"
-      );
-
-    if (!confirmed) {
+    if (
+      !window.confirm(
+        copy.confirmNoShow
+      )
+    ) {
       return;
     }
 
@@ -315,9 +450,8 @@ export default function AppointmentActions({
       !time
     ) {
       setErrorMessage(
-        "Selectează data și ora programării."
+        copy.selectDateTime
       );
-
       return;
     }
 
@@ -334,13 +468,14 @@ export default function AppointmentActions({
       });
 
     if (
-      date === originalDate &&
-      time === originalTime
+      date ===
+        originalDate &&
+      time ===
+        originalTime
     ) {
       setErrorMessage(
-        "Pentru reprogramare trebuie să alegi o dată sau o oră diferită."
+        copy.differentSlot
       );
-
       return;
     }
 
@@ -350,9 +485,8 @@ export default function AppointmentActions({
         .length < 3
     ) {
       setErrorMessage(
-        "Adaugă motivul reprogramării."
+        copy.reasonRequired
       );
-
       return;
     }
 
@@ -364,7 +498,8 @@ export default function AppointmentActions({
       actionTime:
         time,
       reason:
-        rescheduleReason.trim(),
+        rescheduleReason
+          .trim(),
     });
   }
 
@@ -374,12 +509,11 @@ export default function AppointmentActions({
   ) {
     event.preventDefault();
 
-    const confirmed =
-      window.confirm(
-        "Sigur dorești să anulezi această programare?"
-      );
-
-    if (!confirmed) {
+    if (
+      !window.confirm(
+        copy.confirmCancel
+      )
+    ) {
       return;
     }
 
@@ -398,7 +532,7 @@ export default function AppointmentActions({
   ) {
     return (
       <div className="mt-6 rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
-        Programarea este închisă și nu mai poate fi modificată.
+        {copy.closed}
       </div>
     );
   }
@@ -408,11 +542,11 @@ export default function AppointmentActions({
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <h3 className="text-base font-semibold text-gray-900">
-            Acțiuni rapide
+            {copy.title}
           </h3>
 
           <p className="mt-1 text-sm text-gray-500">
-            Folosește acțiunile frecvente fără a deschide un formular mare.
+            {copy.description}
           </p>
         </div>
 
@@ -430,8 +564,8 @@ export default function AppointmentActions({
             >
               {activeAction ===
               "confirm"
-                ? "Se confirmă..."
-                : "Confirmă"}
+                ? copy.confirming
+                : copy.confirm}
             </Button>
           )}
 
@@ -452,8 +586,8 @@ export default function AppointmentActions({
             >
               {activeAction ===
               "complete"
-                ? "Se salvează..."
-                : "Finalizată"}
+                ? copy.saving
+                : copy.complete}
             </Button>
           )}
 
@@ -473,7 +607,7 @@ export default function AppointmentActions({
               );
             }}
           >
-            Reprogramează
+            {copy.reschedule}
           </Button>
 
           {[
@@ -494,8 +628,8 @@ export default function AppointmentActions({
             >
               {activeAction ===
               "no_show"
-                ? "Se salvează..."
-                : "Neprezentare"}
+                ? copy.saving
+                : copy.noShow}
             </Button>
           )}
 
@@ -515,7 +649,7 @@ export default function AppointmentActions({
               );
             }}
           >
-            Anulează
+            {copy.cancel}
           </Button>
         </div>
       </div>
@@ -549,11 +683,15 @@ export default function AppointmentActions({
           <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
             <div>
               <h4 className="font-semibold text-blue-950">
-                Reprogramează
+                {
+                  copy.rescheduleTitle
+                }
               </h4>
 
               <p className="mt-1 text-sm text-blue-800">
-                Alege noua dată și oră și explică motivul schimbării.
+                {
+                  copy.rescheduleDescription
+                }
               </p>
             </div>
 
@@ -564,72 +702,83 @@ export default function AppointmentActions({
               }
               className="romdoc-focus-ring w-fit rounded-lg px-3 py-2 text-sm font-semibold text-blue-800 hover:bg-white"
             >
-              Închide
+              {copy.close}
             </button>
           </div>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <label>
               <span className="block text-sm font-medium text-blue-950">
-                Data nouă
+                {copy.newDate}
               </span>
 
               <input
                 type="date"
                 min={today}
-                value={
-                  date
-                }
-                onChange={(event) =>
+                value={date}
+                onChange={(
+                  event
+                ) =>
                   setDate(
-                    event.target.value
+                    event.target
+                      .value
                   )
                 }
                 required
-                className="romdoc-focus-ring mt-2 w-full rounded-xl border border-blue-200 bg-white px-4 py-3 text-gray-900"
+                className="romdoc-input mt-2"
               />
             </label>
 
             <label>
               <span className="block text-sm font-medium text-blue-950">
-                Ora nouă
+                {copy.newTime}
               </span>
 
               <input
                 type="time"
-                value={
-                  time
-                }
-                onChange={(event) =>
+                value={time}
+                onChange={(
+                  event
+                ) =>
                   setTime(
-                    event.target.value
+                    event.target
+                      .value
                   )
                 }
                 required
-                className="romdoc-focus-ring mt-2 w-full rounded-xl border border-blue-200 bg-white px-4 py-3 text-gray-900"
+                className="romdoc-input mt-2"
               />
             </label>
           </div>
 
           <label className="mt-4 block">
             <span className="block text-sm font-medium text-blue-950">
-              Motivul reprogramării
+              {
+                copy.rescheduleReason
+              }
             </span>
 
             <textarea
               rows={3}
-              maxLength={2000}
+              maxLength={
+                2000
+              }
               value={
                 rescheduleReason
               }
-              onChange={(event) =>
+              onChange={(
+                event
+              ) =>
                 setRescheduleReason(
-                  event.target.value
+                  event.target
+                    .value
                 )
               }
-              placeholder="Exemplu: medicul nu este disponibil la ora stabilită."
+              placeholder={
+                copy.reschedulePlaceholder
+              }
               required
-              className="romdoc-focus-ring mt-2 w-full resize-y rounded-xl border border-blue-200 bg-white px-4 py-3 text-gray-900"
+              className="romdoc-textarea mt-2"
             />
           </label>
 
@@ -642,8 +791,8 @@ export default function AppointmentActions({
             >
               {activeAction ===
               "reschedule"
-                ? "Se salvează..."
-                : "Salvează reprogramarea"}
+                ? copy.saving
+                : copy.saveReschedule}
             </Button>
 
             <Button
@@ -656,7 +805,7 @@ export default function AppointmentActions({
                 closeForms
               }
             >
-              Renunță
+              {copy.dismiss}
             </Button>
           </div>
         </form>
@@ -673,11 +822,15 @@ export default function AppointmentActions({
           <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
             <div>
               <h4 className="font-semibold text-red-950">
-                Anulează programarea
+                {
+                  copy.cancelTitle
+                }
               </h4>
 
               <p className="mt-1 text-sm text-red-800">
-                Motivul este opțional. Vei confirma anularea înainte de salvare.
+                {
+                  copy.cancelDescription
+                }
               </p>
             </div>
 
@@ -688,28 +841,37 @@ export default function AppointmentActions({
               }
               className="romdoc-focus-ring w-fit rounded-lg px-3 py-2 text-sm font-semibold text-red-800 hover:bg-white"
             >
-              Închide
+              {copy.close}
             </button>
           </div>
 
           <label className="mt-4 block">
             <span className="block text-sm font-medium text-red-950">
-              Motivul anulării
+              {
+                copy.cancellationReason
+              }
             </span>
 
             <textarea
               rows={3}
-              maxLength={2000}
+              maxLength={
+                2000
+              }
               value={
                 cancellationReason
               }
-              onChange={(event) =>
+              onChange={(
+                event
+              ) =>
                 setCancellationReason(
-                  event.target.value
+                  event.target
+                    .value
                 )
               }
-              placeholder="Opțional"
-              className="romdoc-focus-ring mt-2 w-full resize-y rounded-xl border border-red-200 bg-white px-4 py-3 text-gray-900"
+              placeholder={
+                copy.optional
+              }
+              className="romdoc-textarea mt-2"
             />
           </label>
 
@@ -723,8 +885,8 @@ export default function AppointmentActions({
             >
               {activeAction ===
               "cancel"
-                ? "Se anulează..."
-                : "Confirmă anularea"}
+                ? copy.cancelling
+                : copy.confirmCancellation}
             </Button>
 
             <Button
@@ -737,7 +899,7 @@ export default function AppointmentActions({
                 closeForms
               }
             >
-              Renunță
+              {copy.dismiss}
             </Button>
           </div>
         </form>

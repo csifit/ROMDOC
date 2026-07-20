@@ -1,13 +1,22 @@
 "use client";
 
 import {
-  FormEvent,
+  type FormEvent,
   useEffect,
   useState,
 } from "react";
-import { useRouter } from "next/navigation";
+import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
+import {
+  useRouter,
+} from "next/navigation";
 
 import Button from "@/components/ui/button";
+import {
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
 
 type ClinicOption = {
   id: string;
@@ -29,9 +38,6 @@ type CreateAppointmentResponse = {
   success?: boolean;
   emailSent?: boolean;
   error?: string;
-  appointment?: {
-    id: string;
-  };
 };
 
 type AvailableSlot = {
@@ -46,13 +52,10 @@ type AvailableSlotsResponse = {
 
 function getLocalDateString() {
   const today = new Date();
-
   const year = today.getFullYear();
-
   const month = String(
     today.getMonth() + 1
   ).padStart(2, "0");
-
   const day = String(
     today.getDate()
   ).padStart(2, "0");
@@ -60,99 +63,100 @@ function getLocalDateString() {
   return `${year}-${month}-${day}`;
 }
 
-function formatSlotDuration(
-  durationMinutes: number
-) {
-  return `${durationMinutes} min`;
-}
-
 export default function CreateAppointmentForm({
   doctorId,
   clinics,
 }: CreateAppointmentFormProps) {
+  const locale = normalizeAppLocale(
+    useLocale()
+  );
+  const t = useTranslations(
+    "DoctorAppointmentOperations.appointments.create"
+  );
+  const commonT = useTranslations(
+    "DoctorAppointmentOperations.common"
+  );
   const router = useRouter();
 
   const [isOpen, setIsOpen] =
     useState(false);
-
   const [clinicId, setClinicId] =
     useState(clinics[0]?.id ?? "");
-
   const [patientName, setPatientName] =
     useState("");
-
   const [patientEmail, setPatientEmail] =
     useState("");
-
   const [patientPhone, setPatientPhone] =
     useState("");
-
   const [scheduledDate, setScheduledDate] =
     useState("");
-
   const [scheduledTime, setScheduledTime] =
     useState("");
-
   const [selectedDurationMinutes, setSelectedDurationMinutes] =
     useState<number | null>(null);
-
   const [availableSlots, setAvailableSlots] =
     useState<AvailableSlot[]>([]);
-
   const [slotsAreLoading, setSlotsAreLoading] =
     useState(false);
-
   const [slotsError, setSlotsError] =
     useState("");
-
   const [source, setSource] =
     useState<AppointmentSource>("phone");
-
   const [notes, setNotes] =
     useState("");
-
   const [isSubmitting, setIsSubmitting] =
     useState(false);
-
   const [successMessage, setSuccessMessage] =
     useState("");
-
   const [warningMessage, setWarningMessage] =
     useState("");
-
   const [errorMessage, setErrorMessage] =
     useState("");
 
   const today = getLocalDateString();
 
   useEffect(() => {
-    setClinicId((currentClinicId) => {
-      if (
-        clinics.some(
-          (clinic) =>
-            clinic.id === currentClinicId
-        )
-      ) {
-        return currentClinicId;
-      }
+    const timerId = window.setTimeout(() => {
+      setClinicId((currentClinicId) => {
+        if (
+          clinics.some(
+            (clinic) =>
+              clinic.id === currentClinicId
+          )
+        ) {
+          return currentClinicId;
+        }
 
-      return clinics[0]?.id ?? "";
-    });
+        return clinics[0]?.id ?? "";
+      });
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [clinics]);
 
   useEffect(() => {
-    setScheduledTime("");
-    setSelectedDurationMinutes(null);
-    setAvailableSlots([]);
-    setSlotsError("");
+    const resetTimerId = window.setTimeout(() => {
+      setScheduledTime("");
+      setSelectedDurationMinutes(null);
+      setAvailableSlots([]);
+      setSlotsError("");
+    }, 0);
 
     if (
       !doctorId ||
       !clinicId ||
       !scheduledDate
     ) {
-      setSlotsAreLoading(false);
-      return;
+      const loadingTimerId = window.setTimeout(() => {
+        setSlotsAreLoading(false);
+      }, 0);
+
+      return () => {
+        window.clearTimeout(resetTimerId);
+        window.clearTimeout(loadingTimerId);
+      };
     }
 
     const controller = new AbortController();
@@ -182,8 +186,9 @@ export default function CreateAppointmentForm({
 
         if (!response.ok) {
           throw new Error(
-            result.error ??
-              "Intervalele disponibile nu au putut fi încărcate."
+            locale === "ro" && result.error
+              ? result.error
+              : t("slotsLoadError")
           );
         }
 
@@ -201,7 +206,7 @@ export default function CreateAppointmentForm({
         setSlotsError(
           error instanceof Error
             ? error.message
-            : "Intervalele disponibile nu au putut fi încărcate."
+            : t("slotsLoadError")
         );
       } finally {
         if (!controller.signal.aborted) {
@@ -213,9 +218,16 @@ export default function CreateAppointmentForm({
     void loadSlots();
 
     return () => {
+      window.clearTimeout(resetTimerId);
       controller.abort();
     };
-  }, [clinicId, doctorId, scheduledDate]);
+  }, [
+    clinicId,
+    doctorId,
+    locale,
+    scheduledDate,
+    t,
+  ]);
 
   function resetForm() {
     setClinicId(clinics[0]?.id ?? "");
@@ -235,48 +247,32 @@ export default function CreateAppointmentForm({
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
-
     setSuccessMessage("");
     setWarningMessage("");
     setErrorMessage("");
 
     if (!clinicId) {
-      setErrorMessage(
-        "Selectează clinica programării."
-      );
-
+      setErrorMessage(t("selectClinicError"));
       return;
     }
 
     if (patientName.trim().length < 2) {
-      setErrorMessage(
-        "Introdu numele pacientului."
-      );
-
+      setErrorMessage(t("patientNameError"));
       return;
     }
 
     if (!patientEmail.trim()) {
-      setErrorMessage(
-        "Introdu adresa de e-mail a pacientului."
-      );
-
+      setErrorMessage(t("patientEmailError"));
       return;
     }
 
     if (patientPhone.trim().length < 7) {
-      setErrorMessage(
-        "Introdu un număr de telefon valid."
-      );
-
+      setErrorMessage(t("patientPhoneError"));
       return;
     }
 
     if (!scheduledDate || !scheduledTime) {
-      setErrorMessage(
-        "Selectează data și unul dintre intervalele disponibile."
-      );
-
+      setErrorMessage(t("selectSlotError"));
       return;
     }
 
@@ -296,8 +292,7 @@ export default function CreateAppointmentForm({
             patientEmail: patientEmail
               .trim()
               .toLowerCase(),
-            patientPhone:
-              patientPhone.trim(),
+            patientPhone: patientPhone.trim(),
             scheduledDate,
             scheduledTime,
             source,
@@ -311,21 +306,17 @@ export default function CreateAppointmentForm({
 
       if (!response.ok) {
         setErrorMessage(
-          result.error ??
-            "Programarea nu a putut fi creată."
+          locale === "ro" && result.error
+            ? result.error
+            : t("createError")
         );
-
         return;
       }
 
-      setSuccessMessage(
-        "Programarea a fost creată și confirmată."
-      );
+      setSuccessMessage(t("created"));
 
       if (result.emailSent === false) {
-        setWarningMessage(
-          "Programarea a fost salvată, dar e-mailul de confirmare nu a putut fi trimis."
-        );
+        setWarningMessage(t("emailWarning"));
       }
 
       resetForm();
@@ -335,10 +326,7 @@ export default function CreateAppointmentForm({
         "Doctor appointment form request failed:",
         error
       );
-
-      setErrorMessage(
-        "Nu s-a putut comunica cu serverul. Încearcă din nou."
-      );
+      setErrorMessage(t("serverError"));
     } finally {
       setIsSubmitting(false);
     }
@@ -348,16 +336,24 @@ export default function CreateAppointmentForm({
     return (
       <section className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-6">
         <h2 className="text-lg font-semibold text-amber-900">
-          Nu există clinici asociate
+          {t("noClinicsTitle")}
         </h2>
-
         <p className="mt-2 leading-7 text-amber-800">
-          Nu poți adăuga manual programări până când profilul tău
-          de medic nu este asociat cu cel puțin o clinică.
+          {t("noClinicsDescription")}
         </p>
       </section>
     );
   }
+
+  const sourceOptions: Array<{
+    value: AppointmentSource;
+    label: string;
+  }> = [
+    {value: "phone", label: commonT("sourcePhone")},
+    {value: "walk_in", label: commonT("sourceWalkIn")},
+    {value: "email", label: commonT("sourceEmail")},
+    {value: "other", label: commonT("sourceOther")},
+  ];
 
   return (
     <section className="mt-8 rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -374,15 +370,12 @@ export default function CreateAppointmentForm({
       >
         <div>
           <h2 className="text-xl font-semibold text-gray-900">
-            Adaugă o programare
+            {t("title")}
           </h2>
-
           <p className="mt-1 text-sm text-gray-600">
-            Pentru programări primite prin telefon, e-mail sau direct
-            la clinică. Ora se alege din intervalele disponibile.
+            {t("description")}
           </p>
         </div>
-
         <span
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F0EEE9] text-xl font-medium text-gray-800"
           aria-hidden="true"
@@ -398,23 +391,18 @@ export default function CreateAppointmentForm({
             className="space-y-5"
           >
             <div className="grid gap-5 md:grid-cols-2">
-              <div>
-                <label
-                  htmlFor="doctor-appointment-clinic"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Clinică
-                </label>
-
+              <label className="block">
+                <span className="block text-sm font-medium text-gray-700">
+                  {t("clinic")}
+                </span>
                 <select
-                  id="doctor-appointment-clinic"
                   value={clinicId}
                   onChange={(event) =>
                     setClinicId(event.target.value)
                   }
                   required
                   disabled={isSubmitting}
-                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="romdoc-select mt-2"
                 >
                   {clinics.map((clinic) => (
                     <option
@@ -425,18 +413,13 @@ export default function CreateAppointmentForm({
                     </option>
                   ))}
                 </select>
-              </div>
+              </label>
 
-              <div>
-                <label
-                  htmlFor="doctor-appointment-source"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Sursa programării
-                </label>
-
+              <label className="block">
+                <span className="block text-sm font-medium text-gray-700">
+                  {t("source")}
+                </span>
                 <select
-                  id="doctor-appointment-source"
                   value={source}
                   onChange={(event) =>
                     setSource(
@@ -445,38 +428,26 @@ export default function CreateAppointmentForm({
                   }
                   required
                   disabled={isSubmitting}
-                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="romdoc-select mt-2"
                 >
-                  <option value="phone">
-                    Telefon
-                  </option>
-
-                  <option value="walk_in">
-                    Direct la clinică
-                  </option>
-
-                  <option value="email">
-                    E-mail
-                  </option>
-
-                  <option value="other">
-                    Altă sursă
-                  </option>
+                  {sourceOptions.map((option) => (
+                    <option
+                      key={option.value}
+                      value={option.value}
+                    >
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
-              </div>
+              </label>
             </div>
 
             <div className="grid gap-5 md:grid-cols-2">
-              <div>
-                <label
-                  htmlFor="doctor-appointment-patient-name"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Numele pacientului
-                </label>
-
+              <label className="block">
+                <span className="block text-sm font-medium text-gray-700">
+                  {t("patientName")}
+                </span>
                 <input
-                  id="doctor-appointment-patient-name"
                   type="text"
                   value={patientName}
                   onChange={(event) =>
@@ -485,21 +456,16 @@ export default function CreateAppointmentForm({
                   required
                   disabled={isSubmitting}
                   autoComplete="name"
-                  placeholder="Exemplu: Maria Ionescu"
-                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  placeholder={t("patientNamePlaceholder")}
+                  className="romdoc-input mt-2"
                 />
-              </div>
+              </label>
 
-              <div>
-                <label
-                  htmlFor="doctor-appointment-patient-phone"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Telefon
-                </label>
-
+              <label className="block">
+                <span className="block text-sm font-medium text-gray-700">
+                  {t("phone")}
+                </span>
                 <input
-                  id="doctor-appointment-patient-phone"
                   type="tel"
                   value={patientPhone}
                   onChange={(event) =>
@@ -508,22 +474,17 @@ export default function CreateAppointmentForm({
                   required
                   disabled={isSubmitting}
                   autoComplete="tel"
-                  placeholder="Exemplu: 0712 345 678"
-                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  placeholder={t("phonePlaceholder")}
+                  className="romdoc-input mt-2"
                 />
-              </div>
+              </label>
             </div>
 
-            <div>
-              <label
-                htmlFor="doctor-appointment-patient-email"
-                className="block text-sm font-medium text-gray-700"
-              >
-                E-mail
-              </label>
-
+            <label className="block">
+              <span className="block text-sm font-medium text-gray-700">
+                {t("email")}
+              </span>
               <input
-                id="doctor-appointment-patient-email"
                 type="email"
                 value={patientEmail}
                 onChange={(event) =>
@@ -532,22 +493,17 @@ export default function CreateAppointmentForm({
                 required
                 disabled={isSubmitting}
                 autoComplete="email"
-                placeholder="Exemplu: maria@example.com"
-                className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500 disabled:cursor-not-allowed disabled:opacity-60"
+                placeholder={t("emailPlaceholder")}
+                className="romdoc-input mt-2"
               />
-            </div>
+            </label>
 
             <div className="grid gap-5 md:grid-cols-2">
-              <div>
-                <label
-                  htmlFor="doctor-appointment-date"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Data programării
-                </label>
-
+              <label className="block">
+                <span className="block text-sm font-medium text-gray-700">
+                  {t("date")}
+                </span>
                 <input
-                  id="doctor-appointment-date"
                   type="date"
                   min={today}
                   value={scheduledDate}
@@ -556,22 +512,22 @@ export default function CreateAppointmentForm({
                   }
                   required
                   disabled={isSubmitting}
-                  className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="romdoc-input mt-2"
                 />
-              </div>
+              </label>
 
               <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
                 <p className="text-sm font-semibold text-gray-700">
-                  Ora programării
+                  {t("time")}
                 </p>
 
                 {!scheduledDate ? (
                   <p className="mt-2 text-sm text-gray-600">
-                    Selectează mai întâi data pentru a vedea intervalele disponibile.
+                    {t("selectDateFirst")}
                   </p>
                 ) : slotsAreLoading ? (
                   <p className="mt-2 text-sm text-gray-600">
-                    Se încarcă intervalele disponibile...
+                    {t("loadingSlots")}
                   </p>
                 ) : slotsError ? (
                   <p className="mt-2 text-sm text-red-700">
@@ -579,7 +535,7 @@ export default function CreateAppointmentForm({
                   </p>
                 ) : availableSlots.length === 0 ? (
                   <p className="mt-2 text-sm text-gray-600">
-                    Nu există intervale disponibile pentru data selectată.
+                    {t("noSlots")}
                   </p>
                 ) : (
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -594,17 +550,17 @@ export default function CreateAppointmentForm({
                           );
                         }}
                         disabled={isSubmitting}
-                        className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                        className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-colors disabled:opacity-60 ${
                           scheduledTime === slot.time
                             ? "border-[#036661] bg-[#036661] text-white"
-                            : "border-gray-300 bg-white text-gray-800 hover:border-[#036661] hover:text-[#036661]"
+                            : "border-gray-300 bg-white text-gray-800 hover:border-[#036661]"
                         }`}
                       >
-                        <span>{slot.time}</span>
+                        {slot.time}
                         <span className="ml-2 text-xs opacity-80">
-                          {formatSlotDuration(
-                            slot.durationMinutes
-                          )}
+                          {commonT("minutes", {
+                            count: slot.durationMinutes,
+                          })}
                         </span>
                       </button>
                     ))}
@@ -613,27 +569,24 @@ export default function CreateAppointmentForm({
 
                 {scheduledTime && (
                   <p className="mt-3 text-xs text-gray-600">
-                    Interval selectat: {scheduledTime}
+                    {t("selectedSlot", {
+                      time: scheduledTime,
+                    })}
                     {selectedDurationMinutes
-                      ? ` · ${formatSlotDuration(
-                          selectedDurationMinutes
-                        )}`
+                      ? ` · ${commonT("minutes", {
+                          count: selectedDurationMinutes,
+                        })}`
                       : ""}
                   </p>
                 )}
               </div>
             </div>
 
-            <div>
-              <label
-                htmlFor="doctor-appointment-notes"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Observații
-              </label>
-
+            <label className="block">
+              <span className="block text-sm font-medium text-gray-700">
+                {t("notes")}
+              </span>
               <textarea
-                id="doctor-appointment-notes"
                 rows={4}
                 maxLength={5000}
                 value={notes}
@@ -641,38 +594,26 @@ export default function CreateAppointmentForm({
                   setNotes(event.target.value)
                 }
                 disabled={isSubmitting}
-                placeholder="Detalii opționale despre programare."
-                className="mt-2 w-full resize-y rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-gray-500 disabled:cursor-not-allowed disabled:opacity-60"
+                placeholder={t("notesPlaceholder")}
+                className="romdoc-textarea mt-2"
               />
-
-              <p className="mt-1 text-right text-xs text-gray-500">
+              <span className="mt-1 block text-right text-xs text-gray-500">
                 {notes.length}/5000
-              </p>
-            </div>
+              </span>
+            </label>
 
             {errorMessage && (
-              <div
-                role="alert"
-                className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
-              >
+              <div role="alert" className="romdoc-notice romdoc-notice-error">
                 {errorMessage}
               </div>
             )}
-
             {warningMessage && (
-              <div
-                role="alert"
-                className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800"
-              >
+              <div role="alert" className="romdoc-notice romdoc-notice-warning">
                 {warningMessage}
               </div>
             )}
-
             {successMessage && (
-              <div
-                role="status"
-                className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800"
-              >
+              <div role="status" className="romdoc-notice romdoc-notice-success">
                 {successMessage}
               </div>
             )}
@@ -680,16 +621,12 @@ export default function CreateAppointmentForm({
             <div className="flex flex-wrap gap-3">
               <Button
                 type="submit"
-                disabled={
-                  isSubmitting ||
-                  slotsAreLoading
-                }
+                disabled={isSubmitting || slotsAreLoading}
               >
                 {isSubmitting
-                  ? "Se creează..."
-                  : "Creează programarea"}
+                  ? t("creating")
+                  : t("create")}
               </Button>
-
               <Button
                 type="button"
                 disabled={isSubmitting}
@@ -701,7 +638,7 @@ export default function CreateAppointmentForm({
                 }}
                 variant="secondary"
               >
-                Golește formularul
+                {t("reset")}
               </Button>
             </div>
           </form>

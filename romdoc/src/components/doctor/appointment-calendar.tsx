@@ -6,11 +6,17 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import roLocale from "@fullcalendar/core/locales/ro";
+import enGbLocale from "@fullcalendar/core/locales/en-gb";
+import deLocale from "@fullcalendar/core/locales/de";
 import type {
   DatesSetArg,
   EventClickArg,
@@ -18,14 +24,19 @@ import type {
   EventInput,
 } from "@fullcalendar/core";
 
-import AppointmentActions from "@/components/admin/appointment-actions";
+import TranslatedAppointmentActions from "@/components/doctor/translated-appointment-actions";
 import AppointmentStatusBadge from "@/components/ui/appointment-status-badge";
 import Button from "@/components/ui/button";
 import {
   APPOINTMENT_STATUS,
   APPOINTMENT_STATUS_ORDER,
+  getAppointmentStatusLabel,
   type AppointmentStatus,
 } from "@/lib/appointments/appointment-status";
+import {
+  type AppLocale,
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
 
 type CalendarMode =
   | "agenda"
@@ -68,6 +79,18 @@ const calendarViewByMode: Record<
   month: "dayGridMonth",
 };
 
+const INTL_LOCALE: Record<AppLocale, string> = {
+  ro: "ro-RO",
+  en: "en-GB",
+  de: "de-DE",
+};
+
+const FULL_CALENDAR_LOCALE = {
+  ro: roLocale,
+  en: enGbLocale,
+  de: deLocale,
+} as const;
+
 function normalizeTime(
   time: string | null
 ) {
@@ -95,10 +118,11 @@ function normalizeTime(
 }
 
 function formatDate(
-  date: string
+  date: string,
+  locale: AppLocale
 ) {
   return new Intl.DateTimeFormat(
-    "ro-RO",
+    INTL_LOCALE[locale],
     {
       weekday: "long",
       day: "2-digit",
@@ -113,10 +137,11 @@ function formatDate(
 }
 
 function formatCompactDate(
-  date: string
+  date: string,
+  locale: AppLocale
 ) {
   return new Intl.DateTimeFormat(
-    "ro-RO",
+    INTL_LOCALE[locale],
     {
       day: "2-digit",
       month: "short",
@@ -130,38 +155,14 @@ function formatCompactDate(
 }
 
 function formatTime(
-  time: string | null
+  time: string | null,
+  fallback: string
 ) {
   return time
-    ? time.slice(
-        0,
-        5
-      )
-    : "Ora nespecificată";
+    ? time.slice(0, 5)
+    : fallback;
 }
 
-function getSourceLabel(
-  source: string
-) {
-  switch (
-    source
-  ) {
-    case "phone":
-      return "Telefon";
-
-    case "walk_in":
-      return "Direct la clinică";
-
-    case "email":
-      return "E-mail";
-
-    case "other":
-      return "Altă sursă";
-
-    default:
-      return "Cerere online";
-  }
-}
 
 function toTimestamp(
   appointment: DoctorCalendarAppointment
@@ -194,6 +195,15 @@ function isUpcoming(
 export default function AppointmentCalendar({
   appointments,
 }: AppointmentCalendarProps) {
+  const locale = normalizeAppLocale(
+    useLocale()
+  );
+  const t = useTranslations(
+    "DoctorAppointmentOperations.calendar.component"
+  );
+  const commonT = useTranslations(
+    "DoctorAppointmentOperations.common"
+  );
   const calendarRef =
     useRef<FullCalendar | null>(
       null
@@ -222,7 +232,7 @@ export default function AppointmentCalendar({
     setCalendarTitle,
   ] =
     useState(
-      "Calendar"
+      t("calendar")
     );
 
   const [
@@ -490,38 +500,38 @@ export default function AppointmentCalendar({
         <div className="flex flex-col gap-[13px] border-b border-gray-200 pb-[13px] lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-sm font-semibold text-[#036661]">
-              Vizualizare
+              {t("view")}
             </p>
 
             <h2 className="mt-[5px] text-xl font-bold text-gray-900">
               {mode ===
               "agenda"
-                ? "Agenda programărilor"
+                ? t("agendaTitle")
                 : calendarTitle}
             </h2>
           </div>
 
           <div
             className="romdoc-segmented-control grid-cols-4"
-            aria-label="Alege vizualizarea calendarului"
+            aria-label={t("chooseView")}
           >
             {(
               [
                 [
                   "agenda",
-                  "Agenda",
+                  t("agenda"),
                 ],
                 [
                   "day",
-                  "Zi",
+                  t("day"),
                 ],
                 [
                   "week",
-                  "Săpt.",
+                  t("weekShort"),
                 ],
                 [
                   "month",
-                  "Lună",
+                  t("month"),
                 ],
               ] as Array<
                 [
@@ -593,7 +603,10 @@ export default function AppointmentCalendar({
 
                 <span>
                   {
-                    style.labelRo
+                    getAppointmentStatusLabel(
+                      status,
+                      locale
+                    )
                   }
                 </span>
               </div>
@@ -614,8 +627,8 @@ export default function AppointmentCalendar({
                 }{" "}
                 {agendaAppointments.length ===
                 1
-                  ? "programare afișată"
-                  : "programări afișate"}
+                  ? t("shownOne")
+                  : t("shownMany")}
               </p>
 
               <div className="flex rounded-[13px] border border-gray-200 bg-white p-[3px]">
@@ -637,7 +650,7 @@ export default function AppointmentCalendar({
                       : "text-gray-600 hover:bg-gray-50"
                   }`}
                 >
-                  Viitoare
+                  {t("upcoming")}
                 </button>
 
                 <button
@@ -658,7 +671,7 @@ export default function AppointmentCalendar({
                       : "text-gray-600 hover:bg-gray-50"
                   }`}
                 >
-                  Toate
+                  {t("all")}
                 </button>
               </div>
             </div>
@@ -679,7 +692,8 @@ export default function AppointmentCalendar({
                       <div className="sticky top-[8px] z-10 rounded-[13px] border border-gray-200 bg-white/95 px-[13px] py-[8px] backdrop-blur">
                         <h3 className="text-sm font-bold capitalize text-gray-900">
                           {formatDate(
-                            date
+                            date,
+                            locale
                           )}
                         </h3>
                       </div>
@@ -712,11 +726,11 @@ export default function AppointmentCalendar({
             ) : (
               <div className="mt-[21px] rounded-[13px] border border-dashed border-gray-300 bg-gray-50 p-[21px] text-center">
                 <p className="font-semibold text-gray-900">
-                  Nu există programări viitoare.
+                  {t("noUpcoming")}
                 </p>
 
                 <p className="mt-[5px] text-sm text-gray-600">
-                  Selectează „Toate” pentru a vedea istoricul.
+                  {t("showAllHint")}
                 </p>
               </div>
             )}
@@ -734,7 +748,7 @@ export default function AppointmentCalendar({
                       "previous"
                     )
                   }
-                  aria-label="Perioada anterioară"
+                  aria-label={t("previousPeriod")}
                 >
                   ←
                 </Button>
@@ -749,7 +763,7 @@ export default function AppointmentCalendar({
                     )
                   }
                 >
-                  Astăzi
+                  {t("today")}
                 </Button>
 
                 <Button
@@ -761,7 +775,7 @@ export default function AppointmentCalendar({
                       "next"
                     )
                   }
-                  aria-label="Perioada următoare"
+                  aria-label={t("nextPeriod")}
                 >
                   →
                 </Button>
@@ -799,9 +813,13 @@ export default function AppointmentCalendar({
                     interactionPlugin,
                   ]}
                   locale={
-                    roLocale
+                    FULL_CALENDAR_LOCALE[locale]
                   }
-                  initialView={calendarViewByMode[mode]}
+                  initialView={
+                    calendarViewByMode[
+                      mode
+                    ]
+                  }
                   headerToolbar={
                     false
                   }
@@ -842,7 +860,7 @@ export default function AppointmentCalendar({
             </div>
 
             <p className="mt-[8px] text-xs text-gray-500 md:hidden">
-              Pentru calendarul săptămânal poți glisa orizontal. Agenda rămâne vizualizarea recomandată pe telefon.
+              {t("swipeHint")}
             </p>
           </div>
         )}
@@ -917,19 +935,36 @@ function AgendaCard({
   appointment: DoctorCalendarAppointment;
   onOpen: () => void;
 }) {
+  const locale = normalizeAppLocale(
+    useLocale()
+  );
+  const commonT = useTranslations(
+    "DoctorAppointmentOperations.common"
+  );
+
+  const sourceLabel =
+    appointment.source === "phone"
+      ? commonT("sourcePhone")
+      : appointment.source === "walk_in"
+        ? commonT("sourceWalkIn")
+        : appointment.source === "email"
+          ? commonT("sourceEmail")
+          : appointment.source === "other"
+            ? commonT("sourceOther")
+            : commonT("sourceOnline");
+
   return (
     <button
       type="button"
-      onClick={
-        onOpen
-      }
+      onClick={onOpen}
       className="romdoc-focus-ring block w-full rounded-[13px] border border-gray-200 bg-white p-[13px] text-left transition hover:border-[#036661]/40 hover:shadow-sm"
     >
       <div className="flex items-start gap-[13px]">
         <div className="w-[55px] shrink-0 rounded-[13px] bg-gray-50 px-[8px] py-[13px] text-center">
           <p className="text-lg font-bold text-gray-900">
             {formatTime(
-              appointment.calendarTime
+              appointment.calendarTime,
+              commonT("timeUnspecified")
             )}
           </p>
         </div>
@@ -938,35 +973,22 @@ function AgendaCard({
           <div className="flex flex-wrap items-start justify-between gap-[8px]">
             <div className="min-w-0">
               <p className="truncate font-semibold text-gray-900">
-                {
-                  appointment.patientName
-                }
+                {appointment.patientName}
               </p>
-
               <p className="mt-[5px] truncate text-sm text-gray-600">
-                {
-                  appointment.clinicName
-                }
+                {appointment.clinicName}
               </p>
             </div>
 
             <AppointmentStatusBadge
-              status={
-                appointment.status
-              }
+              status={appointment.status}
+              locale={locale}
             />
           </div>
 
           <div className="mt-[8px] flex flex-wrap gap-x-[13px] gap-y-[5px] text-xs text-gray-500">
-            <span>
-              {getSourceLabel(
-                appointment.source
-              )}
-            </span>
-
-            <span>
-              {appointment.patientPhone}
-            </span>
+            <span>{sourceLabel}</span>
+            <span>{appointment.patientPhone}</span>
           </div>
         </div>
       </div>
@@ -975,6 +997,10 @@ function AgendaCard({
 }
 
 function EmptyState() {
+  const t = useTranslations(
+    "DoctorAppointmentOperations.calendar.component"
+  );
+
   return (
     <div className="mt-[21px] rounded-[21px] border border-dashed border-gray-300 bg-gray-50 p-[34px] text-center">
       <div className="mx-auto flex h-[55px] w-[55px] items-center justify-center rounded-full bg-white text-2xl shadow-sm">
@@ -982,11 +1008,11 @@ function EmptyState() {
       </div>
 
       <h3 className="mt-[13px] text-lg font-bold text-gray-900">
-        Nu există încă programări
+        {t("emptyTitle")}
       </h3>
 
       <p className="mx-auto mt-[8px] max-w-md text-sm leading-6 text-gray-600">
-        Programările online și cele introduse manual vor apărea aici în ordine cronologică.
+        {t("emptyDescription")}
       </p>
     </div>
   );
@@ -999,6 +1025,27 @@ function AppointmentDetails({
   appointment: DoctorCalendarAppointment;
   onClose: () => void;
 }) {
+  const locale = normalizeAppLocale(
+    useLocale()
+  );
+  const t = useTranslations(
+    "DoctorAppointmentOperations.calendar.component"
+  );
+  const commonT = useTranslations(
+    "DoctorAppointmentOperations.common"
+  );
+
+  const sourceLabel =
+    appointment.source === "phone"
+      ? commonT("sourcePhone")
+      : appointment.source === "walk_in"
+        ? commonT("sourceWalkIn")
+        : appointment.source === "email"
+          ? commonT("sourceEmail")
+          : appointment.source === "other"
+            ? commonT("sourceOther")
+            : commonT("sourceOnline");
+
   return (
     <section
       id={`calendar-appointment-${appointment.id}`}
@@ -1007,29 +1054,26 @@ function AppointmentDetails({
       <div className="flex flex-col justify-between gap-[13px] sm:flex-row sm:items-start">
         <div>
           <p className="text-sm font-medium text-gray-500">
-            Programare selectată
+            {t("selected")}
           </p>
 
           <h2 className="mt-[5px] text-2xl font-bold text-gray-900">
-            {
-              appointment.patientName
-            }
+            {appointment.patientName}
           </h2>
 
           <div className="mt-[8px] flex flex-wrap items-center gap-[8px]">
             <AppointmentStatusBadge
-              status={
-                appointment.status
-              }
+              status={appointment.status}
+              locale={locale}
             />
 
             <span className="text-sm text-gray-500">
               {formatCompactDate(
-                appointment.calendarDate
-              )}
-              ,{" "}
-              {formatTime(
-                appointment.calendarTime
+                appointment.calendarDate,
+                locale
+              )}, {formatTime(
+                appointment.calendarTime,
+                commonT("timeUnspecified")
               )}
             </span>
           </div>
@@ -1037,40 +1081,36 @@ function AppointmentDetails({
 
         <Button
           type="button"
-          onClick={
-            onClose
-          }
+          onClick={onClose}
           variant="secondary"
           size="sm"
           className="w-fit"
         >
-          Închide
+          {t("close")}
         </Button>
       </div>
 
       <div className="mt-[21px] grid gap-[21px] sm:grid-cols-2 lg:grid-cols-3">
         <Detail
-          label="Clinica"
-          value={
-            appointment.clinicName
-          }
+          label={t("clinic")}
+          value={appointment.clinicName}
         />
 
         <Detail
-          label="Sursa"
-          value={getSourceLabel(
-            appointment.source
-          )}
+          label={t("source")}
+          value={sourceLabel}
         />
 
         <Detail
-          label="Data solicitată"
+          label={t("requestedDate")}
           value={`${formatCompactDate(
-            appointment.requestedDate
+            appointment.requestedDate,
+            locale
           )}${
             appointment.requestedTime
               ? `, ${formatTime(
-                  appointment.requestedTime
+                  appointment.requestedTime,
+                  commonT("timeUnspecified")
                 )}`
               : ""
           }`}
@@ -1078,13 +1118,15 @@ function AppointmentDetails({
 
         {appointment.scheduledDate && (
           <Detail
-            label="Data confirmată"
+            label={t("confirmedDate")}
             value={`${formatCompactDate(
-              appointment.scheduledDate
+              appointment.scheduledDate,
+              locale
             )}${
               appointment.scheduledTime
                 ? `, ${formatTime(
-                    appointment.scheduledTime
+                    appointment.scheduledTime,
+                    commonT("timeUnspecified")
                   )}`
                 : ""
             }`}
@@ -1093,10 +1135,8 @@ function AppointmentDetails({
         )}
 
         <ContactDetail
-          label="Telefon"
-          value={
-            appointment.patientPhone
-          }
+          label={t("phone")}
+          value={appointment.patientPhone}
           href={`tel:${appointment.patientPhone.replace(
             /\s+/g,
             ""
@@ -1104,55 +1144,35 @@ function AppointmentDetails({
         />
 
         <ContactDetail
-          label="E-mail"
-          value={
-            appointment.patientEmail
-          }
+          label={t("email")}
+          value={appointment.patientEmail}
           href={`mailto:${appointment.patientEmail}`}
         />
       </div>
 
       {appointment.notes && (
         <InfoBox
-          label="Observații"
-          value={
-            appointment.notes
-          }
+          label={t("notes")}
+          value={appointment.notes}
         />
       )}
 
       {appointment.rescheduleReason && (
         <InfoBox
-          label="Motivul reprogramării"
-          value={
-            appointment.rescheduleReason
-          }
+          label={t("rescheduleReason")}
+          value={appointment.rescheduleReason}
           blue
         />
       )}
 
-      <AppointmentActions
-        appointmentId={
-          appointment.id
-        }
-        currentStatus={
-          appointment.status
-        }
-        requestedDate={
-          appointment.requestedDate
-        }
-        requestedTime={
-          appointment.requestedTime
-        }
-        scheduledDate={
-          appointment.scheduledDate
-        }
-        scheduledTime={
-          appointment.scheduledTime
-        }
-        currentReason={
-          appointment.rescheduleReason
-        }
+      <TranslatedAppointmentActions
+        appointmentId={appointment.id}
+        currentStatus={appointment.status}
+        requestedDate={appointment.requestedDate}
+        requestedTime={appointment.requestedTime}
+        scheduledDate={appointment.scheduledDate}
+        scheduledTime={appointment.scheduledTime}
+        currentReason={appointment.rescheduleReason}
       />
     </section>
   );

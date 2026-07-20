@@ -1,10 +1,16 @@
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
+import ConfirmedAppointmentsWeeklyCalendar, {
+  type ConfirmedWeeklyAppointment,
+} from "@/components/doctor/confirmed-appointments-weekly-calendar";
 import CreateAppointmentForm from "@/components/doctor/create-appointment-form";
 import DoctorAppointmentsFilteredList, {
   type DoctorAppointmentListItem,
 } from "@/components/doctor/doctor-appointments-filtered-list";
 import { getAllowedClinicIdsForDoctor } from "@/lib/doctors/clinic-subaccount-scope";
+import { type AppLocale, selectTranslation } from "@/lib/i18n/app-locale";
+import { getStoredAppLocale } from "@/lib/i18n/server-app-locale";
 import { createClient } from "@/lib/supabase/server";
 
 type ClinicTranslation = {
@@ -79,28 +85,34 @@ function formatDoctorName(slug: string) {
     .join(" ");
 }
 
-function getClinicName(clinic: ClinicRelation | null) {
+function getClinicName(
+  clinic: ClinicRelation | null,
+  locale: AppLocale,
+  fallback: string
+) {
   if (!clinic) {
-    return "Clinică indisponibilă";
+    return fallback;
   }
 
-  const romanianTranslation =
-    clinic.clinic_translations?.find(
-      (translation: ClinicTranslation) =>
-        translation.locale === "ro"
-    );
-
-  const fallbackTranslation =
-    clinic.clinic_translations?.[0];
-
   return (
-    romanianTranslation?.name ??
-    fallbackTranslation?.name ??
+    selectTranslation(
+      clinic.clinic_translations,
+      locale
+    )?.name ??
     formatDoctorName(clinic.slug)
   );
 }
 
 export default async function DoctorAppointmentsPage() {
+  const locale = await getStoredAppLocale();
+  const t = await getTranslations({
+    locale,
+    namespace: "DoctorAppointmentOperations.appointments.page",
+  });
+  const commonT = await getTranslations({
+    locale,
+    namespace: "DoctorAppointmentOperations.common",
+  });
   const supabase = await createClient();
 
   const {
@@ -109,7 +121,9 @@ export default async function DoctorAppointmentsPage() {
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    redirect("/login");
+    redirect(
+      `/login?locale=${locale}&next=/doctor-dashboard/appointments`
+    );
   }
 
   const {
@@ -129,7 +143,7 @@ export default async function DoctorAppointmentsPage() {
   }
 
   if (!profile || profile.role !== "doctor") {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   const {
@@ -167,7 +181,7 @@ export default async function DoctorAppointmentsPage() {
           .join(" ")
       : doctor
         ? formatDoctorName(doctor.slug)
-        : "Medic";
+        : commonT("doctorFallback");
 
   if (!doctor) {
     return (
@@ -175,28 +189,25 @@ export default async function DoctorAppointmentsPage() {
         <div className="mx-auto max-w-4xl">
           <header>
             <p className="text-sm font-medium text-gray-500">
-              Panou medic
+              {commonT("doctorDashboard")}
             </p>
 
             <h1 className="mt-2 text-4xl font-bold text-gray-900">
-              Programările mele
+              {t("title")}
             </h1>
           </header>
 
           <section className="mt-10 rounded-2xl border border-amber-200 bg-amber-50 p-8">
             <h2 className="text-xl font-semibold text-amber-900">
-              Contul nu este asociat unui profil de medic
+              {t("missingTitle")}
             </h2>
 
             <p className="mt-3 leading-7 text-amber-800">
-              Contul tău are rolul de medic, dar nu este încă asociat unui profil
-              din directorul RomDoc.
+              {t("missingDescription")}
             </p>
 
             <p className="mt-3 leading-7 text-amber-800">
-              Dacă ai fost invitat de o clinică, folosește linkul primit de la
-              clinică pentru a crea contul de medic clinică. Dacă ești medic
-              independent, finalizează fluxul de înregistrare al medicilor.
+              {t("missingHelp")}
             </p>
           </section>
         </div>
@@ -272,7 +283,11 @@ export default async function DoctorAppointmentsPage() {
 
         return {
           id: doctorClinic.clinic_id,
-          name: getClinicName(clinic),
+          name: getClinicName(
+            clinic,
+            locale,
+            commonT("clinicUnavailable")
+          ),
         };
       }
     )
@@ -281,7 +296,7 @@ export default async function DoctorAppointmentsPage() {
         clinic !== null
     )
     .sort((firstClinic: ClinicOption, secondClinic: ClinicOption) =>
-      firstClinic.name.localeCompare(secondClinic.name, "ro")
+      firstClinic.name.localeCompare(secondClinic.name, locale)
     );
 
   let appointmentsQuery = supabase
@@ -361,8 +376,54 @@ export default async function DoctorAppointmentsPage() {
         source: appointment.source,
         status: appointment.status,
         createdAt: appointment.created_at,
-        clinicName: getClinicName(clinic),
+        clinicName: getClinicName(
+          clinic,
+          locale,
+          commonT("clinicUnavailable")
+        ),
       };
+    });
+
+  const confirmedCalendarAppointments: ConfirmedWeeklyAppointment[] =
+    appointments.flatMap((appointment: Appointment) => {
+      if (appointment.status !== "confirmed") {
+        return [];
+      }
+
+      const date =
+        appointment.scheduled_date ?? appointment.requested_date;
+      const time =
+        appointment.scheduled_time ?? appointment.requested_time;
+
+      if (!date || !time) {
+        return [];
+      }
+
+      const clinic = getFirstRelation(appointment.clinics);
+
+      return [
+        {
+          id: appointment.id,
+          patientProfileId: appointment.patient_profile_id,
+          patientName: appointment.patient_name,
+          patientEmail: appointment.patient_email,
+          patientPhone: appointment.patient_phone,
+          requestedDate: appointment.requested_date,
+          requestedTime: appointment.requested_time,
+          scheduledDate: appointment.scheduled_date,
+          scheduledTime: appointment.scheduled_time,
+          rescheduleReason: appointment.reschedule_reason,
+          notes: appointment.notes,
+          source: appointment.source,
+          status: appointment.status,
+          createdAt: appointment.created_at,
+          clinicName: getClinicName(
+          clinic,
+          locale,
+          commonT("clinicUnavailable")
+        ),
+        },
+      ];
     });
 
   return (
@@ -370,39 +431,35 @@ export default async function DoctorAppointmentsPage() {
       <div className="mx-auto max-w-6xl">
         <header>
           <p className="text-sm font-medium text-gray-500">
-            {isClinicSubAccount ? "Panou medic clinică" : "Panou medic"}
+            {isClinicSubAccount
+              ? commonT("clinicDoctorDashboard")
+              : commonT("doctorDashboard")}
           </p>
 
           <h1 className="mt-2 text-4xl font-bold text-gray-900">
-            Programările mele
+            {t("title")}
           </h1>
 
           <p className="mt-3 text-gray-600">
-            Bun venit, {displayName}. Aici poți crea, confirma, reprograma,
-            finaliza sau anula programările pacienților tăi.
+            {t("welcome", {name: displayName})}
           </p>
         </header>
 
         {isClinicSubAccount && (
           <div className="mt-8 rounded-2xl border border-green-200 bg-green-50 p-5 text-green-900">
-            Acesta este un cont de medic clinică. Programările sunt limitate la
-            locația aprobată atribuită de Clinic Manager.
+            {t("clinicScope")}
           </div>
         )}
 
         {doctor.status === "suspended" && (
           <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900">
-            Contul de medic este suspendat temporar. Poți consulta informațiile
-            existente, dar nu poți crea sau modifica programări până la
-            reactivare.
+            {t("suspended")}
           </div>
         )}
 
         {isClinicSubAccount && clinicOptions.length === 0 && (
           <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900">
-            Clinic Manager nu a atribuit încă o locație aprobată acestui cont de
-            medic. Programările și disponibilitatea devin disponibile după
-            atribuirea locației.
+            {t("noAssignedClinic")}
           </div>
         )}
 
@@ -411,11 +468,14 @@ export default async function DoctorAppointmentsPage() {
           clinics={clinicOptions}
         />
 
+        <ConfirmedAppointmentsWeeklyCalendar
+          appointments={confirmedCalendarAppointments}
+        />
+
         <section className="mt-10">
           {appointmentsError ? (
             <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-red-800 shadow-sm">
-              Programările nu au putut fi încărcate. Verifică politicile Supabase
-              și încearcă din nou.
+              {t("loadError")}
             </div>
           ) : (
             <DoctorAppointmentsFilteredList

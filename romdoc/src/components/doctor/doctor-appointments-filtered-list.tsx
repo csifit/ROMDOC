@@ -1,105 +1,78 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  useMemo,
+  useState,
+} from "react";
+import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
 
 import DoctorAppointmentDetailPanel, {
   type DoctorAppointmentDetail,
 } from "@/components/doctor/doctor-appointment-detail-panel";
+import {
+  getAppointmentStatusLabel,
+} from "@/lib/appointments/appointment-status";
+import {
+  type AppLocale,
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
 
-type AppointmentStatus =
-  | "pending"
-  | "confirmed"
-  | "rescheduled"
-  | "cancelled"
-  | "completed"
-  | "no_show";
-
-export type DoctorAppointmentListItem = DoctorAppointmentDetail;
+export type DoctorAppointmentListItem =
+  DoctorAppointmentDetail;
 
 type DoctorAppointmentsFilteredListProps = {
   appointments: DoctorAppointmentListItem[];
 };
 
-const STATUS_OPTIONS: Array<{
-  value: AppointmentStatus;
-  label: string;
-}> = [
-  {
-    value: "confirmed",
-    label: "Confirmată",
-  },
-  {
-    value: "pending",
-    label: "În așteptare",
-  },
-  {
-    value: "rescheduled",
-    label: "Reprogramată",
-  },
-  {
-    value: "cancelled",
-    label: "Anulată",
-  },
-  {
-    value: "completed",
-    label: "Finalizată",
-  },
-  {
-    value: "no_show",
-    label: "Neprezentare",
-  },
-];
+const INTL_LOCALE: Record<AppLocale, string> = {
+  ro: "ro-RO",
+  en: "en-GB",
+  de: "de-DE",
+};
 
-function getStatusLabel(status: string) {
-  switch (status) {
-    case "confirmed":
-      return "Confirmată";
+const STATUS_VALUES = [
+  "confirmed",
+  "pending",
+  "rescheduled",
+  "cancelled",
+  "completed",
+  "no_show",
+] as const;
 
-    case "rescheduled":
-      return "Reprogramată";
-
-    case "cancelled":
-      return "Anulată";
-
-    case "completed":
-      return "Finalizată";
-
-    case "no_show":
-      return "Neprezentare";
-
-    default:
-      return "În așteptare";
-  }
-}
-
-function getStatusClasses(status: string) {
+function statusClasses(status: string) {
   switch (status) {
     case "confirmed":
       return "bg-green-100 text-green-800";
-
     case "rescheduled":
       return "bg-blue-100 text-blue-800";
-
     case "cancelled":
       return "bg-red-100 text-red-800";
-
     case "completed":
       return "bg-gray-200 text-gray-800";
-
     case "no_show":
       return "bg-orange-100 text-orange-900";
-
     default:
       return "bg-amber-100 text-amber-800";
   }
 }
 
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat("ro-RO", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(new Date(`${date}T12:00:00`));
+function formatDate(
+  date: string,
+  locale: AppLocale
+) {
+  return new Intl.DateTimeFormat(
+    INTL_LOCALE[locale],
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }
+  ).format(
+    new Date(`${date}T12:00:00`)
+  );
 }
 
 function normalizeDatePart(
@@ -111,7 +84,7 @@ function normalizeDatePart(
     .slice(0, maximumLength);
 }
 
-function getEffectiveDate(
+function effectiveDate(
   appointment: DoctorAppointmentListItem
 ) {
   return (
@@ -120,7 +93,7 @@ function getEffectiveDate(
   );
 }
 
-function getEffectiveTime(
+function effectiveTime(
   appointment: DoctorAppointmentListItem
 ) {
   return (
@@ -132,70 +105,57 @@ function getEffectiveTime(
 export default function DoctorAppointmentsFilteredList({
   appointments,
 }: DoctorAppointmentsFilteredListProps) {
+  const locale = normalizeAppLocale(
+    useLocale()
+  );
+  const t = useTranslations(
+    "DoctorAppointmentOperations.appointments.list"
+  );
+
   const [statusFilter, setStatusFilter] =
-    useState<string>("all");
-  const [dayFilter, setDayFilter] = useState("");
-  const [monthFilter, setMonthFilter] = useState("");
-  const [yearFilter, setYearFilter] = useState("");
+    useState("all");
+  const [dayFilter, setDayFilter] =
+    useState("");
+  const [monthFilter, setMonthFilter] =
+    useState("");
+  const [yearFilter, setYearFilter] =
+    useState("");
   const [openAppointmentId, setOpenAppointmentId] =
     useState<string | null>(null);
 
-  const filteredAppointments = useMemo(() => {
-    return appointments.filter((appointment) => {
-      if (
-        statusFilter !== "all" &&
-        appointment.status !== statusFilter
-      ) {
-        return false;
-      }
+  const filteredAppointments = useMemo(
+    () =>
+      appointments.filter((appointment) => {
+        if (
+          statusFilter !== "all" &&
+          appointment.status !== statusFilter
+        ) {
+          return false;
+        }
 
-      const effectiveDate = getEffectiveDate(appointment);
-      const [
-        appointmentYear,
-        appointmentMonth,
-        appointmentDay,
-      ] = effectiveDate.split("-");
-
-      const normalizedDay =
-        dayFilter.length > 0
+        const [year, month, day] =
+          effectiveDate(appointment).split("-");
+        const normalizedDay = dayFilter
           ? dayFilter.padStart(2, "0")
           : "";
-
-      const normalizedMonth =
-        monthFilter.length > 0
+        const normalizedMonth = monthFilter
           ? monthFilter.padStart(2, "0")
           : "";
 
-      if (
-        normalizedDay &&
-        appointmentDay !== normalizedDay
-      ) {
-        return false;
-      }
-
-      if (
-        normalizedMonth &&
-        appointmentMonth !== normalizedMonth
-      ) {
-        return false;
-      }
-
-      if (
-        yearFilter &&
-        !appointmentYear.startsWith(yearFilter)
-      ) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [
-    appointments,
-    dayFilter,
-    monthFilter,
-    statusFilter,
-    yearFilter,
-  ]);
+        return !(
+          (normalizedDay && day !== normalizedDay) ||
+          (normalizedMonth && month !== normalizedMonth) ||
+          (yearFilter && !year.startsWith(yearFilter))
+        );
+      }),
+    [
+      appointments,
+      dayFilter,
+      monthFilter,
+      statusFilter,
+      yearFilter,
+    ]
+  );
 
   const filtersAreActive =
     statusFilter !== "all" ||
@@ -216,19 +176,16 @@ export default function DoctorAppointmentsFilteredList({
       <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">
-            Lista programărilor
+            {t("title")}
           </h2>
-
           <p className="mt-1 text-sm text-gray-600">
             {filteredAppointments.length === 1
-              ? "1 programare afișată"
-              : `${filteredAppointments.length} programări afișate`}
-
+              ? t("shownOne")
+              : t("shownMany", {
+                  count: filteredAppointments.length,
+                })}
             {filtersAreActive && (
-              <span>
-                {" "}
-                din {appointments.length}
-              </span>
+              <> {t("ofTotal", {total: appointments.length})}</>
             )}
           </p>
         </div>
@@ -237,222 +194,166 @@ export default function DoctorAppointmentsFilteredList({
           <button
             type="button"
             onClick={resetFilters}
-            className="w-fit rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:border-[#036661] hover:text-[#036661]"
+            className="romdoc-button romdoc-button-secondary romdoc-button-sm"
           >
-            Șterge filtrele
+            {t("clearFilters")}
           </button>
         )}
       </div>
 
-      <div className="mb-5 grid gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm xl:grid-cols-2">
+      <div className="mb-5 grid gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm md:grid-cols-[minmax(220px,1fr)_minmax(260px,1.4fr)]">
         <label className="block">
-          <span className="text-sm font-semibold text-gray-700">
-            Filtrează după status
+          <span className="romdoc-label">
+            {t("filterStatus")}
           </span>
-
           <select
             value={statusFilter}
             onChange={(event) => {
               setStatusFilter(event.target.value);
               setOpenAppointmentId(null);
             }}
-            className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition-colors focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+            className="romdoc-select mt-2"
           >
             <option value="all">
-              Toate statusurile
+              {t("allStatuses")}
             </option>
-
-            {STATUS_OPTIONS.map((option) => (
-              <option
-                key={option.value}
-                value={option.value}
-              >
-                {option.label}
+            {STATUS_VALUES.map((status) => (
+              <option key={status} value={status}>
+                {getAppointmentStatusLabel(status, locale)}
               </option>
             ))}
           </select>
         </label>
 
         <fieldset>
-          <legend className="text-sm font-semibold text-gray-700">
-            Data programării
+          <legend className="romdoc-label">
+            {t("date")}
           </legend>
-
-          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1.4fr)] items-center gap-2">
+          <div className="mt-2 grid grid-cols-3 gap-2">
             <input
-              type="text"
-              inputMode="numeric"
-              aria-label="Ziua programării"
-              placeholder="DD"
               value={dayFilter}
               onChange={(event) => {
                 setDayFilter(
-                  normalizeDatePart(
-                    event.target.value,
-                    2
-                  )
+                  normalizeDatePart(event.target.value, 2)
                 );
                 setOpenAppointmentId(null);
               }}
-              className="w-full min-w-0 rounded-xl border border-gray-300 px-3 py-3 text-center text-gray-900 outline-none transition-colors focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
-            />
-
-            <span
-              aria-hidden="true"
-              className="font-bold text-gray-400"
-            >
-              :
-            </span>
-
-            <input
-              type="text"
               inputMode="numeric"
-              aria-label="Luna programării"
-              placeholder="MM"
+              aria-label={t("dayAria")}
+              placeholder="DD"
+              className="romdoc-input"
+            />
+            <input
               value={monthFilter}
               onChange={(event) => {
                 setMonthFilter(
-                  normalizeDatePart(
-                    event.target.value,
-                    2
-                  )
+                  normalizeDatePart(event.target.value, 2)
                 );
                 setOpenAppointmentId(null);
               }}
-              className="w-full min-w-0 rounded-xl border border-gray-300 px-3 py-3 text-center text-gray-900 outline-none transition-colors focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
-            />
-
-            <span
-              aria-hidden="true"
-              className="font-bold text-gray-400"
-            >
-              :
-            </span>
-
-            <input
-              type="text"
               inputMode="numeric"
-              aria-label="Anul programării"
-              placeholder="YYYY"
+              aria-label={t("monthAria")}
+              placeholder="MM"
+              className="romdoc-input"
+            />
+            <input
               value={yearFilter}
               onChange={(event) => {
                 setYearFilter(
-                  normalizeDatePart(
-                    event.target.value,
-                    4
-                  )
+                  normalizeDatePart(event.target.value, 4)
                 );
                 setOpenAppointmentId(null);
               }}
-              className="w-full min-w-0 rounded-xl border border-gray-300 px-3 py-3 text-center text-gray-900 outline-none transition-colors focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+              inputMode="numeric"
+              aria-label={t("yearAria")}
+              placeholder="YYYY"
+              className="romdoc-input"
             />
           </div>
-
-          <p className="mt-2 text-xs text-gray-500">
-            Poți completa întreaga dată sau numai ziua,
-            luna ori anul.
+          <p className="romdoc-help-text mt-2">
+            {t("dateHelp")}
           </p>
         </fieldset>
       </div>
 
       {filteredAppointments.length > 0 ? (
-        <div className="space-y-3">
-          <div className="hidden min-w-[820px] grid-cols-[145px_minmax(170px,1.2fr)_minmax(170px,1fr)_140px_40px] gap-4 px-5 text-xs font-semibold uppercase tracking-wide text-gray-500 md:grid">
-            <span>Data și ora</span>
-            <span>Pacient</span>
-            <span>Clinică</span>
-            <span>Status</span>
-            <span className="sr-only">Extinde</span>
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="hidden grid-cols-[170px_1fr_1fr_150px_36px] gap-4 border-b border-gray-200 bg-gray-50 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 md:grid">
+            <span>{t("dateTime")}</span>
+            <span>{t("patient")}</span>
+            <span>{t("clinic")}</span>
+            <span>{t("status")}</span>
+            <span />
           </div>
 
           {filteredAppointments.map((appointment) => {
-            const isOpen =
-              openAppointmentId === appointment.id;
-            const effectiveDate =
-              getEffectiveDate(appointment);
-            const effectiveTime =
-              getEffectiveTime(appointment);
+            const open = openAppointmentId === appointment.id;
+            const time = effectiveTime(appointment);
 
             return (
               <article
                 key={appointment.id}
-                className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
+                className="border-b border-gray-200 last:border-b-0"
               >
-                <div className="overflow-x-auto">
-                  <button
-                    type="button"
-                    aria-expanded={isOpen}
-                    aria-controls={`appointment-details-${appointment.id}`}
-                    onClick={() => {
-                      setOpenAppointmentId(
-                        isOpen ? null : appointment.id
-                      );
-                    }}
-                    className="grid min-w-[820px] w-full grid-cols-[145px_minmax(170px,1.2fr)_minmax(170px,1fr)_140px_40px] items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#036661]"
-                  >
-                    <span className="font-semibold text-gray-900">
-                      {formatDate(effectiveDate)}
-
-                      {effectiveTime
-                        ? `, ${effectiveTime.slice(0, 5)}`
-                        : ""}
-                    </span>
-
-                    <span className="truncate font-medium text-gray-900">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOpenAppointmentId(
+                      open ? null : appointment.id
+                    )
+                  }
+                  aria-expanded={open}
+                  className="romdoc-focus-ring grid w-full gap-3 px-5 py-4 text-left hover:bg-gray-50 md:grid-cols-[170px_1fr_1fr_150px_36px] md:items-center md:gap-4"
+                >
+                  <span className="text-sm font-medium text-gray-900">
+                    {formatDate(effectiveDate(appointment), locale)}
+                    {time ? ` · ${time.slice(0, 5)}` : ""}
+                  </span>
+                  <span>
+                    <span className="block font-semibold text-gray-900">
                       {appointment.patientName}
                     </span>
-
-                    <span className="truncate text-gray-700">
-                      {appointment.clinicName}
+                    <span className="block text-xs text-gray-500">
+                      {appointment.patientPhone}
                     </span>
-
-                    <span
-                      className={`w-fit rounded-full px-3 py-1 text-sm font-medium ${getStatusClasses(
-                        appointment.status
-                      )}`}
-                    >
-                      {getStatusLabel(appointment.status)}
-                    </span>
-
-                    <svg
-                      aria-hidden="true"
-                      viewBox="0 0 20 20"
-                      fill="none"
-                      className={`h-5 w-5 justify-self-end text-gray-500 transition-transform ${
-                        isOpen ? "rotate-180" : ""
-                      }`}
-                    >
-                      <path
-                        d="m5 7.5 5 5 5-5"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
-                </div>
-
-                {isOpen && (
-                  <div
-                    id={`appointment-details-${appointment.id}`}
-                    className="border-t border-gray-200"
+                  </span>
+                  <span className="text-sm text-gray-700">
+                    {appointment.clinicName}
+                  </span>
+                  <span
+                    className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${statusClasses(
+                      appointment.status
+                    )}`}
                   >
-                    <DoctorAppointmentDetailPanel
-                      appointment={appointment}
-                      variant="inline"
-                    />
-                  </div>
+                    {getAppointmentStatusLabel(
+                      appointment.status,
+                      locale
+                    )}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className={`text-center text-gray-400 transition-transform ${
+                      open ? "rotate-180" : ""
+                    }`}
+                  >
+                    ˅
+                  </span>
+                </button>
+
+                {open && (
+                  <DoctorAppointmentDetailPanel
+                    appointment={appointment}
+                  />
                 )}
               </article>
             );
           })}
         </div>
       ) : (
-        <div className="rounded-2xl border border-gray-200 bg-white p-8 text-gray-600 shadow-sm">
+        <div className="rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-gray-600">
           {appointments.length === 0
-            ? "Nu există încă programări pentru profilul tău."
-            : "Nu există programări care corespund filtrelor selectate."}
+            ? t("empty")
+            : t("noMatches")}
         </div>
       )}
     </section>

@@ -1,13 +1,17 @@
 import {
   getAppointmentStatus,
+  getAppointmentStatusLabel,
   type AppointmentStatus,
 } from "@/lib/appointments/appointment-status";
+import type {
+  AppLocale,
+} from "@/lib/i18n/app-locale";
 
 type AppointmentStatusBadgeProps = {
   status:
     | AppointmentStatus
     | string;
-  locale?: "ro" | "en";
+  locale?: AppLocale;
   showDot?: boolean;
   className?: string;
 };
@@ -49,10 +53,10 @@ export default function AppointmentStatusBadge({
       )}
 
       <span>
-        {locale ===
-        "en"
-          ? definition.labelEn
-          : definition.labelRo}
+        {getAppointmentStatusLabel(
+          status,
+          locale
+        )}
       </span>
     </span>
   );

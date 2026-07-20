@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import {
   redirect,
 } from "next/navigation";
@@ -11,6 +12,8 @@ import {
 import {
   createAdminClient,
 } from "@/lib/supabase/admin";
+import { type AppLocale, selectTranslation } from "@/lib/i18n/app-locale";
+import { getStoredAppLocale } from "@/lib/i18n/server-app-locale";
 import {
   createClient,
 } from "@/lib/supabase/server";
@@ -85,32 +88,27 @@ function firstRelation<T>(
 }
 
 function clinicName(
-  clinic:
-    | ClinicRelation
-    | null
+  clinic: ClinicRelation | null,
+  locale: AppLocale,
+  fallback: string
 ) {
   if (!clinic) {
-    return "Clinică indisponibilă";
+    return fallback;
   }
 
   return (
-    clinic
-      .clinic_translations
-      ?.find(
-        (item) =>
-          item.locale ===
-          "ro"
-      )?.name ??
-    clinic
-      .clinic_translations?.[0]
-      ?.name ??
+    selectTranslation(
+      clinic.clinic_translations,
+      locale
+    )?.name ??
     clinic.slug
   );
 }
 
 function appointmentDetail(
-  appointment:
-    AppointmentRow
+  appointment: AppointmentRow,
+  locale: AppLocale,
+  clinicFallback: string
 ): DoctorAppointmentDetail {
   return {
     id:
@@ -145,14 +143,16 @@ function appointmentDetail(
       clinicName(
         firstRelation(
           appointment.clinics
-        )
+        ),
+        locale,
+        clinicFallback
       ),
   };
 }
 
 function appointmentDateLabel(
-  appointment:
-    AppointmentRow
+  appointment: AppointmentRow,
+  locale: AppLocale
 ) {
   const date =
     appointment.scheduled_date ??
@@ -164,7 +164,11 @@ function appointmentDateLabel(
 
   const formattedDate =
     new Intl.DateTimeFormat(
-      "ro-RO",
+      locale === "ro"
+        ? "ro-RO"
+        : locale === "de"
+          ? "de-DE"
+          : "en-GB",
       {
         day: "2-digit",
         month: "short",
@@ -188,6 +192,15 @@ function appointmentDateLabel(
 }
 
 export default async function DoctorInboxPage() {
+  const locale = await getStoredAppLocale();
+  const t = await getTranslations({
+    locale,
+    namespace: "DoctorAppointmentOperations.inbox.page",
+  });
+  const commonT = await getTranslations({
+    locale,
+    namespace: "DoctorAppointmentOperations.common",
+  });
   const supabase =
     await createClient();
 
@@ -208,7 +221,7 @@ export default async function DoctorInboxPage() {
     !user
   ) {
     redirect(
-      "/login?next=/doctor-dashboard/inbox"
+      `/login?locale=${locale}&next=/doctor-dashboard/inbox`
     );
   }
 
@@ -466,7 +479,9 @@ export default async function DoctorInboxPage() {
   ) {
     const detail =
       appointmentDetail(
-        appointment
+        appointment,
+        locale,
+        commonT("clinicUnavailable")
       );
 
     if (
@@ -477,10 +492,15 @@ export default async function DoctorInboxPage() {
         id: `request-${appointment.id}`,
         type:
           "request",
-        title: `Cerere nouă de la ${appointment.patient_name}`,
-        description: `Programare solicitată pentru ${appointmentDateLabel(
-          appointment
-        )}.`,
+        title: t("newRequestTitle", {
+          patient: appointment.patient_name,
+        }),
+        description: t("requestedFor", {
+          date: appointmentDateLabel(
+            appointment,
+            locale
+          ),
+        }),
         createdAt:
           appointment.created_at,
         unread: true,
@@ -502,13 +522,19 @@ export default async function DoctorInboxPage() {
         type:
           "operational",
         title:
-          appointment.status ===
-          "cancelled"
-            ? `Programare anulată — ${appointment.patient_name}`
-            : `Programare reprogramată — ${appointment.patient_name}`,
-        description: `Actualizare pentru programarea din ${appointmentDateLabel(
-          appointment
-        )}.`,
+          appointment.status === "cancelled"
+            ? t("cancelledTitle", {
+                patient: appointment.patient_name,
+              })
+            : t("rescheduledTitle", {
+                patient: appointment.patient_name,
+              }),
+        description: t("updateFor", {
+          date: appointmentDateLabel(
+            appointment,
+            locale
+          ),
+        }),
         createdAt:
           appointment.updated_at,
         unread: false,
@@ -554,16 +580,20 @@ export default async function DoctorInboxPage() {
       id: `message-${message.id}`,
       type:
         "message",
-      title: `Mesaj de la ${appointment.patient_name}`,
+      title: t("messageFrom", {
+        patient: appointment.patient_name,
+      }),
       description:
         message.body?.trim() ||
-        "Mesaj cu atașament",
+        t("attachmentMessage"),
       createdAt:
         message.created_at,
       unread,
       appointment:
         appointmentDetail(
-          appointment
+          appointment,
+          locale,
+          commonT("clinicUnavailable")
         ),
     });
   }
@@ -605,22 +635,22 @@ export default async function DoctorInboxPage() {
     <main>
       <header>
         <p className="text-sm font-semibold text-[#036661]">
-          Panou medic
+          {commonT("doctorDashboard")}
         </p>
 
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-          Inbox
+          {t("title")}
         </h1>
 
         <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-          Cereri noi, mesaje de la pacienți și actualizări operaționale într-un singur loc.
+          {t("description")}
         </p>
       </header>
 
       <section className="mt-6 grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Necitite
+            {t("unread")}
           </p>
 
           <p className="mt-1 text-2xl font-bold text-gray-900">
@@ -632,7 +662,7 @@ export default async function DoctorInboxPage() {
 
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
-            Cereri noi
+            {t("newRequests")}
           </p>
 
           <p className="mt-1 text-2xl font-bold text-amber-950">
@@ -644,7 +674,7 @@ export default async function DoctorInboxPage() {
 
         <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-blue-800">
-            Conversații
+            {t("conversations")}
           </p>
 
           <p className="mt-1 text-2xl font-bold text-blue-950">

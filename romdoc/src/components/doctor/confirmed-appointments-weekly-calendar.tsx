@@ -1,10 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  useMemo,
+  useState,
+} from "react";
+import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import roLocale from "@fullcalendar/core/locales/ro";
+import enGbLocale from "@fullcalendar/core/locales/en-gb";
+import deLocale from "@fullcalendar/core/locales/de";
 import type {
   EventClickArg,
   EventContentArg,
@@ -14,6 +23,9 @@ import type {
 import DoctorAppointmentDetailPanel, {
   type DoctorAppointmentDetail,
 } from "@/components/doctor/doctor-appointment-detail-panel";
+import {
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
 
 export type ConfirmedWeeklyAppointment =
   DoctorAppointmentDetail;
@@ -21,6 +33,12 @@ export type ConfirmedWeeklyAppointment =
 type Props = {
   appointments: ConfirmedWeeklyAppointment[];
 };
+
+const FULL_CALENDAR_LOCALE = {
+  ro: roLocale,
+  en: enGbLocale,
+  de: deLocale,
+} as const;
 
 function normalizeTime(time: string) {
   if (/^\d{2}:\d{2}:\d{2}$/.test(time)) {
@@ -56,6 +74,13 @@ function effectiveTime(
 export default function ConfirmedAppointmentsWeeklyCalendar({
   appointments,
 }: Props) {
+  const locale = normalizeAppLocale(
+    useLocale()
+  );
+  const t = useTranslations(
+    "DoctorAppointmentOperations.appointments.weekly"
+  );
+
   const [selectedAppointment, setSelectedAppointment] =
     useState<ConfirmedWeeklyAppointment | null>(null);
 
@@ -124,11 +149,11 @@ export default function ConfirmedAppointmentsWeeklyCalendar({
         <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">
-              Calendarul programărilor confirmate
+              {t("title")}
             </h2>
 
             <p className="mt-1 text-sm text-gray-600">
-              Apasă pe o programare pentru a deschide aceleași detalii și acțiuni folosite în listă.
+              {t("description")}
             </p>
           </div>
 
@@ -136,15 +161,17 @@ export default function ConfirmedAppointmentsWeeklyCalendar({
             <span className="h-3 w-3 rounded-full bg-green-600" />
             <span>
               {appointments.length === 1
-                ? "1 programare confirmată"
-                : `${appointments.length} programări confirmate`}
+                ? t("one")
+                : t("many", {
+                    count: appointments.length,
+                  })}
             </span>
           </div>
         </div>
 
         {appointments.length === 0 ? (
           <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-5 py-8 text-center text-gray-600">
-            Nu există încă programări confirmate de afișat în calendar.
+            {t("empty")}
           </div>
         ) : (
           <div className="doctor-calendar overflow-x-auto">
@@ -154,7 +181,7 @@ export default function ConfirmedAppointmentsWeeklyCalendar({
                   timeGridPlugin,
                   interactionPlugin,
                 ]}
-                locale={roLocale}
+                locale={FULL_CALENDAR_LOCALE[locale]}
                 initialView="timeGridWeek"
                 events={events}
                 eventContent={renderEventContent}
@@ -188,8 +215,8 @@ export default function ConfirmedAppointmentsWeeklyCalendar({
                   right: "timeGridWeek",
                 }}
                 buttonText={{
-                  today: "Astăzi",
-                  week: "Săptămână",
+                  today: t("today"),
+                  week: t("week"),
                 }}
               />
             </div>
@@ -201,7 +228,9 @@ export default function ConfirmedAppointmentsWeeklyCalendar({
         <DoctorAppointmentDetailPanel
           appointment={selectedAppointment}
           variant="dialog"
-          onClose={() => setSelectedAppointment(null)}
+          onClose={() =>
+            setSelectedAppointment(null)
+          }
         />
       )}
     </>

@@ -1,11 +1,26 @@
 import Link from "next/link";
 import {
+  NextIntlClientProvider,
+} from "next-intl";
+import {
+  getTranslations,
+} from "next-intl/server";
+import {
   notFound,
   redirect,
 } from "next/navigation";
 
 import DoctorPatientFolderManager from "@/components/doctor/doctor-patient-folder-manager";
 import StaffPatientFolderManager from "@/components/staff/staff-patient-folder-manager";
+import {
+  getAppointmentStatusLabel,
+} from "@/lib/appointments/appointment-status";
+import {
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
+import {
+  getStoredAppLocale,
+} from "@/lib/i18n/server-app-locale";
 import {
   canReadMedicalFolder,
   isUuid,
@@ -17,54 +32,61 @@ import {
   createClient,
 } from "@/lib/supabase/server";
 
+import roMessages from "../../../../messages/ro.json";
+import enMessages from "../../../../messages/en.json";
+import deMessages from "../../../../messages/de.json";
+
 type Props = {
   params: Promise<{
     appointmentId: string;
   }>;
+  searchParams: Promise<{
+    locale?: string;
+  }>;
 };
 
-function getStatusLabel(status: string) {
-  switch (status) {
-    case "confirmed":
-      return "Confirmată";
-    case "rescheduled":
-      return "Reprogramată";
-    case "completed":
-      return "Finalizată";
-    default:
-      return status;
-  }
-}
+const messagesByLocale = {
+  ro: roMessages,
+  en: enMessages,
+  de: deMessages,
+} as const;
 
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat("ro-RO", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(new Date(`${date}T12:00:00`));
-}
+const INTL_LOCALE = {
+  ro: "ro-RO",
+  en: "en-GB",
+  de: "de-DE",
+} as const;
 
 export default async function MedicalFolderPage({
   params,
+  searchParams,
 }: Props) {
-  const { appointmentId } = await params;
+  const {appointmentId} = await params;
+  const query = await searchParams;
+  const storedLocale = await getStoredAppLocale();
+  const locale = query.locale
+    ? normalizeAppLocale(query.locale)
+    : storedLocale;
+  const t = await getTranslations({
+    locale,
+    namespace: "DoctorAppointmentOperations.folder.page",
+  });
 
   if (!isUuid(appointmentId)) {
     notFound();
   }
 
   const supabase = await createClient();
-
   const {
-    data: { user },
+    data: {user},
     error: userError,
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
+    const nextPath =
+      `/medical-folder/${appointmentId}?locale=${locale}`;
     redirect(
-      `/login?next=${encodeURIComponent(
-        `/medical-folder/${appointmentId}`
-      )}`
+      `/login?locale=${locale}&next=${encodeURIComponent(nextPath)}`
     );
   }
 
@@ -89,7 +111,6 @@ export default async function MedicalFolderPage({
   }
 
   const admin = createAdminClient();
-
   const {
     data: appointment,
     error: appointmentError,
@@ -158,74 +179,90 @@ export default async function MedicalFolderPage({
   const effectiveDate =
     appointment.scheduled_date ??
     appointment.requested_date;
-
   const effectiveTime =
     appointment.scheduled_time ??
     appointment.requested_time;
-
   const returnPath =
     profile.role === "doctor"
       ? "/doctor-dashboard/appointments"
       : "/staff-dashboard";
+  const formattedDate =
+    new Intl.DateTimeFormat(
+      INTL_LOCALE[locale],
+      {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }
+    ).format(
+      new Date(`${effectiveDate}T12:00:00`)
+    );
 
   return (
-    <main className="min-h-screen bg-[#F0EEE9] px-4 py-8 sm:px-6">
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-            <div>
-              <p className="text-sm font-semibold text-[#036661]">
-                RomDoc
-              </p>
-
-              <h1 className="mt-2 text-3xl font-bold text-gray-900">
-                Dosarul medical al pacientului
-              </h1>
-
-              <p className="mt-3 text-lg font-semibold text-gray-900">
-                {appointment.patient_name}
-              </p>
-
-              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
-                <span>
-                  Status: <strong>{getStatusLabel(appointment.status)}</strong>
-                </span>
-
-                <span>
-                  Data:{" "}
-                  <strong>
-                    {formatDate(effectiveDate)}
-                    {effectiveTime
-                      ? `, ${effectiveTime.slice(0, 5)}`
-                      : ""}
-                  </strong>
-                </span>
+    <NextIntlClientProvider
+      locale={locale}
+      messages={messagesByLocale[locale]}
+    >
+      <main className="min-h-screen bg-[#F0EEE9] px-4 py-8 sm:px-6">
+        <div className="mx-auto max-w-7xl">
+          <header className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+              <div>
+                <p className="text-sm font-semibold text-[#036661]">
+                  RomDoc
+                </p>
+                <h1 className="mt-2 text-3xl font-bold text-gray-900">
+                  {t("title")}
+                </h1>
+                <p className="mt-3 text-lg font-semibold text-gray-900">
+                  {appointment.patient_name}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
+                  <span>
+                    {t("status")}: {" "}
+                    <strong>
+                      {getAppointmentStatusLabel(
+                        appointment.status,
+                        locale
+                      )}
+                    </strong>
+                  </span>
+                  <span>
+                    {t("date")}: {" "}
+                    <strong>
+                      {formattedDate}
+                      {effectiveTime
+                        ? `, ${effectiveTime.slice(0, 5)}`
+                        : ""}
+                    </strong>
+                  </span>
+                </div>
               </div>
+
+              <Link
+                href={returnPath}
+                className="romdoc-button romdoc-button-secondary w-fit"
+              >
+                {t("back")}
+              </Link>
             </div>
+          </header>
 
-            <Link
-              href={returnPath}
-              className="romdoc-button romdoc-button-secondary w-fit"
-            >
-              Înapoi la programări
-            </Link>
-          </div>
-        </header>
-
-        {profile.role === "doctor" ? (
-          <DoctorPatientFolderManager
-            appointmentId={appointment.id}
-            appointmentStatus={appointment.status}
-            standalone
-          />
-        ) : (
-          <StaffPatientFolderManager
-            appointmentId={appointment.id}
-            appointmentStatus={appointment.status}
-            standalone
-          />
-        )}
-      </div>
-    </main>
+          {profile.role === "doctor" ? (
+            <DoctorPatientFolderManager
+              appointmentId={appointment.id}
+              appointmentStatus={appointment.status}
+              standalone
+            />
+          ) : (
+            <StaffPatientFolderManager
+              appointmentId={appointment.id}
+              appointmentStatus={appointment.status}
+              standalone
+            />
+          )}
+        </div>
+      </main>
+    </NextIntlClientProvider>
   );
 }
