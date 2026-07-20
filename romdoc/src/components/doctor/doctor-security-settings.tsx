@@ -1,6 +1,10 @@
 "use client";
 
 import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
+import {
   type FormEvent,
   useCallback,
   useEffect,
@@ -9,14 +13,26 @@ import {
 } from "react";
 
 import Button from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/client";
+import {
+  createClient,
+} from "@/lib/supabase/client";
+import {
+  type AppLocale,
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
 
 type TotpFactor = {
   id: string;
   status: "verified";
-  friendly_name?: string;
-  created_at?: string;
-  updated_at?: string;
+
+  friendly_name?:
+    string;
+
+  created_at?:
+    string;
+
+  updated_at?:
+    string;
 };
 
 type EnrollmentState = {
@@ -33,36 +49,30 @@ type ViewState =
   | "disabling"
   | "error";
 
-function formatDate(
-  value:
-    | string
-    | undefined
-) {
-  if (!value) {
-    return null;
-  }
-
-  const date =
-    new Date(value);
-
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
-    return null;
-  }
-
-  return new Intl.DateTimeFormat(
-    "ro-RO",
-    {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }
-  ).format(date);
-}
+const DATE_LOCALE:
+  Record<
+    AppLocale,
+    string
+  > = {
+    ro:
+      "ro-RO",
+    en:
+      "en-GB",
+    de:
+      "de-DE",
+  };
 
 export default function DoctorSecuritySettings() {
+  const locale =
+    normalizeAppLocale(
+      useLocale()
+    );
+
+  const t =
+    useTranslations(
+      "DoctorConfiguration.security"
+    );
+
   const [
     isPending,
     startTransition,
@@ -81,7 +91,9 @@ export default function DoctorSecuritySettings() {
     verifiedFactor,
     setVerifiedFactor,
   ] =
-    useState<TotpFactor | null>(
+    useState<
+      TotpFactor | null
+    >(
       null
     );
 
@@ -89,99 +101,141 @@ export default function DoctorSecuritySettings() {
     enrollment,
     setEnrollment,
   ] =
-    useState<EnrollmentState | null>(
+    useState<
+      EnrollmentState | null
+    >(
       null
     );
 
-  const [code, setCode] =
-    useState("");
+  const [
+    code,
+    setCode,
+  ] =
+    useState(
+      ""
+    );
 
   const [
     disableConfirmed,
     setDisableConfirmed,
   ] =
-    useState(false);
+    useState(
+      false
+    );
 
-  const [error, setError] =
-    useState<string | null>(
+  const [
+    error,
+    setError,
+  ] =
+    useState<
+      string | null
+    >(
       null
     );
 
-  const [message, setMessage] =
-    useState<string | null>(
+  const [
+    message,
+    setMessage,
+  ] =
+    useState<
+      string | null
+    >(
       null
     );
 
   const loadStatus =
-    useCallback(async () => {
-      setError(null);
-
-      const supabase =
-        createClient();
-
-      const {
-        data,
-        error:
-          factorsError,
-      } =
-        await supabase.auth.mfa
-          .listFactors();
-
-      if (
-        factorsError
-      ) {
-        console.error(
-          "Doctor MFA factor lookup failed:",
-          factorsError
-        );
-
+    useCallback(
+      async () => {
         setError(
-          "Starea autentificării în doi pași nu a putut fi verificată."
-        );
-        setViewState(
-          "error"
-        );
-        return;
-      }
-
-      /*
-       * Supabase listFactors() returns enabled/verified factors.
-       * An unverified factor is available only from the immediate
-       * enroll() response and is tracked separately in enrollment state.
-       */
-      const activeFactor =
-        data.totp[0] ?? null;
-
-      if (activeFactor) {
-        setVerifiedFactor(
-          activeFactor
-        );
-        setEnrollment(
           null
         );
-        setViewState(
-          "enabled"
+
+        const supabase =
+          createClient();
+
+        const {
+          data,
+          error:
+            factorsError,
+        } =
+          await supabase.auth.mfa
+            .listFactors();
+
+        if (
+          factorsError
+        ) {
+          console.error(
+            "Doctor MFA factor lookup failed:",
+            factorsError
+          );
+
+          setError(
+            t(
+              "statusError"
+            )
+          );
+
+          setViewState(
+            "error"
+          );
+
+          return;
+        }
+
+        const activeFactor =
+          data.totp[0] ??
+          null;
+
+        if (
+          activeFactor
+        ) {
+          setVerifiedFactor(
+            activeFactor as
+              TotpFactor
+          );
+
+          setEnrollment(
+            null
+          );
+
+          setViewState(
+            "enabled"
+          );
+
+          return;
+        }
+
+        setVerifiedFactor(
+          null
         );
-        return;
-      }
 
-      setVerifiedFactor(
-        null
-      );
-
-      setViewState(
-        "disabled"
-      );
-    }, []);
+        setViewState(
+          "disabled"
+        );
+      },
+      [
+        t,
+      ]
+    );
 
   useEffect(() => {
     void loadStatus();
-  }, [loadStatus]);
+  }, [
+    loadStatus,
+  ]);
 
   function beginEnrollment() {
-    setError(null);
-    setMessage(null);
-    setCode("");
+    setError(
+      null
+    );
+
+    setMessage(
+      null
+    );
+
+    setCode(
+      ""
+    );
 
     startTransition(
       async () => {
@@ -197,6 +251,7 @@ export default function DoctorSecuritySettings() {
             .enroll({
               factorType:
                 "totp",
+
               friendlyName:
                 "RomDoc Google Authenticator",
             });
@@ -211,19 +266,25 @@ export default function DoctorSecuritySettings() {
           );
 
           setError(
-            enrollError?.message ??
-              "Configurarea Google Authenticator nu a putut fi începută."
+            t(
+              "enrollError"
+            )
           );
+
           return;
         }
 
         setEnrollment({
           factorId:
             data.id,
+
           qrCode:
-            data.totp.qr_code,
+            data.totp
+              .qr_code,
+
           secret:
-            data.totp.secret,
+            data.totp
+              .secret,
         });
 
         setViewState(
@@ -239,8 +300,13 @@ export default function DoctorSecuritySettings() {
   ) {
     event.preventDefault();
 
-    setError(null);
-    setMessage(null);
+    setError(
+      null
+    );
+
+    setMessage(
+      null
+    );
 
     const normalizedCode =
       code
@@ -259,15 +325,23 @@ export default function DoctorSecuritySettings() {
       )
     ) {
       setError(
-        "Introdu codul de 6 cifre din Google Authenticator."
+        t(
+          "codeRequired"
+        )
       );
+
       return;
     }
 
-    if (!enrollment) {
+    if (
+      !enrollment
+    ) {
       setError(
-        "Configurarea Google Authenticator nu este disponibilă."
+        t(
+          "enrollmentUnavailable"
+        )
       );
+
       return;
     }
 
@@ -283,7 +357,9 @@ export default function DoctorSecuritySettings() {
           await supabase.auth.mfa
             .challengeAndVerify({
               factorId:
-                enrollment.factorId,
+                enrollment
+                  .factorId,
+
               code:
                 normalizedCode,
             });
@@ -297,16 +373,24 @@ export default function DoctorSecuritySettings() {
           );
 
           setError(
-            "Codul nu este valid sau a expirat. Introdu codul curent din Google Authenticator."
+            t(
+              "invalidCode"
+            )
           );
+
           return;
         }
 
         setMessage(
-          "Google Authenticator a fost activat pentru contul tău."
+          t(
+            "enabledMessage"
+          )
         );
 
-        setCode("");
+        setCode(
+          ""
+        );
+
         setEnrollment(
           null
         );
@@ -317,9 +401,17 @@ export default function DoctorSecuritySettings() {
   }
 
   function cancelEnrollment() {
-    setError(null);
-    setMessage(null);
-    setCode("");
+    setError(
+      null
+    );
+
+    setMessage(
+      null
+    );
+
+    setCode(
+      ""
+    );
 
     startTransition(
       async () => {
@@ -336,7 +428,8 @@ export default function DoctorSecuritySettings() {
             await supabase.auth.mfa
               .unenroll({
                 factorId:
-                  enrollment.factorId,
+                  enrollment
+                    .factorId,
               });
 
           if (
@@ -359,24 +452,44 @@ export default function DoctorSecuritySettings() {
   }
 
   function beginDisable() {
-    setError(null);
-    setMessage(null);
-    setCode("");
+    setError(
+      null
+    );
+
+    setMessage(
+      null
+    );
+
+    setCode(
+      ""
+    );
+
     setDisableConfirmed(
       false
     );
+
     setViewState(
       "disabling"
     );
   }
 
   function cancelDisable() {
-    setError(null);
-    setMessage(null);
-    setCode("");
+    setError(
+      null
+    );
+
+    setMessage(
+      null
+    );
+
+    setCode(
+      ""
+    );
+
     setDisableConfirmed(
       false
     );
+
     setViewState(
       "enabled"
     );
@@ -388,8 +501,13 @@ export default function DoctorSecuritySettings() {
   ) {
     event.preventDefault();
 
-    setError(null);
-    setMessage(null);
+    setError(
+      null
+    );
+
+    setMessage(
+      null
+    );
 
     const normalizedCode =
       code
@@ -408,8 +526,11 @@ export default function DoctorSecuritySettings() {
       )
     ) {
       setError(
-        "Introdu codul curent de 6 cifre din Google Authenticator."
+        t(
+          "currentCodeRequired"
+        )
       );
+
       return;
     }
 
@@ -417,8 +538,11 @@ export default function DoctorSecuritySettings() {
       !disableConfirmed
     ) {
       setError(
-        "Confirmă că înțelegi că autentificarea în doi pași va fi dezactivată."
+        t(
+          "disableConfirmRequired"
+        )
       );
+
       return;
     }
 
@@ -426,8 +550,11 @@ export default function DoctorSecuritySettings() {
       !verifiedFactor
     ) {
       setError(
-        "Factorul Google Authenticator nu mai este disponibil."
+        t(
+          "factorUnavailable"
+        )
       );
+
       return;
     }
 
@@ -436,10 +563,6 @@ export default function DoctorSecuritySettings() {
         const supabase =
           createClient();
 
-        /*
-         * First verify the current TOTP code. This upgrades the
-         * session to AAL2 before the verified factor is removed.
-         */
         const {
           error:
             verifyError,
@@ -448,6 +571,7 @@ export default function DoctorSecuritySettings() {
             .challengeAndVerify({
               factorId:
                 verifiedFactor.id,
+
               code:
                 normalizedCode,
             });
@@ -455,14 +579,12 @@ export default function DoctorSecuritySettings() {
         if (
           verifyError
         ) {
-          console.error(
-            "Doctor MFA disable verification failed:",
-            verifyError
+          setError(
+            t(
+              "invalidCode"
+            )
           );
 
-          setError(
-            "Codul nu este valid sau a expirat. Introdu codul curent din Google Authenticator."
-          );
           return;
         }
 
@@ -485,21 +607,32 @@ export default function DoctorSecuritySettings() {
           );
 
           setError(
-            "Google Authenticator nu a putut fi dezactivat. Încearcă din nou."
+            t(
+              "disableError"
+            )
           );
+
           return;
         }
 
         setVerifiedFactor(
           null
         );
-        setCode("");
+
+        setCode(
+          ""
+        );
+
         setDisableConfirmed(
           false
         );
+
         setMessage(
-          "Google Authenticator a fost dezactivat. Viitoarele autentificări vor folosi doar parola."
+          t(
+            "disabledMessage"
+          )
         );
+
         setViewState(
           "disabled"
         );
@@ -513,7 +646,9 @@ export default function DoctorSecuritySettings() {
   ) {
     return (
       <div className="rounded-xl border border-gray-200 bg-gray-50 px-5 py-6 text-sm text-gray-600">
-        Se verifică setările de securitate...
+        {t(
+          "checking"
+        )}
       </div>
     );
   }
@@ -537,7 +672,9 @@ export default function DoctorSecuritySettings() {
             void loadStatus()
           }
         >
-          Încearcă din nou
+          {t(
+            "retry"
+          )}
         </Button>
       </div>
     );
@@ -545,55 +682,62 @@ export default function DoctorSecuritySettings() {
 
   if (
     viewState ===
-    "enabled" &&
+      "enabled" &&
     verifiedFactor
   ) {
+    const dateValue =
+      verifiedFactor
+        .updated_at ??
+      verifiedFactor
+        .created_at;
+
     const enabledAt =
-      formatDate(
-        verifiedFactor.updated_at ??
-          verifiedFactor.created_at
-      );
+      dateValue
+        ? new Intl
+            .DateTimeFormat(
+              DATE_LOCALE[
+                locale
+              ],
+              {
+                dateStyle:
+                  "medium",
+
+                timeStyle:
+                  "short",
+              }
+            )
+            .format(
+              new Date(
+                dateValue
+              )
+            )
+        : null;
 
     return (
       <section className="rounded-2xl border border-green-200 bg-green-50 p-6">
-        <div className="flex items-start gap-4">
-          <div
-            aria-hidden="true"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-700"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              className="h-6 w-6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="m5 12 4 4L19 6"
-              />
-            </svg>
-          </div>
+        <h2 className="text-lg font-bold text-green-900">
+          {t(
+            "enabledTitle"
+          )}
+        </h2>
 
-          <div>
-            <h2 className="text-lg font-bold text-green-900">
-              Google Authenticator este activ
-            </h2>
+        <p className="mt-2 text-sm leading-6 text-green-800">
+          {t(
+            "enabledDescription"
+          )}
+        </p>
 
-            <p className="mt-2 text-sm leading-6 text-green-800">
-              Contul are un factor TOTP verificat. În pasul 66E-2C,
-              viitoarele autentificări vor solicita codul generat de
-              Google Authenticator.
-            </p>
-
-            {enabledAt && (
-              <p className="mt-3 text-xs text-green-700">
-                Factor verificat: {enabledAt}
-              </p>
+        {enabledAt && (
+          <p className="mt-3 text-xs text-green-700">
+            {t(
+              "verifiedAt",
+              {
+                date:
+                  enabledAt,
+              }
             )}
-          </div>
-        </div>
+          </p>
+        )}
 
         {message && (
           <div
@@ -605,40 +749,43 @@ export default function DoctorSecuritySettings() {
         )}
 
         <div className="mt-6 rounded-xl border border-green-200 bg-white px-4 py-4 text-sm leading-6 text-gray-700">
-          Poți dezactiva Google Authenticator numai după verificarea
-          codului curent. După dezactivare, viitoarele autentificări vor
-          folosi doar parola.
+          {t(
+            "disableInfo"
+          )}
         </div>
 
-        <div className="mt-5">
-          <button
-            type="button"
-            onClick={
-              beginDisable
-            }
-            className="rounded-xl border border-red-300 bg-white px-5 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-50"
-          >
-            Dezactivează Google Authenticator
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={
+            beginDisable
+          }
+          className="mt-5 rounded-xl border border-red-300 bg-white px-5 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-50"
+        >
+          {t(
+            "disable"
+          )}
+        </button>
       </section>
     );
   }
 
   if (
     viewState ===
-    "disabling" &&
+      "disabling" &&
     verifiedFactor
   ) {
     return (
       <section className="rounded-2xl border border-red-200 bg-red-50 p-6">
         <h2 className="text-xl font-bold text-red-900">
-          Dezactivează Google Authenticator
+          {t(
+            "disableTitle"
+          )}
         </h2>
 
         <p className="mt-3 text-sm leading-6 text-red-800">
-          Această acțiune elimină autentificarea în doi pași din cont.
-          După confirmare, parola va fi singura protecție la autentificare.
+          {t(
+            "disableDescription"
+          )}
         </p>
 
         <form
@@ -649,17 +796,23 @@ export default function DoctorSecuritySettings() {
         >
           <label className="block">
             <span className="text-sm font-medium text-gray-800">
-              Codul curent din Google Authenticator
+              {t(
+                "currentCode"
+              )}
             </span>
 
             <input
               type="text"
               inputMode="numeric"
               autoComplete="one-time-code"
-              maxLength={6}
+              maxLength={
+                6
+              }
               required
               autoFocus
-              value={code}
+              value={
+                code
+              }
               disabled={
                 isPending
               }
@@ -667,7 +820,8 @@ export default function DoctorSecuritySettings() {
                 event
               ) =>
                 setCode(
-                  event.target.value
+                  event.target
+                    .value
                     .replace(
                       /\D/g,
                       ""
@@ -679,7 +833,7 @@ export default function DoctorSecuritySettings() {
                 )
               }
               placeholder="123456"
-              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-center text-xl tracking-[0.35em] text-gray-900 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-center text-xl tracking-[0.35em]"
             />
           </label>
 
@@ -696,15 +850,17 @@ export default function DoctorSecuritySettings() {
                 event
               ) =>
                 setDisableConfirmed(
-                  event.target.checked
+                  event.target
+                    .checked
                 )
               }
-              className="mt-1 h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+              className="mt-1 h-4 w-4"
             />
 
             <span className="text-sm leading-6 text-gray-700">
-              Înțeleg că autentificarea în doi pași va fi dezactivată și
-              că viitoarele autentificări vor solicita doar parola.
+              {t(
+                "disableAcknowledgement"
+              )}
             </span>
           </label>
 
@@ -723,11 +879,15 @@ export default function DoctorSecuritySettings() {
               disabled={
                 isPending
               }
-              className="rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
             >
               {isPending
-                ? "Se dezactivează..."
-                : "Confirmă dezactivarea"}
+                ? t(
+                    "disabling"
+                  )
+                : t(
+                    "confirmDisable"
+                  )}
             </button>
 
             <button
@@ -738,9 +898,11 @@ export default function DoctorSecuritySettings() {
               onClick={
                 cancelDisable
               }
-              className="rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700"
             >
-              Anulează
+              {t(
+                "cancel"
+              )}
             </button>
           </div>
         </form>
@@ -750,45 +912,68 @@ export default function DoctorSecuritySettings() {
 
   if (
     viewState ===
-    "enrolling" &&
+      "enrolling" &&
     enrollment
   ) {
     return (
       <section className="rounded-2xl border border-gray-200 bg-gray-50 p-6">
         <h2 className="text-xl font-bold text-gray-900">
-          Conectează Google Authenticator
+          {t(
+            "connectTitle"
+          )}
         </h2>
 
         <ol className="mt-4 space-y-2 text-sm leading-6 text-gray-700">
-          <li>
-            <strong>1.</strong>{" "}
-            Deschide Google Authenticator pe telefon.
-          </li>
-          <li>
-            <strong>2.</strong>{" "}
-            Apasă „+” și alege scanarea unui cod QR.
-          </li>
-          <li>
-            <strong>3.</strong>{" "}
-            Scanează codul de mai jos.
-          </li>
-          <li>
-            <strong>4.</strong>{" "}
-            Introdu codul curent de 6 cifre.
-          </li>
+          {[
+            t(
+              "step1"
+            ),
+            t(
+              "step2"
+            ),
+            t(
+              "step3"
+            ),
+            t(
+              "step4"
+            ),
+          ].map(
+            (
+              step,
+              index
+            ) => (
+              <li
+                key={
+                  step
+                }
+              >
+                <strong>
+                  {index +
+                    1}.
+                </strong>{" "}
+                {step}
+              </li>
+            )
+          )}
         </ol>
 
         <div className="mt-6 flex justify-center">
           <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            {/* Supabase returns the QR code as an image-compatible data URI. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={
-                enrollment.qrCode
+                enrollment
+                  .qrCode
               }
-              alt="Cod QR pentru Google Authenticator"
-              width={220}
-              height={220}
+              alt={t(
+                "qrAlt"
+              )}
+              width={
+                220
+              }
+              height={
+                220
+              }
               className="h-[220px] w-[220px]"
             />
           </div>
@@ -796,15 +981,21 @@ export default function DoctorSecuritySettings() {
 
         <details className="mt-5 rounded-xl border border-gray-200 bg-white p-4">
           <summary className="cursor-pointer text-sm font-semibold text-gray-800">
-            Nu poți scana codul QR?
+            {t(
+              "cannotScan"
+            )}
           </summary>
 
           <p className="mt-3 text-sm text-gray-600">
-            Adaugă manual această cheie în Google Authenticator:
+            {t(
+              "manualSecret"
+            )}
           </p>
 
           <code className="mt-2 block break-all rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-900">
-            {enrollment.secret}
+            {
+              enrollment.secret
+            }
           </code>
         </details>
 
@@ -816,16 +1007,22 @@ export default function DoctorSecuritySettings() {
         >
           <label className="block">
             <span className="text-sm font-medium text-gray-700">
-              Cod Google Authenticator
+              {t(
+                "code"
+              )}
             </span>
 
             <input
               type="text"
               inputMode="numeric"
               autoComplete="one-time-code"
-              maxLength={6}
+              maxLength={
+                6
+              }
               required
-              value={code}
+              value={
+                code
+              }
               disabled={
                 isPending
               }
@@ -833,7 +1030,8 @@ export default function DoctorSecuritySettings() {
                 event
               ) =>
                 setCode(
-                  event.target.value
+                  event.target
+                    .value
                     .replace(
                       /\D/g,
                       ""
@@ -845,7 +1043,7 @@ export default function DoctorSecuritySettings() {
                 )
               }
               placeholder="123456"
-              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-center text-xl tracking-[0.35em] text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-center text-xl tracking-[0.35em]"
             />
           </label>
 
@@ -864,9 +1062,13 @@ export default function DoctorSecuritySettings() {
               isLoading={
                 isPending
               }
-              loadingText="Se verifică..."
+              loadingText={t(
+                "verifying"
+              )}
             >
-              Activează Google Authenticator
+              {t(
+                "activate"
+              )}
             </Button>
 
             <button
@@ -877,9 +1079,11 @@ export default function DoctorSecuritySettings() {
               onClick={
                 cancelEnrollment
               }
-              className="rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700"
             >
-              Anulează
+              {t(
+                "cancel"
+              )}
             </button>
           </div>
         </form>
@@ -889,87 +1093,76 @@ export default function DoctorSecuritySettings() {
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-gray-50 p-6">
-      <div className="flex items-start gap-4">
+      <h2 className="text-lg font-bold text-gray-900">
+        {t(
+          "disabledTitle"
+        )}
+      </h2>
+
+      <p className="mt-2 text-sm leading-6 text-gray-600">
+        {t(
+          "disabledDescription"
+        )}
+      </p>
+
+      <ul className="mt-4 space-y-2 text-sm leading-6 text-gray-700">
+        <li>
+          •{" "}
+          {t(
+            "benefit1"
+          )}
+        </li>
+
+        <li>
+          •{" "}
+          {t(
+            "benefit2"
+          )}
+        </li>
+
+        <li>
+          •{" "}
+          {t(
+            "benefit3"
+          )}
+        </li>
+      </ul>
+
+      {message && (
         <div
-          aria-hidden="true"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gray-200 text-gray-700"
+          role="status"
+          className="mt-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
         >
-          <svg
-            viewBox="0 0 24 24"
-            className="h-6 w-6"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 3 5 6v5c0 4.5 2.8 8.1 7 10 4.2-1.9 7-5.5 7-10V6l-7-3Z"
-            />
-
-            <path
-              strokeLinecap="round"
-              d="M9.5 12h5M12 9.5v5"
-            />
-          </svg>
+          {message}
         </div>
+      )}
 
-        <div className="flex-1">
-          <h2 className="text-lg font-bold text-gray-900">
-            Google Authenticator nu este activ
-          </h2>
-
-          <p className="mt-2 text-sm leading-6 text-gray-600">
-            Activarea este opțională. Poți continua să folosești
-            platforma fără MFA până la activare.
-          </p>
-
-          <ul className="mt-4 space-y-2 text-sm leading-6 text-gray-700">
-            <li>
-              • reduce riscul accesului neautorizat dacă parola este compromisă;
-            </li>
-            <li>
-              • codurile sunt generate local pe telefon;
-            </li>
-            <li>
-              • RomDoc nu stochează codurile de 6 cifre sau secretul TOTP în tabelele aplicației.
-            </li>
-          </ul>
-
-          {message && (
-            <div
-              role="status"
-              className="mt-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
-            >
-              {message}
-            </div>
-          )}
-
-          {error && (
-            <div
-              role="alert"
-              className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-            >
-              {error}
-            </div>
-          )}
-
-          <div className="mt-6">
-            <Button
-              type="button"
-              onClick={
-                beginEnrollment
-              }
-              isLoading={
-                isPending
-              }
-              loadingText="Se pregătește..."
-            >
-              Activează Google Authenticator
-            </Button>
-          </div>
+      {error && (
+        <div
+          role="alert"
+          className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+        >
+          {error}
         </div>
-      </div>
+      )}
+
+      <Button
+        type="button"
+        onClick={
+          beginEnrollment
+        }
+        isLoading={
+          isPending
+        }
+        loadingText={t(
+          "preparing"
+        )}
+        className="mt-6"
+      >
+        {t(
+          "activate"
+        )}
+      </Button>
     </section>
   );
 }

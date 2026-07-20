@@ -1,23 +1,35 @@
 "use client";
 
-import Button from "@/components/ui/button";
-
+import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
 import {
   type FormEvent,
   useState,
   useTransition,
 } from "react";
-import { useRouter } from "next/navigation";
+import {
+  useRouter,
+} from "next/navigation";
+
+import Button from "@/components/ui/button";
+import {
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
 
 type DoctorProfileFormProps = {
   initialPhone: string;
   initialEmail: string;
+
   initialYearsExperience:
     | number
     | null;
+
   initialConsultationPrice:
     | number
     | null;
+
   initialTitleRo: string;
   initialBiographyRo: string;
 };
@@ -36,147 +48,250 @@ export default function DoctorProfileForm({
   initialTitleRo,
   initialBiographyRo,
 }: DoctorProfileFormProps) {
-  const router = useRouter();
+  const locale =
+    normalizeAppLocale(
+      useLocale()
+    );
 
-  const [isPending, startTransition] =
+  const t =
+    useTranslations(
+      "DoctorConfiguration.profileForm"
+    );
+
+  const router =
+    useRouter();
+
+  const [
+    isPending,
+    startTransition,
+  ] =
     useTransition();
 
-  const [phone, setPhone] =
-    useState(initialPhone);
+  const [
+    phone,
+    setPhone,
+  ] =
+    useState(
+      initialPhone
+    );
 
-  const [email, setEmail] =
-    useState(initialEmail);
+  const [
+    email,
+    setEmail,
+  ] =
+    useState(
+      initialEmail
+    );
 
   const [
     yearsExperience,
     setYearsExperience,
-  ] = useState(
-    initialYearsExperience?.toString() ??
-      ""
-  );
+  ] =
+    useState(
+      initialYearsExperience
+        ?.toString() ??
+        ""
+    );
 
   const [
     consultationPrice,
     setConsultationPrice,
-  ] = useState(
-    initialConsultationPrice?.toString() ??
-      ""
-  );
+  ] =
+    useState(
+      initialConsultationPrice
+        ?.toString() ??
+        ""
+    );
 
-  const [titleRo, setTitleRo] =
-    useState(initialTitleRo);
+  const [
+    titleRo,
+    setTitleRo,
+  ] =
+    useState(
+      initialTitleRo
+    );
 
   const [
     biographyRo,
     setBiographyRo,
-  ] = useState(initialBiographyRo);
+  ] =
+    useState(
+      initialBiographyRo
+    );
 
-  const [message, setMessage] =
-    useState<string | null>(null);
+  const [
+    message,
+    setMessage,
+  ] =
+    useState<
+      string | null
+    >(
+      null
+    );
 
-  const [error, setError] =
-    useState<string | null>(null);
+  const [
+    error,
+    setError,
+  ] =
+    useState<
+      string | null
+    >(
+      null
+    );
 
   function handleSubmit(
-    event: FormEvent<HTMLFormElement>
+    event:
+      FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
-    setMessage(null);
-    setError(null);
+    setMessage(
+      null
+    );
 
-    startTransition(async () => {
-      try {
-        const response = await fetch(
-          "/api/doctor/profile",
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              phone:
-                phone.trim() || null,
-              email:
-                email.trim() || null,
-              yearsExperience:
-                yearsExperience.trim()
-                  ? Number(
+    setError(
+      null
+    );
+
+    startTransition(
+      async () => {
+        try {
+          const response =
+            await fetch(
+              "/api/doctor/profile",
+              {
+                method:
+                  "PATCH",
+
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
+
+                body:
+                  JSON.stringify({
+                    phone:
+                      phone.trim() ||
+                      null,
+
+                    email:
+                      email.trim() ||
+                      null,
+
+                    yearsExperience:
                       yearsExperience
-                    )
-                  : null,
-              consultationPrice:
-                consultationPrice.trim()
-                  ? Number(
+                        .trim()
+                        ? Number(
+                            yearsExperience
+                          )
+                        : null,
+
+                    consultationPrice:
                       consultationPrice
-                    )
-                  : null,
-              titleRo:
-                titleRo.trim() || null,
-              biographyRo:
-                biographyRo.trim() ||
-                null,
-            }),
+                        .trim()
+                        ? Number(
+                            consultationPrice
+                          )
+                        : null,
+
+                    titleRo:
+                      titleRo.trim() ||
+                      null,
+
+                    biographyRo:
+                      biographyRo
+                        .trim() ||
+                      null,
+                  }),
+              }
+            );
+
+          const result =
+            (await response.json()) as
+              ApiResponse;
+
+          if (
+            !response.ok
+          ) {
+            throw new Error(
+              locale ===
+                "ro" &&
+              result.error
+                ? result.error
+                : t(
+                    "saveError"
+                  )
+            );
           }
-        );
 
-        const result =
-          (await response.json()) as ApiResponse;
+          setMessage(
+            t(
+              "saved"
+            )
+          );
 
-        if (!response.ok) {
-          throw new Error(
-            result.error ??
-              "Profilul nu a putut fi salvat."
+          router.refresh();
+        } catch (
+          submitError
+        ) {
+          setError(
+            submitError instanceof
+              Error
+              ? submitError.message
+              : t(
+                  "saveError"
+                )
           );
         }
-
-        setMessage(
-          "Profilul a fost actualizat."
-        );
-
-        router.refresh();
-      } catch (submitError) {
-        setError(
-          submitError instanceof Error
-            ? submitError.message
-            : "Profilul nu a putut fi salvat."
-        );
       }
-    });
+    );
   }
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={
+        handleSubmit
+      }
       className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
     >
       <div>
         <h2 className="text-2xl font-bold text-gray-900">
-          Informații publice
+          {t(
+            "title"
+          )}
         </h2>
 
         <p className="mt-2 text-sm leading-6 text-gray-600">
-          Aceste informații vor fi afișate pe
-          pagina publică a medicului.
+          {t(
+            "description"
+          )}
         </p>
       </div>
 
       <div className="mt-6 grid gap-5 sm:grid-cols-2">
         <label className="block">
           <span className="text-sm font-medium text-gray-700">
-            Telefon public
+            {t(
+              "phone"
+            )}
           </span>
 
           <input
             type="tel"
-            value={phone}
-            onChange={(event) =>
+            value={
+              phone
+            }
+            onChange={(
+              event
+            ) =>
               setPhone(
-                event.target.value
+                event.target
+                  .value
               )
             }
-            disabled={isPending}
+            disabled={
+              isPending
+            }
             placeholder="+40 700 000 000"
             className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:opacity-60"
           />
@@ -184,26 +299,37 @@ export default function DoctorProfileForm({
 
         <label className="block">
           <span className="text-sm font-medium text-gray-700">
-            E-mail public
+            {t(
+              "email"
+            )}
           </span>
 
           <input
             type="email"
-            value={email}
-            onChange={(event) =>
+            value={
+              email
+            }
+            onChange={(
+              event
+            ) =>
               setEmail(
-                event.target.value
+                event.target
+                  .value
               )
             }
-            disabled={isPending}
-            placeholder="medic@example.ro"
+            disabled={
+              isPending
+            }
+            placeholder="doctor@example.com"
             className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:opacity-60"
           />
         </label>
 
         <label className="block">
           <span className="text-sm font-medium text-gray-700">
-            Ani de experiență
+            {t(
+              "years"
+            )}
           </span>
 
           <input
@@ -211,20 +337,29 @@ export default function DoctorProfileForm({
             min="0"
             max="80"
             step="1"
-            value={yearsExperience}
-            onChange={(event) =>
+            value={
+              yearsExperience
+            }
+            onChange={(
+              event
+            ) =>
               setYearsExperience(
-                event.target.value
+                event.target
+                  .value
               )
             }
-            disabled={isPending}
+            disabled={
+              isPending
+            }
             className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:opacity-60"
           />
         </label>
 
         <label className="block">
           <span className="text-sm font-medium text-gray-700">
-            Preț consultație generală
+            {t(
+              "consultationPrice"
+            )}
           </span>
 
           <div className="mt-2 flex">
@@ -233,13 +368,20 @@ export default function DoctorProfileForm({
               min="0"
               max="100000"
               step="0.01"
-              value={consultationPrice}
-              onChange={(event) =>
+              value={
+                consultationPrice
+              }
+              onChange={(
+                event
+              ) =>
                 setConsultationPrice(
-                  event.target.value
+                  event.target
+                    .value
                 )
               }
-              disabled={isPending}
+              disabled={
+                isPending
+              }
               className="min-w-0 flex-1 rounded-l-xl border border-r-0 border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:opacity-60"
             />
 
@@ -253,45 +395,76 @@ export default function DoctorProfileForm({
       <div className="mt-6 space-y-5">
         <label className="block">
           <span className="text-sm font-medium text-gray-700">
-            Titlu profesional în limba română
+            {t(
+              "romanianTitle"
+            )}
           </span>
 
           <input
             type="text"
-            value={titleRo}
-            onChange={(event) =>
+            value={
+              titleRo
+            }
+            onChange={(
+              event
+            ) =>
               setTitleRo(
-                event.target.value
+                event.target
+                  .value
               )
             }
-            disabled={isPending}
-            maxLength={200}
-            placeholder="Medic specialist cardiologie"
+            disabled={
+              isPending
+            }
+            maxLength={
+              200
+            }
+            placeholder={t(
+              "romanianTitlePlaceholder"
+            )}
             className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:opacity-60"
           />
         </label>
 
         <label className="block">
           <span className="text-sm font-medium text-gray-700">
-            Biografie în limba română
+            {t(
+              "romanianBiography"
+            )}
           </span>
 
           <textarea
-            value={biographyRo}
-            onChange={(event) =>
+            value={
+              biographyRo
+            }
+            onChange={(
+              event
+            ) =>
               setBiographyRo(
-                event.target.value
+                event.target
+                  .value
               )
             }
-            disabled={isPending}
-            maxLength={10000}
-            rows={8}
-            placeholder="Descrie experiența, domeniile de interes și abordarea profesională."
+            disabled={
+              isPending
+            }
+            maxLength={
+              10000
+            }
+            rows={
+              8
+            }
+            placeholder={t(
+              "romanianBiographyPlaceholder"
+            )}
             className="mt-2 w-full resize-y rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:opacity-60"
           />
 
           <span className="mt-1 block text-right text-xs text-gray-500">
-            {biographyRo.length} / 10000
+            {
+              biographyRo.length
+            }{" "}
+            / 10000
           </span>
         </label>
       </div>
@@ -317,11 +490,17 @@ export default function DoctorProfileForm({
       <div className="mt-6 flex justify-end">
         <Button
           type="submit"
-          disabled={isPending}
+          disabled={
+            isPending
+          }
         >
           {isPending
-            ? "Se salvează..."
-            : "Salvează profilul"}
+            ? t(
+                "saving"
+              )
+            : t(
+                "save"
+              )}
         </Button>
       </div>
     </form>

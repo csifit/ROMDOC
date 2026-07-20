@@ -1,7 +1,9 @@
 "use client";
 
-import Button from "@/components/ui/button";
-
+import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
 import {
   type FormEvent,
   useCallback,
@@ -9,6 +11,13 @@ import {
   useState,
   useTransition,
 } from "react";
+
+import Button from "@/components/ui/button";
+import {
+  type AppLocale,
+  normalizeAppLocale,
+  selectTranslation,
+} from "@/lib/i18n/app-locale";
 
 type ClinicTranslation = {
   locale: string;
@@ -18,7 +27,11 @@ type ClinicTranslation = {
 type Clinic = {
   id: string;
   slug: string;
-  formatted_address: string | null;
+
+  formatted_address:
+    | string
+    | null;
+
   clinic_translations:
     | ClinicTranslation[]
     | null;
@@ -26,8 +39,14 @@ type Clinic = {
 
 type StaffProfile = {
   id: string;
-  first_name: string | null;
-  last_name: string | null;
+
+  first_name:
+    | string
+    | null;
+
+  last_name:
+    | string
+    | null;
 };
 
 type StaffAssignment = {
@@ -35,9 +54,16 @@ type StaffAssignment = {
   invited_email: string;
   status: string;
   invited_at: string;
-  accepted_at: string | null;
+
+  accepted_at:
+    | string
+    | null;
+
   clinic_id: string;
-  staff_profile_id: string | null;
+
+  staff_profile_id:
+    | string
+    | null;
 
   clinics:
     | Clinic
@@ -51,8 +77,12 @@ type StaffAssignment = {
 };
 
 type StaffApiResponse = {
-  assignments?: StaffAssignment[];
-  clinics?: Clinic[];
+  assignments?:
+    StaffAssignment[];
+
+  clinics?:
+    Clinic[];
+
   message?: string;
   error?: string;
 };
@@ -62,7 +92,20 @@ type StaffAction =
   | "suspend"
   | "revoke";
 
-function getFirstRelation<T>(
+const DATE_LOCALE:
+  Record<
+    AppLocale,
+    string
+  > = {
+    ro:
+      "ro-RO",
+    en:
+      "en-GB",
+    de:
+      "de-DE",
+  };
+
+function first<T>(
   relation:
     | T
     | T[]
@@ -73,49 +116,35 @@ function getFirstRelation<T>(
     return null;
   }
 
-  if (Array.isArray(relation)) {
-    return relation[0] ?? null;
-  }
-
-  return relation;
-}
-
-function getClinicName(
-  clinic:
-    | Clinic
-    | null
-) {
-  if (!clinic) {
-    return "Clinică";
-  }
-
-  return (
-    clinic.clinic_translations
-      ?.find(
-        (translation) =>
-          translation.locale === "ro"
-      )?.name ??
-    clinic.clinic_translations?.[0]
-      ?.name ??
-    clinic.slug
-  );
+  return Array.isArray(
+    relation
+  )
+    ? relation[0] ??
+        null
+    : relation;
 }
 
 function getStaffName(
-  assignment: StaffAssignment
+  assignment:
+    StaffAssignment
 ) {
   const profile =
-    getFirstRelation(
+    first(
       assignment.profiles
     );
 
-  const fullName = [
-    profile?.first_name,
-    profile?.last_name,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
+  const fullName =
+    [
+      profile?.first_name,
+      profile?.last_name,
+    ]
+      .filter(
+        Boolean
+      )
+      .join(
+        " "
+      )
+      .trim();
 
   return (
     fullName ||
@@ -123,31 +152,13 @@ function getStaffName(
   );
 }
 
-function getStatusLabel(
-  status: string
-) {
-  switch (status) {
-    case "active":
-      return "Activ";
-
-    case "invited":
-      return "Invitat";
-
-    case "suspended":
-      return "Suspendat";
-
-    case "revoked":
-      return "Revocat";
-
-    default:
-      return status;
-  }
-}
-
 function getStatusClasses(
-  status: string
+  status:
+    string
 ) {
-  switch (status) {
+  switch (
+    status
+  ) {
     case "active":
       return "bg-green-100 text-green-800";
 
@@ -162,202 +173,364 @@ function getStatusClasses(
   }
 }
 
-function formatDate(
-  value: string
-) {
-  return new Intl.DateTimeFormat(
-    "ro-RO",
-    {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    }
-  ).format(new Date(value));
-}
-
 export default function DoctorStaffManager() {
+  const locale =
+    normalizeAppLocale(
+      useLocale()
+    );
+
+  const t =
+    useTranslations(
+      "DoctorConfiguration.staff"
+    );
+
   const [
     isSubmitting,
     startTransition,
-  ] = useTransition();
+  ] =
+    useTransition();
 
-  const [isLoading, setIsLoading] =
-    useState(true);
+  const [
+    isLoading,
+    setIsLoading,
+  ] =
+    useState(
+      true
+    );
 
-  const [email, setEmail] =
-    useState("");
+  const [
+    email,
+    setEmail,
+  ] =
+    useState(
+      ""
+    );
 
-  const [clinicId, setClinicId] =
-    useState("");
+  const [
+    clinicId,
+    setClinicId,
+  ] =
+    useState(
+      ""
+    );
 
-  const [clinics, setClinics] =
-    useState<Clinic[]>([]);
+  const [
+    clinics,
+    setClinics,
+  ] =
+    useState<
+      Clinic[]
+    >(
+      []
+    );
 
   const [
     assignments,
     setAssignments,
-  ] = useState<
-    StaffAssignment[]
-  >([]);
+  ] =
+    useState<
+      StaffAssignment[]
+    >(
+      []
+    );
 
-  const [error, setError] =
-    useState<string | null>(null);
+  const [
+    error,
+    setError,
+  ] =
+    useState<
+      string | null
+    >(
+      null
+    );
 
-  const [success, setSuccess] =
-    useState<string | null>(null);
+  const [
+    success,
+    setSuccess,
+  ] =
+    useState<
+      string | null
+    >(
+      null
+    );
 
   const [
     changingAssignmentId,
     setChangingAssignmentId,
-  ] = useState<string | null>(
-    null
-  );
+  ] =
+    useState<
+      string | null
+    >(
+      null
+    );
+
+  function clinicName(
+    clinic:
+      | Clinic
+      | null
+  ) {
+    if (!clinic) {
+      return t(
+        "clinicFallback"
+      );
+    }
+
+    return (
+      selectTranslation(
+        clinic
+          .clinic_translations,
+        locale
+      )?.name ??
+      clinic.slug
+    );
+  }
+
+  function statusLabel(
+    status:
+      string
+  ) {
+    if (
+      [
+        "active",
+        "invited",
+        "suspended",
+        "revoked",
+      ].includes(
+        status
+      )
+    ) {
+      return t(
+        `statuses.${status}`
+      );
+    }
+
+    return status;
+  }
 
   const loadStaff =
-    useCallback(async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        const response =
-          await fetch(
-            "/api/doctor/staff",
-            {
-              method: "GET",
-              cache: "no-store",
-            }
+    useCallback(
+      async () => {
+        try {
+          setIsLoading(
+            true
           );
 
-        const result =
-          (await response.json()) as
-            StaffApiResponse;
-
-        if (!response.ok) {
-          throw new Error(
-            result.error ??
-              "Personalul nu a putut fi încărcat."
+          setError(
+            null
           );
-        }
 
-        setAssignments(
-          result.assignments ?? []
-        );
+          const response =
+            await fetch(
+              "/api/doctor/staff",
+              {
+                method:
+                  "GET",
 
-        setClinics(
-          result.clinics ?? []
-        );
+                cache:
+                  "no-store",
+              }
+            );
 
-        if (
-          !clinicId &&
-          result.clinics?.length
-        ) {
+          const result =
+            (await response.json()) as
+              StaffApiResponse;
+
+          if (
+            !response.ok
+          ) {
+            throw new Error(
+              locale ===
+                "ro" &&
+              result.error
+                ? result.error
+                : t(
+                    "loadError"
+                  )
+            );
+          }
+
+          setAssignments(
+            result.assignments ??
+            []
+          );
+
+          setClinics(
+            result.clinics ??
+            []
+          );
+
           setClinicId(
-            result.clinics[0].id
+            (
+              current
+            ) =>
+              current ||
+              result.clinics?.[0]
+                ?.id ||
+              ""
+          );
+        } catch (
+          loadError
+        ) {
+          setError(
+            loadError instanceof
+              Error
+              ? loadError.message
+              : t(
+                  "loadError"
+                )
+          );
+        } finally {
+          setIsLoading(
+            false
           );
         }
-      } catch (loadError) {
-        setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "Personalul nu a putut fi încărcat."
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    }, [clinicId]);
+      },
+      [
+        locale,
+        t,
+      ]
+    );
 
   useEffect(() => {
     void loadStaff();
-  }, [loadStaff]);
+  }, [
+    loadStaff,
+  ]);
 
   function handleInvite(
-    event: FormEvent<HTMLFormElement>
+    event:
+      FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
-    setError(null);
-    setSuccess(null);
+    setError(
+      null
+    );
+
+    setSuccess(
+      null
+    );
 
     const normalizedEmail =
-      email.trim().toLowerCase();
+      email
+        .trim()
+        .toLowerCase();
 
     if (
       !normalizedEmail ||
-      !normalizedEmail.includes("@")
+      !normalizedEmail.includes(
+        "@"
+      )
     ) {
       setError(
-        "Introdu o adresă de e-mail validă."
+        t(
+          "emailError"
+        )
       );
 
       return;
     }
 
-    if (!clinicId) {
+    if (
+      !clinicId
+    ) {
       setError(
-        "Selectează clinica."
+        t(
+          "clinicError"
+        )
       );
 
       return;
     }
 
-    startTransition(async () => {
-      try {
-        const response =
-          await fetch(
-            "/api/doctor/staff",
-            {
-              method: "POST",
+    startTransition(
+      async () => {
+        try {
+          const response =
+            await fetch(
+              "/api/doctor/staff",
+              {
+                method:
+                  "POST",
 
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
 
-              body:
-                JSON.stringify({
-                  email:
-                    normalizedEmail,
+                body:
+                  JSON.stringify({
+                    email:
+                      normalizedEmail,
 
-                  clinicId,
-                }),
-            }
+                    clinicId,
+                  }),
+              }
+            );
+
+          const result =
+            (await response.json()) as
+              StaffApiResponse;
+
+          if (
+            !response.ok
+          ) {
+            throw new Error(
+              locale ===
+                "ro" &&
+              result.error
+                ? result.error
+                : t(
+                    "inviteError"
+                  )
+            );
+          }
+
+          setSuccess(
+            locale ===
+              "ro" &&
+            result.message
+              ? result.message
+              : t(
+                  "invited"
+                )
           );
 
-        const result =
-          (await response.json()) as
-            StaffApiResponse;
+          setEmail(
+            ""
+          );
 
-        if (!response.ok) {
-          throw new Error(
-            result.error ??
-              "Invitația nu a putut fi trimisă."
+          await loadStaff();
+        } catch (
+          inviteError
+        ) {
+          setError(
+            inviteError instanceof
+              Error
+              ? inviteError.message
+              : t(
+                  "inviteError"
+                )
           );
         }
-
-        setSuccess(
-          result.message ??
-            "Invitația a fost trimisă."
-        );
-
-        setEmail("");
-
-        await loadStaff();
-      } catch (inviteError) {
-        setError(
-          inviteError instanceof Error
-            ? inviteError.message
-            : "Invitația nu a putut fi trimisă."
-        );
       }
-    });
+    );
   }
 
   async function updateAssignment(
-    assignmentId: string,
-    action: StaffAction
+    assignmentId:
+      string,
+    action:
+      StaffAction
   ) {
-    setError(null);
-    setSuccess(null);
+    setError(
+      null
+    );
+
+    setSuccess(
+      null
+    );
+
     setChangingAssignmentId(
       assignmentId
     );
@@ -367,7 +540,8 @@ export default function DoctorStaffManager() {
         await fetch(
           "/api/doctor/staff",
           {
-            method: "PATCH",
+            method:
+              "PATCH",
 
             headers: {
               "Content-Type":
@@ -386,24 +560,41 @@ export default function DoctorStaffManager() {
         (await response.json()) as
           StaffApiResponse;
 
-      if (!response.ok) {
+      if (
+        !response.ok
+      ) {
         throw new Error(
-          result.error ??
-            "Statutul personalului nu a putut fi actualizat."
+          locale ===
+            "ro" &&
+          result.error
+            ? result.error
+            : t(
+                "statusError"
+              )
         );
       }
 
       setSuccess(
-        result.message ??
-          "Statutul a fost actualizat."
+        locale ===
+          "ro" &&
+        result.message
+          ? result.message
+          : t(
+              "statusUpdated"
+            )
       );
 
       await loadStaff();
-    } catch (updateError) {
+    } catch (
+      updateError
+    ) {
       setError(
-        updateError instanceof Error
+        updateError instanceof
+          Error
           ? updateError.message
-          : "Statutul personalului nu a putut fi actualizat."
+          : t(
+              "statusError"
+            )
       );
     } finally {
       setChangingAssignmentId(
@@ -416,80 +607,105 @@ export default function DoctorStaffManager() {
     <div className="space-y-8">
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
         <p className="text-sm font-semibold text-[#9A4F35]">
-          Personal
+          {t(
+            "eyebrow"
+          )}
         </p>
 
         <h1 className="mt-2 text-3xl font-bold text-gray-900">
-          Personalul cabinetului
+          {t(
+            "title"
+          )}
         </h1>
 
         <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Personalul poate administra numai
-          programările tale din clinica
-          selectată. Nu primește acces la
-          profil, servicii, disponibilitate,
-          clinici sau facturare.
+          {t(
+            "description"
+          )}
         </p>
 
-        {clinics.length === 0 ? (
+        {clinics.length ===
+        0 ? (
           <div className="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">
-            Pentru a invita personal trebuie
-            să ai cel puțin o clinică aprobată
-            asociată profilului tău.
+            {t(
+              "noClinics"
+            )}
           </div>
         ) : (
           <form
-            onSubmit={handleInvite}
+            onSubmit={
+              handleInvite
+            }
             className="mt-8 space-y-5"
           >
             <div className="grid gap-5 sm:grid-cols-2">
               <label className="block">
                 <span className="text-sm font-medium text-gray-700">
-                  Adresa de e-mail
+                  {t(
+                    "email"
+                  )}
                 </span>
 
                 <input
                   type="email"
                   required
-                  value={email}
+                  value={
+                    email
+                  }
                   disabled={
                     isSubmitting
                   }
-                  onChange={(event) =>
+                  onChange={(
+                    event
+                  ) =>
                     setEmail(
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
-                  placeholder="receptie@exemplu.ro"
+                  placeholder="reception@example.com"
                   className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20"
                 />
               </label>
 
               <label className="block">
                 <span className="text-sm font-medium text-gray-700">
-                  Clinica
+                  {t(
+                    "clinic"
+                  )}
                 </span>
 
                 <select
                   required
-                  value={clinicId}
+                  value={
+                    clinicId
+                  }
                   disabled={
                     isSubmitting
                   }
-                  onChange={(event) =>
+                  onChange={(
+                    event
+                  ) =>
                     setClinicId(
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
                   className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3"
                 >
                   {clinics.map(
-                    (clinic) => (
+                    (
+                      clinic
+                    ) => (
                       <option
-                        key={clinic.id}
-                        value={clinic.id}
+                        key={
+                          clinic.id
+                        }
+                        value={
+                          clinic.id
+                        }
                       >
-                        {getClinicName(
+                        {clinicName(
                           clinic
                         )}
                       </option>
@@ -506,8 +722,12 @@ export default function DoctorStaffManager() {
               }
             >
               {isSubmitting
-                ? "Se trimite invitația..."
-                : "Invită membru al personalului"}
+                ? t(
+                    "sendingInvite"
+                  )
+                : t(
+                    "invite"
+                  )}
             </Button>
           </form>
         )}
@@ -533,26 +753,34 @@ export default function DoctorStaffManager() {
 
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
         <h2 className="text-xl font-bold text-gray-900">
-          Membrii personalului
+          {t(
+            "members"
+          )}
         </h2>
 
         {isLoading ? (
           <p className="mt-5 text-sm text-gray-500">
-            Se încarcă personalul...
+            {t(
+              "loading"
+            )}
           </p>
         ) : assignments.length ===
           0 ? (
           <p className="mt-5 text-sm text-gray-600">
-            Nu ai invitat încă niciun membru
-            al personalului.
+            {t(
+              "empty"
+            )}
           </p>
         ) : (
           <div className="mt-6 space-y-4">
             {assignments.map(
-              (assignment) => {
+              (
+                assignment
+              ) => {
                 const clinic =
-                  getFirstRelation(
-                    assignment.clinics
+                  first(
+                    assignment
+                      .clinics
                   );
 
                 const isChanging =
@@ -576,23 +804,51 @@ export default function DoctorStaffManager() {
 
                         <p className="mt-1 text-sm text-gray-600">
                           {
-                            assignment.invited_email
+                            assignment
+                              .invited_email
                           }
                         </p>
 
                         <p className="mt-2 text-sm text-gray-600">
                           <span className="font-medium">
-                            Clinică:
+                            {t(
+                              "clinic"
+                            )}
+                            :
                           </span>{" "}
-                          {getClinicName(
+                          {clinicName(
                             clinic
                           )}
                         </p>
 
                         <p className="mt-1 text-xs text-gray-500">
-                          Invitat la{" "}
-                          {formatDate(
-                            assignment.invited_at
+                          {t(
+                            "invitedAt",
+                            {
+                              date:
+                                new Intl
+                                  .DateTimeFormat(
+                                    DATE_LOCALE[
+                                      locale
+                                    ],
+                                    {
+                                      day:
+                                        "2-digit",
+
+                                      month:
+                                        "long",
+
+                                      year:
+                                        "numeric",
+                                    }
+                                  )
+                                  .format(
+                                    new Date(
+                                      assignment
+                                        .invited_at
+                                    )
+                                  ),
+                            }
                           )}
                         </p>
                       </div>
@@ -602,7 +858,7 @@ export default function DoctorStaffManager() {
                           assignment.status
                         )}`}
                       >
-                        {getStatusLabel(
+                        {statusLabel(
                           assignment.status
                         )}
                       </span>
@@ -622,9 +878,11 @@ export default function DoctorStaffManager() {
                               "activate"
                             )
                           }
-            size="sm"
+                          size="sm"
                         >
-                          Activează accesul
+                          {t(
+                            "activate"
+                          )}
                         </Button>
                       )}
 
@@ -641,10 +899,12 @@ export default function DoctorStaffManager() {
                               "suspend"
                             )
                           }
-            variant="secondary"
-            size="sm"
+                          variant="secondary"
+                          size="sm"
                         >
-                          Suspendă
+                          {t(
+                            "suspend"
+                          )}
                         </Button>
                       )}
 
@@ -659,10 +919,12 @@ export default function DoctorStaffManager() {
                             "revoke"
                           )
                         }
-            variant="danger-outline"
-            size="sm"
+                        variant="danger-outline"
+                        size="sm"
                       >
-                        Revocă
+                        {t(
+                          "revoke"
+                        )}
                       </Button>
                     </div>
                   </article>

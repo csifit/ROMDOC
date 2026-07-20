@@ -1,6 +1,12 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import ClinicEditingPanel from "@/components/clinic/clinic-editing-panel";
+import {
+  getTranslations,
+} from "next-intl/server";
+import {
+  redirect,
+} from "next/navigation";
+
+import DoctorClinicEditingPanel from "@/components/doctor/doctor-clinic-editing-panel";
 import DoctorPhotoManager from "@/components/doctor/doctor-photo-manager";
 import DoctorProfileForm from "@/components/doctor/doctor-profile-form";
 import DoctorServicesManager, {
@@ -9,12 +15,26 @@ import DoctorServicesManager, {
 import DoctorSpecialtiesManager, {
   type DoctorSpecialtyOption,
 } from "@/components/doctor/doctor-specialties-manager";
-import { createClient } from "@/lib/supabase/server";
+import {
+  selectTranslation,
+} from "@/lib/i18n/app-locale";
+import {
+  getStoredAppLocale,
+} from "@/lib/i18n/server-app-locale";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
 type DoctorTranslation = {
   locale: string;
-  title: string | null;
-  biography: string | null;
+
+  title:
+    | string
+    | null;
+
+  biography:
+    | string
+    | null;
 };
 
 type ServiceTranslation = {
@@ -24,11 +44,18 @@ type ServiceTranslation = {
 
 type DoctorServiceRow = {
   id: string;
-  price: number | string;
+
+  price:
+    | number
+    | string;
+
   currency: string;
   sort_order: number;
   is_active: boolean;
-  doctor_service_translations: ServiceTranslation[] | null;
+
+  doctor_service_translations:
+    | ServiceTranslation[]
+    | null;
 };
 
 type SpecialtyTranslation = {
@@ -39,119 +66,180 @@ type SpecialtyTranslation = {
 type SpecialtyRow = {
   id: string;
   slug: string;
-  specialty_translations: SpecialtyTranslation[] | null;
+
+  specialty_translations:
+    | SpecialtyTranslation[]
+    | null;
 };
 
 function getRomanianDoctorTranslation(
-  translations: DoctorTranslation[] | null
+  translations:
+    | DoctorTranslation[]
+    | null
 ) {
   return (
     translations?.find(
-      (translation) => translation.locale === "ro"
-    ) ?? null
+      (
+        translation
+      ) =>
+        translation.locale ===
+        "ro"
+    ) ??
+    translations?.[0] ??
+    null
   );
 }
 
 function getRomanianServiceName(
-  translations: ServiceTranslation[] | null
+  translations:
+    | ServiceTranslation[]
+    | null,
+  fallback:
+    string
 ) {
-  const romanianTranslation = translations?.find(
-    (translation) => translation.locale === "ro"
-  );
-
-  const fallbackTranslation = translations?.[0];
-
   return (
-    romanianTranslation?.name ??
-    fallbackTranslation?.name ??
-    "Serviciu fără denumire"
-  );
-}
-
-function getSpecialtyName(specialty: SpecialtyRow) {
-  return (
-    specialty.specialty_translations?.find(
-      (translation) => translation.locale === "ro"
+    translations?.find(
+      (
+        translation
+      ) =>
+        translation.locale ===
+        "ro"
     )?.name ??
-    specialty.specialty_translations?.[0]?.name ??
-    specialty.slug
+    translations?.[0]
+      ?.name ??
+    fallback
   );
 }
 
 function isSupportedCurrency(
-  currency: string
-): currency is "RON" | "EUR" {
-  return currency === "RON" || currency === "EUR";
+  currency:
+    string
+): currency is
+  | "RON"
+  | "EUR" {
+  return (
+    currency === "RON" ||
+    currency === "EUR"
+  );
 }
 
 export default async function DoctorProfilePage() {
-  const supabase = await createClient();
+  const locale =
+    await getStoredAppLocale();
+
+  const t =
+    await getTranslations({
+      locale,
+      namespace:
+        "DoctorConfiguration.profilePage",
+    });
+
+  const supabase =
+    await createClient();
 
   const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+    data: {
+      user,
+    },
+    error:
+      userError,
+  } =
+    await supabase.auth
+      .getUser();
 
-  if (userError || !user) {
-    redirect("/login");
-  }
+  if (
+    userError ||
+    !user
+  ) {
+    const query =
+      new URLSearchParams({
+        locale,
+        next:
+          "/doctor-dashboard/profile",
+      });
 
-  const {
-    data: profile,
-    error: profileError,
-  } = await supabase
-    .from("profiles")
-    .select("role, first_name, last_name")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileError) {
-    console.error(
-      "Doctor profile page profile query failed:",
-      profileError
+    redirect(
+      `/login?${query.toString()}`
     );
   }
 
-  if (!profile || profile.role !== "doctor") {
-    redirect("/");
+  const {
+    data:
+      profile,
+  } =
+    await supabase
+      .from(
+        "profiles"
+      )
+      .select(
+        "role, first_name, last_name"
+      )
+      .eq(
+        "id",
+        user.id
+      )
+      .maybeSingle();
+
+  if (
+    !profile ||
+    profile.role !==
+      "doctor"
+  ) {
+    redirect(
+      "/dashboard"
+    );
   }
 
   const {
-    data: doctor,
-    error: doctorError,
-  } = await supabase
-    .from("doctors")
-    .select(`
-      id,
-      slug,
-      status,
-      photo_url,
-      phone,
-      email,
-      years_experience,
-      consultation_price,
-      doctor_translations (
-        locale,
-        title,
-        biography
+    data:
+      doctor,
+    error:
+      doctorError,
+  } =
+    await supabase
+      .from(
+        "doctors"
       )
-    `)
-    .eq("profile_id", user.id)
-    .maybeSingle();
+      .select(`
+        id,
+        slug,
+        status,
+        photo_url,
+        phone,
+        email,
+        years_experience,
+        consultation_price,
+        doctor_translations (
+          locale,
+          title,
+          biography
+        )
+      `)
+      .eq(
+        "profile_id",
+        user.id
+      )
+      .maybeSingle();
 
-  if (doctorError) {
+  if (
+    doctorError
+  ) {
     console.error(
       "Doctor profile page doctor query failed:",
       doctorError
     );
   }
 
-  if (!doctor) {
+  if (
+    !doctor
+  ) {
     return (
       <main className="px-6 py-12">
         <div className="mx-auto max-w-5xl">
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-amber-900">
-            Contul tău nu este asociat unui profil de medic.
+            {t(
+              "missingProfile"
+            )}
           </div>
         </div>
       </main>
@@ -162,108 +250,228 @@ export default async function DoctorProfilePage() {
     servicesResult,
     specialtiesResult,
     doctorSpecialtiesResult,
-  ] = await Promise.all([
-    supabase
-      .from("doctor_services")
-      .select(`
-        id,
-        price,
-        currency,
-        sort_order,
-        is_active,
-        doctor_service_translations (
-          locale,
-          name
+  ] =
+    await Promise.all([
+      supabase
+        .from(
+          "doctor_services"
         )
-      `)
-      .eq("doctor_id", doctor.id)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: true }),
-
-    supabase
-      .from("specialties")
-      .select(`
-        id,
-        slug,
-        specialty_translations (
-          locale,
-          name
+        .select(`
+          id,
+          price,
+          currency,
+          sort_order,
+          is_active,
+          doctor_service_translations (
+            locale,
+            name
+          )
+        `)
+        .eq(
+          "doctor_id",
+          doctor.id
         )
-      `)
-      .eq("is_active", true)
-      .order("slug", { ascending: true }),
+        .order(
+          "sort_order",
+          {
+            ascending:
+              true,
+          }
+        )
+        .order(
+          "created_at",
+          {
+            ascending:
+              true,
+          }
+        ),
 
-    supabase
-      .from("doctor_specialties")
-      .select("specialty_id")
-      .eq("doctor_id", doctor.id),
-  ]);
+      supabase
+        .from(
+          "specialties"
+        )
+        .select(`
+          id,
+          slug,
+          specialty_translations (
+            locale,
+            name
+          )
+        `)
+        .eq(
+          "is_active",
+          true
+        )
+        .order(
+          "slug",
+          {
+            ascending:
+              true,
+          }
+        ),
 
-  if (servicesResult.error) {
-    console.error(
-      "Doctor profile services query failed:",
-      servicesResult.error
+      supabase
+        .from(
+          "doctor_specialties"
+        )
+        .select(
+          "specialty_id"
+        )
+        .eq(
+          "doctor_id",
+          doctor.id
+        ),
+    ]);
+
+  const translation =
+    getRomanianDoctorTranslation(
+      doctor
+        .doctor_translations
     );
-  }
-
-  if (specialtiesResult.error) {
-    console.error(
-      "Doctor profile specialties query failed:",
-      specialtiesResult.error
-    );
-  }
-
-  if (doctorSpecialtiesResult.error) {
-    console.error(
-      "Doctor selected specialties query failed:",
-      doctorSpecialtiesResult.error
-    );
-  }
-
-  const translation = getRomanianDoctorTranslation(
-    doctor.doctor_translations
-  );
 
   const serviceRows =
-    (servicesResult.data as unknown as DoctorServiceRow[] | null) ?? [];
+    (
+      servicesResult
+        .data as unknown as
+        | DoctorServiceRow[]
+        | null
+    ) ??
+    [];
 
-  const services: DoctorServiceItem[] = serviceRows
-    .filter((service) => isSupportedCurrency(service.currency))
-    .map((service) => ({
-      id: service.id,
-      name: getRomanianServiceName(
-        service.doctor_service_translations
-      ),
-      price: Number(service.price),
-      currency: service.currency as "RON" | "EUR",
-      sortOrder: service.sort_order,
-      isActive: service.is_active,
-    }));
+  const services:
+    DoctorServiceItem[] =
+    serviceRows
+      .filter(
+        (
+          service
+        ) =>
+          isSupportedCurrency(
+            service.currency
+          )
+      )
+      .map(
+        (
+          service
+        ) => ({
+          id:
+            service.id,
+
+          name:
+            getRomanianServiceName(
+              service
+                .doctor_service_translations,
+              t(
+                "unnamedService"
+              )
+            ),
+
+          price:
+            Number(
+              service.price
+            ),
+
+          currency:
+            service.currency as
+              | "RON"
+              | "EUR",
+
+          sortOrder:
+            service
+              .sort_order,
+
+          isActive:
+            service
+              .is_active,
+        })
+      );
 
   const specialtyRows =
-    (specialtiesResult.data as unknown as SpecialtyRow[] | null) ?? [];
+    (
+      specialtiesResult
+        .data as unknown as
+        | SpecialtyRow[]
+        | null
+    ) ??
+    [];
 
-  const specialties: DoctorSpecialtyOption[] = specialtyRows
-    .map((specialty) => ({
-      id: specialty.id,
-      slug: specialty.slug,
-      name: getSpecialtyName(specialty),
-    }))
-    .sort((first, second) =>
-      first.name.localeCompare(second.name, "ro")
+  const specialties:
+    DoctorSpecialtyOption[] =
+    specialtyRows
+      .map(
+        (
+          specialty
+        ) => ({
+          id:
+            specialty.id,
+
+          slug:
+            specialty.slug,
+
+          name:
+            selectTranslation(
+              specialty
+                .specialty_translations,
+              locale
+            )?.name ??
+            specialty.slug,
+        })
+      )
+      .sort(
+        (
+          first,
+          second
+        ) =>
+          first.name
+            .localeCompare(
+              second.name,
+              locale
+            )
+      );
+
+  const selectedSpecialtyIds =
+    (
+      doctorSpecialtiesResult
+        .data ??
+      []
+    ).map(
+      (
+        item
+      ) =>
+        item.specialty_id
     );
 
-  const selectedSpecialtyIds = (
-    doctorSpecialtiesResult.data ?? []
-  ).map((item) => item.specialty_id);
+  const displayName =
+    [
+      profile.first_name,
+      profile.last_name,
+    ]
+      .filter(
+        Boolean
+      )
+      .join(
+        " "
+      )
+      .trim();
 
-  const displayName = [
-    profile.first_name,
-    profile.last_name,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
+  const publicProfileHref =
+    locale === "de"
+      ? `/de/arzt/${doctor.slug}`
+      : `/${locale}/doctor/${doctor.slug}`;
+
+  const doctorStatus =
+    [
+      "active",
+      "pending",
+      "suspended",
+      "rejected",
+      "draft",
+    ].includes(
+      doctor.status
+    )
+      ? t(
+          `statuses.${doctor.status}`
+        )
+      : doctor.status;
 
   return (
     <main className="px-6 py-12">
@@ -271,86 +479,152 @@ export default async function DoctorProfilePage() {
         <header className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
           <div>
             <p className="text-sm font-medium text-gray-500">
-              Panou medic
+              {t(
+                "eyebrow"
+              )}
             </p>
 
             <h1 className="mt-2 text-4xl font-bold text-gray-900">
-              Profilul meu
+              {t(
+                "title"
+              )}
             </h1>
 
             <p className="mt-3 max-w-3xl text-gray-600">
-              Actualizează informațiile publice, specialitățile,
-              biografia, clinicile și lista serviciilor medicale.
+              {t(
+                "description"
+              )}
             </p>
 
             {displayName && (
               <p className="mt-2 text-sm font-medium text-gray-700">
-                {displayName}
+                {
+                  displayName
+                }
               </p>
             )}
           </div>
 
           <Link
-            href={`/doctor/${doctor.slug}`}
+            href={
+              publicProfileHref
+            }
             target="_blank"
             rel="noreferrer"
             className="w-fit rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-medium text-gray-800 transition hover:bg-gray-50"
           >
-            Vezi profilul public
+            {t(
+              "viewPublic"
+            )}
           </Link>
         </header>
 
-        {doctor.status !== "active" && (
+        {doctor.status !==
+          "active" && (
           <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900">
-            Profilul tău are momentan starea{" "}
-            <strong>{doctor.status}</strong>. Modificările pot fi
-            salvate, dar profilul public poate rămâne limitat până la
-            activare.
+            {t(
+              "inactiveNotice",
+              {
+                status:
+                  doctorStatus,
+              }
+            )}
           </div>
         )}
 
         <div className="mt-10 space-y-8">
           <DoctorPhotoManager
-            initialPhotoUrl={doctor.photo_url ?? null}
-            doctorName={displayName || doctor.slug}
+            initialPhotoUrl={
+              doctor
+                .photo_url ??
+              null
+            }
+            doctorName={
+              displayName ||
+              doctor.slug
+            }
           />
 
           <DoctorProfileForm
-            initialPhone={doctor.phone ?? ""}
-            initialEmail={doctor.email ?? ""}
-            initialYearsExperience={doctor.years_experience}
-            initialConsultationPrice={
-              doctor.consultation_price === null
-                ? null
-                : Number(doctor.consultation_price)
+            initialPhone={
+              doctor.phone ??
+              ""
             }
-            initialTitleRo={translation?.title ?? ""}
-            initialBiographyRo={translation?.biography ?? ""}
+            initialEmail={
+              doctor.email ??
+              ""
+            }
+            initialYearsExperience={
+              doctor
+                .years_experience
+            }
+            initialConsultationPrice={
+              doctor
+                .consultation_price ===
+              null
+                ? null
+                : Number(
+                    doctor
+                      .consultation_price
+                  )
+            }
+            initialTitleRo={
+              translation
+                ?.title ??
+              ""
+            }
+            initialBiographyRo={
+              translation
+                ?.biography ??
+              ""
+            }
           />
 
-          <ClinicEditingPanel
-            title="Clinicile mele"
-            description="Poți modifica datele clinicilor asociate profilului tău de medic. Deoarece o clinică este o entitate comună RomDoc, modificările se vor vedea și pentru ceilalți medici asociați aceleiași clinici."
-            emptyMessage="Nu ai încă nicio clinică asociată profilului tău de medic."
+          <DoctorClinicEditingPanel
+            title={t(
+              "clinicsTitle"
+            )}
+            description={t(
+              "clinicsDescription"
+            )}
+            emptyMessage={t(
+              "clinicsEmpty"
+            )}
           />
 
-          {specialtiesResult.error || doctorSpecialtiesResult.error ? (
+          {specialtiesResult
+            .error ||
+          doctorSpecialtiesResult
+            .error ? (
             <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800">
-              Specialitățile nu au putut fi încărcate.
+              {t(
+                "specialtiesLoadError"
+              )}
             </div>
           ) : (
             <DoctorSpecialtiesManager
-              specialties={specialties}
-              initialSpecialtyIds={selectedSpecialtyIds}
+              specialties={
+                specialties
+              }
+              initialSpecialtyIds={
+                selectedSpecialtyIds
+              }
             />
           )}
 
-          {servicesResult.error ? (
+          {servicesResult
+            .error ? (
             <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800">
-              Serviciile nu au putut fi încărcate.
+              {t(
+                "servicesLoadError"
+              )}
             </div>
           ) : (
-            <DoctorServicesManager initialServices={services} />
+            <DoctorServicesManager
+              initialServices={
+                services
+              }
+            />
           )}
         </div>
       </div>

@@ -1,45 +1,74 @@
-import { redirect } from "next/navigation";
+import {
+  redirect,
+} from "next/navigation";
+
 import DoctorStaffManager from "@/components/doctor/doctor-staff-manager";
-import { createClient } from "@/lib/supabase/server";
+import {
+  getStoredAppLocale,
+} from "@/lib/i18n/server-app-locale";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
 export default async function DoctorStaffPage() {
+  const locale =
+    await getStoredAppLocale();
+
   const supabase =
     await createClient();
 
   const {
-    data: { user },
-    error: userError,
+    data: {
+      user,
+    },
   } =
-    await supabase.auth.getUser();
+    await supabase.auth
+      .getUser();
 
-  if (
-    userError ||
-    !user
-  ) {
+  if (!user) {
+    const query =
+      new URLSearchParams({
+        locale,
+        next:
+          "/doctor-dashboard/staff",
+      });
+
     redirect(
-      "/login?next=/doctor-dashboard/staff"
+      `/login?${query.toString()}`
     );
   }
 
   const {
-    data: profile,
-    error: profileError,
-  } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
+    data:
+      profile,
+  } =
+    await supabase
+      .from(
+        "profiles"
+      )
+      .select(
+        "role, account_status"
+      )
+      .eq(
+        "id",
+        user.id
+      )
+      .maybeSingle();
 
   if (
-    profileError ||
-    !profile
+    !profile ||
+    profile.role !==
+      "doctor" ||
+    profile
+      .account_status !==
+      "active"
   ) {
-    redirect("/dashboard");
+    redirect(
+      "/dashboard"
+    );
   }
 
-  if (profile.role !== "doctor") {
-    redirect("/dashboard");
-  }
-
-  return <DoctorStaffManager />;
+  return (
+    <DoctorStaffManager />
+  );
 }

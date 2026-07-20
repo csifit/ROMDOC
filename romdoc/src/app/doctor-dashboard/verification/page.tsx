@@ -1,29 +1,63 @@
-import { redirect } from "next/navigation";
+import {
+  getTranslations,
+} from "next-intl/server";
+import {
+  redirect,
+} from "next/navigation";
+
 import DoctorVerificationForm from "@/components/doctor/doctor-verification-form";
-import { requireActiveProfile } from "@/lib/auth/require-active-profile";
+import {
+  getStoredAppLocale,
+} from "@/lib/i18n/server-app-locale";
+import {
+  requireActiveProfile,
+} from "@/lib/auth/require-active-profile";
 
 export default async function DoctorVerificationPage() {
-  const { profile } =
+  const locale =
+    await getStoredAppLocale();
+
+  const t =
+    await getTranslations({
+      locale,
+      namespace:
+        "DoctorConfiguration.verificationPage",
+    });
+
+  const {
+    profile,
+  } =
     await requireActiveProfile();
 
-  if (profile.role !== "doctor") {
-    redirect("/");
+  if (
+    profile.role !==
+    "doctor"
+  ) {
+    redirect(
+      "/dashboard"
+    );
   }
 
   return (
     <main className="px-6 py-12">
       <div className="mx-auto max-w-5xl">
         <header>
-          <p className="text-sm font-medium text-gray-500">
-            Panou medic
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#036661]">
+            {t(
+              "eyebrow"
+            )}
           </p>
 
-          <h1 className="mt-2 text-4xl font-bold text-gray-900">
-            Verificare profesională
+          <h1 className="mt-3 text-4xl font-bold tracking-tight text-gray-900">
+            {t(
+              "title"
+            )}
           </h1>
 
-          <p className="mt-3 max-w-3xl text-gray-600">
-            Trimite informațiile și documentele necesare pentru ca RomDoc să poată verifica dreptul de practică declarat. RomDoc verifică documentele existente, dar nu emite licențe medicale.
+          <p className="mt-3 max-w-3xl leading-7 text-gray-600">
+            {t(
+              "description"
+            )}
           </p>
         </header>
 

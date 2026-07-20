@@ -1,39 +1,64 @@
-import { redirect } from "next/navigation";
+import {
+  getTranslations,
+} from "next-intl/server";
+import {
+  redirect,
+} from "next/navigation";
 
 import DoctorSecuritySettings from "@/components/doctor/doctor-security-settings";
-import { createClient } from "@/lib/supabase/server";
+import {
+  getStoredAppLocale,
+} from "@/lib/i18n/server-app-locale";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
 export default async function DoctorSecurityPage() {
+  const locale =
+    await getStoredAppLocale();
+
+  const t =
+    await getTranslations({
+      locale,
+      namespace:
+        "DoctorConfiguration.securityPage",
+    });
+
   const supabase =
     await createClient();
 
   const {
-    data: { user },
-    error: userError,
+    data: {
+      user,
+    },
   } =
-    await supabase.auth.getUser();
+    await supabase.auth
+      .getUser();
 
-  if (
-    userError ||
-    !user
-  ) {
+  if (!user) {
+    const query =
+      new URLSearchParams({
+        locale,
+        next:
+          "/doctor-dashboard/security",
+      });
+
     redirect(
-      "/login?next=/doctor-dashboard/security"
+      `/login?${query.toString()}`
     );
   }
 
   const {
-    data: profile,
-    error: profileError,
+    data:
+      profile,
   } =
     await supabase
-      .from("profiles")
-      .select(`
-        role,
-        account_status,
-        first_name,
-        last_name
-      `)
+      .from(
+        "profiles"
+      )
+      .select(
+        "role, account_status"
+      )
       .eq(
         "id",
         user.id
@@ -41,11 +66,11 @@ export default async function DoctorSecurityPage() {
       .maybeSingle();
 
   if (
-    profileError ||
     !profile ||
     profile.role !==
       "doctor" ||
-    profile.account_status !==
+    profile
+      .account_status !==
       "active"
   ) {
     redirect(
@@ -54,22 +79,25 @@ export default async function DoctorSecurityPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+    <main className="px-6 py-12">
+      <div className="mx-auto max-w-5xl">
         <header>
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#036661]">
-            Securitate
+            {t(
+              "eyebrow"
+            )}
           </p>
 
-          <h1 className="mt-3 text-3xl font-bold text-gray-900">
-            Autentificare în doi pași
+          <h1 className="mt-3 text-4xl font-bold tracking-tight text-gray-900">
+            {t(
+              "title"
+            )}
           </h1>
 
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-600">
-            Protejează contul medical cu Google Authenticator.
-            Activarea este opțională în această etapă și nu modifică
-            înregistrarea, confirmarea e-mailului, plata sau activarea
-            contului.
+          <p className="mt-3 max-w-3xl leading-7 text-gray-600">
+            {t(
+              "description"
+            )}
           </p>
         </header>
 

@@ -11,16 +11,43 @@ import {
   loadGoogleMaps,
 } from "@/lib/google-maps/load-google-maps";
 import type {
+  AppLocale,
+} from "@/lib/i18n/app-locale";
+import type {
   GoogleAddressApiResponse,
   GoogleClinicAddress,
 } from "@/lib/locations/google-address";
 
+export type GooglePlaceAutocompleteCopy = {
+  placeholder: string;
+  importUnavailable: string;
+  elementUnavailable: string;
+  predictionMissing: string;
+  placeIdMissing: string;
+  verifyError: string;
+  loadError: string;
+  label: string;
+  help: string;
+  loading: string;
+  verifying: string;
+  selected: string;
+  city: string;
+  region: string;
+  postalCode: string;
+  country: string;
+};
+
 type GooglePlaceAutocompleteProps = {
   onAddressSelected: (
-    address: GoogleClinicAddress
+    address:
+      GoogleClinicAddress
   ) => void;
 
   disabled?: boolean;
+  locale?: AppLocale;
+
+  copy?:
+    GooglePlaceAutocompleteCopy;
 };
 
 type PlaceObject = {
@@ -28,7 +55,9 @@ type PlaceObject = {
 };
 
 type PlacePrediction = {
-  toPlace: () => PlaceObject;
+  toPlace:
+    () =>
+      PlaceObject;
 };
 
 type PlacePredictionSelectEvent =
@@ -43,12 +72,14 @@ type PlaceAutocompleteElementInstance =
 
     addEventListener: (
       type: string,
-      listener: EventListener
+      listener:
+        EventListener
     ) => void;
 
     removeEventListener: (
       type: string,
-      listener: EventListener
+      listener:
+        EventListener
     ) => void;
   };
 
@@ -63,8 +94,10 @@ type PlacesLibrary = {
 
 type GoogleMapsRuntime = {
   importLibrary?: (
-    libraryName: string
-  ) => Promise<unknown>;
+    libraryName:
+      string
+  ) =>
+    Promise<unknown>;
 
   places?: {
     PlaceAutocompleteElement?:
@@ -75,8 +108,60 @@ type GoogleMapsRuntime = {
 type GoogleWindow =
   Window & {
     google?: {
-      maps?: GoogleMapsRuntime;
+      maps?:
+        GoogleMapsRuntime;
     };
+  };
+
+const DEFAULT_COPY:
+  GooglePlaceAutocompleteCopy = {
+    placeholder:
+      "Caută adresa clinicii",
+
+    importUnavailable:
+      "Funcția Google Maps importLibrary nu este disponibilă.",
+
+    elementUnavailable:
+      "Google Places nu a furnizat componenta PlaceAutocompleteElement.",
+
+    predictionMissing:
+      "Google nu a returnat sugestia selectată.",
+
+    placeIdMissing:
+      "Google nu a returnat un identificator valid pentru adresă.",
+
+    verifyError:
+      "Adresa nu a putut fi verificată.",
+
+    loadError:
+      "Google Places nu a putut fi încărcat.",
+
+    label:
+      "Adresa clinicii",
+
+    help:
+      "Selectează o adresă din lista Google",
+
+    loading:
+      "Se încarcă Google Places...",
+
+    verifying:
+      "Adresa este verificată...",
+
+    selected:
+      "Adresă selectată",
+
+    city:
+      "Oraș",
+
+    region:
+      "Regiune",
+
+    postalCode:
+      "Cod poștal",
+
+    country:
+      "Țară",
   };
 
 function getPlaceAutocompleteConstructor(
@@ -84,7 +169,8 @@ function getPlaceAutocompleteConstructor(
     PlacesLibrary
 ) {
   const googleWindow =
-    window as GoogleWindow;
+    window as
+      GoogleWindow;
 
   return (
     placesLibrary
@@ -100,9 +186,14 @@ function getPlaceAutocompleteConstructor(
 export default function GooglePlaceAutocomplete({
   onAddressSelected,
   disabled = false,
+  locale = "ro",
+  copy =
+    DEFAULT_COPY,
 }: GooglePlaceAutocompleteProps) {
   const mountRef =
-    useRef<HTMLDivElement | null>(
+    useRef<
+      HTMLDivElement | null
+    >(
       null
     );
 
@@ -110,19 +201,25 @@ export default function GooglePlaceAutocomplete({
     isLoading,
     setIsLoading,
   ] =
-    useState(true);
+    useState(
+      true
+    );
 
   const [
     isResolvingAddress,
     setIsResolvingAddress,
   ] =
-    useState(false);
+    useState(
+      false
+    );
 
   const [
     error,
     setError,
   ] =
-    useState<string | null>(
+    useState<
+      string | null
+    >(
       null
     );
 
@@ -130,7 +227,9 @@ export default function GooglePlaceAutocomplete({
     selectedAddress,
     setSelectedAddress,
   ] =
-    useState<GoogleClinicAddress | null>(
+    useState<
+      GoogleClinicAddress | null
+    >(
       null
     );
 
@@ -144,7 +243,9 @@ export default function GooglePlaceAutocomplete({
           address
         );
       },
-      [onAddressSelected]
+      [
+        onAddressSelected,
+      ]
     );
 
   useEffect(() => {
@@ -153,16 +254,23 @@ export default function GooglePlaceAutocomplete({
 
     let autocomplete:
       | PlaceAutocompleteElementInstance
-      | null = null;
+      | null =
+      null;
 
     let handleSelection:
       | EventListener
-      | null = null;
+      | null =
+      null;
 
     async function initialize() {
       try {
-        setError(null);
-        setIsLoading(true);
+        setError(
+          null
+        );
+
+        setIsLoading(
+          true
+        );
 
         await loadGoogleMaps();
 
@@ -174,23 +282,27 @@ export default function GooglePlaceAutocomplete({
         }
 
         const googleWindow =
-          window as GoogleWindow;
+          window as
+            GoogleWindow;
 
         const importLibrary =
           googleWindow.google
             ?.maps
             ?.importLibrary;
 
-        if (!importLibrary) {
+        if (
+          !importLibrary
+        ) {
           throw new Error(
-            "Funcția Google Maps importLibrary nu este disponibilă."
+            copy.importUnavailable
           );
         }
 
         const placesLibrary =
           (await importLibrary(
             "places"
-          )) as PlacesLibrary;
+          )) as
+            PlacesLibrary;
 
         const PlaceAutocompleteElement =
           getPlaceAutocompleteConstructor(
@@ -201,27 +313,27 @@ export default function GooglePlaceAutocomplete({
           !PlaceAutocompleteElement
         ) {
           throw new Error(
-            "Google Places nu a furnizat componenta PlaceAutocompleteElement."
+            copy.elementUnavailable
           );
         }
 
-        /*
-         * Do not pass includedRegionCodes.
-         * Google may return supported addresses from any country.
-         */
         autocomplete =
           new PlaceAutocompleteElement();
 
         autocomplete.placeholder =
-          "Caută adresa clinicii";
+          copy.placeholder;
 
-        autocomplete.style.width =
+        autocomplete.style
+          .width =
           "100%";
 
-        autocomplete.style.display =
+        autocomplete.style
+          .display =
           "block";
 
-        if (disabled) {
+        if (
+          disabled
+        ) {
           autocomplete.setAttribute(
             "disabled",
             ""
@@ -234,10 +346,13 @@ export default function GooglePlaceAutocomplete({
 
         handleSelection =
           (async (
-            event: Event
+            event:
+              Event
           ) => {
             try {
-              setError(null);
+              setError(
+                null
+              );
 
               setIsResolvingAddress(
                 true
@@ -251,9 +366,11 @@ export default function GooglePlaceAutocomplete({
                 placeEvent
                   .placePrediction;
 
-              if (!placePrediction) {
+              if (
+                !placePrediction
+              ) {
                 throw new Error(
-                  "Google nu a returnat sugestia selectată."
+                  copy.predictionMissing
                 );
               }
 
@@ -264,9 +381,11 @@ export default function GooglePlaceAutocomplete({
               const placeId =
                 place.id;
 
-              if (!placeId) {
+              if (
+                !placeId
+              ) {
                 throw new Error(
-                  "Google nu a returnat un identificator valid pentru adresă."
+                  copy.placeIdMissing
                 );
               }
 
@@ -285,6 +404,7 @@ export default function GooglePlaceAutocomplete({
                     body:
                       JSON.stringify({
                         placeId,
+                        locale,
                       }),
                   }
                 );
@@ -299,11 +419,13 @@ export default function GooglePlaceAutocomplete({
               ) {
                 throw new Error(
                   result.error ??
-                    "Adresa nu a putut fi verificată."
+                    copy.verifyError
                 );
               }
 
-              if (!isActive) {
+              if (
+                !isActive
+              ) {
                 return;
               }
 
@@ -322,7 +444,9 @@ export default function GooglePlaceAutocomplete({
                 selectionError
               );
 
-              if (!isActive) {
+              if (
+                !isActive
+              ) {
                 return;
               }
 
@@ -334,28 +458,36 @@ export default function GooglePlaceAutocomplete({
                 selectionError instanceof
                   Error
                   ? selectionError.message
-                  : "Adresa nu a putut fi verificată."
+                  : copy.verifyError
               );
             } finally {
-              if (isActive) {
+              if (
+                isActive
+              ) {
                 setIsResolvingAddress(
                   false
                 );
               }
             }
-          }) as EventListener;
+          }) as
+            EventListener;
 
         autocomplete.addEventListener(
           "gmp-select",
           handleSelection
         );
 
-        mountRef.current.appendChild(
-          autocomplete
-        );
+        mountRef.current
+          .appendChild(
+            autocomplete
+          );
 
-        if (isActive) {
-          setIsLoading(false);
+        if (
+          isActive
+        ) {
+          setIsLoading(
+            false
+          );
         }
       } catch (
         initializationError
@@ -365,7 +497,9 @@ export default function GooglePlaceAutocomplete({
           initializationError
         );
 
-        if (!isActive) {
+        if (
+          !isActive
+        ) {
           return;
         }
 
@@ -373,10 +507,12 @@ export default function GooglePlaceAutocomplete({
           initializationError instanceof
             Error
             ? initializationError.message
-            : "Google Places nu a putut fi încărcat."
+            : copy.loadError
         );
 
-        setIsLoading(false);
+        setIsLoading(
+          false
+        );
       }
     }
 
@@ -406,36 +542,47 @@ export default function GooglePlaceAutocomplete({
         autocomplete.parentNode ===
           mountElement
       ) {
-        mountElement.removeChild(
-          autocomplete
-        );
+        mountElement
+          .removeChild(
+            autocomplete
+          );
       }
     };
   }, [
+    copy,
     disabled,
     handleAddressSelected,
+    locale,
   ]);
 
   return (
     <div className="space-y-3">
       <label className="block">
         <span className="text-sm font-medium text-gray-700">
-          Adresa clinicii
+          {
+            copy.label
+          }
         </span>
 
         <span className="ml-2 text-xs text-gray-500">
-          Selectează o adresă din lista Google
+          {
+            copy.help
+          }
         </span>
 
         <div className="mt-2 rounded-xl border border-gray-300 bg-white p-1">
           {isLoading && (
             <p className="px-3 py-2 text-sm text-gray-500">
-              Se încarcă Google Places...
+              {
+                copy.loading
+              }
             </p>
           )}
 
           <div
-            ref={mountRef}
+            ref={
+              mountRef
+            }
             className={
               isLoading
                 ? "hidden"
@@ -447,14 +594,18 @@ export default function GooglePlaceAutocomplete({
 
       {isResolvingAddress && (
         <p className="text-sm text-gray-600">
-          Adresa este verificată...
+          {
+            copy.verifying
+          }
         </p>
       )}
 
       {selectedAddress && (
         <div className="rounded-xl border border-green-200 bg-green-50 p-4">
           <p className="text-sm font-semibold text-green-950">
-            Adresă selectată
+            {
+              copy.selected
+            }
           </p>
 
           <p className="mt-1 text-sm leading-6 text-green-900">
@@ -467,7 +618,9 @@ export default function GooglePlaceAutocomplete({
           <dl className="mt-3 grid gap-2 text-xs text-green-900 sm:grid-cols-2">
             <div>
               <dt className="font-semibold">
-                Oraș
+                {
+                  copy.city
+                }
               </dt>
 
               <dd>
@@ -480,7 +633,9 @@ export default function GooglePlaceAutocomplete({
 
             <div>
               <dt className="font-semibold">
-                Regiune
+                {
+                  copy.region
+                }
               </dt>
 
               <dd>
@@ -492,7 +647,9 @@ export default function GooglePlaceAutocomplete({
 
             <div>
               <dt className="font-semibold">
-                Cod poștal
+                {
+                  copy.postalCode
+                }
               </dt>
 
               <dd>
@@ -504,7 +661,9 @@ export default function GooglePlaceAutocomplete({
 
             <div>
               <dt className="font-semibold">
-                Țară
+                {
+                  copy.country
+                }
               </dt>
 
               <dd>

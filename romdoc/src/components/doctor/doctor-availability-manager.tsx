@@ -1,13 +1,23 @@
 "use client";
 
-import Button from "@/components/ui/button";
-
+import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
 import {
   type FormEvent,
   useState,
   useTransition,
 } from "react";
-import { useRouter } from "next/navigation";
+import {
+  useRouter,
+} from "next/navigation";
+
+import Button from "@/components/ui/button";
+import {
+  type AppLocale,
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
 
 type ClinicOption = {
   id: string;
@@ -18,7 +28,10 @@ type BreakItem = {
   id: string;
   startTime: string;
   endTime: string;
-  label: string | null;
+
+  label:
+    | string
+    | null;
 };
 
 export type AvailabilityItem = {
@@ -35,19 +48,40 @@ export type AvailabilityItem = {
 
 export type DayOffItem = {
   id: string;
-  clinicId: string | null;
-  clinicName: string | null;
+
+  clinicId:
+    | string
+    | null;
+
+  clinicName:
+    | string
+    | null;
+
   date: string;
   isAllDay: boolean;
-  startTime: string | null;
-  endTime: string | null;
-  reason: string | null;
+
+  startTime:
+    | string
+    | null;
+
+  endTime:
+    | string
+    | null;
+
+  reason:
+    | string
+    | null;
 };
 
 type Props = {
-  clinics: ClinicOption[];
-  availability: AvailabilityItem[];
-  daysOff: DayOffItem[];
+  clinics:
+    ClinicOption[];
+
+  availability:
+    AvailabilityItem[];
+
+  daysOff:
+    DayOffItem[];
 };
 
 type ApiResponse = {
@@ -55,253 +89,470 @@ type ApiResponse = {
   error?: string;
 };
 
-const weekdayLabels: Record<
-  number,
-  string
-> = {
-  0: "Duminică",
-  1: "Luni",
-  2: "Marți",
-  3: "Miercuri",
-  4: "Joi",
-  5: "Vineri",
-  6: "Sâmbătă",
-};
+const DATE_LOCALE:
+  Record<
+    AppLocale,
+    string
+  > = {
+    ro:
+      "ro-RO",
+    en:
+      "en-GB",
+    de:
+      "de-DE",
+  };
 
 function shortTime(
-  value: string | null
+  value:
+    | string
+    | null
 ) {
   return value
-    ? value.slice(0, 5)
+    ? value.slice(
+        0,
+        5
+      )
     : "";
 }
 
 async function readResponse(
-  response: Response
+  response:
+    Response,
+  locale:
+    AppLocale,
+  fallback:
+    string
 ) {
   const result =
-    (await response.json()) as ApiResponse;
+    (await response.json()) as
+      ApiResponse;
 
-  if (!response.ok) {
+  if (
+    !response.ok
+  ) {
     throw new Error(
-      result.error ??
-        "Operațiunea nu a putut fi finalizată."
+      locale === "ro" &&
+      result.error
+        ? result.error
+        : fallback
     );
   }
 
   return result;
 }
 
+type AvailabilityRowProps = {
+  item:
+    AvailabilityItem;
+
+  clinics:
+    ClinicOption[];
+};
+
 function AvailabilityRow({
   item,
   clinics,
-}: {
-  item: AvailabilityItem;
-  clinics: ClinicOption[];
-}) {
-  const router = useRouter();
-
-  const [isPending, startTransition] =
-    useTransition();
-
-  const [clinicId, setClinicId] =
-    useState(item.clinicId);
-
-  const [weekday, setWeekday] =
-    useState(item.weekday.toString());
-
-  const [startTime, setStartTime] =
-    useState(shortTime(item.startTime));
-
-  const [endTime, setEndTime] =
-    useState(shortTime(item.endTime));
-
-  const [duration, setDuration] =
-    useState(
-      item.durationMinutes.toString()
+}: AvailabilityRowProps) {
+  const locale =
+    normalizeAppLocale(
+      useLocale()
     );
 
-  const [isActive, setIsActive] =
-    useState(item.isActive);
+  const t =
+    useTranslations(
+      "DoctorConfiguration.availability"
+    );
 
-  const [breakStart, setBreakStart] =
-    useState("");
+  const router =
+    useRouter();
 
-  const [breakEnd, setBreakEnd] =
-    useState("");
+  const [
+    isPending,
+    startTransition,
+  ] =
+    useTransition();
 
-  const [breakLabel, setBreakLabel] =
-    useState("");
+  const [
+    clinicId,
+    setClinicId,
+  ] =
+    useState(
+      item.clinicId
+    );
 
-  const [message, setMessage] =
-    useState<string | null>(null);
+  const [
+    weekday,
+    setWeekday,
+  ] =
+    useState(
+      item.weekday
+        .toString()
+    );
 
-  const [error, setError] =
-    useState<string | null>(null);
+  const [
+    startTime,
+    setStartTime,
+  ] =
+    useState(
+      shortTime(
+        item.startTime
+      )
+    );
+
+  const [
+    endTime,
+    setEndTime,
+  ] =
+    useState(
+      shortTime(
+        item.endTime
+      )
+    );
+
+  const [
+    duration,
+    setDuration,
+  ] =
+    useState(
+      item.durationMinutes
+        .toString()
+    );
+
+  const [
+    isActive,
+    setIsActive,
+  ] =
+    useState(
+      item.isActive
+    );
+
+  const [
+    breakStart,
+    setBreakStart,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    breakEnd,
+    setBreakEnd,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    breakLabel,
+    setBreakLabel,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    message,
+    setMessage,
+  ] =
+    useState<
+      string | null
+    >(
+      null
+    );
+
+  const [
+    error,
+    setError,
+  ] =
+    useState<
+      string | null
+    >(
+      null
+    );
 
   function saveAvailability() {
-    setMessage(null);
-    setError(null);
+    setMessage(
+      null
+    );
 
-    startTransition(async () => {
-      try {
-        const response = await fetch(
-          "/api/doctor/availability",
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              availabilityId: item.id,
-              clinicId,
-              weekday:
-                Number(weekday),
-              startTime,
-              endTime,
-              durationMinutes:
-                Number(duration),
-              isActive,
-            }),
-          }
-        );
+    setError(
+      null
+    );
 
-        await readResponse(response);
+    startTransition(
+      async () => {
+        try {
+          const response =
+            await fetch(
+              "/api/doctor/availability",
+              {
+                method:
+                  "PATCH",
 
-        setMessage(
-          "Programul a fost salvat."
-        );
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
 
-        router.refresh();
-      } catch (saveError) {
-        setError(
-          saveError instanceof Error
-            ? saveError.message
-            : "Programul nu a putut fi salvat."
-        );
+                body:
+                  JSON.stringify({
+                    availabilityId:
+                      item.id,
+
+                    clinicId,
+
+                    weekday:
+                      Number(
+                        weekday
+                      ),
+
+                    startTime,
+                    endTime,
+
+                    durationMinutes:
+                      Number(
+                        duration
+                      ),
+
+                    isActive,
+                  }),
+              }
+            );
+
+          await readResponse(
+            response,
+            locale,
+            t(
+              "scheduleSaveError"
+            )
+          );
+
+          setMessage(
+            t(
+              "scheduleSaved"
+            )
+          );
+
+          router.refresh();
+        } catch (
+          saveError
+        ) {
+          setError(
+            saveError instanceof
+              Error
+              ? saveError.message
+              : t(
+                  "scheduleSaveError"
+                )
+          );
+        }
       }
-    });
+    );
   }
 
   function deleteAvailability() {
     if (
       !window.confirm(
-        "Ștergi acest interval și toate pauzele sale?"
+        t(
+          "deleteIntervalConfirm"
+        )
       )
     ) {
       return;
     }
 
-    startTransition(async () => {
-      try {
-        const response = await fetch(
-          "/api/doctor/availability",
-          {
-            method: "DELETE",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              resource:
-                "availability",
-              id: item.id,
-            }),
-          }
-        );
+    startTransition(
+      async () => {
+        try {
+          const response =
+            await fetch(
+              "/api/doctor/availability",
+              {
+                method:
+                  "DELETE",
 
-        await readResponse(response);
-        router.refresh();
-      } catch (deleteError) {
-        setError(
-          deleteError instanceof Error
-            ? deleteError.message
-            : "Programul nu a putut fi șters."
-        );
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
+
+                body:
+                  JSON.stringify({
+                    resource:
+                      "availability",
+
+                    id:
+                      item.id,
+                  }),
+              }
+            );
+
+          await readResponse(
+            response,
+            locale,
+            t(
+              "scheduleDeleteError"
+            )
+          );
+
+          router.refresh();
+        } catch (
+          deleteError
+        ) {
+          setError(
+            deleteError instanceof
+              Error
+              ? deleteError.message
+              : t(
+                  "scheduleDeleteError"
+                )
+          );
+        }
       }
-    });
+    );
   }
 
   function addBreak(
-    event: FormEvent<HTMLFormElement>
+    event:
+      FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
-    setMessage(null);
-    setError(null);
+    setMessage(
+      null
+    );
 
-    startTransition(async () => {
-      try {
-        const response = await fetch(
-          "/api/doctor/availability",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              resource: "break",
-              availabilityId:
-                item.id,
-              startTime:
-                breakStart,
-              endTime: breakEnd,
-              label:
-                breakLabel.trim() ||
-                null,
-            }),
-          }
-        );
+    setError(
+      null
+    );
 
-        await readResponse(response);
+    startTransition(
+      async () => {
+        try {
+          const response =
+            await fetch(
+              "/api/doctor/availability",
+              {
+                method:
+                  "POST",
 
-        setBreakStart("");
-        setBreakEnd("");
-        setBreakLabel("");
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
 
-        router.refresh();
-      } catch (breakError) {
-        setError(
-          breakError instanceof Error
-            ? breakError.message
-            : "Pauza nu a putut fi adăugată."
-        );
+                body:
+                  JSON.stringify({
+                    resource:
+                      "break",
+
+                    availabilityId:
+                      item.id,
+
+                    startTime:
+                      breakStart,
+
+                    endTime:
+                      breakEnd,
+
+                    label:
+                      breakLabel
+                        .trim() ||
+                      null,
+                  }),
+              }
+            );
+
+          await readResponse(
+            response,
+            locale,
+            t(
+              "breakAddError"
+            )
+          );
+
+          setBreakStart(
+            ""
+          );
+
+          setBreakEnd(
+            ""
+          );
+
+          setBreakLabel(
+            ""
+          );
+
+          router.refresh();
+        } catch (
+          breakError
+        ) {
+          setError(
+            breakError instanceof
+              Error
+              ? breakError.message
+              : t(
+                  "breakAddError"
+                )
+          );
+        }
       }
-    });
+    );
   }
 
   function deleteBreak(
-    breakId: string
+    breakId:
+      string
   ) {
-    startTransition(async () => {
-      try {
-        const response = await fetch(
-          "/api/doctor/availability",
-          {
-            method: "DELETE",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              resource: "break",
-              id: breakId,
-            }),
-          }
-        );
+    startTransition(
+      async () => {
+        try {
+          const response =
+            await fetch(
+              "/api/doctor/availability",
+              {
+                method:
+                  "DELETE",
 
-        await readResponse(response);
-        router.refresh();
-      } catch (breakError) {
-        setError(
-          breakError instanceof Error
-            ? breakError.message
-            : "Pauza nu a putut fi ștearsă."
-        );
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
+
+                body:
+                  JSON.stringify({
+                    resource:
+                      "break",
+
+                    id:
+                      breakId,
+                  }),
+              }
+            );
+
+          await readResponse(
+            response,
+            locale,
+            t(
+              "breakDeleteError"
+            )
+          );
+
+          router.refresh();
+        } catch (
+          breakError
+        ) {
+          setError(
+            breakError instanceof
+              Error
+              ? breakError.message
+              : t(
+                  "breakDeleteError"
+                )
+          );
+        }
       }
-    });
+    );
   }
 
   return (
@@ -309,54 +560,43 @@ function AvailabilityRow({
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         <label>
           <span className="text-sm font-medium text-gray-700">
-            Clinica
+            {t(
+              "clinic"
+            )}
           </span>
 
           <select
-            value={clinicId}
-            onChange={(event) =>
+            value={
+              clinicId
+            }
+            onChange={(
+              event
+            ) =>
               setClinicId(
-                event.target.value
+                event.target
+                  .value
               )
             }
-            disabled={isPending}
-            className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5"
-          >
-            {clinics.map((clinic) => (
-              <option
-                key={clinic.id}
-                value={clinic.id}
-              >
-                {clinic.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          <span className="text-sm font-medium text-gray-700">
-            Ziua
-          </span>
-
-          <select
-            value={weekday}
-            onChange={(event) =>
-              setWeekday(
-                event.target.value
-              )
+            disabled={
+              isPending
             }
-            disabled={isPending}
             className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5"
           >
-            {Object.entries(
-              weekdayLabels
-            ).map(
-              ([value, label]) => (
+            {clinics.map(
+              (
+                clinic
+              ) => (
                 <option
-                  key={value}
-                  value={value}
+                  key={
+                    clinic.id
+                  }
+                  value={
+                    clinic.id
+                  }
                 >
-                  {label}
+                  {
+                    clinic.name
+                  }
                 </option>
               )
             )}
@@ -365,62 +605,162 @@ function AvailabilityRow({
 
         <label>
           <span className="text-sm font-medium text-gray-700">
-            Început
-          </span>
-
-          <input
-            type="time"
-            value={startTime}
-            onChange={(event) =>
-              setStartTime(
-                event.target.value
-              )
-            }
-            disabled={isPending}
-            className="mt-2 w-full rounded-xl border border-gray-300 px-3 py-2.5"
-          />
-        </label>
-
-        <label>
-          <span className="text-sm font-medium text-gray-700">
-            Sfârșit
-          </span>
-
-          <input
-            type="time"
-            value={endTime}
-            onChange={(event) =>
-              setEndTime(
-                event.target.value
-              )
-            }
-            disabled={isPending}
-            className="mt-2 w-full rounded-xl border border-gray-300 px-3 py-2.5"
-          />
-        </label>
-
-        <label>
-          <span className="text-sm font-medium text-gray-700">
-            Durata
+            {t(
+              "day"
+            )}
           </span>
 
           <select
-            value={duration}
-            onChange={(event) =>
-              setDuration(
-                event.target.value
+            value={
+              weekday
+            }
+            onChange={(
+              event
+            ) =>
+              setWeekday(
+                event.target
+                  .value
               )
             }
-            disabled={isPending}
+            disabled={
+              isPending
+            }
             className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5"
           >
-            {[15, 20, 30, 45, 60, 90, 120].map(
-              (value) => (
+            {[
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+            ].map(
+              (
+                value
+              ) => (
                 <option
-                  key={value}
-                  value={value}
+                  key={
+                    value
+                  }
+                  value={
+                    value
+                  }
                 >
-                  {value} min
+                  {t(
+                    `weekdays.${value}`
+                  )}
+                </option>
+              )
+            )}
+          </select>
+        </label>
+
+        <label>
+          <span className="text-sm font-medium text-gray-700">
+            {t(
+              "start"
+            )}
+          </span>
+
+          <input
+            type="time"
+            value={
+              startTime
+            }
+            onChange={(
+              event
+            ) =>
+              setStartTime(
+                event.target
+                  .value
+              )
+            }
+            disabled={
+              isPending
+            }
+            className="mt-2 w-full rounded-xl border border-gray-300 px-3 py-2.5"
+          />
+        </label>
+
+        <label>
+          <span className="text-sm font-medium text-gray-700">
+            {t(
+              "end"
+            )}
+          </span>
+
+          <input
+            type="time"
+            value={
+              endTime
+            }
+            onChange={(
+              event
+            ) =>
+              setEndTime(
+                event.target
+                  .value
+              )
+            }
+            disabled={
+              isPending
+            }
+            className="mt-2 w-full rounded-xl border border-gray-300 px-3 py-2.5"
+          />
+        </label>
+
+        <label>
+          <span className="text-sm font-medium text-gray-700">
+            {t(
+              "duration"
+            )}
+          </span>
+
+          <select
+            value={
+              duration
+            }
+            onChange={(
+              event
+            ) =>
+              setDuration(
+                event.target
+                  .value
+              )
+            }
+            disabled={
+              isPending
+            }
+            className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5"
+          >
+            {[
+              15,
+              20,
+              30,
+              45,
+              60,
+              90,
+              120,
+            ].map(
+              (
+                value
+              ) => (
+                <option
+                  key={
+                    value
+                  }
+                  value={
+                    value
+                  }
+                >
+                  {t(
+                    "minutes",
+                    {
+                      count:
+                        value,
+                    }
+                  )}
                 </option>
               )
             )}
@@ -431,16 +771,25 @@ function AvailabilityRow({
           <span className="flex w-full items-center gap-2 rounded-xl border border-gray-300 px-3 py-2.5">
             <input
               type="checkbox"
-              checked={isActive}
-              onChange={(event) =>
+              checked={
+                isActive
+              }
+              onChange={(
+                event
+              ) =>
                 setIsActive(
-                  event.target.checked
+                  event.target
+                    .checked
                 )
               }
-              disabled={isPending}
+              disabled={
+                isPending
+              }
             />
 
-            Activ
+            {t(
+              "active"
+            )}
           </span>
         </label>
       </div>
@@ -448,35 +797,54 @@ function AvailabilityRow({
       <div className="mt-4 flex flex-wrap gap-3">
         <Button
           type="button"
-          onClick={saveAvailability}
-          disabled={isPending}
-            size="sm"
+          onClick={
+            saveAvailability
+          }
+          disabled={
+            isPending
+          }
+          size="sm"
         >
-          Salvează intervalul
+          {t(
+            "saveInterval"
+          )}
         </Button>
 
         <Button
           type="button"
-          onClick={deleteAvailability}
-          disabled={isPending}
-            variant="danger-outline"
-            size="sm"
+          onClick={
+            deleteAvailability
+          }
+          disabled={
+            isPending
+          }
+          variant="danger-outline"
+          size="sm"
         >
-          Șterge intervalul
+          {t(
+            "deleteInterval"
+          )}
         </Button>
       </div>
 
       <div className="mt-6 rounded-xl bg-gray-50 p-4">
         <h3 className="font-semibold text-gray-900">
-          Pauze recurente
+          {t(
+            "recurringBreaks"
+          )}
         </h3>
 
-        {item.breaks.length > 0 && (
+        {item.breaks
+          .length > 0 && (
           <div className="mt-3 space-y-2">
             {item.breaks.map(
-              (breakItem) => (
+              (
+                breakItem
+              ) => (
                 <div
-                  key={breakItem.id}
+                  key={
+                    breakItem.id
+                  }
                   className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2"
                 >
                   <span className="text-sm text-gray-700">
@@ -487,6 +855,7 @@ function AvailabilityRow({
                     {shortTime(
                       breakItem.endTime
                     )}
+
                     {breakItem.label
                       ? ` — ${breakItem.label}`
                       : ""}
@@ -499,10 +868,15 @@ function AvailabilityRow({
                         breakItem.id
                       )
                     }
-                    disabled={isPending}
-            variant="danger-outline"
+                    disabled={
+                      isPending
+                    }
+                    variant="danger-outline"
+                    size="sm"
                   >
-                    Șterge
+                    {t(
+                      "delete"
+                    )}
                   </Button>
                 </div>
               )
@@ -511,55 +885,84 @@ function AvailabilityRow({
         )}
 
         <form
-          onSubmit={addBreak}
+          onSubmit={
+            addBreak
+          }
           className="mt-4 grid gap-3 sm:grid-cols-[140px_140px_1fr_auto]"
         >
           <input
             type="time"
             required
-            value={breakStart}
-            onChange={(event) =>
+            value={
+              breakStart
+            }
+            onChange={(
+              event
+            ) =>
               setBreakStart(
-                event.target.value
+                event.target
+                  .value
               )
             }
-            disabled={isPending}
+            disabled={
+              isPending
+            }
             className="rounded-xl border border-gray-300 px-3 py-2.5"
           />
 
           <input
             type="time"
             required
-            value={breakEnd}
-            onChange={(event) =>
+            value={
+              breakEnd
+            }
+            onChange={(
+              event
+            ) =>
               setBreakEnd(
-                event.target.value
+                event.target
+                  .value
               )
             }
-            disabled={isPending}
+            disabled={
+              isPending
+            }
             className="rounded-xl border border-gray-300 px-3 py-2.5"
           />
 
           <input
             type="text"
-            value={breakLabel}
-            onChange={(event) =>
+            value={
+              breakLabel
+            }
+            onChange={(
+              event
+            ) =>
               setBreakLabel(
-                event.target.value
+                event.target
+                  .value
               )
             }
-            disabled={isPending}
-            placeholder="Ex. Pauză de prânz"
+            disabled={
+              isPending
+            }
+            placeholder={t(
+              "breakPlaceholder"
+            )}
             className="rounded-xl border border-gray-300 px-3 py-2.5"
           />
 
           <Button
             type="submit"
-            disabled={isPending}
+            disabled={
+              isPending
+            }
             variant="secondary"
             size="sm"
           >
-            Adaugă pauza
+            {t(
+              "addBreak"
+            )}
           </Button>
         </form>
       </div>
@@ -584,226 +987,442 @@ export default function DoctorAvailabilityManager({
   availability,
   daysOff,
 }: Props) {
-  const router = useRouter();
+  const locale =
+    normalizeAppLocale(
+      useLocale()
+    );
 
-  const [isPending, startTransition] =
+  const t =
+    useTranslations(
+      "DoctorConfiguration.availability"
+    );
+
+  const router =
+    useRouter();
+
+  const [
+    isPending,
+    startTransition,
+  ] =
     useTransition();
 
-  const [clinicId, setClinicId] =
-    useState(clinics[0]?.id ?? "");
+  const [
+    clinicId,
+    setClinicId,
+  ] =
+    useState(
+      clinics[0]?.id ??
+      ""
+    );
 
-  const [weekday, setWeekday] =
-    useState("1");
+  const [
+    weekday,
+    setWeekday,
+  ] =
+    useState(
+      "1"
+    );
 
-  const [startTime, setStartTime] =
-    useState("08:00");
+  const [
+    startTime,
+    setStartTime,
+  ] =
+    useState(
+      "08:00"
+    );
 
-  const [endTime, setEndTime] =
-    useState("17:00");
+  const [
+    endTime,
+    setEndTime,
+  ] =
+    useState(
+      "17:00"
+    );
 
-  const [duration, setDuration] =
-    useState("30");
+  const [
+    duration,
+    setDuration,
+  ] =
+    useState(
+      "30"
+    );
 
-  const [dayOffClinicId, setDayOffClinicId] =
-    useState("");
+  const [
+    dayOffClinicId,
+    setDayOffClinicId,
+  ] =
+    useState(
+      ""
+    );
 
-  const [dayOffDate, setDayOffDate] =
-    useState("");
+  const [
+    dayOffDate,
+    setDayOffDate,
+  ] =
+    useState(
+      ""
+    );
 
-  const [isAllDay, setIsAllDay] =
-    useState(true);
+  const [
+    isAllDay,
+    setIsAllDay,
+  ] =
+    useState(
+      true
+    );
 
-  const [dayOffStart, setDayOffStart] =
-    useState("");
+  const [
+    dayOffStart,
+    setDayOffStart,
+  ] =
+    useState(
+      ""
+    );
 
-  const [dayOffEnd, setDayOffEnd] =
-    useState("");
+  const [
+    dayOffEnd,
+    setDayOffEnd,
+  ] =
+    useState(
+      ""
+    );
 
-  const [reason, setReason] =
-    useState("");
+  const [
+    reason,
+    setReason,
+  ] =
+    useState(
+      ""
+    );
 
-  const [error, setError] =
-    useState<string | null>(null);
+  const [
+    error,
+    setError,
+  ] =
+    useState<
+      string | null
+    >(
+      null
+    );
 
   function addAvailability(
-    event: FormEvent<HTMLFormElement>
+    event:
+      FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
-    setError(null);
 
-    startTransition(async () => {
-      try {
-        const response = await fetch(
-          "/api/doctor/availability",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              resource:
-                "availability",
-              clinicId,
-              weekday:
-                Number(weekday),
-              startTime,
-              endTime,
-              durationMinutes:
-                Number(duration),
-              isActive: true,
-            }),
-          }
-        );
+    setError(
+      null
+    );
 
-        await readResponse(response);
-        router.refresh();
-      } catch (submitError) {
-        setError(
-          submitError instanceof Error
-            ? submitError.message
-            : "Programul nu a putut fi adăugat."
-        );
+    startTransition(
+      async () => {
+        try {
+          const response =
+            await fetch(
+              "/api/doctor/availability",
+              {
+                method:
+                  "POST",
+
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
+
+                body:
+                  JSON.stringify({
+                    resource:
+                      "availability",
+
+                    clinicId,
+
+                    weekday:
+                      Number(
+                        weekday
+                      ),
+
+                    startTime,
+                    endTime,
+
+                    durationMinutes:
+                      Number(
+                        duration
+                      ),
+
+                    isActive:
+                      true,
+                  }),
+              }
+            );
+
+          await readResponse(
+            response,
+            locale,
+            t(
+              "scheduleAddError"
+            )
+          );
+
+          router.refresh();
+        } catch (
+          submitError
+        ) {
+          setError(
+            submitError instanceof
+              Error
+              ? submitError.message
+              : t(
+                  "scheduleAddError"
+                )
+          );
+        }
       }
-    });
+    );
   }
 
   function addDayOff(
-    event: FormEvent<HTMLFormElement>
+    event:
+      FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
-    setError(null);
 
-    startTransition(async () => {
-      try {
-        const response = await fetch(
-          "/api/doctor/availability",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              resource: "day_off",
-              clinicId:
-                dayOffClinicId ||
-                null,
-              date: dayOffDate,
-              isAllDay,
-              startTime:
-                isAllDay
-                  ? null
-                  : dayOffStart,
-              endTime:
-                isAllDay
-                  ? null
-                  : dayOffEnd,
-              reason:
-                reason.trim() ||
-                null,
-            }),
-          }
-        );
+    setError(
+      null
+    );
 
-        await readResponse(response);
+    startTransition(
+      async () => {
+        try {
+          const response =
+            await fetch(
+              "/api/doctor/availability",
+              {
+                method:
+                  "POST",
 
-        setDayOffDate("");
-        setDayOffStart("");
-        setDayOffEnd("");
-        setReason("");
-        setIsAllDay(true);
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
 
-        router.refresh();
-      } catch (submitError) {
-        setError(
-          submitError instanceof Error
-            ? submitError.message
-            : "Indisponibilitatea nu a putut fi adăugată."
-        );
+                body:
+                  JSON.stringify({
+                    resource:
+                      "day_off",
+
+                    clinicId:
+                      dayOffClinicId ||
+                      null,
+
+                    date:
+                      dayOffDate,
+
+                    isAllDay,
+
+                    startTime:
+                      isAllDay
+                        ? null
+                        : dayOffStart,
+
+                    endTime:
+                      isAllDay
+                        ? null
+                        : dayOffEnd,
+
+                    reason:
+                      reason.trim() ||
+                      null,
+                  }),
+              }
+            );
+
+          await readResponse(
+            response,
+            locale,
+            t(
+              "dayOffAddError"
+            )
+          );
+
+          setDayOffDate(
+            ""
+          );
+
+          setDayOffStart(
+            ""
+          );
+
+          setDayOffEnd(
+            ""
+          );
+
+          setReason(
+            ""
+          );
+
+          setIsAllDay(
+            true
+          );
+
+          router.refresh();
+        } catch (
+          submitError
+        ) {
+          setError(
+            submitError instanceof
+              Error
+              ? submitError.message
+              : t(
+                  "dayOffAddError"
+                )
+          );
+        }
       }
-    });
+    );
   }
 
-  function deleteDayOff(id: string) {
-    startTransition(async () => {
-      try {
-        const response = await fetch(
-          "/api/doctor/availability",
-          {
-            method: "DELETE",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              resource: "day_off",
-              id,
-            }),
-          }
-        );
+  function deleteDayOff(
+    id:
+      string
+  ) {
+    startTransition(
+      async () => {
+        try {
+          const response =
+            await fetch(
+              "/api/doctor/availability",
+              {
+                method:
+                  "DELETE",
 
-        await readResponse(response);
-        router.refresh();
-      } catch (deleteError) {
-        setError(
-          deleteError instanceof Error
-            ? deleteError.message
-            : "Indisponibilitatea nu a putut fi ștearsă."
-        );
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
+
+                body:
+                  JSON.stringify({
+                    resource:
+                      "day_off",
+
+                    id,
+                  }),
+              }
+            );
+
+          await readResponse(
+            response,
+            locale,
+            t(
+              "dayOffDeleteError"
+            )
+          );
+
+          router.refresh();
+        } catch (
+          deleteError
+        ) {
+          setError(
+            deleteError instanceof
+              Error
+              ? deleteError.message
+              : t(
+                  "dayOffDeleteError"
+                )
+          );
+        }
       }
-    });
+    );
   }
 
   return (
     <div className="space-y-8">
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <h2 className="text-2xl font-bold text-gray-900">
-          Adaugă un interval de lucru
+          {t(
+            "addWorkInterval"
+          )}
         </h2>
 
         <form
-          onSubmit={addAvailability}
+          onSubmit={
+            addAvailability
+          }
           className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-6"
         >
           <select
             required
-            value={clinicId}
-            onChange={(event) =>
+            value={
+              clinicId
+            }
+            onChange={(
+              event
+            ) =>
               setClinicId(
-                event.target.value
+                event.target
+                  .value
               )
             }
             className="rounded-xl border border-gray-300 px-3 py-3"
           >
-            {clinics.map((clinic) => (
-              <option
-                key={clinic.id}
-                value={clinic.id}
-              >
-                {clinic.name}
-              </option>
-            ))}
+            {clinics.map(
+              (
+                clinic
+              ) => (
+                <option
+                  key={
+                    clinic.id
+                  }
+                  value={
+                    clinic.id
+                  }
+                >
+                  {
+                    clinic.name
+                  }
+                </option>
+              )
+            )}
           </select>
 
           <select
-            value={weekday}
-            onChange={(event) =>
+            value={
+              weekday
+            }
+            onChange={(
+              event
+            ) =>
               setWeekday(
-                event.target.value
+                event.target
+                  .value
               )
             }
             className="rounded-xl border border-gray-300 px-3 py-3"
           >
-            {Object.entries(
-              weekdayLabels
-            ).map(
-              ([value, label]) => (
+            {[
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+            ].map(
+              (
+                value
+              ) => (
                 <option
-                  key={value}
-                  value={value}
+                  key={
+                    value
+                  }
+                  value={
+                    value
+                  }
                 >
-                  {label}
+                  {t(
+                    `weekdays.${value}`
+                  )}
                 </option>
               )
             )}
@@ -812,10 +1431,15 @@ export default function DoctorAvailabilityManager({
           <input
             type="time"
             required
-            value={startTime}
-            onChange={(event) =>
+            value={
+              startTime
+            }
+            onChange={(
+              event
+            ) =>
               setStartTime(
-                event.target.value
+                event.target
+                  .value
               )
             }
             className="rounded-xl border border-gray-300 px-3 py-3"
@@ -824,31 +1448,61 @@ export default function DoctorAvailabilityManager({
           <input
             type="time"
             required
-            value={endTime}
-            onChange={(event) =>
+            value={
+              endTime
+            }
+            onChange={(
+              event
+            ) =>
               setEndTime(
-                event.target.value
+                event.target
+                  .value
               )
             }
             className="rounded-xl border border-gray-300 px-3 py-3"
           />
 
           <select
-            value={duration}
-            onChange={(event) =>
+            value={
+              duration
+            }
+            onChange={(
+              event
+            ) =>
               setDuration(
-                event.target.value
+                event.target
+                  .value
               )
             }
             className="rounded-xl border border-gray-300 px-3 py-3"
           >
-            {[15, 20, 30, 45, 60, 90, 120].map(
-              (value) => (
+            {[
+              15,
+              20,
+              30,
+              45,
+              60,
+              90,
+              120,
+            ].map(
+              (
+                value
+              ) => (
                 <option
-                  key={value}
-                  value={value}
+                  key={
+                    value
+                  }
+                  value={
+                    value
+                  }
                 >
-                  {value} minute
+                  {t(
+                    "minutes",
+                    {
+                      count:
+                        value,
+                    }
+                  )}
                 </option>
               )
             )}
@@ -858,31 +1512,49 @@ export default function DoctorAvailabilityManager({
             type="submit"
             disabled={
               isPending ||
-              clinics.length === 0
+              clinics.length ===
+                0
             }
           >
-            Adaugă
+            {t(
+              "add"
+            )}
           </Button>
         </form>
       </section>
 
       <section>
         <h2 className="text-2xl font-bold text-gray-900">
-          Program săptămânal
+          {t(
+            "weeklySchedule"
+          )}
         </h2>
 
         <div className="mt-5 space-y-5">
-          {availability.length > 0 ? (
-            availability.map((item) => (
-              <AvailabilityRow
-                key={item.id}
-                item={item}
-                clinics={clinics}
-              />
-            ))
+          {availability.length >
+          0 ? (
+            availability.map(
+              (
+                item
+              ) => (
+                <AvailabilityRow
+                  key={
+                    item.id
+                  }
+                  item={
+                    item
+                  }
+                  clinics={
+                    clinics
+                  }
+                />
+              )
+            )
           ) : (
             <div className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-600">
-              Nu ai configurat încă programul.
+              {t(
+                "noSchedule"
+              )}
             </div>
           )}
         </div>
@@ -890,43 +1562,69 @@ export default function DoctorAvailabilityManager({
 
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <h2 className="text-2xl font-bold text-gray-900">
-          Zile și perioade indisponibile
+          {t(
+            "daysOff"
+          )}
         </h2>
 
         <form
-          onSubmit={addDayOff}
+          onSubmit={
+            addDayOff
+          }
           className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-6"
         >
           <select
-            value={dayOffClinicId}
-            onChange={(event) =>
+            value={
+              dayOffClinicId
+            }
+            onChange={(
+              event
+            ) =>
               setDayOffClinicId(
-                event.target.value
+                event.target
+                  .value
               )
             }
             className="rounded-xl border border-gray-300 px-3 py-3"
           >
             <option value="">
-              Toate clinicile
+              {t(
+                "allClinics"
+              )}
             </option>
 
-            {clinics.map((clinic) => (
-              <option
-                key={clinic.id}
-                value={clinic.id}
-              >
-                {clinic.name}
-              </option>
-            ))}
+            {clinics.map(
+              (
+                clinic
+              ) => (
+                <option
+                  key={
+                    clinic.id
+                  }
+                  value={
+                    clinic.id
+                  }
+                >
+                  {
+                    clinic.name
+                  }
+                </option>
+              )
+            )}
           </select>
 
           <input
             type="date"
             required
-            value={dayOffDate}
-            onChange={(event) =>
+            value={
+              dayOffDate
+            }
+            onChange={(
+              event
+            ) =>
               setDayOffDate(
-                event.target.value
+                event.target
+                  .value
               )
             }
             className="rounded-xl border border-gray-300 px-3 py-3"
@@ -935,25 +1633,41 @@ export default function DoctorAvailabilityManager({
           <label className="flex items-center gap-2 rounded-xl border border-gray-300 px-3 py-3">
             <input
               type="checkbox"
-              checked={isAllDay}
-              onChange={(event) =>
+              checked={
+                isAllDay
+              }
+              onChange={(
+                event
+              ) =>
                 setIsAllDay(
-                  event.target.checked
+                  event.target
+                    .checked
                 )
               }
             />
 
-            Toată ziua
+            {t(
+              "allDay"
+            )}
           </label>
 
           <input
             type="time"
-            required={!isAllDay}
-            disabled={isAllDay}
-            value={dayOffStart}
-            onChange={(event) =>
+            required={
+              !isAllDay
+            }
+            disabled={
+              isAllDay
+            }
+            value={
+              dayOffStart
+            }
+            onChange={(
+              event
+            ) =>
               setDayOffStart(
-                event.target.value
+                event.target
+                  .value
               )
             }
             className="rounded-xl border border-gray-300 px-3 py-3 disabled:bg-gray-100"
@@ -961,12 +1675,21 @@ export default function DoctorAvailabilityManager({
 
           <input
             type="time"
-            required={!isAllDay}
-            disabled={isAllDay}
-            value={dayOffEnd}
-            onChange={(event) =>
+            required={
+              !isAllDay
+            }
+            disabled={
+              isAllDay
+            }
+            value={
+              dayOffEnd
+            }
+            onChange={(
+              event
+            ) =>
               setDayOffEnd(
-                event.target.value
+                event.target
+                  .value
               )
             }
             className="rounded-xl border border-gray-300 px-3 py-3 disabled:bg-gray-100"
@@ -974,80 +1697,119 @@ export default function DoctorAvailabilityManager({
 
           <Button
             type="submit"
-            disabled={isPending}
+            disabled={
+              isPending
+            }
           >
-            Adaugă
+            {t(
+              "add"
+            )}
           </Button>
 
           <input
             type="text"
-            value={reason}
-            onChange={(event) =>
+            value={
+              reason
+            }
+            onChange={(
+              event
+            ) =>
               setReason(
-                event.target.value
+                event.target
+                  .value
               )
             }
-            placeholder="Motiv opțional"
+            placeholder={t(
+              "reasonPlaceholder"
+            )}
             className="rounded-xl border border-gray-300 px-3 py-3 md:col-span-2 xl:col-span-6"
           />
         </form>
 
         <div className="mt-6 space-y-3">
-          {daysOff.map((item) => (
-            <div
-              key={item.id}
-              className="flex flex-col justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:flex-row sm:items-center"
-            >
-              <div>
-                <p className="font-medium text-gray-900">
-                  {new Intl.DateTimeFormat(
-                    "ro-RO",
-                    {
-                      day: "2-digit",
-                      month: "long",
-                      year: "numeric",
-                    }
-                  ).format(
-                    new Date(
-                      `${item.date}T12:00:00`
-                    )
-                  )}
-                </p>
-
-                <p className="mt-1 text-sm text-gray-600">
-                  {item.clinicName ??
-                    "Toate clinicile"}
-                  {" — "}
-                  {item.isAllDay
-                    ? "Toată ziua"
-                    : `${shortTime(
-                        item.startTime
-                      )}–${shortTime(
-                        item.endTime
-                      )}`}
-                  {item.reason
-                    ? ` — ${item.reason}`
-                    : ""}
-                </p>
-              </div>
-
-              <Button
-                type="button"
-                onClick={() =>
-                  deleteDayOff(item.id)
+          {daysOff.map(
+            (
+              item
+            ) => (
+              <div
+                key={
+                  item.id
                 }
-                disabled={isPending}
-            variant="danger-outline"
-            className="w-fit"
+                className="flex flex-col justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:flex-row sm:items-center"
               >
-                Șterge
-              </Button>
-            </div>
-          ))}
+                <div>
+                  <p className="font-medium text-gray-900">
+                    {new Intl
+                      .DateTimeFormat(
+                        DATE_LOCALE[
+                          locale
+                        ],
+                        {
+                          day:
+                            "2-digit",
 
-          {daysOff.length === 0 && (
+                          month:
+                            "long",
+
+                          year:
+                            "numeric",
+                        }
+                      )
+                      .format(
+                        new Date(
+                          `${item.date}T12:00:00`
+                        )
+                      )}
+                  </p>
+
+                  <p className="mt-1 text-sm text-gray-600">
+                    {item.clinicName ??
+                      t(
+                        "allClinics"
+                      )}
+                    {" — "}
+                    {item.isAllDay
+                      ? t(
+                          "allDay"
+                        )
+                      : `${shortTime(
+                          item.startTime
+                        )}–${shortTime(
+                          item.endTime
+                        )}`}
+                    {item.reason
+                      ? ` — ${item.reason}`
+                      : ""}
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={() =>
+                    deleteDayOff(
+                      item.id
+                    )
+                  }
+                  disabled={
+                    isPending
+                  }
+                  variant="danger-outline"
+                  className="w-fit"
+                >
+                  {t(
+                    "delete"
+                  )}
+                </Button>
+              </div>
+            )
+          )}
+
+          {daysOff.length ===
+            0 && (
             <p className="text-sm text-gray-600">
-              Nu există indisponibilități configurate.
+              {t(
+                "noDaysOff"
+              )}
             </p>
           )}
         </div>

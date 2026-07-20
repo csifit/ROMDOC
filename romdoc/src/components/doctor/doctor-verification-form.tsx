@@ -1,6 +1,10 @@
 "use client";
 
 import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
+import {
   type ChangeEvent,
   type FormEvent,
   useEffect,
@@ -8,6 +12,11 @@ import {
   useState,
   useTransition,
 } from "react";
+
+import {
+  type AppLocale,
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
 
 type SubmissionStatus =
   | "draft"
@@ -20,19 +29,40 @@ type SubmissionStatus =
 
 type VerificationSubmission = {
   id: string;
-  status: SubmissionStatus;
+  status:
+    SubmissionStatus;
+
   professional_registration_number:
     | string
     | null;
-  issuing_authority: string | null;
-  professional_title: string | null;
-  registration_country: string;
+
+  issuing_authority:
+    | string
+    | null;
+
+  professional_title:
+    | string
+    | null;
+
+  registration_country:
+    string;
+
   registration_expires_at:
     | string
     | null;
-  submitted_at: string | null;
-  reviewed_at: string | null;
-  rejection_reason: string | null;
+
+  submitted_at:
+    | string
+    | null;
+
+  reviewed_at:
+    | string
+    | null;
+
+  rejection_reason:
+    | string
+    | null;
+
   created_at: string;
   updated_at: string;
 };
@@ -47,187 +77,359 @@ type VerificationDocument = {
 };
 
 type VerificationResponse = {
-  verificationStatus?: string;
-  submission?: VerificationSubmission | null;
-  documents?: VerificationDocument[];
+  verificationStatus?:
+    string;
+
+  submission?:
+    | VerificationSubmission
+    | null;
+
+  documents?:
+    VerificationDocument[];
+
   success?: boolean;
   message?: string;
   error?: string;
   partialSuccess?: boolean;
 };
 
-const documentTypeLabels: Record<
-  string,
-  string
-> = {
-  identity_document:
-    "Document de identitate",
-  professional_certificate:
-    "Certificat profesional",
-  membership_certificate:
-    "Certificat de membru",
-  practice_authorization:
-    "Autorizație de liberă practică",
-  other: "Alt document",
-};
+const DATE_LOCALE:
+  Record<
+    AppLocale,
+    string
+  > = {
+    ro:
+      "ro-RO",
+    en:
+      "en-GB",
+    de:
+      "de-DE",
+  };
 
-const statusLabels: Record<
-  SubmissionStatus,
-  string
-> = {
-  draft: "Ciornă",
-  submitted: "Trimisă",
-  under_review: "În verificare",
-  verified: "Verificată",
-  rejected: "Respinsă",
-  expired: "Expirată",
-  withdrawn: "Retrasă",
-};
-
-function formatFileSize(bytes: number) {
-  if (bytes < 1024) {
+function formatFileSize(
+  bytes:
+    number
+) {
+  if (
+    bytes <
+    1024
+  ) {
     return `${bytes} B`;
   }
 
-  if (bytes < 1024 * 1024) {
+  if (
+    bytes <
+    1024 *
+      1024
+  ) {
     return `${(
-      bytes / 1024
-    ).toFixed(1)} KB`;
+      bytes /
+      1024
+    ).toFixed(
+      1
+    )} KB`;
   }
 
   return `${(
     bytes /
-    (1024 * 1024)
-  ).toFixed(1)} MB`;
-}
-
-function formatDate(value: string | null) {
-  if (!value) {
-    return "—";
-  }
-
-  return new Intl.DateTimeFormat(
-    "ro-RO",
-    {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }
-  ).format(new Date(value));
+    (
+      1024 *
+      1024
+    )
+  ).toFixed(
+    1
+  )} MB`;
 }
 
 export default function DoctorVerificationForm() {
+  const locale =
+    normalizeAppLocale(
+      useLocale()
+    );
+
+  const t =
+    useTranslations(
+      "DoctorConfiguration.verification"
+    );
+
   const fileInputRef =
-    useRef<HTMLInputElement>(null);
-
-  const [isPending, startTransition] =
-    useTransition();
-
-  const [isLoading, setIsLoading] =
-    useState(true);
-  const [isUploading, setIsUploading] =
-    useState(false);
-  const [isDeletingId, setIsDeletingId] =
-    useState<string | null>(null);
-
-  const [verificationStatus, setVerificationStatus] =
-    useState("not_submitted");
-  const [submission, setSubmission] =
-    useState<VerificationSubmission | null>(
+    useRef<
+      HTMLInputElement
+    >(
       null
     );
-  const [documents, setDocuments] =
-    useState<VerificationDocument[]>([]);
 
-  const [registrationNumber, setRegistrationNumber] =
-    useState("");
-  const [issuingAuthority, setIssuingAuthority] =
-    useState("");
-  const [professionalTitle, setProfessionalTitle] =
-    useState("");
-  const [registrationCountry, setRegistrationCountry] =
-    useState("RO");
-  const [registrationExpiresAt, setRegistrationExpiresAt] =
-    useState("");
-  const [documentType, setDocumentType] =
-    useState("professional_certificate");
-  const [selectedFile, setSelectedFile] =
-    useState<File | null>(null);
+  const [
+    isPending,
+    startTransition,
+  ] =
+    useTransition();
 
-  const [message, setMessage] =
-    useState<string | null>(null);
-  const [error, setError] =
-    useState<string | null>(null);
+  const [
+    isLoading,
+    setIsLoading,
+  ] =
+    useState(
+      true
+    );
+
+  const [
+    isUploading,
+    setIsUploading,
+  ] =
+    useState(
+      false
+    );
+
+  const [
+    isDeletingId,
+    setIsDeletingId,
+  ] =
+    useState<
+      string | null
+    >(
+      null
+    );
+
+  const [
+    verificationStatus,
+    setVerificationStatus,
+  ] =
+    useState(
+      "not_submitted"
+    );
+
+  const [
+    submission,
+    setSubmission,
+  ] =
+    useState<
+      VerificationSubmission | null
+    >(
+      null
+    );
+
+  const [
+    documents,
+    setDocuments,
+  ] =
+    useState<
+      VerificationDocument[]
+    >(
+      []
+    );
+
+  const [
+    registrationNumber,
+    setRegistrationNumber,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    issuingAuthority,
+    setIssuingAuthority,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    professionalTitle,
+    setProfessionalTitle,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    registrationCountry,
+    setRegistrationCountry,
+  ] =
+    useState(
+      "RO"
+    );
+
+  const [
+    registrationExpiresAt,
+    setRegistrationExpiresAt,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    documentType,
+    setDocumentType,
+  ] =
+    useState(
+      "professional_certificate"
+    );
+
+  const [
+    selectedFile,
+    setSelectedFile,
+  ] =
+    useState<
+      File | null
+    >(
+      null
+    );
+
+  const [
+    message,
+    setMessage,
+  ] =
+    useState<
+      string | null
+    >(
+      null
+    );
+
+  const [
+    error,
+    setError,
+  ] =
+    useState<
+      string | null
+    >(
+      null
+    );
 
   const isEditable =
-    !submission || submission.status === "draft";
+    !submission ||
+    submission.status ===
+      "draft";
+
+  function localizedError(
+    apiError:
+      | string
+      | undefined,
+    fallback:
+      string
+  ) {
+    return locale ===
+      "ro" &&
+      apiError
+      ? apiError
+      : fallback;
+  }
 
   function applyResponse(
-    result: VerificationResponse
+    result:
+      VerificationResponse
   ) {
     const nextSubmission =
-      result.submission ?? null;
+      result.submission ??
+      null;
 
     setVerificationStatus(
       result.verificationStatus ??
-        verificationStatus
+      verificationStatus
     );
-    setSubmission(nextSubmission);
-    setDocuments(result.documents ?? []);
 
-    if (nextSubmission) {
+    setSubmission(
+      nextSubmission
+    );
+
+    setDocuments(
+      result.documents ??
+      []
+    );
+
+    if (
+      nextSubmission
+    ) {
       setRegistrationNumber(
-        nextSubmission.professional_registration_number ??
-          ""
+        nextSubmission
+          .professional_registration_number ??
+        ""
       );
+
       setIssuingAuthority(
-        nextSubmission.issuing_authority ?? ""
+        nextSubmission
+          .issuing_authority ??
+        ""
       );
+
       setProfessionalTitle(
-        nextSubmission.professional_title ?? ""
+        nextSubmission
+          .professional_title ??
+        ""
       );
+
       setRegistrationCountry(
-        nextSubmission.registration_country ||
-          "RO"
+        nextSubmission
+          .registration_country ||
+        "RO"
       );
+
       setRegistrationExpiresAt(
-        nextSubmission.registration_expires_at ??
-          ""
+        nextSubmission
+          .registration_expires_at ??
+        ""
       );
     }
   }
 
   async function loadVerification() {
-    setIsLoading(true);
-    setError(null);
+    setIsLoading(
+      true
+    );
+
+    setError(
+      null
+    );
 
     try {
-      const response = await fetch(
-        "/api/doctor/verification",
-        {
-          method: "GET",
-          cache: "no-store",
-        }
-      );
+      const response =
+        await fetch(
+          "/api/doctor/verification",
+          {
+            method:
+              "GET",
+
+            cache:
+              "no-store",
+          }
+        );
 
       const result =
-        (await response.json()) as VerificationResponse;
+        (await response.json()) as
+          VerificationResponse;
 
-      if (!response.ok) {
+      if (
+        !response.ok
+      ) {
         throw new Error(
-          result.error ??
-            "Verificarea nu a putut fi încărcată."
+          localizedError(
+            result.error,
+            t(
+              "loadError"
+            )
+          )
         );
       }
 
-      applyResponse(result);
-    } catch (loadError) {
+      applyResponse(
+        result
+      );
+    } catch (
+      loadError
+    ) {
       setError(
-        loadError instanceof Error
+        loadError instanceof
+          Error
           ? loadError.message
-          : "Verificarea nu a putut fi încărcată."
+          : t(
+              "loadError"
+            )
       );
     } finally {
-      setIsLoading(false);
+      setIsLoading(
+        false
+      );
     }
   }
 
@@ -236,183 +438,392 @@ export default function DoctorVerificationForm() {
   }, []);
 
   function saveSubmission(
-    action: "save" | "submit"
+    action:
+      | "save"
+      | "submit"
   ) {
-    setMessage(null);
-    setError(null);
+    setMessage(
+      null
+    );
 
-    startTransition(async () => {
-      try {
-        const response = await fetch(
-          "/api/doctor/verification",
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              action,
-              professionalRegistrationNumber:
-                registrationNumber,
-              issuingAuthority,
-              professionalTitle,
-              registrationCountry,
-              registrationExpiresAt:
-                registrationExpiresAt || null,
-            }),
+    setError(
+      null
+    );
+
+    startTransition(
+      async () => {
+        try {
+          const response =
+            await fetch(
+              "/api/doctor/verification",
+              {
+                method:
+                  "PATCH",
+
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
+
+                body:
+                  JSON.stringify({
+                    action,
+
+                    professionalRegistrationNumber:
+                      registrationNumber,
+
+                    issuingAuthority,
+
+                    professionalTitle,
+
+                    registrationCountry,
+
+                    registrationExpiresAt:
+                      registrationExpiresAt ||
+                      null,
+                  }),
+              }
+            );
+
+          const result =
+            (await response.json()) as
+              VerificationResponse;
+
+          if (
+            !response.ok
+          ) {
+            throw new Error(
+              localizedError(
+                result.error,
+                t(
+                  "saveError"
+                )
+              )
+            );
           }
-        );
 
-        const result =
-          (await response.json()) as VerificationResponse;
+          setMessage(
+            locale ===
+              "ro" &&
+            result.message
+              ? result.message
+              : t(
+                  "saved"
+                )
+          );
 
-        if (!response.ok) {
-          throw new Error(
-            result.error ??
-              "Cererea nu a putut fi salvată."
+          await loadVerification();
+        } catch (
+          submitError
+        ) {
+          setError(
+            submitError instanceof
+              Error
+              ? submitError.message
+              : t(
+                  "saveError"
+                )
           );
         }
-
-        setMessage(
-          result.message ??
-            "Cererea a fost salvată."
-        );
-
-        await loadVerification();
-      } catch (submitError) {
-        setError(
-          submitError instanceof Error
-            ? submitError.message
-            : "Cererea nu a putut fi salvată."
-        );
       }
-    });
+    );
   }
 
   function handleSubmit(
-    event: FormEvent<HTMLFormElement>
+    event:
+      FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
-    saveSubmission("save");
+
+    saveSubmission(
+      "save"
+    );
   }
 
   async function handleUpload() {
-    if (!selectedFile) {
+    if (
+      !selectedFile
+    ) {
       setError(
-        "Selectează un document pentru încărcare."
+        t(
+          "selectDocument"
+        )
       );
+
       return;
     }
 
-    setIsUploading(true);
-    setMessage(null);
-    setError(null);
+    setIsUploading(
+      true
+    );
+
+    setMessage(
+      null
+    );
+
+    setError(
+      null
+    );
 
     try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
+      const formData =
+        new FormData();
+
+      formData.append(
+        "file",
+        selectedFile
+      );
+
       formData.append(
         "documentType",
         documentType
       );
 
-      const response = await fetch(
-        "/api/doctor/verification/documents",
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const response =
+        await fetch(
+          "/api/doctor/verification/documents",
+          {
+            method:
+              "POST",
+
+            body:
+              formData,
+          }
+        );
 
       const result =
-        (await response.json()) as VerificationResponse;
+        (await response.json()) as
+          VerificationResponse;
 
-      if (!response.ok) {
+      if (
+        !response.ok
+      ) {
         throw new Error(
-          result.error ??
-            "Documentul nu a putut fi încărcat."
+          localizedError(
+            result.error,
+            t(
+              "uploadError"
+            )
+          )
         );
       }
 
-      setSelectedFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
+      setSelectedFile(
+        null
+      );
+
+      if (
+        fileInputRef.current
+      ) {
+        fileInputRef.current
+          .value =
+          "";
       }
 
       setMessage(
-        "Documentul a fost încărcat."
+        t(
+          "uploaded"
+        )
       );
+
       await loadVerification();
-    } catch (uploadError) {
+    } catch (
+      uploadError
+    ) {
       setError(
-        uploadError instanceof Error
+        uploadError instanceof
+          Error
           ? uploadError.message
-          : "Documentul nu a putut fi încărcat."
+          : t(
+              "uploadError"
+            )
       );
     } finally {
-      setIsUploading(false);
+      setIsUploading(
+        false
+      );
     }
   }
 
   async function handleDeleteDocument(
-    documentId: string
+    documentId:
+      string
   ) {
-    setIsDeletingId(documentId);
-    setMessage(null);
-    setError(null);
+    setIsDeletingId(
+      documentId
+    );
+
+    setMessage(
+      null
+    );
+
+    setError(
+      null
+    );
 
     try {
-      const response = await fetch(
-        "/api/doctor/verification/documents",
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            documentId,
-          }),
-        }
-      );
+      const response =
+        await fetch(
+          "/api/doctor/verification/documents",
+          {
+            method:
+              "DELETE",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                documentId,
+              }),
+          }
+        );
 
       const result =
-        (await response.json()) as VerificationResponse;
+        (await response.json()) as
+          VerificationResponse;
 
-      if (!response.ok) {
+      if (
+        !response.ok
+      ) {
         throw new Error(
-          result.error ??
-            "Documentul nu a putut fi șters."
+          localizedError(
+            result.error,
+            t(
+              "deleteError"
+            )
+          )
         );
       }
 
-      setMessage("Documentul a fost șters.");
+      setMessage(
+        t(
+          "deleted"
+        )
+      );
+
       await loadVerification();
-    } catch (deleteError) {
+    } catch (
+      deleteError
+    ) {
       setError(
-        deleteError instanceof Error
+        deleteError instanceof
+          Error
           ? deleteError.message
-          : "Documentul nu a putut fi șters."
+          : t(
+              "deleteError"
+            )
       );
     } finally {
-      setIsDeletingId(null);
+      setIsDeletingId(
+        null
+      );
     }
   }
 
   function handleFileChange(
-    event: ChangeEvent<HTMLInputElement>
+    event:
+      ChangeEvent<HTMLInputElement>
   ) {
     setSelectedFile(
-      event.target.files?.[0] ?? null
+      event.target
+        .files?.[0] ??
+      null
     );
   }
 
-  if (isLoading) {
+  function formatDate(
+    value:
+      | string
+      | null
+  ) {
+    if (
+      !value
+    ) {
+      return "—";
+    }
+
+    return new Intl
+      .DateTimeFormat(
+        DATE_LOCALE[
+          locale
+        ],
+        {
+          dateStyle:
+            "medium",
+
+          timeStyle:
+            "short",
+        }
+      )
+      .format(
+        new Date(
+          value
+        )
+      );
+  }
+
+  function statusLabel(
+    status:
+      string
+  ) {
+    if (
+      [
+        "draft",
+        "submitted",
+        "under_review",
+        "verified",
+        "rejected",
+        "expired",
+        "withdrawn",
+      ].includes(
+        status
+      )
+    ) {
+      return t(
+        `statuses.${status}`
+      );
+    }
+
+    return status;
+  }
+
+  function documentTypeLabel(
+    type:
+      string
+  ) {
+    if (
+      [
+        "identity_document",
+        "professional_certificate",
+        "membership_certificate",
+        "practice_authorization",
+        "other",
+      ].includes(
+        type
+      )
+    ) {
+      return t(
+        `documentTypes.${type}`
+      );
+    }
+
+    return t(
+      "documentFallback"
+    );
+  }
+
+  if (
+    isLoading
+  ) {
     return (
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <p className="text-sm text-gray-600">
-          Se încarcă verificarea profesională...
+          {t(
+            "loading"
+          )}
         </p>
       </div>
     );
@@ -424,134 +835,250 @@ export default function DoctorVerificationForm() {
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div>
             <p className="text-sm font-medium text-gray-500">
-              Starea verificării
+              {t(
+                "statusEyebrow"
+              )}
             </p>
+
             <h2 className="mt-1 text-2xl font-bold text-gray-900">
               {submission
-                ? statusLabels[submission.status]
-                : "Netrimisă"}
+                ? statusLabel(
+                    submission.status
+                  )
+                : t(
+                    "notSubmitted"
+                  )}
             </h2>
+
             <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
-              Verificarea profesională este separată de abonamentul RomDoc. Ea controlează numai afișarea insignei publice „Medic verificat de RomDoc”.
+              {t(
+                "statusDescription"
+              )}
             </p>
           </div>
 
           <span className="inline-flex w-fit rounded-full bg-[#036661]/10 px-3 py-1 text-sm font-semibold text-[#036661]">
-            {verificationStatus === "verified"
-              ? "Medic verificat"
-              : "Fără insignă publică"}
+            {verificationStatus ===
+            "verified"
+              ? t(
+                  "verifiedBadge"
+                )
+              : t(
+                  "noBadge"
+                )}
           </span>
         </div>
 
-        {submission?.submitted_at && (
+        {submission
+          ?.submitted_at && (
           <p className="mt-4 text-sm text-gray-600">
-            Trimisă la: {formatDate(submission.submitted_at)}
+            {t(
+              "submittedAt",
+              {
+                date:
+                  formatDate(
+                    submission
+                      .submitted_at
+                  ),
+              }
+            )}
           </p>
         )}
 
-        {submission?.rejection_reason && (
+        {submission
+          ?.rejection_reason && (
           <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-            <strong>Motivul respingerii:</strong>{" "}
-            {submission.rejection_reason}
+            <strong>
+              {t(
+                "rejectionReason"
+              )}
+            </strong>{" "}
+            {
+              submission
+                .rejection_reason
+            }
           </div>
         )}
       </section>
 
       <form
-        onSubmit={handleSubmit}
+        onSubmit={
+          handleSubmit
+        }
         className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
       >
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">
-            Informații profesionale
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-gray-600">
-            Poți salva o ciornă incompletă. Numărul de înregistrare și autoritatea emitentă devin obligatorii când trimiți cererea.
-          </p>
-        </div>
+        <h2 className="text-2xl font-bold text-gray-900">
+          {t(
+            "professionalInfo"
+          )}
+        </h2>
+
+        <p className="mt-2 text-sm leading-6 text-gray-600">
+          {t(
+            "professionalDescription"
+          )}
+        </p>
 
         <div className="mt-6 grid gap-5 sm:grid-cols-2">
-          <label className="block">
+          <label>
             <span className="text-sm font-medium text-gray-700">
-              Număr de înregistrare profesională
+              {t(
+                "registrationNumber"
+              )}
             </span>
-            <input
-              type="text"
-              value={registrationNumber}
-              onChange={(event) =>
-                setRegistrationNumber(event.target.value)
-              }
-              disabled={!isEditable || isPending}
-              maxLength={150}
-              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:bg-gray-100 disabled:opacity-70"
-            />
-          </label>
 
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700">
-              Autoritate emitentă
-            </span>
             <input
               type="text"
-              value={issuingAuthority}
-              onChange={(event) =>
-                setIssuingAuthority(event.target.value)
+              value={
+                registrationNumber
               }
-              disabled={!isEditable || isPending}
-              maxLength={250}
-              placeholder="Colegiul Medicilor din România"
-              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:bg-gray-100 disabled:opacity-70"
-            />
-          </label>
-
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700">
-              Titlu profesional
-            </span>
-            <input
-              type="text"
-              value={professionalTitle}
-              onChange={(event) =>
-                setProfessionalTitle(event.target.value)
-              }
-              disabled={!isEditable || isPending}
-              maxLength={250}
-              placeholder="Medic specialist cardiologie"
-              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:bg-gray-100 disabled:opacity-70"
-            />
-          </label>
-
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700">
-              Țara înregistrării
-            </span>
-            <input
-              type="text"
-              value={registrationCountry}
-              onChange={(event) =>
-                setRegistrationCountry(
-                  event.target.value.toUpperCase()
+              onChange={(
+                event
+              ) =>
+                setRegistrationNumber(
+                  event.target
+                    .value
                 )
               }
-              disabled={!isEditable || isPending}
-              minLength={2}
-              maxLength={2}
-              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 uppercase text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:bg-gray-100 disabled:opacity-70"
+              disabled={
+                !isEditable ||
+                isPending
+              }
+              maxLength={
+                150
+              }
+              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 disabled:bg-gray-100"
             />
           </label>
 
-          <label className="block sm:col-span-2">
+          <label>
             <span className="text-sm font-medium text-gray-700">
-              Data expirării documentului profesional
+              {t(
+                "issuingAuthority"
+              )}
             </span>
+
+            <input
+              type="text"
+              value={
+                issuingAuthority
+              }
+              onChange={(
+                event
+              ) =>
+                setIssuingAuthority(
+                  event.target
+                    .value
+                )
+              }
+              disabled={
+                !isEditable ||
+                isPending
+              }
+              maxLength={
+                250
+              }
+              placeholder={t(
+                "issuingAuthorityPlaceholder"
+              )}
+              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 disabled:bg-gray-100"
+            />
+          </label>
+
+          <label>
+            <span className="text-sm font-medium text-gray-700">
+              {t(
+                "professionalTitle"
+              )}
+            </span>
+
+            <input
+              type="text"
+              value={
+                professionalTitle
+              }
+              onChange={(
+                event
+              ) =>
+                setProfessionalTitle(
+                  event.target
+                    .value
+                )
+              }
+              disabled={
+                !isEditable ||
+                isPending
+              }
+              maxLength={
+                250
+              }
+              placeholder={t(
+                "professionalTitlePlaceholder"
+              )}
+              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 disabled:bg-gray-100"
+            />
+          </label>
+
+          <label>
+            <span className="text-sm font-medium text-gray-700">
+              {t(
+                "registrationCountry"
+              )}
+            </span>
+
+            <input
+              type="text"
+              value={
+                registrationCountry
+              }
+              onChange={(
+                event
+              ) =>
+                setRegistrationCountry(
+                  event.target
+                    .value
+                    .toUpperCase()
+                )
+              }
+              disabled={
+                !isEditable ||
+                isPending
+              }
+              minLength={
+                2
+              }
+              maxLength={
+                2
+              }
+              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 uppercase disabled:bg-gray-100"
+            />
+          </label>
+
+          <label className="sm:col-span-2">
+            <span className="text-sm font-medium text-gray-700">
+              {t(
+                "expirationDate"
+              )}
+            </span>
+
             <input
               type="date"
-              value={registrationExpiresAt}
-              onChange={(event) =>
-                setRegistrationExpiresAt(event.target.value)
+              value={
+                registrationExpiresAt
               }
-              disabled={!isEditable || isPending}
-              className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:bg-gray-100 disabled:opacity-70 sm:max-w-sm"
+              onChange={(
+                event
+              ) =>
+                setRegistrationExpiresAt(
+                  event.target
+                    .value
+                )
+              }
+              disabled={
+                !isEditable ||
+                isPending
+              }
+              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 disabled:bg-gray-100 sm:max-w-sm"
             />
           </label>
         </div>
@@ -560,137 +1087,237 @@ export default function DoctorVerificationForm() {
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
             <button
               type="submit"
-              disabled={isPending}
-              className="rounded-xl border border-[#036661] px-5 py-3 font-semibold text-[#036661] transition hover:bg-[#036661]/5 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={
+                isPending
+              }
+              className="rounded-xl border border-[#036661] px-5 py-3 font-semibold text-[#036661] disabled:opacity-60"
             >
               {isPending
-                ? "Se salvează..."
-                : "Salvează ciorna"}
+                ? t(
+                    "saving"
+                  )
+                : t(
+                    "saveDraft"
+                  )}
             </button>
 
             <button
               type="button"
-              onClick={() => saveSubmission("submit")}
-              disabled={isPending}
-              className="rounded-xl bg-[#036661] px-5 py-3 font-semibold text-white transition-colors hover:bg-[#ff2800] disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={() =>
+                saveSubmission(
+                  "submit"
+                )
+              }
+              disabled={
+                isPending
+              }
+              className="rounded-xl bg-[#036661] px-5 py-3 font-semibold text-white disabled:opacity-60"
             >
               {isPending
-                ? "Se trimite..."
-                : "Trimite pentru verificare"}
+                ? t(
+                    "submitting"
+                  )
+                : t(
+                    "submit"
+                  )}
             </button>
           </div>
         )}
       </form>
 
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">
-            Documente justificative
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-gray-600">
-            Fișierele sunt private. Sunt acceptate PDF, JPEG, PNG și WebP, cu maximum 10 MB fiecare.
-          </p>
-        </div>
+        <h2 className="text-2xl font-bold text-gray-900">
+          {t(
+            "supportingDocuments"
+          )}
+        </h2>
+
+        <p className="mt-2 text-sm leading-6 text-gray-600">
+          {t(
+            "documentsDescription"
+          )}
+        </p>
 
         {isEditable && (
           <div className="mt-6 grid gap-4 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:grid-cols-[1fr_1.5fr_auto] sm:items-end">
-            <label className="block">
+            <label>
               <span className="text-sm font-medium text-gray-700">
-                Tip document
+                {t(
+                  "documentType"
+                )}
               </span>
+
               <select
-                value={documentType}
-                onChange={(event) =>
-                  setDocumentType(event.target.value)
+                value={
+                  documentType
                 }
-                disabled={isUploading}
-                className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+                onChange={(
+                  event
+                ) =>
+                  setDocumentType(
+                    event.target
+                      .value
+                  )
+                }
+                disabled={
+                  isUploading
+                }
+                className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3"
               >
-                {Object.entries(documentTypeLabels).map(
-                  ([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
+                {[
+                  "identity_document",
+                  "professional_certificate",
+                  "membership_certificate",
+                  "practice_authorization",
+                  "other",
+                ].map(
+                  (
+                    type
+                  ) => (
+                    <option
+                      key={
+                        type
+                      }
+                      value={
+                        type
+                      }
+                    >
+                      {documentTypeLabel(
+                        type
+                      )}
                     </option>
                   )
                 )}
               </select>
             </label>
 
-            <label className="block">
+            <label>
               <span className="text-sm font-medium text-gray-700">
-                Fișier
+                {t(
+                  "file"
+                )}
               </span>
+
               <input
-                ref={fileInputRef}
+                ref={
+                  fileInputRef
+                }
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
-                onChange={handleFileChange}
-                disabled={isUploading}
-                className="mt-2 block w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-700 file:mr-4 file:rounded-lg file:border-0 file:bg-[#036661]/10 file:px-3 file:py-2 file:font-semibold file:text-[#036661]"
+                onChange={
+                  handleFileChange
+                }
+                disabled={
+                  isUploading
+                }
+                className="mt-2 block w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm"
               />
             </label>
 
             <button
               type="button"
-              onClick={handleUpload}
-              disabled={
-                isUploading || !selectedFile || !submission
+              onClick={() =>
+                void handleUpload()
               }
-              className="rounded-xl bg-[#036661] px-5 py-3 font-semibold text-white transition-colors hover:bg-[#ff2800] disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={
+                isUploading ||
+                !selectedFile ||
+                !submission
+              }
+              className="rounded-xl bg-[#036661] px-5 py-3 font-semibold text-white disabled:opacity-60"
             >
               {isUploading
-                ? "Se încarcă..."
-                : "Încarcă"}
+                ? t(
+                    "uploading"
+                  )
+                : t(
+                    "upload"
+                  )}
             </button>
           </div>
         )}
 
-        {isEditable && !submission && (
+        {isEditable &&
+          !submission && (
           <p className="mt-3 text-sm text-amber-700">
-            Salvează mai întâi ciorna pentru a putea încărca documente.
+            {t(
+              "saveDraftFirst"
+            )}
           </p>
         )}
 
         <div className="mt-6 space-y-3">
-          {documents.length === 0 ? (
+          {documents.length ===
+          0 ? (
             <div className="rounded-xl border border-dashed border-gray-300 p-5 text-sm text-gray-600">
-              Nu ai încărcat încă documente.
+              {t(
+                "noDocuments"
+              )}
             </div>
           ) : (
-            documents.map((document) => (
-              <div
-                key={document.id}
-                className="flex flex-col justify-between gap-3 rounded-xl border border-gray-200 p-4 sm:flex-row sm:items-center"
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-semibold text-gray-900">
-                    {document.original_file_name}
-                  </p>
-                  <p className="mt-1 text-sm text-gray-500">
-                    {documentTypeLabels[document.document_type] ?? "Document"}
-                    {" · "}
-                    {formatFileSize(document.file_size_bytes)}
-                    {" · "}
-                    {formatDate(document.created_at)}
-                  </p>
-                </div>
+            documents.map(
+              (
+                document
+              ) => (
+                <div
+                  key={
+                    document.id
+                  }
+                  className="flex flex-col justify-between gap-3 rounded-xl border border-gray-200 p-4 sm:flex-row sm:items-center"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-gray-900">
+                      {
+                        document
+                          .original_file_name
+                      }
+                    </p>
 
-                {isEditable && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleDeleteDocument(document.id)
-                    }
-                    disabled={isDeletingId === document.id}
-                    className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-60"
-                  >
-                    {isDeletingId === document.id
-                      ? "Se șterge..."
-                      : "Șterge"}
-                  </button>
-                )}
-              </div>
-            ))
+                    <p className="mt-1 text-sm text-gray-500">
+                      {documentTypeLabel(
+                        document
+                          .document_type
+                      )}
+                      {" · "}
+                      {formatFileSize(
+                        document
+                          .file_size_bytes
+                      )}
+                      {" · "}
+                      {formatDate(
+                        document
+                          .created_at
+                      )}
+                    </p>
+                  </div>
+
+                  {isEditable && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void handleDeleteDocument(
+                          document.id
+                        )
+                      }
+                      disabled={
+                        isDeletingId ===
+                        document.id
+                      }
+                      className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-60"
+                    >
+                      {isDeletingId ===
+                      document.id
+                        ? t(
+                            "deleting"
+                          )
+                        : t(
+                            "delete"
+                          )}
+                    </button>
+                  )}
+                </div>
+              )
+            )
           )}
         </div>
       </section>
