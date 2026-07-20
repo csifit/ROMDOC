@@ -3,17 +3,37 @@ import {
   NextResponse,
 } from "next/server";
 
-import { createAdminClient } from "@/lib/supabase/admin";
+import type {
+  AppLocale,
+} from "@/i18n/routing";
+import {
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
+import {
+  createAdminClient,
+} from "@/lib/supabase/admin";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime =
+  "nodejs";
 
-const ALLOWED_RADII = new Set([10, 50]);
-const MAX_RESULTS = 100;
+export const dynamic =
+  "force-dynamic";
+
+const ALLOWED_RADII =
+  new Set([
+    10,
+    50,
+  ]);
+
+const MAX_RESULTS =
+  100;
 
 type NearbyClinicRow = {
   clinic_id: string;
-  distance_metres: number | string;
+
+  distance_metres:
+    | number
+    | string;
 };
 
 type Translation = {
@@ -22,22 +42,59 @@ type Translation = {
   title?: string;
 };
 
+type SpecialtyLookupRow = {
+  id: string;
+  slug: string;
+
+  specialty_translations:
+    | Translation[]
+    | null;
+};
+
 type ClinicRow = {
   id: string;
-  slug: string | null;
-  formatted_address: string | null;
-  google_maps_uri: string | null;
-  clinic_translations: Translation[] | null;
+  slug:
+    | string
+    | null;
+
+  formatted_address:
+    | string
+    | null;
+
+  google_maps_uri:
+    | string
+    | null;
+
+  clinic_translations:
+    | Translation[]
+    | null;
+
   cities:
     | {
-        slug: string | null;
-        country_code: string | null;
-        city_translations: Translation[] | null;
+        slug:
+          | string
+          | null;
+
+        country_code:
+          | string
+          | null;
+
+        city_translations:
+          | Translation[]
+          | null;
       }
     | Array<{
-        slug: string | null;
-        country_code: string | null;
-        city_translations: Translation[] | null;
+        slug:
+          | string
+          | null;
+
+        country_code:
+          | string
+          | null;
+
+        city_translations:
+          | Translation[]
+          | null;
       }>
     | null;
 };
@@ -48,12 +105,18 @@ type DoctorClinicRow = {
 };
 
 type SpecialtyRelation = {
-  slug: string | null;
-  specialty_translations: Translation[] | null;
+  slug:
+    | string
+    | null;
+
+  specialty_translations:
+    | Translation[]
+    | null;
 };
 
 type DoctorSpecialtyRow = {
   doctor_id: string;
+
   specialties:
     | SpecialtyRelation
     | SpecialtyRelation[]
@@ -63,13 +126,36 @@ type DoctorSpecialtyRow = {
 type DoctorRow = {
   id: string;
   slug: string;
-  photo_url: string | null;
-  years_experience: number | null;
-  consultation_price: number | string | null;
-  average_rating: number | string | null;
-  review_count: number | null;
-  verification_status: string | null;
-  doctor_translations: Translation[] | null;
+
+  photo_url:
+    | string
+    | null;
+
+  years_experience:
+    | number
+    | null;
+
+  consultation_price:
+    | number
+    | string
+    | null;
+
+  average_rating:
+    | number
+    | string
+    | null;
+
+  review_count:
+    | number
+    | null;
+
+  verification_status:
+    | string
+    | null;
+
+  doctor_translations:
+    | Translation[]
+    | null;
 };
 
 type AvailabilityRow = {
@@ -81,93 +167,235 @@ export type PublicNearbyDoctor = {
   slug: string;
   name: string;
   title: string;
-  photoUrl: string | null;
+
+  photoUrl:
+    | string
+    | null;
+
   specialty: {
     slug: string;
     name: string;
   };
+
   clinic: {
     id: string;
-    slug: string | null;
+
+    slug:
+      | string
+      | null;
+
     name: string;
     cityName: string;
-    citySlug: string | null;
-    countryCode: string | null;
-    formattedAddress: string | null;
-    googleMapsUri: string | null;
-    distanceKilometres: number;
+
+    citySlug:
+      | string
+      | null;
+
+    countryCode:
+      | string
+      | null;
+
+    formattedAddress:
+      | string
+      | null;
+
+    googleMapsUri:
+      | string
+      | null;
+
+    distanceKilometres:
+      number;
   };
+
   averageRating: number;
   reviewCount: number;
-  yearsExperience: number | null;
-  consultationPrice: number | null;
+
+  yearsExperience:
+    | number
+    | null;
+
+  consultationPrice:
+    | number
+    | null;
+
   isVerified: boolean;
-  hasOnlineAvailability: boolean;
+
+  hasOnlineAvailability:
+    boolean;
 };
 
 function getSingleRelation<T>(
-  relation: T | T[] | null | undefined
+  relation:
+    | T
+    | T[]
+    | null
+    | undefined
 ): T | null {
-  if (Array.isArray(relation)) {
-    return relation[0] ?? null;
+  if (
+    Array.isArray(
+      relation
+    )
+  ) {
+    return (
+      relation[0] ??
+      null
+    );
   }
 
-  return relation ?? null;
+  return (
+    relation ??
+    null
+  );
 }
 
 function getTranslationValue(
-  translations: Translation[] | null | undefined,
-  field: "name" | "title"
+  translations:
+    | Translation[]
+    | null
+    | undefined,
+  field:
+    | "name"
+    | "title",
+  locale:
+    AppLocale
 ) {
-  if (!translations?.length) {
+  if (
+    !translations
+      ?.length
+  ) {
     return null;
   }
 
-  const romanian =
+  const candidates = [
     translations.find(
-      (translation) => translation.locale === "ro"
-    ) ?? translations[0];
+      (
+        translation
+      ) =>
+        translation.locale ===
+        locale
+    ),
 
-  return romanian?.[field]?.trim() || null;
+    translations.find(
+      (
+        translation
+      ) =>
+        translation.locale ===
+        "ro"
+    ),
+
+    ...translations,
+  ];
+
+  for (
+    const candidate of
+      candidates
+  ) {
+    const value =
+      candidate?.[field]
+        ?.trim();
+
+    if (value) {
+      return value;
+    }
+  }
+
+  return null;
 }
 
-function formatDoctorName(slug: string) {
+function getGenericDoctorTitle(
+  locale:
+    AppLocale
+) {
+  if (
+    locale === "de"
+  ) {
+    return "Arzt";
+  }
+
+  if (
+    locale === "en"
+  ) {
+    return "Doctor";
+  }
+
+  return "Medic";
+}
+
+function formatDoctorName(
+  slug: string
+) {
   return slug
     .split("-")
     .map(
-      (part) =>
-        part.charAt(0).toUpperCase() + part.slice(1)
+      (
+        part
+      ) =>
+        part
+          .charAt(0)
+          .toUpperCase() +
+        part.slice(1)
     )
     .join(" ");
 }
 
-function parseFiniteNumber(value: string | null) {
-  if (value === null) {
-    return null;
-  }
-
-  const parsed = Number(value);
-
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function normalizeNumber(
-  value: number | string | null
+function parseFiniteNumber(
+  value:
+    | string
+    | null
 ) {
-  if (value === null) {
+  if (
+    value === null
+  ) {
     return null;
   }
 
   const parsed =
-    typeof value === "number" ? value : Number(value);
+    Number(value);
 
-  return Number.isFinite(parsed) ? parsed : null;
+  return Number.isFinite(
+    parsed
+  )
+    ? parsed
+    : null;
 }
 
-function jsonError(message: string, status: number) {
+function normalizeNumber(
+  value:
+    | number
+    | string
+    | null
+) {
+  if (
+    value === null
+  ) {
+    return null;
+  }
+
+  const parsed =
+    typeof value ===
+    "number"
+      ? value
+      : Number(value);
+
+  return Number.isFinite(
+    parsed
+  )
+    ? parsed
+    : null;
+}
+
+function jsonError(
+  message: string,
+  status: number
+) {
   return NextResponse.json(
-    { error: message },
-    { status }
+    {
+      error:
+        message,
+    },
+    {
+      status,
+    }
   );
 }
 
@@ -176,6 +404,7 @@ function emptyResponse({
   longitude,
   radius,
   specialtySlug,
+  specialtyName,
   verifiedOnly,
   onlineOnly,
   clinicCount = 0,
@@ -184,6 +413,7 @@ function emptyResponse({
   longitude: number;
   radius: number;
   specialtySlug: string;
+  specialtyName: string;
   verifiedOnly: boolean;
   onlineOnly: boolean;
   clinicCount?: number;
@@ -191,11 +421,19 @@ function emptyResponse({
   return NextResponse.json(
     {
       doctors: [],
+
       meta: {
         latitude,
         longitude,
-        radiusKilometres: radius,
-        specialty: specialtySlug,
+
+        radiusKilometres:
+          radius,
+
+        specialty:
+          specialtySlug,
+
+        specialtyName,
+
         verifiedOnly,
         onlineOnly,
         clinicCount,
@@ -212,37 +450,64 @@ function emptyResponse({
 }
 
 export async function GET(
-  request: NextRequest
+  request:
+    NextRequest
 ): Promise<Response> {
   try {
-    const searchParams = request.nextUrl.searchParams;
+    const searchParams =
+      request.nextUrl
+        .searchParams;
 
-    const latitude = parseFiniteNumber(
-      searchParams.get("lat")
-    );
+    const locale =
+      normalizeAppLocale(
+        searchParams.get(
+          "locale"
+        )
+      );
 
-    const longitude = parseFiniteNumber(
-      searchParams.get("lng")
-    );
+    const latitude =
+      parseFiniteNumber(
+        searchParams.get(
+          "lat"
+        )
+      );
 
-    const radius = parseFiniteNumber(
-      searchParams.get("radius")
-    );
+    const longitude =
+      parseFiniteNumber(
+        searchParams.get(
+          "lng"
+        )
+      );
+
+    const radius =
+      parseFiniteNumber(
+        searchParams.get(
+          "radius"
+        )
+      );
 
     const specialtySlug =
       searchParams
-        .get("specialty")
+        .get(
+          "specialty"
+        )
         ?.trim()
-        .toLowerCase() ?? "";
+        .toLowerCase() ??
+      "";
 
     const verifiedOnly =
-      searchParams.get("verified") === "true";
+      searchParams.get(
+        "verified"
+      ) === "true";
 
     const onlineOnly =
-      searchParams.get("online") === "true";
+      searchParams.get(
+        "online"
+      ) === "true";
 
     if (
-      latitude === null ||
+      latitude ===
+        null ||
       latitude < -90 ||
       latitude > 90
     ) {
@@ -253,7 +518,8 @@ export async function GET(
     }
 
     if (
-      longitude === null ||
+      longitude ===
+        null ||
       longitude < -180 ||
       longitude > 180
     ) {
@@ -264,8 +530,11 @@ export async function GET(
     }
 
     if (
-      radius === null ||
-      !ALLOWED_RADII.has(radius)
+      radius ===
+        null ||
+      !ALLOWED_RADII.has(
+        radius
+      )
     ) {
       return jsonError(
         "Raza trebuie să fie 10 sau 50 km.",
@@ -273,26 +542,48 @@ export async function GET(
       );
     }
 
-    if (!specialtySlug) {
+    if (
+      !specialtySlug
+    ) {
       return jsonError(
         "Specialitatea este obligatorie.",
         400
       );
     }
 
-    const admin = createAdminClient();
+    const admin =
+      createAdminClient();
 
     const {
-      data: specialtyData,
-      error: specialtyError,
+      data:
+        specialtyData,
+      error:
+        specialtyError,
     } = await admin
-      .from("specialties")
-      .select("id, slug")
-      .eq("slug", specialtySlug)
-      .eq("is_active", true)
+      .from(
+        "specialties"
+      )
+      .select(`
+        id,
+        slug,
+        specialty_translations (
+          locale,
+          name
+        )
+      `)
+      .eq(
+        "slug",
+        specialtySlug
+      )
+      .eq(
+        "is_active",
+        true
+      )
       .maybeSingle();
 
-    if (specialtyError) {
+    if (
+      specialtyError
+    ) {
       console.error(
         "Nearby specialty lookup failed:",
         specialtyError
@@ -304,26 +595,50 @@ export async function GET(
       );
     }
 
-    if (!specialtyData) {
+    if (
+      !specialtyData
+    ) {
       return jsonError(
         "Specialitatea nu există.",
         404
       );
     }
 
+    const specialty =
+      specialtyData as unknown as
+        SpecialtyLookupRow;
+
+    const specialtyName =
+      getTranslationValue(
+        specialty
+          .specialty_translations,
+        "name",
+        locale
+      ) ??
+      specialty.slug;
+
     const {
-      data: nearbyClinicData,
-      error: nearbyClinicError,
+      data:
+        nearbyClinicData,
+      error:
+        nearbyClinicError,
     } = await admin.rpc(
       "find_approved_clinics_nearby",
       {
-        search_latitude: latitude,
-        search_longitude: longitude,
-        radius_kilometres: radius,
+        search_latitude:
+          latitude,
+
+        search_longitude:
+          longitude,
+
+        radius_kilometres:
+          radius,
       }
     );
 
-    if (nearbyClinicError) {
+    if (
+      nearbyClinicError
+    ) {
       console.error(
         "Nearby clinic RPC failed:",
         nearbyClinicError
@@ -336,30 +651,46 @@ export async function GET(
     }
 
     const nearbyClinics =
-      (nearbyClinicData ?? []) as NearbyClinicRow[];
+      (
+        nearbyClinicData ??
+        []
+      ) as
+        NearbyClinicRow[];
 
-    if (nearbyClinics.length === 0) {
+    if (
+      nearbyClinics.length ===
+      0
+    ) {
       return emptyResponse({
         latitude,
         longitude,
         radius,
         specialtySlug,
+        specialtyName,
         verifiedOnly,
         onlineOnly,
       });
     }
 
-    const clinicDistanceMap = new Map<
-      string,
-      number
-    >();
+    const clinicDistanceMap =
+      new Map<
+        string,
+        number
+      >();
 
-    for (const row of nearbyClinics) {
-      const distance = normalizeNumber(
-        row.distance_metres
-      );
+    for (
+      const row of
+        nearbyClinics
+    ) {
+      const distance =
+        normalizeNumber(
+          row.distance_metres
+        );
 
-      if (distance !== null) {
+      if (
+        distance !==
+        null
+      ) {
         clinicDistanceMap.set(
           row.clinic_id,
           distance
@@ -367,16 +698,22 @@ export async function GET(
       }
     }
 
-    const clinicIds = Array.from(
-      clinicDistanceMap.keys()
-    );
+    const clinicIds =
+      Array.from(
+        clinicDistanceMap
+          .keys()
+      );
 
-    if (clinicIds.length === 0) {
+    if (
+      clinicIds.length ===
+      0
+    ) {
       return emptyResponse({
         latitude,
         longitude,
         radius,
         specialtySlug,
+        specialtyName,
         verifiedOnly,
         onlineOnly,
       });
@@ -385,37 +722,55 @@ export async function GET(
     const [
       clinicsResult,
       doctorClinicsResult,
-    ] = await Promise.all([
-      admin
-        .from("clinics")
-        .select(`
-          id,
-          slug,
-          formatted_address,
-          google_maps_uri,
-          clinic_translations (
-            locale,
-            name
-          ),
-          cities (
+    ] =
+      await Promise.all([
+        admin
+          .from(
+            "clinics"
+          )
+          .select(`
+            id,
             slug,
-            country_code,
-            city_translations (
+            formatted_address,
+            google_maps_uri,
+            clinic_translations (
               locale,
               name
+            ),
+            cities (
+              slug,
+              country_code,
+              city_translations (
+                locale,
+                name
+              )
             )
+          `)
+          .in(
+            "id",
+            clinicIds
           )
-        `)
-        .in("id", clinicIds)
-        .eq("status", "approved"),
+          .eq(
+            "status",
+            "approved"
+          ),
 
-      admin
-        .from("doctor_clinics")
-        .select("doctor_id, clinic_id")
-        .in("clinic_id", clinicIds),
-    ]);
+        admin
+          .from(
+            "doctor_clinics"
+          )
+          .select(
+            "doctor_id, clinic_id"
+          )
+          .in(
+            "clinic_id",
+            clinicIds
+          ),
+      ]);
 
-    if (clinicsResult.error) {
+    if (
+      clinicsResult.error
+    ) {
       console.error(
         "Nearby clinic details lookup failed:",
         clinicsResult.error
@@ -427,7 +782,9 @@ export async function GET(
       );
     }
 
-    if (doctorClinicsResult.error) {
+    if (
+      doctorClinicsResult.error
+    ) {
       console.error(
         "Nearby doctor-clinic lookup failed:",
         doctorClinicsResult.error
@@ -440,35 +797,60 @@ export async function GET(
     }
 
     const clinics =
-      (clinicsResult.data ?? []) as ClinicRow[];
+      (
+        clinicsResult.data ??
+        []
+      ) as
+        ClinicRow[];
 
     const doctorClinics =
-      (doctorClinicsResult.data ??
-        []) as DoctorClinicRow[];
+      (
+        doctorClinicsResult
+          .data ??
+        []
+      ) as
+        DoctorClinicRow[];
 
-    const candidateDoctorIds = Array.from(
-      new Set(
-        doctorClinics.map((row) => row.doctor_id)
-      )
-    );
+    const candidateDoctorIds =
+      Array.from(
+        new Set(
+          doctorClinics.map(
+            (
+              row
+            ) =>
+              row.doctor_id
+          )
+        )
+      );
 
-    if (candidateDoctorIds.length === 0) {
+    if (
+      candidateDoctorIds
+        .length ===
+      0
+    ) {
       return emptyResponse({
         latitude,
         longitude,
         radius,
         specialtySlug,
+        specialtyName,
         verifiedOnly,
         onlineOnly,
-        clinicCount: clinicIds.length,
+
+        clinicCount:
+          clinicIds.length,
       });
     }
 
     const {
-      data: doctorSpecialtyData,
-      error: doctorSpecialtyError,
+      data:
+        doctorSpecialtyData,
+      error:
+        doctorSpecialtyError,
     } = await admin
-      .from("doctor_specialties")
+      .from(
+        "doctor_specialties"
+      )
       .select(`
         doctor_id,
         specialties (
@@ -479,10 +861,18 @@ export async function GET(
           )
         )
       `)
-      .eq("specialty_id", specialtyData.id)
-      .in("doctor_id", candidateDoctorIds);
+      .eq(
+        "specialty_id",
+        specialty.id
+      )
+      .in(
+        "doctor_id",
+        candidateDoctorIds
+      );
 
-    if (doctorSpecialtyError) {
+    if (
+      doctorSpecialtyError
+    ) {
       console.error(
         "Nearby doctor-specialty lookup failed:",
         doctorSpecialtyError
@@ -495,69 +885,109 @@ export async function GET(
     }
 
     const doctorSpecialties =
-      (doctorSpecialtyData ??
-        []) as DoctorSpecialtyRow[];
+      (
+        doctorSpecialtyData ??
+        []
+      ) as
+        DoctorSpecialtyRow[];
 
-    const matchingDoctorIds = Array.from(
-      new Set(
-        doctorSpecialties.map(
-          (row) => row.doctor_id
+    const matchingDoctorIds =
+      Array.from(
+        new Set(
+          doctorSpecialties
+            .map(
+              (
+                row
+              ) =>
+                row.doctor_id
+            )
         )
-      )
-    );
+      );
 
-    if (matchingDoctorIds.length === 0) {
+    if (
+      matchingDoctorIds
+        .length ===
+      0
+    ) {
       return emptyResponse({
         latitude,
         longitude,
         radius,
         specialtySlug,
+        specialtyName,
         verifiedOnly,
         onlineOnly,
-        clinicCount: clinicIds.length,
+
+        clinicCount:
+          clinicIds.length,
       });
     }
 
-    let doctorQuery = admin
-      .from("doctors")
-      .select(`
-        id,
-        slug,
-        photo_url,
-        years_experience,
-        consultation_price,
-        average_rating,
-        review_count,
-        verification_status,
-        doctor_translations (
-          locale,
-          title
+    let doctorQuery =
+      admin
+        .from(
+          "doctors"
         )
-      `)
-      .eq("status", "active")
-      .in("id", matchingDoctorIds);
+        .select(`
+          id,
+          slug,
+          photo_url,
+          years_experience,
+          consultation_price,
+          average_rating,
+          review_count,
+          verification_status,
+          doctor_translations (
+            locale,
+            title
+          )
+        `)
+        .eq(
+          "status",
+          "active"
+        )
+        .in(
+          "id",
+          matchingDoctorIds
+        );
 
-    if (verifiedOnly) {
-      doctorQuery = doctorQuery.eq(
-        "verification_status",
-        "verified"
-      );
+    if (
+      verifiedOnly
+    ) {
+      doctorQuery =
+        doctorQuery.eq(
+          "verification_status",
+          "verified"
+        );
     }
 
     const [
       doctorsResult,
       availabilityResult,
-    ] = await Promise.all([
-      doctorQuery,
+    ] =
+      await Promise.all([
+        doctorQuery,
 
-      admin
-        .from("availability")
-        .select("doctor_id")
-        .in("doctor_id", matchingDoctorIds)
-        .eq("is_active", true),
-    ]);
+        admin
+          .from(
+            "availability"
+          )
+          .select(
+            "doctor_id"
+          )
+          .in(
+            "doctor_id",
+            matchingDoctorIds
+          )
+          .eq(
+            "is_active",
+            true
+          ),
+      ]);
 
-    if (doctorsResult.error) {
+    if (
+      doctorsResult.error
+    ) {
       console.error(
         "Nearby doctors lookup failed:",
         doctorsResult.error
@@ -569,7 +999,9 @@ export async function GET(
       );
     }
 
-    if (availabilityResult.error) {
+    if (
+      availabilityResult.error
+    ) {
       console.error(
         "Nearby availability lookup failed:",
         availabilityResult.error
@@ -582,195 +1014,342 @@ export async function GET(
     }
 
     const doctors =
-      (doctorsResult.data ?? []) as DoctorRow[];
-
-    const availableDoctorIds = new Set(
       (
-        availabilityResult.data ?? []
-      ).map(
-        (row: AvailabilityRow) => row.doctor_id
-      )
-    );
+        doctorsResult.data ??
+        []
+      ) as
+        DoctorRow[];
 
-    const clinicById = new Map(
-      clinics.map((clinic) => [
-        clinic.id,
-        clinic,
-      ])
-    );
-
-    const specialtyByDoctorId = new Map(
-      doctorSpecialties.map((row) => [
-        row.doctor_id,
-        getSingleRelation(row.specialties),
-      ])
-    );
-
-    const publicDoctors = doctors
-      .flatMap(
+    const availableDoctorIds =
+      new Set(
         (
-          doctor
-        ): PublicNearbyDoctor[] => {
-          if (
-            onlineOnly &&
-            !availableDoctorIds.has(doctor.id)
-          ) {
-            return [];
-          }
+          availabilityResult
+            .data ??
+          []
+        ).map(
+          (
+            row:
+              AvailabilityRow
+          ) =>
+            row.doctor_id
+        )
+      );
 
-          const doctorClinicRows =
-            doctorClinics.filter(
-              (row) =>
-                row.doctor_id === doctor.id
-            );
+    const clinicById =
+      new Map(
+        clinics.map(
+          (
+            clinic
+          ) => [
+            clinic.id,
+            clinic,
+          ]
+        )
+      );
 
-          if (doctorClinicRows.length === 0) {
-            return [];
-          }
+    const specialtyByDoctorId =
+      new Map(
+        doctorSpecialties
+          .map(
+            (
+              row
+            ) => [
+              row.doctor_id,
 
-          const nearestClinicRow =
-            doctorClinicRows
-              .map((row) => ({
-                row,
-                distance:
-                  clinicDistanceMap.get(
-                    row.clinic_id
-                  ) ??
-                  Number.POSITIVE_INFINITY,
-              }))
-              .sort(
-                (first, second) =>
-                  first.distance -
-                  second.distance
-              )[0];
-
-          const clinic = clinicById.get(
-            nearestClinicRow.row.clinic_id
-          );
-
-          if (!clinic) {
-            return [];
-          }
-
-          const city = getSingleRelation(
-            clinic.cities
-          );
-
-          const clinicName =
-            getTranslationValue(
-              clinic.clinic_translations,
-              "name"
-            );
-
-          const cityName =
-            getTranslationValue(
-              city?.city_translations,
-              "name"
-            );
-
-          const specialty =
-            specialtyByDoctorId.get(doctor.id);
-
-          const specialtyName =
-            getTranslationValue(
-              specialty?.specialty_translations,
-              "name"
-            );
-
-          if (
-            !clinicName ||
-            !cityName ||
-            !specialty?.slug ||
-            !specialtyName
-          ) {
-            return [];
-          }
-
-          return [
-            {
-              id: doctor.id,
-              slug: doctor.slug,
-              name: formatDoctorName(
-                doctor.slug
+              getSingleRelation(
+                row.specialties
               ),
-              title:
-                getTranslationValue(
-                  doctor.doctor_translations,
-                  "title"
-                ) ?? "Medic",
-              photoUrl: doctor.photo_url,
-              specialty: {
-                slug: specialty.slug,
-                name: specialtyName,
-              },
-              clinic: {
-                id: clinic.id,
-                slug: clinic.slug,
-                name: clinicName,
-                cityName,
-                citySlug: city?.slug ?? null,
-                countryCode:
-                  city?.country_code ?? null,
-                formattedAddress:
-                  clinic.formatted_address,
-                googleMapsUri:
-                  clinic.google_maps_uri,
-                distanceKilometres: Number(
-                  (
-                    nearestClinicRow.distance /
-                    1000
-                  ).toFixed(1)
-                ),
-              },
-              averageRating:
-                normalizeNumber(
-                  doctor.average_rating
-                ) ?? 0,
-              reviewCount:
-                doctor.review_count ?? 0,
-              yearsExperience:
-                doctor.years_experience,
-              consultationPrice:
-                normalizeNumber(
-                  doctor.consultation_price
-                ),
-              isVerified:
-                doctor.verification_status ===
-                "verified",
-              hasOnlineAvailability:
-                availableDoctorIds.has(
+            ]
+          )
+      );
+
+    const publicDoctors =
+      doctors
+        .flatMap(
+          (
+            doctor
+          ):
+            PublicNearbyDoctor[] => {
+            if (
+              onlineOnly &&
+              !availableDoctorIds
+                .has(
                   doctor.id
-                ),
-            },
-          ];
-        }
-      )
-      .sort(
-        (first, second) =>
-          first.clinic.distanceKilometres -
-            second.clinic
-              .distanceKilometres ||
-          Number(second.isVerified) -
-            Number(first.isVerified) ||
-          second.averageRating -
-            first.averageRating ||
-          second.reviewCount -
-            first.reviewCount
-      )
-      .slice(0, MAX_RESULTS);
+                )
+            ) {
+              return [];
+            }
+
+            const doctorClinicRows =
+              doctorClinics
+                .filter(
+                  (
+                    row
+                  ) =>
+                    row.doctor_id ===
+                    doctor.id
+                );
+
+            if (
+              doctorClinicRows
+                .length ===
+              0
+            ) {
+              return [];
+            }
+
+            const nearestClinicRow =
+              doctorClinicRows
+                .map(
+                  (
+                    row
+                  ) => ({
+                    row,
+
+                    distance:
+                      clinicDistanceMap
+                        .get(
+                          row.clinic_id
+                        ) ??
+                      Number
+                        .POSITIVE_INFINITY,
+                  })
+                )
+                .sort(
+                  (
+                    first,
+                    second
+                  ) =>
+                    first.distance -
+                    second.distance
+                )[0];
+
+            const clinic =
+              clinicById.get(
+                nearestClinicRow
+                  .row
+                  .clinic_id
+              );
+
+            if (
+              !clinic
+            ) {
+              return [];
+            }
+
+            const city =
+              getSingleRelation(
+                clinic.cities
+              );
+
+            const clinicName =
+              getTranslationValue(
+                clinic
+                  .clinic_translations,
+                "name",
+                locale
+              );
+
+            const cityName =
+              getTranslationValue(
+                city
+                  ?.city_translations,
+                "name",
+                locale
+              );
+
+            const doctorSpecialty =
+              specialtyByDoctorId
+                .get(
+                  doctor.id
+                );
+
+            const doctorSpecialtyName =
+              getTranslationValue(
+                doctorSpecialty
+                  ?.specialty_translations,
+                "name",
+                locale
+              );
+
+            if (
+              !clinicName ||
+              !cityName ||
+              !doctorSpecialty
+                ?.slug ||
+              !doctorSpecialtyName
+            ) {
+              return [];
+            }
+
+            return [
+              {
+                id:
+                  doctor.id,
+
+                slug:
+                  doctor.slug,
+
+                name:
+                  formatDoctorName(
+                    doctor.slug
+                  ),
+
+                title:
+                  getTranslationValue(
+                    doctor
+                      .doctor_translations,
+                    "title",
+                    locale
+                  ) ??
+                  getGenericDoctorTitle(
+                    locale
+                  ),
+
+                photoUrl:
+                  doctor.photo_url,
+
+                specialty: {
+                  slug:
+                    doctorSpecialty
+                      .slug,
+
+                  name:
+                    doctorSpecialtyName,
+                },
+
+                clinic: {
+                  id:
+                    clinic.id,
+
+                  slug:
+                    clinic.slug,
+
+                  name:
+                    clinicName,
+
+                  cityName,
+
+                  citySlug:
+                    city
+                      ?.slug ??
+                    null,
+
+                  countryCode:
+                    city
+                      ?.country_code ??
+                    null,
+
+                  formattedAddress:
+                    clinic
+                      .formatted_address,
+
+                  googleMapsUri:
+                    clinic
+                      .google_maps_uri,
+
+                  distanceKilometres:
+                    Number(
+                      (
+                        nearestClinicRow
+                          .distance /
+                        1000
+                      ).toFixed(1)
+                    ),
+                },
+
+                averageRating:
+                  normalizeNumber(
+                    doctor
+                      .average_rating
+                  ) ??
+                  0,
+
+                reviewCount:
+                  doctor
+                    .review_count ??
+                  0,
+
+                yearsExperience:
+                  doctor
+                    .years_experience,
+
+                consultationPrice:
+                  normalizeNumber(
+                    doctor
+                      .consultation_price
+                  ),
+
+                isVerified:
+                  doctor
+                    .verification_status ===
+                  "verified",
+
+                hasOnlineAvailability:
+                  availableDoctorIds
+                    .has(
+                      doctor.id
+                    ),
+              },
+            ];
+          }
+        )
+        .sort(
+          (
+            first,
+            second
+          ) =>
+            first
+              .clinic
+              .distanceKilometres -
+              second
+                .clinic
+                .distanceKilometres ||
+            Number(
+              second.isVerified
+            ) -
+              Number(
+                first.isVerified
+              ) ||
+            second
+              .averageRating -
+              first
+                .averageRating ||
+            second
+              .reviewCount -
+              first
+                .reviewCount
+        )
+        .slice(
+          0,
+          MAX_RESULTS
+        );
 
     return NextResponse.json(
       {
-        doctors: publicDoctors,
+        doctors:
+          publicDoctors,
+
         meta: {
           latitude,
           longitude,
-          radiusKilometres: radius,
-          specialty: specialtySlug,
+
+          radiusKilometres:
+            radius,
+
+          specialty:
+            specialtySlug,
+
+          specialtyName,
+
           verifiedOnly,
           onlineOnly,
-          clinicCount: clinicIds.length,
-          doctorCount: publicDoctors.length,
+
+          clinicCount:
+            clinicIds.length,
+
+          doctorCount:
+            publicDoctors.length,
         },
       },
       {
@@ -780,7 +1359,9 @@ export async function GET(
         },
       }
     );
-  } catch (error) {
+  } catch (
+    error
+  ) {
     console.error(
       "Public nearby doctor API failed:",
       error

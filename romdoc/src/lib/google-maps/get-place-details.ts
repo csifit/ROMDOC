@@ -56,7 +56,9 @@ function getComponent(
 ) {
   return components?.find(
     (component) =>
-      component.types?.includes(type)
+      component.types?.includes(
+        type
+      )
   );
 }
 
@@ -82,8 +84,11 @@ function getCityName(
         type
       );
 
-    if (component?.longText) {
-      return component.longText;
+    const value =
+      component?.longText?.trim();
+
+    if (value) {
+      return value;
     }
   }
 
@@ -99,13 +104,13 @@ function buildAddressLine1(
     getComponent(
       components,
       "route"
-    )?.longText;
+    )?.longText?.trim();
 
   const streetNumber =
     getComponent(
       components,
       "street_number"
-    )?.longText;
+    )?.longText?.trim();
 
   if (
     route &&
@@ -123,7 +128,8 @@ function buildAddressLine1(
 
 function getGoogleErrorMessage(
   errorResponse:
-    GoogleApiErrorResponse | null,
+    | GoogleApiErrorResponse
+    | null,
   responseStatus: number
 ) {
   const googleMessage =
@@ -161,7 +167,6 @@ async function parseGoogleError(
   parsed:
     | GoogleApiErrorResponse
     | null;
-
   rawText: string;
 }> {
   const rawText =
@@ -180,7 +185,6 @@ async function parseGoogleError(
         JSON.parse(
           rawText
         ) as GoogleApiErrorResponse,
-
       rawText,
     };
   } catch {
@@ -221,14 +225,16 @@ export async function getGooglePlaceDetails(
       )}`
     );
 
+  /*
+   * Keep the existing Romanian response language for backward
+   * compatibility with current stored city names.
+   *
+   * Do not set regionCode=RO. A Romanian region preference must
+   * not influence international address handling.
+   */
   endpoint.searchParams.set(
     "languageCode",
     "ro"
-  );
-
-  endpoint.searchParams.set(
-    "regionCode",
-    "RO"
   );
 
   let response: Response;
@@ -359,9 +365,14 @@ export async function getGooglePlaceDetails(
       ?.trim()
       .toUpperCase();
 
-  if (countryCode !== "RO") {
+  if (
+    !countryCode ||
+    !/^[A-Z]{2}$/.test(
+      countryCode
+    )
+  ) {
     throw new Error(
-      "Adresa selectată trebuie să fie în România."
+      "Adresa selectată nu conține un cod de țară valid."
     );
   }
 

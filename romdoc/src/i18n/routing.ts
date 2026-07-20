@@ -18,6 +18,12 @@ export const routing =
         de: "/aerzte",
       },
 
+      "/medici/cautare": {
+        ro: "/medici/cautare",
+        en: "/doctors/search",
+        de: "/aerzte/suche",
+      },
+
       "/medici/[specialty]": {
         ro: "/medici/[specialty]",
         en: "/doctors/[specialty]",
@@ -38,11 +44,6 @@ export const routing =
         en: "/doctor/[slug]",
         de: "/arzt/[slug]",
       },
-
-
-
-
-
 
       "/specialitati": {
         ro: "/specialitati",

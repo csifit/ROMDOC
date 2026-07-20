@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+
 import {
   loadGoogleMaps,
 } from "@/lib/google-maps/load-google-maps";
@@ -52,12 +53,7 @@ type PlaceAutocompleteElementInstance =
   };
 
 type PlaceAutocompleteElementConstructor =
-  new (
-    options?: {
-      includedRegionCodes?:
-        string[];
-    }
-  ) =>
+  new () =>
     PlaceAutocompleteElementInstance;
 
 type PlacesLibrary = {
@@ -110,13 +106,10 @@ export default function GooglePlaceAutocomplete({
       null
     );
 
-  const autocompleteRef =
-    useRef<
-      PlaceAutocompleteElementInstance
-      | null
-    >(null);
-
-  const [isLoading, setIsLoading] =
+  const [
+    isLoading,
+    setIsLoading,
+  ] =
     useState(true);
 
   const [
@@ -125,7 +118,10 @@ export default function GooglePlaceAutocomplete({
   ] =
     useState(false);
 
-  const [error, setError] =
+  const [
+    error,
+    setError,
+  ] =
     useState<string | null>(
       null
     );
@@ -209,12 +205,12 @@ export default function GooglePlaceAutocomplete({
           );
         }
 
+        /*
+         * Do not pass includedRegionCodes.
+         * Google may return supported addresses from any country.
+         */
         autocomplete =
-          new PlaceAutocompleteElement({
-            includedRegionCodes: [
-              "ro",
-            ],
-          });
+          new PlaceAutocompleteElement();
 
         autocomplete.placeholder =
           "Caută adresa clinicii";
@@ -354,17 +350,9 @@ export default function GooglePlaceAutocomplete({
           handleSelection
         );
 
-        /*
-         * This mount element is intentionally empty in JSX.
-         * React never renders children inside it, so Google may safely
-         * append and remove its custom element.
-         */
         mountRef.current.appendChild(
           autocomplete
         );
-
-        autocompleteRef.current =
-          autocomplete;
 
         if (isActive) {
           setIsLoading(false);
@@ -409,11 +397,6 @@ export default function GooglePlaceAutocomplete({
           );
       }
 
-      /*
-       * Remove only the Google element we inserted.
-       * Do not call replaceChildren(), because React owns the
-       * surrounding component tree.
-       */
       const mountElement =
         mountRef.current;
 
@@ -421,15 +404,12 @@ export default function GooglePlaceAutocomplete({
         autocomplete &&
         mountElement &&
         autocomplete.parentNode ===
-        mountElement
+          mountElement
       ) {
         mountElement.removeChild(
           autocomplete
         );
       }
-
-      autocompleteRef.current =
-        null;
     };
   }, [
     disabled,
@@ -500,7 +480,7 @@ export default function GooglePlaceAutocomplete({
 
             <div>
               <dt className="font-semibold">
-                Județ
+                Regiune
               </dt>
 
               <dd>
