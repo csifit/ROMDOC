@@ -1,12 +1,19 @@
 "use client";
 
-import Button from "@/components/ui/button";
-
+import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
 import {
   type FormEvent,
   useState,
 } from "react";
+
 import RatingStars from "@/components/reviews/rating-stars";
+import Button from "@/components/ui/button";
+import {
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
 
 type PatientReviewFormProps = {
   appointmentId: string;
@@ -24,25 +31,50 @@ export default function PatientReviewForm({
   doctorName,
   onSubmitted,
 }: PatientReviewFormProps) {
+  const locale =
+    normalizeAppLocale(
+      useLocale()
+    );
+
+  const t =
+    useTranslations(
+      "PatientDashboard.review"
+    );
+
   const [rating, setRating] =
     useState(0);
 
   const [
     reviewText,
     setReviewText,
-  ] = useState("");
+  ] =
+    useState("");
 
-  const [isSubmitting, setIsSubmitting] =
+  const [
+    isSubmitting,
+    setIsSubmitting,
+  ] =
     useState(false);
 
-  const [error, setError] =
-    useState<string | null>(null);
+  const [
+    error,
+    setError,
+  ] =
+    useState<string | null>(
+      null
+    );
 
-  const [success, setSuccess] =
-    useState<string | null>(null);
+  const [
+    success,
+    setSuccess,
+  ] =
+    useState<string | null>(
+      null
+    );
 
   async function handleSubmit(
-    event: FormEvent<HTMLFormElement>
+    event:
+      FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
@@ -54,20 +86,19 @@ export default function PatientReviewForm({
       rating > 5
     ) {
       setError(
-        "Alege un calificativ între 1 și 5."
+        t("invalidRating")
       );
-
       return;
     }
 
     if (
-      reviewText.trim().length <
-      10
+      reviewText
+        .trim()
+        .length < 10
     ) {
       setError(
-        "Scrie cel puțin 10 caractere despre experiența ta."
+        t("tooShort")
       );
-
       return;
     }
 
@@ -78,7 +109,8 @@ export default function PatientReviewForm({
         await fetch(
           "/api/patient/reviews",
           {
-            method: "POST",
+            method:
+              "POST",
 
             headers: {
               "Content-Type":
@@ -89,8 +121,10 @@ export default function PatientReviewForm({
               JSON.stringify({
                 appointmentId,
                 rating,
+
                 reviewText:
-                  reviewText.trim(),
+                  reviewText
+                    .trim(),
               }),
           }
         );
@@ -101,25 +135,36 @@ export default function PatientReviewForm({
 
       if (!response.ok) {
         throw new Error(
-          result.error ??
-            "Recenzia nu a putut fi publicată."
+          locale === "ro" &&
+          result.error
+            ? result.error
+            : t(
+                "publishFailed"
+              )
         );
       }
 
       setSuccess(
-        result.message ??
-          "Recenzia a fost publicată."
+        locale === "ro" &&
+        result.message
+          ? result.message
+          : t("published")
       );
 
       setRating(0);
       setReviewText("");
 
       onSubmitted?.();
-    } catch (submitError) {
+    } catch (
+      submitError
+    ) {
       setError(
-        submitError instanceof Error
+        submitError instanceof
+          Error
           ? submitError.message
-          : "Recenzia nu a putut fi publicată."
+          : t(
+              "publishFailed"
+            )
       );
     } finally {
       setIsSubmitting(false);
@@ -132,13 +177,17 @@ export default function PatientReviewForm({
       className="rounded-xl border border-gray-200 bg-gray-50 p-5"
     >
       <h3 className="font-semibold text-gray-900">
-        Evaluează consultația cu{" "}
-        {doctorName}
+        {t(
+          "title",
+          {
+            doctorName,
+          }
+        )}
       </h3>
 
       <div className="mt-4">
         <p className="mb-2 text-sm font-medium text-gray-700">
-          Calificativ
+          {t("rating")}
         </p>
 
         <RatingStars
@@ -146,12 +195,22 @@ export default function PatientReviewForm({
           size="large"
           interactive
           onChange={setRating}
+          label={t(
+            "ratingSummary",
+            {
+              rating,
+              maximum: 5,
+            }
+          )}
+          starUnitLabel={t(
+            "starUnit"
+          )}
         />
       </div>
 
       <label className="mt-5 block">
         <span className="text-sm font-medium text-gray-700">
-          Recenzia ta
+          {t("yourReview")}
         </span>
 
         <textarea
@@ -166,7 +225,9 @@ export default function PatientReviewForm({
               event.target.value
             )
           }
-          placeholder="Descrie experiența ta cu medicul..."
+          placeholder={t(
+            "placeholder"
+          )}
           className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
         />
       </label>
@@ -195,11 +256,11 @@ export default function PatientReviewForm({
           isSubmitting ||
           rating === 0
         }
-            className="mt-5"
+        className="mt-5"
       >
         {isSubmitting
-          ? "Se publică..."
-          : "Publică recenzia"}
+          ? t("publishing")
+          : t("publish")}
       </Button>
     </form>
   );

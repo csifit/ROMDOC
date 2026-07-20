@@ -2,16 +2,26 @@
 
 import Link from "next/link";
 import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
+import {
   usePathname,
   useRouter,
 } from "next/navigation";
 import {
   type ReactNode,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 
-import { createClient } from "@/lib/supabase/client";
+import {
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
+import {
+  createClient,
+} from "@/lib/supabase/client";
 
 type PatientDashboardSidebarProps = {
   userName: string;
@@ -22,7 +32,6 @@ type PatientDashboardSidebarProps = {
 };
 
 type NavigationIcon =
-  | "overview"
   | "appointments"
   | "folder"
   | "doctors"
@@ -31,99 +40,51 @@ type NavigationIcon =
   | "home";
 
 type NavigationItem = {
+  id: string;
   href: string;
   label: string;
   icon: NavigationIcon;
 };
 
-const navigationItems: NavigationItem[] = [
-  {
-    href: "/patient-dashboard",
-    label: "Prezentare generală",
-    icon: "overview",
-  },
-  {
-    href: "/patient-dashboard",
-    label: "Programările mele",
-    icon: "appointments",
-  },
-  {
-    href: "/patient-dashboard/folder",
-    label: "Dosarul medical",
-    icon: "folder",
-  },
-  {
-    href: "/patient-dashboard/account",
-    label: "Cont și confidențialitate",
-    icon: "settings",
-  },
-  {
-    href: "/medici",
-    label: "Caută medici",
-    icon: "doctors",
-  },
-    {
-    href: "/patient-dashboard/saved-doctors",
-    label: "Medici salvați",
-    icon: "savedDoctors",
-  },
-  {
-    href: "/",
-    label: "Pagina principală",
-    icon: "home",
-  },
-];
+function getDirectoryHref(
+  locale:
+    | "ro"
+    | "en"
+    | "de"
+) {
+  if (locale === "de") {
+    return "/de/aerzte";
+  }
+
+  if (locale === "en") {
+    return "/en/doctors";
+  }
+
+  return "/ro/medici";
+}
 
 function Icon({
   type,
 }: {
-  type: NavigationIcon;
+  type:
+    NavigationIcon;
 }) {
   const commonProps = {
-    viewBox: "0 0 24 24",
-    "aria-hidden": true,
+    viewBox:
+      "0 0 24 24",
+    "aria-hidden":
+      true,
     className:
       "h-5 w-5 shrink-0",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 1.8,
+    fill:
+      "none",
+    stroke:
+      "currentColor",
+    strokeWidth:
+      1.8,
   };
 
   switch (type) {
-    case "overview":
-      return (
-        <svg {...commonProps}>
-          <rect
-            x="4"
-            y="4"
-            width="6"
-            height="6"
-            rx="1"
-          />
-          <rect
-            x="14"
-            y="4"
-            width="6"
-            height="6"
-            rx="1"
-          />
-          <rect
-            x="4"
-            y="14"
-            width="6"
-            height="6"
-            rx="1"
-          />
-          <rect
-            x="14"
-            y="14"
-            width="6"
-            height="6"
-            rx="1"
-          />
-        </svg>
-      );
-
     case "appointments":
       return (
         <svg {...commonProps}>
@@ -134,10 +95,12 @@ function Icon({
             height="16"
             rx="2"
           />
+
           <path
             strokeLinecap="round"
             d="M8 3v4M16 3v4M3 10h18"
           />
+
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -154,6 +117,7 @@ function Icon({
             strokeLinejoin="round"
             d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"
           />
+
           <path
             strokeLinecap="round"
             d="M8 13h8M8 16h5"
@@ -169,26 +133,29 @@ function Icon({
             cy="8"
             r="4"
           />
+
           <path
             strokeLinecap="round"
             d="M5 21c.7-4 3.1-6 7-6s6.3 2 7 6"
           />
+
           <path
             strokeLinecap="round"
             d="M18 5v4M16 7h4"
           />
         </svg>
       );
-          case "savedDoctors":
-            return (
-              <svg {...commonProps}>
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z"
-                />
-              </svg>
-     );
+
+    case "savedDoctors":
+      return (
+        <svg {...commonProps}>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z"
+          />
+        </svg>
+      );
 
     case "settings":
       return (
@@ -198,6 +165,7 @@ function Icon({
             cy="12"
             r="3"
           />
+
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -214,6 +182,7 @@ function Icon({
             strokeLinejoin="round"
             d="m3 11 9-8 9 8"
           />
+
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -263,7 +232,8 @@ function CloseIcon() {
 function CollapseIcon({
   collapsed,
 }: {
-  collapsed: boolean;
+  collapsed:
+    boolean;
 }) {
   return (
     <svg
@@ -302,6 +272,7 @@ function LogoutIcon() {
         strokeLinejoin="round"
         d="M10 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"
       />
+
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -314,10 +285,11 @@ function LogoutIcon() {
 function getInitials(
   name: string
 ) {
-  const parts = name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+  const parts =
+    name
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
 
   if (parts.length === 0) {
     return "P";
@@ -336,30 +308,36 @@ function getInitials(
 
 function isActiveRoute(
   pathname: string,
-  href: string,
-  label: string
+  item:
+    NavigationItem
 ) {
   if (
-    href ===
-    "/patient-dashboard"
+    item.id ===
+    "appointments"
   ) {
     return (
       pathname ===
-        "/patient-dashboard" &&
-      label ===
-        "Programările mele"
+      "/patient-dashboard"
     );
   }
 
-  if (href === "/") {
-    return pathname === "/";
+  if (
+    item.href.startsWith(
+      "/patient-dashboard"
+    )
+  ) {
+    return (
+      pathname ===
+        item.href ||
+      pathname.startsWith(
+        `${item.href}/`
+      )
+    );
   }
 
   return (
-    pathname === href ||
-    pathname.startsWith(
-      `${href}/`
-    )
+    pathname ===
+    item.href
   );
 }
 
@@ -370,6 +348,16 @@ export default function PatientDashboardSidebar({
   children,
   footer,
 }: PatientDashboardSidebarProps) {
+  const locale =
+    normalizeAppLocale(
+      useLocale()
+    );
+
+  const t =
+    useTranslations(
+      "PatientDashboard.sidebar"
+    );
+
   const pathname =
     usePathname();
 
@@ -397,6 +385,78 @@ export default function PatientDashboardSidebar({
   const isClosurePending =
     accountStatus ===
     "closure_requested";
+
+  const directoryHref =
+    getDirectoryHref(
+      locale
+    );
+
+  const navigationItems =
+    useMemo<
+      NavigationItem[]
+    >(
+      () => [
+        {
+          id: "appointments",
+          href:
+            "/patient-dashboard",
+          label:
+            t("appointments"),
+          icon:
+            "appointments",
+        },
+        {
+          id: "folder",
+          href:
+            "/patient-dashboard/folder",
+          label:
+            t("folder"),
+          icon:
+            "folder",
+        },
+        {
+          id: "account",
+          href:
+            "/patient-dashboard/account",
+          label:
+            t("account"),
+          icon:
+            "settings",
+        },
+        {
+          id: "findDoctors",
+          href:
+            directoryHref,
+          label:
+            t("findDoctors"),
+          icon:
+            "doctors",
+        },
+        {
+          id: "savedDoctors",
+          href:
+            "/patient-dashboard/saved-doctors",
+          label:
+            t("savedDoctors"),
+          icon:
+            "savedDoctors",
+        },
+        {
+          id: "home",
+          href:
+            `/${locale}`,
+          label:
+            t("home"),
+          icon:
+            "home",
+        },
+      ],
+      [
+        directoryHref,
+        locale,
+        t,
+      ]
+    );
 
   useEffect(() => {
     if (
@@ -428,7 +488,8 @@ export default function PatientDashboardSidebar({
       const {
         error,
       } =
-        await supabase.auth.signOut();
+        await supabase.auth
+          .signOut();
 
       if (error) {
         console.error(
@@ -438,19 +499,15 @@ export default function PatientDashboardSidebar({
         return;
       }
 
-      setIsMobileOpen(
-        false
-      );
+      setIsMobileOpen(false);
 
       router.replace(
-        "/login"
+        `/login?locale=${locale}`
       );
 
       router.refresh();
     } finally {
-      setIsSigningOut(
-        false
-      );
+      setIsSigningOut(false);
     }
   }
 
@@ -477,13 +534,11 @@ export default function PatientDashboardSidebar({
           <Link
             href="/patient-dashboard"
             onClick={() =>
-              setIsMobileOpen(
-                false
-              )
+              setIsMobileOpen(false)
             }
             className="romdoc-focus-ring rounded-md text-2xl font-bold tracking-tight text-gray-900"
           >
-            RomDoc Pacient
+            {t("brand")}
           </Link>
         )}
 
@@ -497,13 +552,13 @@ export default function PatientDashboardSidebar({
           }
           aria-label={
             isCollapsed
-              ? "Extinde meniul"
-              : "Restrânge meniul"
+              ? t("expandMenu")
+              : t("collapseMenu")
           }
           title={
             isCollapsed
-              ? "Extinde meniul"
-              : "Restrânge meniul"
+              ? t("expandMenu")
+              : t("collapseMenu")
           }
           className="romdoc-focus-ring hidden rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 lg:inline-flex"
         >
@@ -540,12 +595,14 @@ export default function PatientDashboardSidebar({
               </p>
 
               <span className="mt-1 inline-flex rounded-full bg-[#036661]/10 px-2.5 py-1 text-xs font-semibold text-[#036661]">
-                Pacient
+                {t("role")}
               </span>
 
               {isClosurePending && (
                 <span className="ml-1 mt-1 inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
-                  Închidere solicitată
+                  {t(
+                    "closureRequested"
+                  )}
                 </span>
               )}
             </div>
@@ -554,22 +611,17 @@ export default function PatientDashboardSidebar({
       </div>
 
       <nav
-        aria-label="Navigare pacient"
+        aria-label={t(
+          "navigationAria"
+        )}
         className="flex-1 space-y-1 overflow-y-auto p-3"
       >
         {navigationItems.map(
           (item) => {
             if (
               isClosurePending &&
-              item.href !==
-                "/patient-dashboard/account"
-            ) {
-              return null;
-            }
-
-            if (
-              item.label ===
-              "Prezentare generală"
+              item.id !==
+                "account"
             ) {
               return null;
             }
@@ -577,14 +629,17 @@ export default function PatientDashboardSidebar({
             const active =
               isActiveRoute(
                 pathname,
-                item.href,
-                item.label
+                item
               );
 
             return (
               <Link
-                key={`${item.href}-${item.label}`}
-                href={item.href}
+                key={
+                  item.id
+                }
+                href={
+                  item.href
+                }
                 onClick={() =>
                   setIsMobileOpen(
                     false
@@ -638,7 +693,7 @@ export default function PatientDashboardSidebar({
           }
           title={
             isCollapsed
-              ? "Deconectare"
+              ? t("signOut")
               : undefined
           }
           className={`romdoc-focus-ring flex min-h-11 w-full items-center rounded-xl px-3 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 ${
@@ -652,8 +707,8 @@ export default function PatientDashboardSidebar({
           {!isCollapsed && (
             <span>
               {isSigningOut
-                ? "Se deconectează..."
-                : "Deconectare"}
+                ? t("signingOut")
+                : t("signOut")}
             </span>
           )}
         </button>
@@ -668,17 +723,17 @@ export default function PatientDashboardSidebar({
           href="/patient-dashboard"
           className="romdoc-focus-ring rounded-md text-xl font-bold text-gray-900"
         >
-          RomDoc Pacient
+          {t("brand")}
         </Link>
 
         <button
           type="button"
           onClick={() =>
-            setIsMobileOpen(
-              true
-            )
+            setIsMobileOpen(true)
           }
-          aria-label="Deschide meniul"
+          aria-label={t(
+            "openMenu"
+          )}
           className="romdoc-focus-ring rounded-lg p-2 text-gray-700 transition hover:bg-gray-100"
         >
           <MenuIcon />
@@ -695,7 +750,9 @@ export default function PatientDashboardSidebar({
         <div className="fixed inset-0 z-50 lg:hidden">
           <button
             type="button"
-            aria-label="Închide meniul"
+            aria-label={t(
+              "closeMenu"
+            )}
             onClick={() =>
               setIsMobileOpen(
                 false
@@ -712,7 +769,9 @@ export default function PatientDashboardSidebar({
                   false
                 )
               }
-              aria-label="Închide meniul"
+              aria-label={t(
+                "closeMenu"
+              )}
               className="romdoc-focus-ring absolute right-3 top-3 z-10 rounded-lg p-2 text-gray-600 transition hover:bg-gray-100"
             >
               <CloseIcon />
@@ -729,24 +788,38 @@ export default function PatientDashboardSidebar({
         <div className="hidden min-h-16 items-center justify-between border-b border-gray-200 bg-white px-6 shadow-sm lg:flex">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#036661]">
-              Cont pacient
+              {t(
+                "accountEyebrow"
+              )}
             </p>
 
             <p className="mt-1 text-sm font-semibold text-gray-900">
-              Bine ai venit, {userName}
+              {t(
+                "welcome",
+                {
+                  name:
+                    userName,
+                }
+              )}
             </p>
           </div>
 
           {isClosurePending ? (
             <span className="rounded-xl bg-amber-100 px-4 py-2.5 text-sm font-semibold text-amber-900">
-              Cerere de închidere în perioada de așteptare
+              {t(
+                "closurePending"
+              )}
             </span>
           ) : (
             <Link
-              href="/medici"
+              href={
+                directoryHref
+              }
               className="rounded-xl bg-[#036661] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#ff2800]"
             >
-              Caută un medic
+              {t(
+                "findDoctor"
+              )}
             </Link>
           )}
         </div>

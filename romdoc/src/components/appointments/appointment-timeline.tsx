@@ -5,6 +5,13 @@ import {
   useState,
 } from "react";
 
+import {
+  getAppointmentStatusLabel,
+} from "@/lib/appointments/appointment-status";
+import type {
+  AppLocale,
+} from "@/lib/i18n/app-locale";
+
 export type AppointmentTimelineItem = {
   id: string;
   eventType: string;
@@ -26,126 +33,117 @@ type TimelineResponse = {
   error?: string;
 };
 
+export type AppointmentTimelineCopy = {
+  title: string;
+  eventSingular: string;
+  eventPlural: string;
+  viewEvolution: string;
+  loading: string;
+  loadFailed: string;
+  retry: string;
+  empty: string;
+  statusChange: string;
+  appointmentChange: string;
+  reason: string;
+  unknownEvent: string;
+  unknownRole: string;
+  events: Record<string, string>;
+  roles: Record<string, string>;
+};
+
 type Props = {
   appointmentId: string;
   defaultOpen?: boolean;
+  locale?: AppLocale;
+  copy?: AppointmentTimelineCopy;
 };
 
-function eventLabel(
-  eventType: string
-) {
-  const labels: Record<
-    string,
-    string
-  > = {
-    appointment_created:
-      "Solicitare creată",
-    confirmed:
-      "Programare confirmată",
-    rescheduled:
-      "Programare reprogramată",
-    cancelled_by_patient:
-      "Programare anulată de pacient",
-    cancelled_by_doctor:
-      "Programare anulată de medic",
-    cancelled_by_staff:
-      "Programare anulată de personal",
-    cancelled_by_admin:
-      "Programare anulată de RomDoc",
-    cancelled_by_system:
-      "Programare anulată automat",
-    completed:
-      "Consultație finalizată",
-    marked_no_show:
-      "Neprezentare înregistrată",
-    schedule_changed:
-      "Data sau ora modificată",
-    notes_updated:
-      "Observații actualizate",
-    status_changed:
-      "Status actualizat",
+const DEFAULT_COPY:
+  AppointmentTimelineCopy = {
+    title:
+      "Istoricul programării",
+    eventSingular:
+      "eveniment",
+    eventPlural:
+      "evenimente",
+    viewEvolution:
+      "Vezi evoluția programării",
+    loading:
+      "Se încarcă istoricul...",
+    loadFailed:
+      "Istoricul nu a putut fi încărcat.",
+    retry:
+      "Reîncearcă",
+    empty:
+      "Nu există încă evenimente disponibile.",
+    statusChange:
+      "Status:",
+    appointmentChange:
+      "Programare:",
+    reason:
+      "Motiv:",
+    unknownEvent:
+      "Programare actualizată",
+    unknownRole:
+      "Utilizator",
+    events: {
+      appointment_created:
+        "Solicitare creată",
+      confirmed:
+        "Programare confirmată",
+      rescheduled:
+        "Programare reprogramată",
+      cancelled_by_patient:
+        "Programare anulată de pacient",
+      cancelled_by_doctor:
+        "Programare anulată de medic",
+      cancelled_by_staff:
+        "Programare anulată de personal",
+      cancelled_by_admin:
+        "Programare anulată de RomDoc",
+      cancelled_by_system:
+        "Programare anulată automat",
+      completed:
+        "Consultație finalizată",
+      marked_no_show:
+        "Neprezentare înregistrată",
+      schedule_changed:
+        "Data sau ora modificată",
+      notes_updated:
+        "Observații actualizate",
+      status_changed:
+        "Status actualizat",
+    },
+    roles: {
+      patient: "Pacient",
+      user: "Pacient",
+      doctor: "Medic",
+      staff:
+        "Personal medical",
+      admin: "RomDoc",
+      system: "Sistem",
+    },
   };
 
-  return (
-    labels[eventType] ??
-    "Programare actualizată"
-  );
-}
-
-function roleLabel(
-  role: string
-) {
-  const labels: Record<
-    string,
-    string
-  > = {
-    patient:
-      "Pacient",
-    user:
-      "Pacient",
-    doctor:
-      "Medic",
-    staff:
-      "Personal medical",
-    admin:
-      "RomDoc",
-    system:
-      "Sistem",
+const INTL_LOCALE:
+  Record<AppLocale, string> = {
+    ro: "ro-RO",
+    en: "en-GB",
+    de: "de-DE",
   };
-
-  return (
-    labels[role] ??
-    "Utilizator"
-  );
-}
-
-function statusLabel(
-  status: string | null
-) {
-  if (!status) {
-    return null;
-  }
-
-  const labels: Record<
-    string,
-    string
-  > = {
-    pending:
-      "În așteptare",
-    confirmed:
-      "Confirmată",
-    rescheduled:
-      "Reprogramată",
-    cancelled:
-      "Anulată",
-    completed:
-      "Finalizată",
-    no_show:
-      "Neprezentare",
-  };
-
-  return (
-    labels[status] ??
-    status
-  );
-}
 
 function formatDateTime(
-  value: string
+  value: string,
+  locale: AppLocale
 ) {
   return new Intl.DateTimeFormat(
-    "ro-RO",
+    INTL_LOCALE[locale],
     {
-      day:
-        "2-digit",
-      month:
-        "short",
-      year:
-        "numeric",
-      hour:
-        "2-digit",
-      minute:
-        "2-digit",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     }
   ).format(
     new Date(value)
@@ -154,7 +152,8 @@ function formatDateTime(
 
 function formatSlot(
   date: string | null,
-  time: string | null
+  time: string | null,
+  locale: AppLocale
 ) {
   if (!date) {
     return null;
@@ -162,14 +161,11 @@ function formatSlot(
 
   const formattedDate =
     new Intl.DateTimeFormat(
-      "ro-RO",
+      INTL_LOCALE[locale],
       {
-        day:
-          "2-digit",
-        month:
-          "long",
-        year:
-          "numeric",
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
       }
     ).format(
       new Date(
@@ -188,75 +184,46 @@ function formatSlot(
 export default function AppointmentTimeline({
   appointmentId,
   defaultOpen = false,
+  locale = "ro",
+  copy = DEFAULT_COPY,
 }: Props) {
-  const [
-    open,
-    setOpen,
-  ] =
-    useState(
-      defaultOpen
-    );
+  const [open, setOpen] =
+    useState(defaultOpen);
 
-  const [
-    loaded,
-    setLoaded,
-  ] =
+  const [loaded, setLoaded] =
     useState(false);
 
-  const [
-    loading,
-    setLoading,
-  ] =
+  const [loading, setLoading] =
     useState(false);
 
-  const [
-    mode,
-    setMode,
-  ] =
+  const [mode, setMode] =
     useState<
       "patient" | "operational"
-    >(
-      "patient"
-    );
+    >("patient");
 
-  const [
-    timeline,
-    setTimeline,
-  ] =
+  const [timeline, setTimeline] =
     useState<
       AppointmentTimelineItem[]
     >([]);
 
-  const [
-    error,
-    setError,
-  ] =
+  const [error, setError] =
     useState("");
 
   async function loadTimeline() {
-    if (
-      loading
-    ) {
+    if (loading) {
       return;
     }
 
-    setLoading(
-      true
-    );
-
-    setError(
-      ""
-    );
+    setLoading(true);
+    setError("");
 
     try {
       const response =
         await fetch(
           `/api/appointments/${appointmentId}/timeline`,
           {
-            method:
-              "GET",
-            cache:
-              "no-store",
+            method: "GET",
+            cache: "no-store",
           }
         );
 
@@ -264,12 +231,12 @@ export default function AppointmentTimeline({
         (await response.json()) as
           TimelineResponse;
 
-      if (
-        !response.ok
-      ) {
+      if (!response.ok) {
         throw new Error(
-          payload.error ??
-            "Istoricul nu a putut fi încărcat."
+          locale === "ro" &&
+          payload.error
+            ? payload.error
+            : copy.loadFailed
         );
       }
 
@@ -283,9 +250,7 @@ export default function AppointmentTimeline({
           []
       );
 
-      setLoaded(
-        true
-      );
+      setLoaded(true);
     } catch (
       loadError
     ) {
@@ -293,12 +258,10 @@ export default function AppointmentTimeline({
         loadError instanceof
           Error
           ? loadError.message
-          : "Istoricul nu a putut fi încărcat."
+          : copy.loadFailed
       );
     } finally {
-      setLoading(
-        false
-      );
+      setLoading(false);
     }
   }
 
@@ -318,14 +281,10 @@ export default function AppointmentTimeline({
     <section className="mt-[21px] border-t border-gray-200 pt-[21px]">
       <button
         type="button"
-        aria-expanded={
-          open
-        }
+        aria-expanded={open}
         onClick={() =>
           setOpen(
-            (
-              current
-            ) =>
+            (current) =>
               !current
           )
         }
@@ -333,13 +292,18 @@ export default function AppointmentTimeline({
       >
         <span>
           <span className="block text-sm font-semibold text-gray-900">
-            Istoricul programării
+            {copy.title}
           </span>
 
           <span className="mt-[3px] block text-xs text-gray-500">
             {loaded
-              ? `${timeline.length} evenimente`
-              : "Vezi evoluția programării"}
+              ? `${timeline.length} ${
+                  timeline.length ===
+                  1
+                    ? copy.eventSingular
+                    : copy.eventPlural
+                }`
+              : copy.viewEvolution}
           </span>
         </span>
 
@@ -367,18 +331,14 @@ export default function AppointmentTimeline({
         <div className="mt-[13px] rounded-[21px] border border-gray-200 bg-white p-[21px]">
           {loading ? (
             <p className="text-sm text-gray-600">
-              Se încarcă istoricul...
+              {copy.loading}
             </p>
           ) : error ? (
             <div
               role="alert"
               className="rounded-[13px] border border-red-200 bg-red-50 p-[13px] text-sm text-red-800"
             >
-              <p>
-                {
-                  error
-                }
-              </p>
+              <p>{error}</p>
 
               <button
                 type="button"
@@ -387,13 +347,13 @@ export default function AppointmentTimeline({
                 }
                 className="romdoc-focus-ring mt-[13px] rounded-[13px] border border-red-300 bg-white px-[13px] py-[8px] text-sm font-semibold text-red-800"
               >
-                Reîncearcă
+                {copy.retry}
               </button>
             </div>
           ) : timeline.length ===
             0 ? (
             <p className="text-sm text-gray-600">
-              Nu există încă evenimente disponibile.
+              {copy.empty}
             </p>
           ) : (
             <ol className="relative ml-[8px] border-l-2 border-gray-200 pl-[21px]">
@@ -405,30 +365,46 @@ export default function AppointmentTimeline({
                   const previousSlot =
                     formatSlot(
                       event.previousDate,
-                      event.previousTime
+                      event.previousTime,
+                      locale
                     );
 
                   const newSlot =
                     formatSlot(
                       event.newDate,
-                      event.newTime
+                      event.newTime,
+                      locale
                     );
 
                   const previousStatus =
-                    statusLabel(
-                      event.previousStatus
-                    );
+                    event.previousStatus
+                      ? getAppointmentStatusLabel(
+                          event.previousStatus,
+                          locale
+                        )
+                      : null;
 
                   const newStatus =
-                    statusLabel(
-                      event.newStatus
+                    getAppointmentStatusLabel(
+                      event.newStatus,
+                      locale
                     );
+
+                  const eventLabel =
+                    copy.events[
+                      event.eventType
+                    ] ??
+                    copy.unknownEvent;
+
+                  const roleLabel =
+                    copy.roles[
+                      event.actorRole
+                    ] ??
+                    copy.unknownRole;
 
                   return (
                     <li
-                      key={
-                        event.id
-                      }
+                      key={event.id}
                       className={
                         index ===
                         timeline.length -
@@ -445,14 +421,13 @@ export default function AppointmentTimeline({
                       <div className="rounded-[13px] bg-gray-50 p-[13px]">
                         <div className="flex flex-col gap-[5px] sm:flex-row sm:items-start sm:justify-between">
                           <p className="text-sm font-semibold text-gray-900">
-                            {eventLabel(
-                              event.eventType
-                            )}
+                            {eventLabel}
                           </p>
 
                           <time className="text-xs text-gray-500">
                             {formatDateTime(
-                              event.occurredAt
+                              event.occurredAt,
+                              locale
                             )}
                           </time>
                         </div>
@@ -461,22 +436,19 @@ export default function AppointmentTimeline({
                           "operational" && (
                           <p className="mt-[5px] text-xs text-gray-500">
                             {event.actorName ??
-                              roleLabel(
-                                event.actorRole
-                              )}{" "}
+                              roleLabel}{" "}
                             ·{" "}
-                            {roleLabel(
-                              event.actorRole
-                            )}
+                            {roleLabel}
                           </p>
                         )}
 
                         {previousStatus &&
-                          newStatus &&
                           previousStatus !==
                             newStatus && (
                             <p className="mt-[8px] text-xs text-gray-600">
-                              Status:{" "}
+                              {
+                                copy.statusChange
+                              }{" "}
                               <span className="font-medium">
                                 {
                                   previousStatus
@@ -484,45 +456,41 @@ export default function AppointmentTimeline({
                               </span>{" "}
                               →{" "}
                               <span className="font-medium">
-                                {
-                                  newStatus
-                                }
+                                {newStatus}
                               </span>
                             </p>
                           )}
 
                         {previousSlot &&
-                          newSlot &&
-                          previousSlot !==
-                            newSlot ? (
-                            <p className="mt-[8px] text-xs text-gray-600">
-                              Programare:{" "}
-                              <span className="font-medium">
-                                {
-                                  previousSlot
-                                }
-                              </span>{" "}
-                              →{" "}
-                              <span className="font-medium">
-                                {
-                                  newSlot
-                                }
-                              </span>
-                            </p>
-                          ) : newSlot ? (
-                            <p className="mt-[8px] text-xs text-gray-600">
-                              Programare:{" "}
-                              <span className="font-medium">
-                                {
-                                  newSlot
-                                }
-                              </span>
-                            </p>
-                          ) : null}
+                        newSlot &&
+                        previousSlot !==
+                          newSlot ? (
+                          <p className="mt-[8px] text-xs text-gray-600">
+                            {
+                              copy.appointmentChange
+                            }{" "}
+                            <span className="font-medium">
+                              {previousSlot}
+                            </span>{" "}
+                            →{" "}
+                            <span className="font-medium">
+                              {newSlot}
+                            </span>
+                          </p>
+                        ) : newSlot ? (
+                          <p className="mt-[8px] text-xs text-gray-600">
+                            {
+                              copy.appointmentChange
+                            }{" "}
+                            <span className="font-medium">
+                              {newSlot}
+                            </span>
+                          </p>
+                        ) : null}
 
                         {event.reason && (
                           <p className="mt-[8px] text-xs leading-5 text-gray-600">
-                            Motiv:{" "}
+                            {copy.reason}{" "}
                             <span className="font-medium text-gray-800">
                               {
                                 event.reason

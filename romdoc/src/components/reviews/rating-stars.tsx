@@ -5,6 +5,7 @@ type RatingStarsProps = {
   interactive?: boolean;
   onChange?: (rating: number) => void;
   label?: string;
+  starUnitLabel?: string;
 };
 
 function StarIcon({
@@ -37,6 +38,7 @@ export default function RatingStars({
   interactive = false,
   onChange,
   label,
+  starUnitLabel = "stele",
 }: RatingStarsProps) {
   const sizeClass =
     size === "small"
@@ -50,7 +52,7 @@ export default function RatingStars({
       className="inline-flex items-center gap-1"
       aria-label={
         label ??
-        `${rating} din ${maximum} stele`
+        `${rating} din ${maximum} ${starUnitLabel}`
       }
     >
       {Array.from(
@@ -72,7 +74,7 @@ export default function RatingStars({
                 onClick={() =>
                   onChange?.(value)
                 }
-                aria-label={`${value} stele`}
+                aria-label={`${value} ${starUnitLabel}`}
                 className="rounded p-0.5 text-[#036661] transition hover:scale-110 hover:text-[#ff2800] focus:outline-none focus:ring-2 focus:ring-[#036661]/30"
               >
                 <StarIcon

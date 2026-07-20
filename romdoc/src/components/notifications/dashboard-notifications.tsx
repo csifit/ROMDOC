@@ -6,6 +6,10 @@ import {
   useState,
 } from "react";
 
+import type {
+  AppLocale,
+} from "@/lib/i18n/app-locale";
+
 type DashboardNotification = {
   id: string;
   appointment_id: string | null;
@@ -18,15 +22,72 @@ type DashboardNotification = {
 };
 
 type ApiResponse = {
-  notifications?: DashboardNotification[];
+  notifications?:
+    DashboardNotification[];
   error?: string;
 };
 
+export type DashboardNotificationsCopy = {
+  eyebrow: string;
+  title: string;
+  unreadSingular: string;
+  unreadPlural: string;
+  markAll: string;
+  loading: string;
+  loadFailed: string;
+  empty: string;
+  markRead: string;
+};
+
+export type DashboardNotificationContent = {
+  title: string;
+  body: string;
+};
+
+type DashboardNotificationsProps = {
+  locale?: AppLocale;
+  copy?: DashboardNotificationsCopy;
+  notificationContent?: Record<
+    string,
+    DashboardNotificationContent
+  >;
+};
+
+const DEFAULT_COPY:
+  DashboardNotificationsCopy = {
+    eyebrow:
+      "Notificări",
+    title:
+      "Actualizări programări",
+    unreadSingular:
+      "necitită",
+    unreadPlural:
+      "necitite",
+    markAll:
+      "Marchează toate ca citite",
+    loading:
+      "Se încarcă notificările...",
+    loadFailed:
+      "Notificările nu au putut fi încărcate.",
+    empty:
+      "Nu există notificări.",
+    markRead:
+      "Citită",
+  };
+
+const INTL_LOCALE:
+  Record<AppLocale, string> = {
+    ro: "ro-RO",
+    en: "en-GB",
+    de: "de-DE",
+  };
+
 function formatDateTime(
-  value: string
+  value: string,
+  locale: AppLocale
 ) {
   return new Intl.DateTimeFormat(
-    "ro-RO",
+    INTL_LOCALE[locale],
     {
       day: "2-digit",
       month: "short",
@@ -38,7 +99,31 @@ function formatDateTime(
   );
 }
 
-export default function DashboardNotifications() {
+function withLocaleQuery(
+  href: string,
+  locale: AppLocale
+) {
+  if (
+    !href.startsWith(
+      "/appointments/"
+    )
+  ) {
+    return href;
+  }
+
+  const separator =
+    href.includes("?")
+      ? "&"
+      : "?";
+
+  return `${href}${separator}locale=${locale}`;
+}
+
+export default function DashboardNotifications({
+  locale = "ro",
+  copy = DEFAULT_COPY,
+  notificationContent,
+}: DashboardNotificationsProps = {}) {
   const [
     notifications,
     setNotifications,
@@ -47,36 +132,23 @@ export default function DashboardNotifications() {
       DashboardNotification[]
     >([]);
 
-  const [
-    loading,
-    setLoading,
-  ] =
+  const [loading, setLoading] =
     useState(true);
 
-  const [
-    error,
-    setError,
-  ] =
+  const [error, setError] =
     useState("");
 
   async function loadNotifications() {
-    setLoading(
-      true
-    );
-
-    setError(
-      ""
-    );
+    setLoading(true);
+    setError("");
 
     try {
       const response =
         await fetch(
           "/api/dashboard-notifications",
           {
-            method:
-              "GET",
-            cache:
-              "no-store",
+            method: "GET",
+            cache: "no-store",
           }
         );
 
@@ -84,12 +156,12 @@ export default function DashboardNotifications() {
         (await response.json()) as
           ApiResponse;
 
-      if (
-        !response.ok
-      ) {
+      if (!response.ok) {
         throw new Error(
-          payload.error ??
-            "Notificările nu au putut fi încărcate."
+          locale === "ro" &&
+          payload.error
+            ? payload.error
+            : copy.loadFailed
         );
       }
 
@@ -104,12 +176,10 @@ export default function DashboardNotifications() {
         loadError instanceof
           Error
           ? loadError.message
-          : "Notificările nu au putut fi încărcate."
+          : copy.loadFailed
       );
     } finally {
-      setLoading(
-        false
-      );
+      setLoading(false);
     }
   }
 
@@ -118,15 +188,13 @@ export default function DashboardNotifications() {
   }, []);
 
   async function markRead(
-    notificationId:
-      string
+    notificationId: string
   ) {
     const response =
       await fetch(
         "/api/dashboard-notifications",
         {
-          method:
-            "PATCH",
+          method: "PATCH",
           headers: {
             "Content-Type":
               "application/json",
@@ -138,23 +206,18 @@ export default function DashboardNotifications() {
         }
       );
 
-    if (
-      response.ok
-    ) {
+    if (response.ok) {
       setNotifications(
-        (
-          current
-        ) =>
+        (current) =>
           current.map(
-            (
-              item
-            ) =>
+            (item) =>
               item.id ===
               notificationId
                 ? {
                     ...item,
                     read_at:
-                      new Date().toISOString(),
+                      new Date()
+                        .toISOString(),
                   }
                 : item
           )
@@ -167,34 +230,27 @@ export default function DashboardNotifications() {
       await fetch(
         "/api/dashboard-notifications",
         {
-          method:
-            "PATCH",
+          method: "PATCH",
           headers: {
             "Content-Type":
               "application/json",
           },
           body:
             JSON.stringify({
-              markAll:
-                true,
+              markAll: true,
             }),
         }
       );
 
-    if (
-      response.ok
-    ) {
+    if (response.ok) {
       const now =
-        new Date().toISOString();
+        new Date()
+          .toISOString();
 
       setNotifications(
-        (
-          current
-        ) =>
+        (current) =>
           current.map(
-            (
-              item
-            ) => ({
+            (item) => ({
               ...item,
               read_at:
                 item.read_at ??
@@ -207,9 +263,7 @@ export default function DashboardNotifications() {
 
   const unreadCount =
     notifications.filter(
-      (
-        item
-      ) =>
+      (item) =>
         !item.read_at
     ).length;
 
@@ -218,23 +272,22 @@ export default function DashboardNotifications() {
       <div className="flex flex-col gap-[13px] sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-[#036661]">
-            Notificări
+            {copy.eyebrow}
           </p>
 
           <h2 className="mt-[5px] text-xl font-semibold text-gray-900">
-            Actualizări programări
+            {copy.title}
           </h2>
 
           <p className="mt-[5px] text-sm text-gray-500">
-            {
-              unreadCount
-            }{" "}
-            necitite
+            {unreadCount}{" "}
+            {unreadCount === 1
+              ? copy.unreadSingular
+              : copy.unreadPlural}
           </p>
         </div>
 
-        {unreadCount >
-          0 && (
+        {unreadCount > 0 && (
           <button
             type="button"
             onClick={() =>
@@ -242,58 +295,67 @@ export default function DashboardNotifications() {
             }
             className="romdoc-focus-ring inline-flex min-h-[34px] items-center rounded-[13px] border border-gray-300 bg-white px-[13px] py-[8px] text-sm font-semibold text-gray-700 hover:border-[#036661] hover:text-[#036661]"
           >
-            Marchează toate ca citite
+            {copy.markAll}
           </button>
         )}
       </div>
 
       {loading ? (
         <p className="mt-[21px] text-sm text-gray-600">
-          Se încarcă notificările...
+          {copy.loading}
         </p>
       ) : error ? (
         <div
           role="alert"
           className="mt-[21px] rounded-[13px] border border-red-200 bg-red-50 p-[13px] text-sm text-red-800"
         >
-          {
-            error
-          }
+          {error}
         </div>
       ) : notifications.length ===
         0 ? (
         <p className="mt-[21px] text-sm text-gray-600">
-          Nu există notificări.
+          {copy.empty}
         </p>
       ) : (
         <div className="mt-[21px] space-y-[8px]">
           {notifications.map(
-            (
-              notification
-            ) => {
+            (notification) => {
+              const localized =
+                notificationContent?.[
+                  notification
+                    .notification_type
+                ];
+
+              const displayTitle =
+                localized?.title ??
+                notification.title;
+
+              const displayBody =
+                localized?.body ??
+                notification.body;
+
               const content = (
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-[8px]">
-                    {!notification.read_at && (
+                    {!notification
+                      .read_at && (
                       <span className="h-[8px] w-[8px] rounded-full bg-[#036661]" />
                     )}
 
                     <p className="font-semibold text-gray-900">
-                      {
-                        notification.title
-                      }
+                      {displayTitle}
                     </p>
                   </div>
 
                   <p className="mt-[5px] text-sm leading-6 text-gray-600">
-                    {
-                      notification.body
-                    }
+                    {displayBody}
                   </p>
 
                   <p className="mt-[5px] text-xs text-gray-500">
                     {formatDateTime(
-                      notification.created_at
+                      notification
+                        .created_at,
+                      locale
                     )}
                   </p>
                 </div>
@@ -305,17 +367,20 @@ export default function DashboardNotifications() {
                     notification.id
                   }
                   className={`rounded-[13px] border p-[13px] ${
-                    notification.read_at
+                    notification
+                      .read_at
                       ? "border-gray-200 bg-gray-50"
                       : "border-[#036661]/30 bg-[#036661]/5"
                   }`}
                 >
                   <div className="flex flex-col gap-[13px] sm:flex-row sm:items-start sm:justify-between">
-                    {notification.href ? (
+                    {notification
+                      .href ? (
                       <Link
-                        href={
-                          notification.href
-                        }
+                        href={withLocaleQuery(
+                          notification.href,
+                          locale
+                        )}
                         onClick={() =>
                           void markRead(
                             notification.id
@@ -323,15 +388,14 @@ export default function DashboardNotifications() {
                         }
                         className="romdoc-focus-ring min-w-0 flex-1 rounded-[8px]"
                       >
-                        {
-                          content
-                        }
+                        {content}
                       </Link>
                     ) : (
                       content
                     )}
 
-                    {!notification.read_at && (
+                    {!notification
+                      .read_at && (
                       <button
                         type="button"
                         onClick={() =>
@@ -341,7 +405,7 @@ export default function DashboardNotifications() {
                         }
                         className="romdoc-focus-ring inline-flex min-h-[34px] shrink-0 items-center rounded-[13px] border border-gray-300 bg-white px-[13px] py-[8px] text-xs font-semibold text-gray-700"
                       >
-                        Citită
+                        {copy.markRead}
                       </button>
                     )}
                   </div>
