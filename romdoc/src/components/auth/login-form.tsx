@@ -27,14 +27,12 @@ type LoginFormProps = {
   locale: AppLocale;
 };
 
-function getSafeNextPath(
-  locale: AppLocale
-) {
+function getSafeNextPath() {
   if (
     typeof window ===
     "undefined"
   ) {
-    return `/${locale}/dashboard`;
+    return "/dashboard";
   }
 
   const searchParams =
@@ -50,7 +48,7 @@ function getSafeNextPath(
     !nextPath.startsWith("/") ||
     nextPath.startsWith("//")
   ) {
-    return `/${locale}/dashboard`;
+    return "/dashboard";
   }
 
   return nextPath;
@@ -206,9 +204,7 @@ export default function LoginForm({
           }
 
           const destination =
-            getSafeNextPath(
-              locale
-            );
+            getSafeNextPath();
 
           const {
             data: factors,

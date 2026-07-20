@@ -1,8 +1,26 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import {
+  getTranslations,
+} from "next-intl/server";
+import {
+  notFound,
+  redirect,
+} from "next/navigation";
 
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import {
+  getAppointmentStatusLabel,
+} from "@/lib/appointments/appointment-status";
+import {
+  type AppLocale,
+  normalizeAppLocale,
+  selectTranslation,
+} from "@/lib/i18n/app-locale";
+import {
+  createAdminClient,
+} from "@/lib/supabase/admin";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
 type DoctorRelation = {
   slug: string;
@@ -14,144 +32,393 @@ type ClinicTranslation = {
 };
 
 type ClinicRelation = {
-  formatted_address: string | null;
-  street_address: string | null;
-  clinic_translations: ClinicTranslation[] | null;
+  formatted_address:
+    | string
+    | null;
+
+  street_address:
+    | string
+    | null;
+
+  clinic_translations:
+    | ClinicTranslation[]
+    | null;
 };
 
 type AppointmentRecord = {
   id: string;
-  patient_profile_id: string | null;
+
+  patient_profile_id:
+    | string
+    | null;
+
   patient_email: string;
   patient_name: string;
   patient_phone: string;
   requested_date: string;
-  requested_time: string | null;
-  scheduled_date: string | null;
-  scheduled_time: string | null;
-  duration_minutes: number | null;
+
+  requested_time:
+    | string
+    | null;
+
+  scheduled_date:
+    | string
+    | null;
+
+  scheduled_time:
+    | string
+    | null;
+
+  duration_minutes:
+    | number
+    | null;
+
   status: string;
-  notes: string | null;
-  doctors: DoctorRelation | DoctorRelation[] | null;
-  clinics: ClinicRelation | ClinicRelation[] | null;
+
+  notes:
+    | string
+    | null;
+
+  doctors:
+    | DoctorRelation
+    | DoctorRelation[]
+    | null;
+
+  clinics:
+    | ClinicRelation
+    | ClinicRelation[]
+    | null;
 };
 
 type PageProps = {
   params: Promise<{
     appointmentId: string;
   }>;
+
   searchParams: Promise<{
     emailSent?: string;
+    locale?: string;
   }>;
 };
 
-const DATE_FORMATTER = new Intl.DateTimeFormat("ro-RO", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  timeZone: "UTC",
-});
+const INTL_LOCALE:
+  Record<
+    AppLocale,
+    string
+  > = {
+    ro: "ro-RO",
+    en: "en-GB",
+    de: "de-DE",
+  };
 
-function first<T>(value: T | T[] | null | undefined): T | null {
-  if (!value) return null;
-  return Array.isArray(value) ? value[0] ?? null : value;
+function first<T>(
+  value:
+    | T
+    | T[]
+    | null
+    | undefined
+): T | null {
+  if (!value) {
+    return null;
+  }
+
+  return Array.isArray(
+    value
+  )
+    ? value[0] ??
+        null
+    : value;
 }
 
-function doctorName(slug: string) {
-  return decodeURIComponent(slug)
+function doctorName(
+  slug: string
+) {
+  return decodeURIComponent(
+    slug
+  )
     .split("-")
     .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .map(
+      (
+        part
+      ) =>
+        part
+          .charAt(0)
+          .toUpperCase() +
+        part.slice(1)
+    )
     .join(" ");
 }
 
-function clinicName(clinic: ClinicRelation | null) {
+function getClinicName(
+  clinic:
+    | ClinicRelation
+    | null,
+  locale:
+    AppLocale,
+  fallback:
+    string
+) {
+  const translation =
+    selectTranslation(
+      clinic
+        ?.clinic_translations,
+      locale
+    );
+
   return (
-    clinic?.clinic_translations?.find((item) => item.locale === "ro")?.name ??
-    clinic?.clinic_translations?.[0]?.name ??
-    "Clinică indisponibilă"
+    translation
+      ?.name
+      ?.trim() ||
+    fallback
   );
 }
 
-function formatDate(value: string) {
-  const [year, month, day] = value.split("-").map(Number);
-  return DATE_FORMATTER.format(new Date(Date.UTC(year, month - 1, day)));
+function formatDate(
+  value: string,
+  locale:
+    AppLocale
+) {
+  const [
+    year,
+    month,
+    day,
+  ] =
+    value
+      .split("-")
+      .map(Number);
+
+  return new Intl
+    .DateTimeFormat(
+      INTL_LOCALE[
+        locale
+      ],
+      {
+        day:
+          "numeric",
+
+        month:
+          "long",
+
+        year:
+          "numeric",
+
+        timeZone:
+          "UTC",
+      }
+    )
+    .format(
+      new Date(
+        Date.UTC(
+          year,
+          month - 1,
+          day
+        )
+      )
+    );
 }
 
-function formatTime(value: string | null) {
-  return value ? value.slice(0, 5) : "—";
+function formatTime(
+  value:
+    | string
+    | null
+) {
+  return value
+    ? value.slice(
+        0,
+        5
+      )
+    : "—";
 }
 
-function statusLabel(status: string) {
-  switch (status) {
-    case "confirmed":
-      return "Confirmată";
-    case "rescheduled":
-      return "Reprogramată";
-    case "completed":
-      return "Finalizată";
-    case "cancelled":
-      return "Anulată";
-    case "no_show":
-      return "Neprezentare";
-    default:
-      return "În așteptare";
-  }
-}
-
-function statusClasses(status: string) {
-  switch (status) {
+function statusClasses(
+  status: string
+) {
+  switch (
+    status
+  ) {
     case "confirmed":
       return "border-emerald-200 bg-emerald-50 text-emerald-800";
+
     case "rescheduled":
       return "border-blue-200 bg-blue-50 text-blue-800";
+
     case "completed":
       return "border-gray-200 bg-gray-100 text-gray-800";
+
     case "cancelled":
       return "border-red-200 bg-red-50 text-red-800";
+
     case "no_show":
       return "border-orange-200 bg-orange-50 text-orange-900";
+
     default:
       return "border-amber-200 bg-amber-50 text-amber-900";
   }
 }
 
+function getDoctorProfileHref(
+  locale:
+    AppLocale,
+  slug: string
+) {
+  const encodedSlug =
+    encodeURIComponent(
+      slug
+    );
+
+  if (
+    locale === "de"
+  ) {
+    return `/de/arzt/${encodedSlug}`;
+  }
+
+  return `/${locale}/doctor/${encodedSlug}`;
+}
+
+function getReturnPath({
+  appointmentId,
+  locale,
+  emailSent,
+}: {
+  appointmentId: string;
+  locale: AppLocale;
+  emailSent:
+    | string
+    | undefined;
+}) {
+  const parameters =
+    new URLSearchParams({
+      locale,
+    });
+
+  if (
+    emailSent
+  ) {
+    parameters.set(
+      "emailSent",
+      emailSent
+    );
+  }
+
+  return `/appointments/${encodeURIComponent(
+    appointmentId
+  )}/request-received?${parameters.toString()}`;
+}
+
 function googleCalendarUrl({
-  name,
+  title,
+  details,
   clinic,
   address,
   date,
   time,
   duration,
 }: {
-  name: string;
+  title: string;
+  details: string;
   clinic: string;
-  address: string | null;
+
+  address:
+    | string
+    | null;
+
   date: string;
   time: string;
   duration: number;
 }) {
-  const [year, month, day] = date.split("-").map(Number);
-  const [hour, minute] = time.slice(0, 5).split(":").map(Number);
+  const [
+    year,
+    month,
+    day,
+  ] =
+    date
+      .split("-")
+      .map(Number);
 
-  const start = new Date(Date.UTC(year, month - 1, day, hour, minute));
-  const end = new Date(start.getTime() + duration * 60 * 1000);
+  const [
+    hour,
+    minute,
+  ] =
+    time
+      .slice(
+        0,
+        5
+      )
+      .split(":")
+      .map(Number);
 
-  const compact = (value: Date) =>
-    value
-      .toISOString()
-      .slice(0, 19)
-      .replaceAll("-", "")
-      .replaceAll(":", "");
+  const start =
+    new Date(
+      Date.UTC(
+        year,
+        month - 1,
+        day,
+        hour,
+        minute
+      )
+    );
 
-  const query = new URLSearchParams({
-    action: "TEMPLATE",
-    text: `Programare - ${name}`,
-    dates: `${compact(start)}/${compact(end)}`,
-    details: "Programare medicală confirmată prin RomDoc.",
-    location: [clinic, address].filter(Boolean).join(", "),
-    ctz: "Europe/Bucharest",
-  });
+  const end =
+    new Date(
+      start.getTime() +
+        duration *
+          60 *
+          1000
+    );
+
+  const compact =
+    (
+      value:
+        Date
+    ) =>
+      value
+        .toISOString()
+        .slice(
+          0,
+          19
+        )
+        .replaceAll(
+          "-",
+          ""
+        )
+        .replaceAll(
+          ":",
+          ""
+        );
+
+  const query =
+    new URLSearchParams({
+      action:
+        "TEMPLATE",
+
+      text:
+        title,
+
+      dates:
+        `${compact(
+          start
+        )}/${compact(
+          end
+        )}`,
+
+      details,
+
+      location:
+        [
+          clinic,
+          address,
+        ]
+          .filter(
+            Boolean
+          )
+          .join(
+            ", "
+          ),
+
+      ctz:
+        "Europe/Bucharest",
+    });
 
   return `https://calendar.google.com/calendar/render?${query.toString()}`;
 }
@@ -160,60 +427,139 @@ export default async function AppointmentRequestReceivedPage({
   params,
   searchParams,
 }: PageProps) {
-  const { appointmentId } = await params;
-  const query = await searchParams;
-
-  const supabase = await createClient();
   const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+    appointmentId,
+  } =
+    await params;
 
-  if (userError || !user) {
+  const query =
+    await searchParams;
+
+  const locale =
+    normalizeAppLocale(
+      query.locale
+    );
+
+  const t =
+    await getTranslations({
+      locale,
+      namespace:
+        "AppointmentRequestReceived",
+    });
+
+  const returnPath =
+    getReturnPath({
+      appointmentId,
+      locale,
+      emailSent:
+        query.emailSent,
+    });
+
+  const supabase =
+    await createClient();
+
+  const {
+    data: {
+      user,
+    },
+    error:
+      userError,
+  } =
+    await supabase
+      .auth
+      .getUser();
+
+  if (
+    userError ||
+    !user
+  ) {
+    const parameters =
+      new URLSearchParams({
+        locale,
+        next:
+          returnPath,
+      });
+
     redirect(
-      `/login?next=${encodeURIComponent(
-        `/appointments/${appointmentId}/request-received`
-      )}`
+      `/login?${parameters.toString()}`
     );
   }
 
-  if (!user.email_confirmed_at) {
-    redirect("/check-email");
+  if (
+    !user
+      .email_confirmed_at
+  ) {
+    const parameters =
+      new URLSearchParams({
+        locale,
+        type:
+          "patient",
+        next:
+          returnPath,
+      });
+
+    if (
+      user.email
+    ) {
+      parameters.set(
+        "email",
+        user.email
+      );
+    }
+
+    redirect(
+      `/check-email?${parameters.toString()}`
+    );
   }
 
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("appointments")
-    .select(`
-      id,
-      patient_profile_id,
-      patient_email,
-      patient_name,
-      patient_phone,
-      requested_date,
-      requested_time,
-      scheduled_date,
-      scheduled_time,
-      duration_minutes,
-      status,
-      notes,
-      doctors (
-        slug
-      ),
-      clinics (
-        formatted_address,
-        street_address,
-        clinic_translations (
-          locale,
-          name
-        )
+  const admin =
+    createAdminClient();
+
+  const {
+    data,
+    error,
+  } =
+    await admin
+      .from(
+        "appointments"
       )
-    `)
-    .eq("id", appointmentId)
-    .maybeSingle();
+      .select(`
+        id,
+        patient_profile_id,
+        patient_email,
+        patient_name,
+        patient_phone,
+        requested_date,
+        requested_time,
+        scheduled_date,
+        scheduled_time,
+        duration_minutes,
+        status,
+        notes,
+        doctors (
+          slug
+        ),
+        clinics (
+          formatted_address,
+          street_address,
+          clinic_translations (
+            locale,
+            name
+          )
+        )
+      `)
+      .eq(
+        "id",
+        appointmentId
+      )
+      .maybeSingle();
 
   if (error) {
-    console.error("Appointment request-received lookup failed:", error);
+    console.error(
+      "Appointment request-received lookup failed:",
+      error
+    );
+
     notFound();
   }
 
@@ -221,56 +567,150 @@ export default async function AppointmentRequestReceivedPage({
     notFound();
   }
 
-  const appointment = data as unknown as AppointmentRecord;
-  const authenticatedEmail = user.email?.trim().toLowerCase() ?? "";
+  const appointment =
+    data as unknown as
+      AppointmentRecord;
+
+  const authenticatedEmail =
+    user.email
+      ?.trim()
+      .toLowerCase() ??
+    "";
 
   const ownsAppointment =
-    appointment.patient_profile_id === user.id ||
-    (Boolean(authenticatedEmail) &&
-      appointment.patient_email.trim().toLowerCase() === authenticatedEmail);
+    appointment
+      .patient_profile_id ===
+      user.id ||
+    (
+      Boolean(
+        authenticatedEmail
+      ) &&
+      appointment
+        .patient_email
+        .trim()
+        .toLowerCase() ===
+        authenticatedEmail
+    );
 
-  if (!ownsAppointment) {
+  if (
+    !ownsAppointment
+  ) {
     notFound();
   }
 
-  const doctor = first(appointment.doctors);
-  const clinic = first(appointment.clinics);
+  const doctor =
+    first(
+      appointment.doctors
+    );
 
-  const displayDoctorName = doctor
-    ? doctorName(doctor.slug)
-    : "Medic indisponibil";
+  const clinic =
+    first(
+      appointment.clinics
+    );
 
-  const displayClinicName = clinicName(clinic);
+  const displayDoctorName =
+    doctor
+      ? doctorName(
+          doctor.slug
+        )
+      : t(
+          "unavailableDoctor"
+        );
+
+  const displayClinicName =
+    getClinicName(
+      clinic,
+      locale,
+      t(
+        "unavailableClinic"
+      )
+    );
+
   const clinicAddress =
-    clinic?.formatted_address || clinic?.street_address || null;
+    clinic
+      ?.formatted_address ||
+    clinic
+      ?.street_address ||
+    null;
 
-  const isConfirmed = ["confirmed", "rescheduled"].includes(
-    appointment.status
-  );
+  const isConfirmed =
+    [
+      "confirmed",
+      "rescheduled",
+    ].includes(
+      appointment.status
+    );
 
-  const displayDate = isConfirmed
-    ? appointment.scheduled_date || appointment.requested_date
-    : appointment.requested_date;
+  const displayDate =
+    isConfirmed
+      ? appointment
+          .scheduled_date ||
+        appointment
+          .requested_date
+      : appointment
+          .requested_date;
 
-  const displayTime = isConfirmed
-    ? appointment.scheduled_time || appointment.requested_time
-    : appointment.requested_time;
+  const displayTime =
+    isConfirmed
+      ? appointment
+          .scheduled_time ||
+        appointment
+          .requested_time
+      : appointment
+          .requested_time;
 
-  const duration = Number(appointment.duration_minutes ?? 30);
+  const duration =
+    Number(
+      appointment
+        .duration_minutes ??
+      30
+    );
 
   const googleUrl =
-    isConfirmed && displayTime
+    isConfirmed &&
+    displayTime
       ? googleCalendarUrl({
-          name: displayDoctorName,
-          clinic: displayClinicName,
-          address: clinicAddress,
-          date: displayDate,
-          time: displayTime,
+          title:
+            t(
+              "calendarTitle",
+              {
+                doctor:
+                  displayDoctorName,
+              }
+            ),
+
+          details:
+            t(
+              "calendarDetails"
+            ),
+
+          clinic:
+            displayClinicName,
+
+          address:
+            clinicAddress,
+
+          date:
+            displayDate,
+
+          time:
+            displayTime,
+
           duration,
         })
       : null;
 
-  const emailWasSent = query.emailSent !== "0";
+  const emailWasSent =
+    query.emailSent !==
+    "0";
+
+  const doctorHref =
+    doctor
+      ? getDoctorProfileHref(
+          locale,
+          doctor.slug
+        )
+      : null;
 
   return (
     <main className="min-h-screen bg-[#F0EEE9] px-4 py-10 sm:px-6">
@@ -282,17 +722,21 @@ export default async function AppointmentRequestReceivedPage({
             </div>
 
             <p className="mt-5 text-sm font-semibold uppercase tracking-wide text-amber-800">
-              Cerere înregistrată
+              {t(
+                "registeredEyebrow"
+              )}
             </p>
 
             <h1 className="mt-2 text-3xl font-bold text-gray-900">
-              Solicitarea a fost trimisă
+              {t(
+                "title"
+              )}
             </h1>
 
             <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-gray-700">
-              Programarea nu este încă confirmată. Medicul sau personalul
-              clinicii va verifica cererea și poate confirma ori modifica data
-              și ora solicitate.
+              {t(
+                "description"
+              )}
             </p>
           </div>
 
@@ -300,37 +744,67 @@ export default async function AppointmentRequestReceivedPage({
             <div
               className={[
                 "rounded-xl border px-4 py-3 text-sm font-semibold",
-                statusClasses(appointment.status),
-              ].join(" ")}
+                statusClasses(
+                  appointment.status
+                ),
+              ].join(
+                " "
+              )}
             >
-              Stare actuală: {statusLabel(appointment.status)}
+              {t(
+                "currentStatus",
+                {
+                  status:
+                    getAppointmentStatusLabel(
+                      appointment.status,
+                      locale
+                    ),
+                }
+              )}
             </div>
 
             {!isConfirmed && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-                Data și ora afișate sunt cele solicitate de pacient. Ele devin
-                definitive numai după confirmarea Doctorului sau a personalului
-                clinicii.
+                {t(
+                  "pendingNotice"
+                )}
               </div>
             )}
 
             <dl className="divide-y divide-gray-200 rounded-xl border border-gray-200">
               <div className="grid gap-1 p-4 sm:grid-cols-[150px_1fr]">
-                <dt className="text-sm text-gray-500">Medic</dt>
+                <dt className="text-sm text-gray-500">
+                  {t(
+                    "doctor"
+                  )}
+                </dt>
+
                 <dd className="font-semibold text-gray-900">
-                  {displayDoctorName}
+                  {
+                    displayDoctorName
+                  }
                 </dd>
               </div>
 
               <div className="grid gap-1 p-4 sm:grid-cols-[150px_1fr]">
-                <dt className="text-sm text-gray-500">Clinica</dt>
+                <dt className="text-sm text-gray-500">
+                  {t(
+                    "clinic"
+                  )}
+                </dt>
+
                 <dd>
                   <p className="font-semibold text-gray-900">
-                    {displayClinicName}
+                    {
+                      displayClinicName
+                    }
                   </p>
+
                   {clinicAddress && (
                     <p className="mt-1 text-sm text-gray-600">
-                      {clinicAddress}
+                      {
+                        clinicAddress
+                      }
                     </p>
                   )}
                 </dd>
@@ -338,43 +812,95 @@ export default async function AppointmentRequestReceivedPage({
 
               <div className="grid gap-1 p-4 sm:grid-cols-[150px_1fr]">
                 <dt className="text-sm text-gray-500">
-                  {isConfirmed ? "Data programării" : "Data solicitată"}
+                  {isConfirmed
+                    ? t(
+                        "scheduledDate"
+                      )
+                    : t(
+                        "requestedDate"
+                      )}
                 </dt>
+
                 <dd className="font-semibold text-gray-900">
-                  {formatDate(displayDate)}
+                  {formatDate(
+                    displayDate,
+                    locale
+                  )}
                 </dd>
               </div>
 
               <div className="grid gap-1 p-4 sm:grid-cols-[150px_1fr]">
                 <dt className="text-sm text-gray-500">
-                  {isConfirmed ? "Ora programării" : "Ora solicitată"}
+                  {isConfirmed
+                    ? t(
+                        "scheduledTime"
+                      )
+                    : t(
+                        "requestedTime"
+                      )}
                 </dt>
+
                 <dd className="font-semibold text-gray-900">
-                  {formatTime(displayTime)}
-                  {displayTime && ` · ${duration} minute`}
+                  {formatTime(
+                    displayTime
+                  )}
+
+                  {displayTime &&
+                    ` · ${t(
+                      "minutes",
+                      {
+                        count:
+                          duration,
+                      }
+                    )}`}
                 </dd>
               </div>
 
               <div className="grid gap-1 p-4 sm:grid-cols-[150px_1fr]">
-                <dt className="text-sm text-gray-500">Pacient</dt>
+                <dt className="text-sm text-gray-500">
+                  {t(
+                    "patient"
+                  )}
+                </dt>
+
                 <dd>
                   <p className="font-semibold text-gray-900">
-                    {appointment.patient_name}
+                    {
+                      appointment
+                        .patient_name
+                    }
                   </p>
+
                   <p className="mt-1 text-sm text-gray-600">
-                    {appointment.patient_phone}
+                    {
+                      appointment
+                        .patient_phone
+                    }
                   </p>
+
                   <p className="mt-1 text-sm text-gray-600">
-                    {appointment.patient_email}
+                    {
+                      appointment
+                        .patient_email
+                    }
                   </p>
                 </dd>
               </div>
 
-              {appointment.notes && (
+              {appointment
+                .notes && (
                 <div className="grid gap-1 p-4 sm:grid-cols-[150px_1fr]">
-                  <dt className="text-sm text-gray-500">Mesaj</dt>
+                  <dt className="text-sm text-gray-500">
+                    {t(
+                      "message"
+                    )}
+                  </dt>
+
                   <dd className="whitespace-pre-wrap text-sm leading-6 text-gray-700">
-                    {appointment.notes}
+                    {
+                      appointment
+                        .notes
+                    }
                   </dd>
                 </div>
               )}
@@ -388,62 +914,94 @@ export default async function AppointmentRequestReceivedPage({
               }
             >
               {emailWasSent
-                ? `Detaliile cererii au fost trimise la ${appointment.patient_email}.`
-                : "Cererea a fost salvată, dar e-mailul nu a putut fi trimis."}
+                ? t(
+                    "emailSent",
+                    {
+                      email:
+                        appointment
+                          .patient_email,
+                    }
+                  )
+                : t(
+                    "emailFailed"
+                  )}
             </div>
 
-            {isConfirmed && displayTime && (
-              <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
-                <h2 className="text-lg font-bold text-gray-900">
-                  Programare confirmată
-                </h2>
+            {isConfirmed &&
+              displayTime && (
+                <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
+                  <h2 className="text-lg font-bold text-gray-900">
+                    {t(
+                      "confirmedTitle"
+                    )}
+                  </h2>
 
-                <p className="mt-2 text-sm leading-6 text-gray-700">
-                  Acum poți adăuga programarea confirmată în calendarul tău.
-                </p>
+                  <p className="mt-2 text-sm leading-6 text-gray-700">
+                    {t(
+                      "confirmedDescription"
+                    )}
+                  </p>
 
-                <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                  <a
-                    href={`/api/appointments/${appointment.id}/calendar`}
-                    className="romdoc-button romdoc-button-primary"
-                  >
-                    Descarcă fișierul calendar
-                  </a>
-
-                  {googleUrl && (
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row">
                     <a
-                      href={googleUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="romdoc-button romdoc-button-secondary"
+                      href={`/api/appointments/${appointment.id}/calendar`}
+                      className="romdoc-button romdoc-button-primary"
                     >
-                      Adaugă în Google Calendar
+                      {t(
+                        "downloadCalendar"
+                      )}
                     </a>
-                  )}
-                </div>
-              </section>
-            )}
+
+                    {googleUrl && (
+                      <a
+                        href={
+                          googleUrl
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                        className="romdoc-button romdoc-button-secondary"
+                      >
+                        {t(
+                          "addGoogleCalendar"
+                        )}
+                      </a>
+                    )}
+                  </div>
+                </section>
+              )}
 
             <div className="grid gap-3 sm:grid-cols-2">
               <Link
                 href="/patient-dashboard"
                 className="romdoc-button romdoc-button-primary"
               >
-                Vezi programările mele
+                {t(
+                  "viewAppointments"
+                )}
               </Link>
 
-              {doctor && (
+              {doctorHref && (
                 <Link
-                  href={`/doctor/${doctor.slug}`}
+                  href={
+                    doctorHref
+                  }
                   className="romdoc-button romdoc-button-secondary"
                 >
-                  Înapoi la profilul medicului
+                  {t(
+                    "backDoctor"
+                  )}
                 </Link>
               )}
             </div>
 
             <p className="text-center text-xs text-gray-500">
-              Referință cerere: {appointment.id}
+              {t(
+                "reference",
+                {
+                  id:
+                    appointment.id,
+                }
+              )}
             </p>
           </div>
         </section>

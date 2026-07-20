@@ -453,5 +453,51 @@
       "accountCreation": "Das Konto konnte nicht erstellt werden. Versuchen Sie es erneut.",
       "registrationFailed": "Die Registrierung konnte nicht abgeschlossen werden."
     }
+  },
+  "AuthReturn": {
+    "checkEmail": {
+      "title": "E-Mail-Adresse bestätigen",
+      "sentWithEmail": "Falls diese Adresse noch keinem RomDoc-Konto zugeordnet ist, haben wir eine Bestätigungsnachricht an <email>{email}</email> gesendet.",
+      "sentWithoutEmail": "Falls die eingegebene Adresse noch keinem RomDoc-Konto zugeordnet ist, haben wir eine Bestätigungsnachricht gesendet.",
+      "instructions": "Öffnen Sie die Nachricht und wählen Sie den Bestätigungslink aus, um Ihr Konto zu aktivieren.",
+      "notReceivedTitle": "Keine Nachricht erhalten?",
+      "securityExplanation": "Die Adresse kann bereits einem RomDoc-Konto zugeordnet sein. Aus Sicherheitsgründen bestätigt das Registrierungsformular nicht öffentlich, ob ein Konto besteht.",
+      "signInSuggestion": "Versuchen Sie, sich anzumelden. Falls Sie Ihr Passwort nicht mehr kennen, fordern Sie eine Zurücksetzung an.",
+      "doctorNotice": "Nach der Bestätigung Ihrer E-Mail können Sie mit der Zahlung des Arzt-Abonnements fortfahren: <price>60 RON pro Monat zuzüglich Mehrwertsteuer</price>.",
+      "clinicNotice": "Nach der Bestätigung der E-Mail-Adresse kann RomDoc den Klinikantrag prüfen. Die übermittelten Rechnungsdaten werden in den nächsten Schritten zur Einrichtung des Klinikkontos verwendet.",
+      "spamNotice": "Prüfen Sie auch die Ordner Spam oder Werbung, falls die Nachricht nicht im Posteingang erscheint.",
+      "goToLogin": "Zur Anmeldung",
+      "resetPassword": "Passwort zurücksetzen",
+      "backHome": "Zurück zur Startseite"
+    }
+  },
+  "AppointmentRequestReceived": {
+    "registeredEyebrow": "Anfrage erfasst",
+    "title": "Ihre Anfrage wurde gesendet",
+    "description": "Der Termin ist noch nicht bestätigt. Der Arzt oder das Klinikpersonal prüft die Anfrage und kann das gewünschte Datum oder die gewünschte Uhrzeit bestätigen oder ändern.",
+    "currentStatus": "Aktueller Status: {status}",
+    "pendingNotice": "Das angezeigte Datum und die Uhrzeit entsprechen der Patientenanfrage. Sie werden erst nach der Bestätigung durch den Arzt oder das Klinikpersonal verbindlich.",
+    "doctor": "Arzt",
+    "clinic": "Klinik",
+    "scheduledDate": "Termindatum",
+    "requestedDate": "Gewünschtes Datum",
+    "scheduledTime": "Terminzeit",
+    "requestedTime": "Gewünschte Uhrzeit",
+    "patient": "Patient",
+    "message": "Nachricht",
+    "minutes": "{count} Minuten",
+    "emailSent": "Die Anfragedetails wurden an {email} gesendet.",
+    "emailFailed": "Die Anfrage wurde gespeichert, aber die E-Mail konnte nicht gesendet werden.",
+    "confirmedTitle": "Termin bestätigt",
+    "confirmedDescription": "Sie können den bestätigten Termin jetzt Ihrem Kalender hinzufügen.",
+    "downloadCalendar": "Kalenderdatei herunterladen",
+    "addGoogleCalendar": "Zu Google Kalender hinzufügen",
+    "viewAppointments": "Meine Termine anzeigen",
+    "backDoctor": "Zurück zum Arztprofil",
+    "reference": "Anfragereferenz: {id}",
+    "unavailableDoctor": "Arzt nicht verfügbar",
+    "unavailableClinic": "Klinik nicht verfügbar",
+    "calendarTitle": "Termin - {doctor}",
+    "calendarDetails": "Über RomDoc bestätigter Arzttermin."
   }
 }

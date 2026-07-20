@@ -42,10 +42,10 @@ export default function AppointmentRequestForm({ doctorId, doctorName, doctorSlu
       try {
         const response = await fetch("/api/appointments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ doctorId, doctorName, clinicId, clinicName: selectedClinic.name, patientName: patientName.trim(), patientPhone: patientPhone.trim(), requestedDate, requestedTime, durationMinutes, notes: notes.trim() || null }) });
         const result = await response.json() as ApiResponse;
-        if (response.status === 401) { window.location.href = `/${locale}/login?next=${encodeURIComponent(`${localeDoctorPath(locale, doctorSlug)}#programare`)}`; return; }
+        if (response.status === 401) { window.location.href = `/login?locale=${locale}&next=${encodeURIComponent(`${localeDoctorPath(locale, doctorSlug)}#programare`)}`; return; }
         if (!response.ok) throw new Error(locale === "ro" && result.error ? result.error : t.submitFailed);
         if (!result.appointmentId) throw new Error(t.confirmationFailed);
-        clearBookingDraft(); window.location.href = `/${locale}/appointments/${result.appointmentId}/request-received?emailSent=${result.emailSent === false ? "0" : "1"}`;
+        clearBookingDraft(); window.location.href = `/appointments/${result.appointmentId}/request-received?locale=${locale}&emailSent=${result.emailSent === false ? "0" : "1"}`;
       } catch (submitError) { setError(submitError instanceof Error ? submitError.message : t.submitFailed); }
     });
   }

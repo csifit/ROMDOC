@@ -453,5 +453,51 @@
       "accountCreation": "Contul nu a putut fi creat. Încearcă din nou.",
       "registrationFailed": "Înregistrarea nu a putut fi finalizată."
     }
+  },
+  "AuthReturn": {
+    "checkEmail": {
+      "title": "Verifică adresa de e-mail",
+      "sentWithEmail": "Dacă această adresă nu este deja asociată unui cont RomDoc, am trimis un mesaj de confirmare la <email>{email}</email>.",
+      "sentWithoutEmail": "Dacă adresa introdusă nu este deja asociată unui cont RomDoc, am trimis un mesaj de confirmare.",
+      "instructions": "Deschide mesajul și apasă linkul de confirmare pentru activarea contului.",
+      "notReceivedTitle": "Nu ai primit mesajul?",
+      "securityExplanation": "Adresa poate fi deja asociată unui cont RomDoc. Din motive de securitate, formularul de înregistrare nu confirmă public existența unui cont.",
+      "signInSuggestion": "Încearcă autentificarea. Dacă nu îți amintești parola, solicită resetarea ei.",
+      "doctorNotice": "După confirmarea e-mailului, vei putea continua cu plata abonamentului de medic: <price>60 lei/lună + TVA</price>.",
+      "clinicNotice": "După confirmarea e-mailului, cererea clinicii va putea fi verificată de RomDoc. Datele de facturare transmise vor fi folosite pentru configurarea contului de clinică în pașii următori.",
+      "spamNotice": "Verifică și dosarele Spam sau Promotions dacă mesajul nu apare în Inbox.",
+      "goToLogin": "Mergi la autentificare",
+      "resetPassword": "Resetează parola",
+      "backHome": "Înapoi la pagina principală"
+    }
+  },
+  "AppointmentRequestReceived": {
+    "registeredEyebrow": "Cerere înregistrată",
+    "title": "Solicitarea a fost trimisă",
+    "description": "Programarea nu este încă confirmată. Medicul sau personalul clinicii va verifica cererea și poate confirma ori modifica data și ora solicitate.",
+    "currentStatus": "Stare actuală: {status}",
+    "pendingNotice": "Data și ora afișate sunt cele solicitate de pacient. Ele devin definitive numai după confirmarea medicului sau a personalului clinicii.",
+    "doctor": "Medic",
+    "clinic": "Clinică",
+    "scheduledDate": "Data programării",
+    "requestedDate": "Data solicitată",
+    "scheduledTime": "Ora programării",
+    "requestedTime": "Ora solicitată",
+    "patient": "Pacient",
+    "message": "Mesaj",
+    "minutes": "{count} minute",
+    "emailSent": "Detaliile cererii au fost trimise la {email}.",
+    "emailFailed": "Cererea a fost salvată, dar e-mailul nu a putut fi trimis.",
+    "confirmedTitle": "Programare confirmată",
+    "confirmedDescription": "Acum poți adăuga programarea confirmată în calendarul tău.",
+    "downloadCalendar": "Descarcă fișierul calendar",
+    "addGoogleCalendar": "Adaugă în Google Calendar",
+    "viewAppointments": "Vezi programările mele",
+    "backDoctor": "Înapoi la profilul medicului",
+    "reference": "Referință cerere: {id}",
+    "unavailableDoctor": "Medic indisponibil",
+    "unavailableClinic": "Clinică indisponibilă",
+    "calendarTitle": "Programare - {doctor}",
+    "calendarDetails": "Programare medicală confirmată prin RomDoc."
   }
 }

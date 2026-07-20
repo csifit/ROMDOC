@@ -453,5 +453,51 @@
       "accountCreation": "The account could not be created. Please try again.",
       "registrationFailed": "Registration could not be completed."
     }
+  },
+  "AuthReturn": {
+    "checkEmail": {
+      "title": "Check your email address",
+      "sentWithEmail": "If this address is not already associated with a RomDoc account, we sent a confirmation message to <email>{email}</email>.",
+      "sentWithoutEmail": "If the address entered is not already associated with a RomDoc account, we sent a confirmation message.",
+      "instructions": "Open the message and select the confirmation link to activate your account.",
+      "notReceivedTitle": "Did not receive the message?",
+      "securityExplanation": "The address may already be associated with a RomDoc account. For security reasons, the registration form does not publicly confirm whether an account exists.",
+      "signInSuggestion": "Try signing in. If you do not remember the password, request a password reset.",
+      "doctorNotice": "After confirming your email, you can continue with payment for the doctor subscription: <price>RON 60/month plus VAT</price>.",
+      "clinicNotice": "After confirming the email address, RomDoc can review the clinic request. The submitted billing information will be used to configure the clinic account during the next steps.",
+      "spamNotice": "Also check the Spam or Promotions folders if the message does not appear in your inbox.",
+      "goToLogin": "Go to sign in",
+      "resetPassword": "Reset password",
+      "backHome": "Back to the home page"
+    }
+  },
+  "AppointmentRequestReceived": {
+    "registeredEyebrow": "Request recorded",
+    "title": "Your request has been sent",
+    "description": "The appointment is not confirmed yet. The doctor or clinic staff will review the request and may confirm or change the requested date and time.",
+    "currentStatus": "Current status: {status}",
+    "pendingNotice": "The displayed date and time are those requested by the patient. They become final only after confirmation by the doctor or clinic staff.",
+    "doctor": "Doctor",
+    "clinic": "Clinic",
+    "scheduledDate": "Appointment date",
+    "requestedDate": "Requested date",
+    "scheduledTime": "Appointment time",
+    "requestedTime": "Requested time",
+    "patient": "Patient",
+    "message": "Message",
+    "minutes": "{count} minutes",
+    "emailSent": "The request details were sent to {email}.",
+    "emailFailed": "The request was saved, but the email could not be sent.",
+    "confirmedTitle": "Appointment confirmed",
+    "confirmedDescription": "You can now add the confirmed appointment to your calendar.",
+    "downloadCalendar": "Download calendar file",
+    "addGoogleCalendar": "Add to Google Calendar",
+    "viewAppointments": "View my appointments",
+    "backDoctor": "Back to the doctor profile",
+    "reference": "Request reference: {id}",
+    "unavailableDoctor": "Doctor unavailable",
+    "unavailableClinic": "Clinic unavailable",
+    "calendarTitle": "Appointment - {doctor}",
+    "calendarDetails": "Medical appointment confirmed through RomDoc."
   }
 }

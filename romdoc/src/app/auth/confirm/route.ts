@@ -1,19 +1,31 @@
-import {
-  type EmailOtpType,
+import type {
+  EmailOtpType,
 } from "@supabase/supabase-js";
 import {
   NextRequest,
   NextResponse,
 } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+
+import {
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
 function getSafeNextPath(
-  value: string | null
+  value:
+    | string
+    | null
 ) {
   if (
     !value ||
-    !value.startsWith("/") ||
-    value.startsWith("//")
+    !value.startsWith(
+      "/"
+    ) ||
+    value.startsWith(
+      "//"
+    )
   ) {
     return "/dashboard";
   }
@@ -25,28 +37,43 @@ export async function GET(
   request: NextRequest
 ) {
   const requestUrl =
-    new URL(request.url);
+    new URL(
+      request.url
+    );
+
+  const locale =
+    normalizeAppLocale(
+      requestUrl
+        .searchParams
+        .get("locale")
+    );
 
   const code =
-    requestUrl.searchParams.get(
-      "code"
-    );
+    requestUrl
+      .searchParams
+      .get("code");
 
   const tokenHash =
-    requestUrl.searchParams.get(
-      "token_hash"
-    );
+    requestUrl
+      .searchParams
+      .get(
+        "token_hash"
+      );
 
   const type =
-    requestUrl.searchParams.get(
-      "type"
-    ) as EmailOtpType | null;
+    requestUrl
+      .searchParams
+      .get(
+        "type"
+      ) as
+        | EmailOtpType
+        | null;
 
   const nextPath =
     getSafeNextPath(
-      requestUrl.searchParams.get(
-        "next"
-      )
+      requestUrl
+        .searchParams
+        .get("next")
     );
 
   const supabase =
@@ -56,18 +83,20 @@ export async function GET(
     const {
       error,
     } =
-      await supabase.auth
+      await supabase
+        .auth
         .exchangeCodeForSession(
           code
         );
 
     if (!error) {
-      return NextResponse.redirect(
-        new URL(
-          nextPath,
-          requestUrl.origin
-        )
-      );
+      return NextResponse
+        .redirect(
+          new URL(
+            nextPath,
+            requestUrl.origin
+          )
+        );
     }
 
     console.error(
@@ -83,20 +112,23 @@ export async function GET(
     const {
       error,
     } =
-      await supabase.auth.verifyOtp({
-        token_hash:
-          tokenHash,
+      await supabase
+        .auth
+        .verifyOtp({
+          token_hash:
+            tokenHash,
 
-        type,
-      });
+          type,
+        });
 
     if (!error) {
-      return NextResponse.redirect(
-        new URL(
-          nextPath,
-          requestUrl.origin
-        )
-      );
+      return NextResponse
+        .redirect(
+          new URL(
+            nextPath,
+            requestUrl.origin
+          )
+        );
     }
 
     console.error(
@@ -111,12 +143,26 @@ export async function GET(
       requestUrl.origin
     );
 
-  errorUrl.searchParams.set(
-    "error",
-    "confirmation_failed"
-  );
+  errorUrl.searchParams
+    .set(
+      "locale",
+      locale
+    );
 
-  return NextResponse.redirect(
-    errorUrl
-  );
+  errorUrl.searchParams
+    .set(
+      "error",
+      "confirmation_failed"
+    );
+
+  errorUrl.searchParams
+    .set(
+      "next",
+      nextPath
+    );
+
+  return NextResponse
+    .redirect(
+      errorUrl
+    );
 }
