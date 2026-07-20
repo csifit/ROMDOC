@@ -916,5 +916,94 @@
         }
       }
     }
+  },
+  "DoctorStaffFoundation": {
+    "doctor": {
+      "layout": {
+        "fallbackDoctor": "RomDoc doctor",
+        "emailUnavailable": "Email unavailable",
+        "roleDoctor": "Doctor",
+        "roleClinicDoctor": "Clinic doctor"
+      },
+      "sidebar": {
+        "profileSetup": "Profile setup",
+        "inbox": "Inbox",
+        "appointments": "Appointments",
+        "calendar": "Calendar",
+        "availability": "Availability",
+        "servicesProfile": "Services and profile",
+        "clinic": "My clinic",
+        "staff": "Staff",
+        "security": "Account security",
+        "home": "Home page",
+        "navigationAria": "Doctor navigation",
+        "expandMenu": "Expand menu",
+        "collapseMenu": "Collapse menu",
+        "openMenu": "Open menu",
+        "closeMenu": "Close menu",
+        "clinicAccountNotice": "Clinic doctor account. The subscription and SMS services are managed by the clinic.",
+        "signOut": "Sign out",
+        "signingOut": "Signing out..."
+      },
+      "home": {
+        "accountMissing": "The account is active, but the doctor profile could not be found. Check the subscription activation or contact RomDoc support.",
+        "eyebrow": "Doctor dashboard",
+        "welcome": "Welcome, {name}",
+        "doctorFallback": "Doctor",
+        "description": "Quickly review new requests, today's schedule and important actions.",
+        "clinicAccountTitle": "Doctor account managed by a clinic",
+        "clinicAccountDescription": "The subscription, SMS billing and billing details are managed by the Clinic Manager. You can manage your professional profile, services, availability and appointments for the assigned location.",
+        "billingTitle": "Billing details",
+        "billingDescription": "Complete the private information required for SMS billing and other RomDoc services. This information is not displayed publicly.",
+        "billingOpen": "Open billing details",
+        "outstandingEyebrow": "Outstanding SMS balance",
+        "totalDue": "Total due: {amount}",
+        "outstandingSummary": "The balance includes {smsCount} SMS messages across {periodCount} billing periods. Net: {net}. VAT 21%: {vat}.",
+        "stripeInvoiceNotice": "Payment is processed through Stripe. The tax invoice is issued separately in SAGA.",
+        "smsEyebrow": "SMS",
+        "smsUsageTitle": "SMS usage this month",
+        "smsUsageDescription": "This counter shows the SMS messages sent for your appointments during the current month. Marking messages as invoiced is handled by Admin or the Billing Manager.",
+        "unbilledValue": "Unbilled value: {amount} plus VAT",
+        "sentThisMonth": "Sent this month",
+        "invoiced": "Invoiced",
+        "uninvoiced": "Uninvoiced"
+      },
+      "notifications": {
+        "eyebrow": "Notifications",
+        "title": "Appointment updates",
+        "unreadSingular": "unread",
+        "unreadPlural": "unread",
+        "markAll": "Mark all as read",
+        "loading": "Loading notifications...",
+        "loadFailed": "Notifications could not be loaded.",
+        "empty": "There are no notifications.",
+        "markRead": "Mark read",
+        "content": {
+          "confirmedTitle": "Appointment confirmed",
+          "confirmedBody": "The appointment was confirmed.",
+          "rescheduledTitle": "Appointment rescheduled",
+          "rescheduledBody": "The appointment date or time was changed.",
+          "cancelledTitle": "Appointment cancelled",
+          "cancelledBody": "The appointment was cancelled.",
+          "completedTitle": "Consultation completed",
+          "completedBody": "The appointment was marked as completed.",
+          "noShowTitle": "No-show recorded",
+          "noShowBody": "The appointment was marked as a no-show."
+        }
+      }
+    },
+    "staff": {
+      "page": {
+        "fallbackStaff": "Medical staff",
+        "roleBadge": "Staff — appointments and medical folders",
+        "home": "Home page",
+        "inactiveTitle": "Access is not active yet",
+        "inactiveDescription": "The invitation was confirmed and the account password was created, but the doctor must activate the assignment before you can manage appointments and medical folders."
+      },
+      "logout": {
+        "signOut": "Sign out",
+        "signingOut": "Signing out..."
+      }
+    }
   }
 }

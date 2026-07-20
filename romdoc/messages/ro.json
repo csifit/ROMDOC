@@ -916,5 +916,94 @@
         }
       }
     }
+  },
+  "DoctorStaffFoundation": {
+    "doctor": {
+      "layout": {
+        "fallbackDoctor": "Medic RomDoc",
+        "emailUnavailable": "E-mail indisponibil",
+        "roleDoctor": "Medic",
+        "roleClinicDoctor": "Medic clinică"
+      },
+      "sidebar": {
+        "profileSetup": "Configurare profil",
+        "inbox": "Inbox",
+        "appointments": "Programări",
+        "calendar": "Calendar",
+        "availability": "Disponibilitate",
+        "servicesProfile": "Servicii și profil",
+        "clinic": "Clinica mea",
+        "staff": "Personal",
+        "security": "Securitatea contului",
+        "home": "Pagina principală",
+        "navigationAria": "Navigare medic",
+        "expandMenu": "Extinde meniul",
+        "collapseMenu": "Restrânge meniul",
+        "openMenu": "Deschide meniul",
+        "closeMenu": "Închide meniul",
+        "clinicAccountNotice": "Cont medic clinică. Abonamentul și SMS-urile sunt gestionate de clinică.",
+        "signOut": "Deconectare",
+        "signingOut": "Se deconectează..."
+      },
+      "home": {
+        "accountMissing": "Contul este activ, dar profilul de medic nu a putut fi găsit. Verifică activarea abonamentului sau contactează suportul RomDoc.",
+        "eyebrow": "Panou medic",
+        "welcome": "Bun venit, {name}",
+        "doctorFallback": "doctore",
+        "description": "Vezi rapid cererile noi, programul de astăzi și acțiunile importante.",
+        "clinicAccountTitle": "Cont de medic gestionat de clinică",
+        "clinicAccountDescription": "Abonamentul, facturarea SMS și datele de facturare sunt gestionate de Clinic Manager. Tu poți administra profilul profesional, serviciile, disponibilitatea și programările pentru locația atribuită.",
+        "billingTitle": "Date de facturare",
+        "billingDescription": "Completează datele private necesare pentru facturarea SMS-urilor și a altor servicii RomDoc. Aceste informații nu apar public.",
+        "billingOpen": "Deschide datele de facturare",
+        "outstandingEyebrow": "Sold SMS restant",
+        "totalDue": "Total de plată: {amount}",
+        "outstandingSummary": "Soldul include {smsCount} SMS-uri din {periodCount} perioade de facturare. Net: {net}. TVA 21%: {vat}.",
+        "stripeInvoiceNotice": "Plata se face prin Stripe. Factura fiscală se emite separat în SAGA.",
+        "smsEyebrow": "SMS",
+        "smsUsageTitle": "Utilizare SMS luna aceasta",
+        "smsUsageDescription": "Acest contor arată SMS-urile trimise pentru programările tale în luna curentă. Marcarea ca facturat este făcută de Admin sau de managerul Facturare.",
+        "unbilledValue": "Valoare nefacturată: {amount} + TVA",
+        "sentThisMonth": "Trimise luna aceasta",
+        "invoiced": "Facturate",
+        "uninvoiced": "Nefacturate"
+      },
+      "notifications": {
+        "eyebrow": "Notificări",
+        "title": "Actualizări programări",
+        "unreadSingular": "necitită",
+        "unreadPlural": "necitite",
+        "markAll": "Marchează toate ca citite",
+        "loading": "Se încarcă notificările...",
+        "loadFailed": "Notificările nu au putut fi încărcate.",
+        "empty": "Nu există notificări.",
+        "markRead": "Citită",
+        "content": {
+          "confirmedTitle": "Programare confirmată",
+          "confirmedBody": "Programarea a fost confirmată.",
+          "rescheduledTitle": "Programare reprogramată",
+          "rescheduledBody": "Data sau ora programării a fost modificată.",
+          "cancelledTitle": "Programare anulată",
+          "cancelledBody": "Programarea a fost anulată.",
+          "completedTitle": "Consultație finalizată",
+          "completedBody": "Programarea a fost marcată ca finalizată.",
+          "noShowTitle": "Neprezentare înregistrată",
+          "noShowBody": "Programarea a fost marcată ca neprezentare."
+        }
+      }
+    },
+    "staff": {
+      "page": {
+        "fallbackStaff": "Personal medical",
+        "roleBadge": "Personal — programări și dosare medicale",
+        "home": "Pagina principală",
+        "inactiveTitle": "Accesul nu este încă activ",
+        "inactiveDescription": "Invitația a fost confirmată și parola contului a fost creată, dar medicul trebuie să activeze atribuirea înainte de a putea administra programările și dosarele medicale."
+      },
+      "logout": {
+        "signOut": "Deconectare",
+        "signingOut": "Se deconectează..."
+      }
+    }
   }
 }

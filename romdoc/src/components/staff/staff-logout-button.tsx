@@ -1,17 +1,34 @@
 "use client";
 
 import {
-  useState,
-} from "react";
+  useLocale,
+  useTranslations,
+} from "next-intl";
 import {
   useRouter,
 } from "next/navigation";
+import {
+  useState,
+} from "react";
 
+import {
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
 import {
   createClient,
 } from "@/lib/supabase/client";
 
 export default function StaffLogoutButton() {
+  const locale =
+    normalizeAppLocale(
+      useLocale()
+    );
+
+  const t =
+    useTranslations(
+      "DoctorStaffFoundation.staff.logout"
+    );
+
   const router =
     useRouter();
 
@@ -22,7 +39,15 @@ export default function StaffLogoutButton() {
     useState(false);
 
   async function handleLogout() {
-    setIsSigningOut(true);
+    if (
+      isSigningOut
+    ) {
+      return;
+    }
+
+    setIsSigningOut(
+      true
+    );
 
     try {
       const supabase =
@@ -34,7 +59,9 @@ export default function StaffLogoutButton() {
         await supabase.auth
           .signOut();
 
-      if (error) {
+      if (
+        error
+      ) {
         console.error(
           "Staff sign out failed:",
           error
@@ -42,10 +69,14 @@ export default function StaffLogoutButton() {
       }
     } finally {
       router.replace(
-        "/login"
+        `/login?locale=${locale}`
       );
+
       router.refresh();
-      setIsSigningOut(false);
+
+      setIsSigningOut(
+        false
+      );
     }
   }
 
@@ -61,8 +92,12 @@ export default function StaffLogoutButton() {
       className="romdoc-button romdoc-button-secondary romdoc-button-sm disabled:cursor-not-allowed disabled:opacity-60"
     >
       {isSigningOut
-        ? "Se deconectează..."
-        : "Deconectare"}
+        ? t(
+            "signingOut"
+          )
+        : t(
+            "signOut"
+          )}
     </button>
   );
 }

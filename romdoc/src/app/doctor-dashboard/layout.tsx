@@ -1,78 +1,221 @@
-import { redirect } from "next/navigation";
-import type { ReactNode } from "react";
+import {
+  NextIntlClientProvider,
+} from "next-intl";
+import {
+  getTranslations,
+} from "next-intl/server";
+import {
+  redirect,
+} from "next/navigation";
+import type {
+  ReactNode,
+} from "react";
 
 import DoctorDashboardSidebar from "@/components/dashboard/doctor-dashboard-sidebar";
-import { createClient } from "@/lib/supabase/server";
+import {
+  getStoredAppLocale,
+} from "@/lib/i18n/server-app-locale";
+import {
+  createClient,
+} from "@/lib/supabase/server";
+
+import roMessages from "../../../messages/ro.json";
+import enMessages from "../../../messages/en.json";
+import deMessages from "../../../messages/de.json";
 
 type DoctorDashboardLayoutProps = {
   children: ReactNode;
 };
 
 type DoctorAccount = {
-  account_type: string | null;
+  account_type:
+    | string
+    | null;
 };
+
+const messagesByLocale = {
+  ro: roMessages,
+  en: enMessages,
+  de: deMessages,
+} as const;
 
 export default async function DoctorDashboardLayout({
   children,
 }: DoctorDashboardLayoutProps) {
-  const supabase = await createClient();
+  const locale =
+    await getStoredAppLocale();
+
+  const t =
+    await getTranslations({
+      locale,
+      namespace:
+        "DoctorStaffFoundation.doctor.layout",
+    });
+
+  const supabase =
+    await createClient();
 
   const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+    data: {
+      user,
+    },
+    error:
+      userError,
+  } =
+    await supabase.auth
+      .getUser();
 
-  if (userError || !user) {
-    redirect("/login");
+  if (
+    userError ||
+    !user
+  ) {
+    const parameters =
+      new URLSearchParams({
+        locale,
+        next:
+          "/doctor-dashboard",
+      });
+
+    redirect(
+      `/login?${parameters.toString()}`
+    );
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("role, first_name, last_name")
-    .eq("id", user.id)
-    .maybeSingle();
+  const {
+    data:
+      profile,
+    error:
+      profileError,
+  } =
+    await supabase
+      .from(
+        "profiles"
+      )
+      .select(`
+        role,
+        first_name,
+        last_name
+      `)
+      .eq(
+        "id",
+        user.id
+      )
+      .maybeSingle();
 
-  if (profileError) {
-    console.error("Doctor dashboard layout profile query failed:", profileError);
+  if (
+    profileError
+  ) {
+    console.error(
+      "Doctor dashboard layout profile query failed:",
+      profileError
+    );
   }
 
-  if (!profile || profile.role !== "doctor") {
-    redirect("/");
+  if (
+    !profile ||
+    profile.role !==
+      "doctor"
+  ) {
+    redirect(
+      "/dashboard"
+    );
   }
 
-  const { data: doctorAccount, error: doctorAccountError } = await supabase
-    .from("doctors")
-    .select("account_type")
-    .eq("profile_id", user.id)
-    .maybeSingle();
+  const {
+    data:
+      doctorAccount,
+    error:
+      doctorAccountError,
+  } =
+    await supabase
+      .from(
+        "doctors"
+      )
+      .select(
+        "account_type"
+      )
+      .eq(
+        "profile_id",
+        user.id
+      )
+      .maybeSingle();
 
-  if (doctorAccountError) {
+  if (
+    doctorAccountError
+  ) {
     console.error(
       "Doctor dashboard layout account type query failed:",
       doctorAccountError
     );
   }
 
-  const typedDoctorAccount = doctorAccount as DoctorAccount | null;
+  const typedDoctorAccount =
+    doctorAccount as
+      | DoctorAccount
+      | null;
+
   const isClinicSubAccount =
-    typedDoctorAccount?.account_type === "clinic_sub_account";
+    typedDoctorAccount
+      ?.account_type ===
+    "clinic_sub_account";
 
-  const fullName = [profile.first_name, profile.last_name]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
+  const fullName =
+    [
+      profile.first_name,
+      profile.last_name,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
 
-  const userName = fullName || user.email?.split("@")[0] || "Medic RomDoc";
-  const userEmail = user.email ?? "E-mail indisponibil";
+  const userName =
+    fullName ||
+    user.email
+      ?.split("@")[0] ||
+    t(
+      "fallbackDoctor"
+    );
+
+  const userEmail =
+    user.email ??
+    t(
+      "emailUnavailable"
+    );
+
+  const roleLabel =
+    isClinicSubAccount
+      ? t(
+          "roleClinicDoctor"
+        )
+      : t(
+          "roleDoctor"
+        );
 
   return (
-    <DoctorDashboardSidebar
-      userName={userName}
-      userEmail={userEmail}
-      roleLabel={isClinicSubAccount ? "Medic clinică" : "Medic"}
-      isClinicSubAccount={isClinicSubAccount}
+    <NextIntlClientProvider
+      locale={locale}
+      messages={
+        messagesByLocale[
+          locale
+        ]
+      }
     >
-      {children}
-    </DoctorDashboardSidebar>
+      <DoctorDashboardSidebar
+        userName={
+          userName
+        }
+        userEmail={
+          userEmail
+        }
+        roleLabel={
+          roleLabel
+        }
+        isClinicSubAccount={
+          isClinicSubAccount
+        }
+      >
+        {children}
+      </DoctorDashboardSidebar>
+    </NextIntlClientProvider>
   );
 }

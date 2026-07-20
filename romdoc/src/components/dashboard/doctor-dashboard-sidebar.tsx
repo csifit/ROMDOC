@@ -2,14 +2,22 @@
 
 import Link from "next/link";
 import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
+import {
   usePathname,
   useRouter,
 } from "next/navigation";
 import {
   type ReactNode,
+  useMemo,
   useState,
 } from "react";
 
+import {
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
 import {
   createClient,
 } from "@/lib/supabase/client";
@@ -27,77 +35,6 @@ type NavigationItem = {
   label: string;
   icon: string;
 };
-
-const navigationItems: NavigationItem[] = [
-  {
-    href:
-      "/doctor-dashboard",
-    label:
-      "Configurare profil",
-    icon: "▦",
-  },
-  {
-    href:
-      "/doctor-dashboard/inbox",
-    label: "Inbox",
-    icon: "✉",
-  },
-  {
-    href:
-      "/doctor-dashboard/appointments",
-    label:
-      "Programări",
-    icon: "□",
-  },
-  {
-    href:
-      "/doctor-dashboard/calendar",
-    label:
-      "Calendar",
-    icon: "◷",
-  },
-  {
-    href:
-      "/doctor-dashboard/availability",
-    label:
-      "Disponibilitate",
-    icon: "◴",
-  },
-  {
-    href:
-      "/doctor-dashboard/profile",
-    label:
-      "Servicii și profil",
-    icon: "☤",
-  },
-  {
-    href:
-      "/doctor-dashboard/clinics",
-    label:
-      "Clinica mea",
-    icon: "⌂",
-  },
-  {
-    href:
-      "/doctor-dashboard/staff",
-    label:
-      "Personal",
-    icon: "◉",
-  },
-  {
-    href:
-      "/doctor-dashboard/security",
-    label:
-      "Account security",
-    icon: "◇",
-  },
-  {
-    href: "/",
-    label:
-      "Pagina principală",
-    icon: "⌂",
-  },
-];
 
 function MenuIcon() {
   return (
@@ -138,7 +75,8 @@ function CloseIcon() {
 function CollapseIcon({
   collapsed,
 }: {
-  collapsed: boolean;
+  collapsed:
+    boolean;
 }) {
   return (
     <svg
@@ -177,6 +115,7 @@ function LogoutIcon() {
         strokeLinejoin="round"
         d="M10 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"
       />
+
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -187,7 +126,8 @@ function LogoutIcon() {
 }
 
 function getInitials(
-  userName: string
+  userName:
+    string
 ) {
   const parts =
     userName
@@ -196,34 +136,35 @@ function getInitials(
       .filter(Boolean);
 
   if (
-    parts.length === 0
+    parts.length ===
+    0
   ) {
     return "MD";
   }
 
   if (
-    parts.length === 1
+    parts.length ===
+    1
   ) {
     return parts[0]
-      .slice(0, 2)
+      .slice(
+        0,
+        2
+      )
       .toUpperCase();
   }
 
-  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  return `${parts[0][0]}${
+    parts[
+      parts.length - 1
+    ][0]
+  }`.toUpperCase();
 }
 
 function isActiveRoute(
   pathname: string,
   href: string
 ) {
-  if (
-    href === "/"
-  ) {
-    return (
-      pathname === "/"
-    );
-  }
-
   if (
     href ===
     "/doctor-dashboard"
@@ -249,6 +190,16 @@ export default function DoctorDashboardSidebar({
   isClinicSubAccount = false,
   children,
 }: DoctorDashboardSidebarProps) {
+  const locale =
+    normalizeAppLocale(
+      useLocale()
+    );
+
+  const t =
+    useTranslations(
+      "DoctorStaffFoundation.doctor.sidebar"
+    );
+
   const pathname =
     usePathname();
 
@@ -258,17 +209,135 @@ export default function DoctorDashboardSidebar({
   const [
     isCollapsed,
     setIsCollapsed,
-  ] = useState(false);
+  ] =
+    useState(false);
 
   const [
     isMobileOpen,
     setIsMobileOpen,
-  ] = useState(false);
+  ] =
+    useState(false);
 
   const [
     isSigningOut,
     setIsSigningOut,
-  ] = useState(false);
+  ] =
+    useState(false);
+
+  const homeHref =
+    `/${locale}`;
+
+  const navigationItems =
+    useMemo<
+      NavigationItem[]
+    >(
+      () => [
+        {
+          href:
+            "/doctor-dashboard",
+          label:
+            t(
+              "profileSetup"
+            ),
+          icon:
+            "▦",
+        },
+        {
+          href:
+            "/doctor-dashboard/inbox",
+          label:
+            t(
+              "inbox"
+            ),
+          icon:
+            "✉",
+        },
+        {
+          href:
+            "/doctor-dashboard/appointments",
+          label:
+            t(
+              "appointments"
+            ),
+          icon:
+            "□",
+        },
+        {
+          href:
+            "/doctor-dashboard/calendar",
+          label:
+            t(
+              "calendar"
+            ),
+          icon:
+            "◷",
+        },
+        {
+          href:
+            "/doctor-dashboard/availability",
+          label:
+            t(
+              "availability"
+            ),
+          icon:
+            "◴",
+        },
+        {
+          href:
+            "/doctor-dashboard/profile",
+          label:
+            t(
+              "servicesProfile"
+            ),
+          icon:
+            "☤",
+        },
+        {
+          href:
+            "/doctor-dashboard/clinics",
+          label:
+            t(
+              "clinic"
+            ),
+          icon:
+            "⌂",
+        },
+        {
+          href:
+            "/doctor-dashboard/staff",
+          label:
+            t(
+              "staff"
+            ),
+          icon:
+            "◉",
+        },
+        {
+          href:
+            "/doctor-dashboard/security",
+          label:
+            t(
+              "security"
+            ),
+          icon:
+            "◇",
+        },
+        {
+          href:
+            homeHref,
+          label:
+            t(
+              "home"
+            ),
+          icon:
+            "⌂",
+        },
+      ],
+      [
+        homeHref,
+        t,
+      ]
+    );
 
   async function handleSignOut() {
     if (
@@ -288,7 +357,8 @@ export default function DoctorDashboardSidebar({
       const {
         error,
       } =
-        await supabase.auth.signOut();
+        await supabase.auth
+          .signOut();
 
       if (
         error
@@ -306,7 +376,7 @@ export default function DoctorDashboardSidebar({
       );
 
       router.replace(
-        "/login"
+        `/login?locale=${locale}`
       );
 
       router.refresh();
@@ -338,7 +408,9 @@ export default function DoctorDashboardSidebar({
       >
         {!isCollapsed && (
           <Link
-            href="/"
+            href={
+              homeHref
+            }
             onClick={() =>
               setIsMobileOpen(
                 false
@@ -354,19 +426,29 @@ export default function DoctorDashboardSidebar({
           type="button"
           onClick={() =>
             setIsCollapsed(
-              (current) =>
+              (
+                current
+              ) =>
                 !current
             )
           }
           aria-label={
             isCollapsed
-              ? "Extinde meniul"
-              : "Restrânge meniul"
+              ? t(
+                  "expandMenu"
+                )
+              : t(
+                  "collapseMenu"
+                )
           }
           title={
             isCollapsed
-              ? "Extinde meniul"
-              : "Restrânge meniul"
+              ? t(
+                  "expandMenu"
+                )
+              : t(
+                  "collapseMenu"
+                )
           }
           className="romdoc-focus-ring hidden rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 lg:inline-flex"
         >
@@ -395,21 +477,15 @@ export default function DoctorDashboardSidebar({
           {!isCollapsed && (
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-gray-900">
-                {
-                  userName
-                }
+                {userName}
               </p>
 
               <p className="truncate text-xs text-gray-500">
-                {
-                  userEmail
-                }
+                {userEmail}
               </p>
 
               <span className="mt-1 inline-flex rounded-full bg-[#036661]/10 px-2.5 py-1 text-xs font-semibold text-[#036661]">
-                {
-                  roleLabel
-                }
+                {roleLabel}
               </span>
             </div>
           )}
@@ -418,17 +494,23 @@ export default function DoctorDashboardSidebar({
         {isClinicSubAccount &&
           !isCollapsed && (
             <div className="mt-4 rounded-xl border border-green-200 bg-green-50 p-3 text-xs leading-5 text-green-800">
-              Cont medic clinică. Abonamentul și SMS-urile sunt gestionate de clinică.
+              {t(
+                "clinicAccountNotice"
+              )}
             </div>
           )}
       </div>
 
       <nav
-        aria-label="Navigare medic"
+        aria-label={t(
+          "navigationAria"
+        )}
         className="flex-1 space-y-1 overflow-y-auto p-3"
       >
         {navigationItems.map(
-          (item) => {
+          (
+            item
+          ) => {
             const active =
               isActiveRoute(
                 pathname,
@@ -472,16 +554,12 @@ export default function DoctorDashboardSidebar({
                   aria-hidden="true"
                   className="flex h-5 w-5 shrink-0 items-center justify-center text-sm font-semibold"
                 >
-                  {
-                    item.icon
-                  }
+                  {item.icon}
                 </span>
 
                 {!isCollapsed && (
                   <span>
-                    {
-                      item.label
-                    }
+                    {item.label}
                   </span>
                 )}
               </Link>
@@ -501,7 +579,9 @@ export default function DoctorDashboardSidebar({
           }
           title={
             isCollapsed
-              ? "Deconectare"
+              ? t(
+                  "signOut"
+                )
               : undefined
           }
           className={`romdoc-focus-ring flex min-h-11 w-full items-center rounded-xl px-3 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 ${
@@ -515,8 +595,12 @@ export default function DoctorDashboardSidebar({
           {!isCollapsed && (
             <span>
               {isSigningOut
-                ? "Se deconectează..."
-                : "Deconectare"}
+                ? t(
+                    "signingOut"
+                  )
+                : t(
+                    "signOut"
+                  )}
             </span>
           )}
         </button>
@@ -528,7 +612,9 @@ export default function DoctorDashboardSidebar({
     <div className="min-h-screen bg-gray-50">
       <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between border-b border-gray-200 bg-white px-4 lg:hidden">
         <Link
-          href="/"
+          href={
+            homeHref
+          }
           className="romdoc-focus-ring rounded-md text-xl font-bold text-gray-900"
         >
           RomDoc
@@ -541,7 +627,9 @@ export default function DoctorDashboardSidebar({
               true
             )
           }
-          aria-label="Deschide meniul"
+          aria-label={t(
+            "openMenu"
+          )}
           className="romdoc-focus-ring rounded-lg p-2 text-gray-700 transition hover:bg-gray-100"
         >
           <MenuIcon />
@@ -551,16 +639,16 @@ export default function DoctorDashboardSidebar({
       <aside
         className={`fixed inset-y-0 left-0 z-40 hidden border-r border-gray-200 bg-white transition-[width] duration-200 lg:block ${desktopWidth}`}
       >
-        {
-          sidebarContent
-        }
+        {sidebarContent}
       </aside>
 
       {isMobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button
             type="button"
-            aria-label="Închide meniul"
+            aria-label={t(
+              "closeMenu"
+            )}
             onClick={() =>
               setIsMobileOpen(
                 false
@@ -577,15 +665,15 @@ export default function DoctorDashboardSidebar({
                   false
                 )
               }
-              aria-label="Închide meniul"
+              aria-label={t(
+                "closeMenu"
+              )}
               className="romdoc-focus-ring absolute right-3 top-3 z-10 rounded-lg p-2 text-gray-600 transition hover:bg-gray-100"
             >
               <CloseIcon />
             </button>
 
-            {
-              sidebarContent
-            }
+            {sidebarContent}
           </aside>
         </div>
       )}
@@ -594,9 +682,7 @@ export default function DoctorDashboardSidebar({
         className={`transition-[padding] duration-200 ${contentPadding}`}
       >
         <main className="mx-auto w-full max-w-7xl p-4 sm:p-6 lg:p-8">
-          {
-            children
-          }
+          {children}
         </main>
       </div>
     </div>

@@ -916,5 +916,94 @@
         }
       }
     }
+  },
+  "DoctorStaffFoundation": {
+    "doctor": {
+      "layout": {
+        "fallbackDoctor": "RomDoc-Arzt",
+        "emailUnavailable": "E-Mail nicht verfügbar",
+        "roleDoctor": "Arzt",
+        "roleClinicDoctor": "Klinikarzt"
+      },
+      "sidebar": {
+        "profileSetup": "Profil einrichten",
+        "inbox": "Posteingang",
+        "appointments": "Termine",
+        "calendar": "Kalender",
+        "availability": "Verfügbarkeit",
+        "servicesProfile": "Leistungen und Profil",
+        "clinic": "Meine Klinik",
+        "staff": "Personal",
+        "security": "Kontosicherheit",
+        "home": "Startseite",
+        "navigationAria": "Arztnavigation",
+        "expandMenu": "Menü erweitern",
+        "collapseMenu": "Menü einklappen",
+        "openMenu": "Menü öffnen",
+        "closeMenu": "Menü schließen",
+        "clinicAccountNotice": "Klinikarztkonto. Das Abonnement und die SMS-Dienste werden von der Klinik verwaltet.",
+        "signOut": "Abmelden",
+        "signingOut": "Abmeldung..."
+      },
+      "home": {
+        "accountMissing": "Das Konto ist aktiv, aber das Arztprofil konnte nicht gefunden werden. Prüfen Sie die Aktivierung des Abonnements oder wenden Sie sich an den RomDoc-Support.",
+        "eyebrow": "Arzt-Dashboard",
+        "welcome": "Willkommen, {name}",
+        "doctorFallback": "Doktor",
+        "description": "Prüfen Sie schnell neue Anfragen, den heutigen Zeitplan und wichtige Aufgaben.",
+        "clinicAccountTitle": "Von einer Klinik verwaltetes Arztkonto",
+        "clinicAccountDescription": "Das Abonnement, die SMS-Abrechnung und die Rechnungsdaten werden vom Klinikmanager verwaltet. Sie können Ihr berufliches Profil, Leistungen, Verfügbarkeit und Termine für den zugewiesenen Standort verwalten.",
+        "billingTitle": "Rechnungsdaten",
+        "billingDescription": "Vervollständigen Sie die privaten Angaben für die SMS-Abrechnung und weitere RomDoc-Dienste. Diese Informationen werden nicht öffentlich angezeigt.",
+        "billingOpen": "Rechnungsdaten öffnen",
+        "outstandingEyebrow": "Offener SMS-Saldo",
+        "totalDue": "Gesamtbetrag: {amount}",
+        "outstandingSummary": "Der Saldo umfasst {smsCount} SMS-Nachrichten aus {periodCount} Abrechnungszeiträumen. Netto: {net}. MwSt. 21 %: {vat}.",
+        "stripeInvoiceNotice": "Die Zahlung erfolgt über Stripe. Die Steuerrechnung wird separat in SAGA ausgestellt.",
+        "smsEyebrow": "SMS",
+        "smsUsageTitle": "SMS-Nutzung in diesem Monat",
+        "smsUsageDescription": "Dieser Zähler zeigt die im laufenden Monat für Ihre Termine gesendeten SMS-Nachrichten. Die Kennzeichnung als abgerechnet erfolgt durch Admin oder den Abrechnungsmanager.",
+        "unbilledValue": "Nicht abgerechneter Wert: {amount} zuzüglich MwSt.",
+        "sentThisMonth": "Diesen Monat gesendet",
+        "invoiced": "Abgerechnet",
+        "uninvoiced": "Nicht abgerechnet"
+      },
+      "notifications": {
+        "eyebrow": "Benachrichtigungen",
+        "title": "Terminaktualisierungen",
+        "unreadSingular": "ungelesen",
+        "unreadPlural": "ungelesen",
+        "markAll": "Alle als gelesen markieren",
+        "loading": "Benachrichtigungen werden geladen...",
+        "loadFailed": "Benachrichtigungen konnten nicht geladen werden.",
+        "empty": "Es gibt keine Benachrichtigungen.",
+        "markRead": "Als gelesen markieren",
+        "content": {
+          "confirmedTitle": "Termin bestätigt",
+          "confirmedBody": "Der Termin wurde bestätigt.",
+          "rescheduledTitle": "Termin verschoben",
+          "rescheduledBody": "Datum oder Uhrzeit des Termins wurden geändert.",
+          "cancelledTitle": "Termin storniert",
+          "cancelledBody": "Der Termin wurde storniert.",
+          "completedTitle": "Konsultation abgeschlossen",
+          "completedBody": "Der Termin wurde als abgeschlossen markiert.",
+          "noShowTitle": "Nichterscheinen erfasst",
+          "noShowBody": "Der Termin wurde als Nichterscheinen markiert."
+        }
+      }
+    },
+    "staff": {
+      "page": {
+        "fallbackStaff": "Medizinisches Personal",
+        "roleBadge": "Personal — Termine und medizinische Akten",
+        "home": "Startseite",
+        "inactiveTitle": "Der Zugriff ist noch nicht aktiv",
+        "inactiveDescription": "Die Einladung wurde bestätigt und das Kontopasswort wurde erstellt. Der Arzt muss die Zuordnung jedoch aktivieren, bevor Sie Termine und medizinische Akten verwalten können."
+      },
+      "logout": {
+        "signOut": "Abmelden",
+        "signingOut": "Abmeldung..."
+      }
+    }
   }
 }
