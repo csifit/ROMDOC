@@ -1,6 +1,19 @@
 import Link from "next/link";
+import {
+  getTranslations,
+} from "next-intl/server";
+import {
+  redirect,
+} from "next/navigation";
 
 import SaveDoctorButton from "@/components/patient/save-doctor-button";
+import {
+  type AppLocale,
+  selectTranslation,
+} from "@/lib/i18n/app-locale";
+import {
+  getStoredAppLocale,
+} from "@/lib/i18n/server-app-locale";
 import {
   createClient,
 } from "@/lib/supabase/server";
@@ -74,6 +87,13 @@ type DoctorRecord = {
     | null;
 };
 
+const INTL_LOCALE:
+  Record<AppLocale, string> = {
+    ro: "ro-RO",
+    en: "en-GB",
+    de: "de-DE",
+  };
+
 function getFirstRelation<T>(
   relation:
     | T
@@ -85,18 +105,12 @@ function getFirstRelation<T>(
     return null;
   }
 
-  if (
-    Array.isArray(
-      relation
-    )
-  ) {
-    return (
-      relation[0] ??
-      null
-    );
-  }
-
-  return relation;
+  return Array.isArray(
+    relation
+  )
+    ? relation[0] ??
+        null
+    : relation;
 }
 
 function formatDoctorName(
@@ -115,25 +129,23 @@ function formatDoctorName(
 }
 
 function getDoctorTitle(
-  doctor: DoctorRecord
+  doctor: DoctorRecord,
+  locale: AppLocale,
+  fallback: string
 ) {
   return (
-    doctor
-      .doctor_translations
-      ?.find(
-        (translation) =>
-          translation.locale ===
-          "ro"
-      )?.title ??
-    doctor
-      .doctor_translations?.[0]
-      ?.title ??
-    "Medic"
+    selectTranslation(
+      doctor.doctor_translations,
+      locale
+    )?.title ??
+    fallback
   );
 }
 
 function getSpecialtyName(
-  doctor: DoctorRecord
+  doctor: DoctorRecord,
+  locale: AppLocale,
+  fallback: string
 ) {
   const specialty =
     getFirstRelation(
@@ -143,22 +155,18 @@ function getSpecialtyName(
     );
 
   return (
-    specialty
-      ?.specialty_translations
-      ?.find(
-        (translation) =>
-          translation.locale ===
-          "ro"
-      )?.name ??
-    specialty
-      ?.specialty_translations?.[0]
-      ?.name ??
-    "Specialitate indisponibilă"
+    selectTranslation(
+      specialty
+        ?.specialty_translations,
+      locale
+    )?.name ??
+    fallback
   );
 }
 
 function getClinicName(
-  doctor: DoctorRecord
+  doctor: DoctorRecord,
+  locale: AppLocale
 ) {
   const clinic =
     getFirstRelation(
@@ -168,16 +176,11 @@ function getClinicName(
     );
 
   return (
-    clinic
-      ?.clinic_translations
-      ?.find(
-        (translation) =>
-          translation.locale ===
-          "ro"
-      )?.name ??
-    clinic
-      ?.clinic_translations?.[0]
-      ?.name ??
+    selectTranslation(
+      clinic
+        ?.clinic_translations,
+      locale
+    )?.name ??
     null
   );
 }
@@ -188,9 +191,7 @@ function normalizePrice(
     | string
     | null
 ) {
-  if (
-    value === null
-  ) {
+  if (value === null) {
     return null;
   }
 
@@ -208,10 +209,11 @@ function normalizePrice(
 }
 
 function formatPrice(
-  value: number
+  value: number,
+  locale: AppLocale
 ) {
   return new Intl.NumberFormat(
-    "ro-RO",
+    INTL_LOCALE[locale],
     {
       maximumFractionDigits: 2,
     }
@@ -219,10 +221,11 @@ function formatPrice(
 }
 
 function formatSavedDate(
-  value: string
+  value: string,
+  locale: AppLocale
 ) {
   return new Intl.DateTimeFormat(
-    "ro-RO",
+    INTL_LOCALE[locale],
     {
       day: "2-digit",
       month: "long",
@@ -233,45 +236,83 @@ function formatSavedDate(
   );
 }
 
+function getDirectoryHref(
+  locale: AppLocale
+) {
+  if (locale === "de") {
+    return "/de/aerzte";
+  }
+
+  if (locale === "en") {
+    return "/en/doctors";
+  }
+
+  return "/ro/medici";
+}
+
+function getDoctorHref(
+  locale: AppLocale,
+  slug: string
+) {
+  const safeSlug =
+    encodeURIComponent(slug);
+
+  return locale === "de"
+    ? `/de/arzt/${safeSlug}`
+    : `/${locale}/doctor/${safeSlug}`;
+}
 
 function DoctorPhoto({
   photoUrl,
   doctorName,
+  alt,
+  noPhotoAria,
 }: {
   photoUrl: string | null;
   doctorName: string;
+  alt: string;
+  noPhotoAria: string;
 }) {
   if (photoUrl) {
     return (
       <img
         src={photoUrl}
-        alt={`Fotografie de profil pentru ${doctorName}`}
-        className="h-16 w-16 shrink-0 rounded-2xl border border-gray-200 bg-[#F0EEE9] object-cover"
+        alt={alt}
+        className="h-[55px] w-[55px] shrink-0 rounded-[13px] border border-gray-200 bg-[#F0EEE9] object-cover"
       />
     );
   }
 
   return (
     <div
-      aria-label={`Fără fotografie de profil pentru ${doctorName}`}
-      className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-[#F0EEE9] text-xl font-bold text-[#036661]"
+      aria-label={
+        noPhotoAria
+      }
+      className="flex h-[55px] w-[55px] shrink-0 items-center justify-center rounded-[13px] border border-gray-200 bg-[#F0EEE9] text-xl font-bold text-[#036661]"
     >
-      {doctorName.charAt(0).toUpperCase()}
+      {doctorName
+        .charAt(0)
+        .toUpperCase()}
     </div>
   );
 }
 
-
-function PatientVerifiedDoctorBadge() {
+function PatientVerifiedDoctorBadge({
+  title,
+  label,
+}: {
+  title: string;
+  label: string;
+}) {
   return (
     <span
-      title="RomDoc a verificat informațiile profesionale și documentele transmise de acest medic."
-      className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800"
+      title={title}
+      className="inline-flex items-center gap-[5px] rounded-full border border-emerald-200 bg-emerald-50 px-[13px] py-[5px] text-xs font-semibold text-emerald-800"
     >
       <svg
         viewBox="0 0 24 24"
         aria-hidden="true"
-        className="h-4 w-4 fill-none"
+        className="h-[21px] w-[21px] fill-none"
       >
         <path
           d="m7.5 12.5 3 3 6-7"
@@ -280,6 +321,7 @@ function PatientVerifiedDoctorBadge() {
           strokeLinecap="round"
           strokeLinejoin="round"
         />
+
         <path
           d="M12 2.75 14.3 4l2.6-.1 1.25 2.3 2.25 1.3-.1 2.6 1.25 2.3-1.25 2.3.1 2.6-2.25 1.3-1.25 2.3-2.6-.1L12 22.05l-2.3-1.25-2.6.1-1.25-2.3-2.25-1.3.1-2.6-1.25-2.3 1.25-2.3-.1-2.6 2.25-1.3 1.25-2.3 2.6.1L12 2.75Z"
           stroke="currentColor"
@@ -288,12 +330,24 @@ function PatientVerifiedDoctorBadge() {
         />
       </svg>
 
-      <span>Medic verificat</span>
+      <span>
+        {label}
+      </span>
     </span>
   );
 }
 
 export default async function PatientSavedDoctorsPage() {
+  const locale =
+    await getStoredAppLocale();
+
+  const t =
+    await getTranslations({
+      locale,
+      namespace:
+        "PatientPages.savedDoctors",
+    });
+
   const supabase =
     await createClient();
 
@@ -302,10 +356,20 @@ export default async function PatientSavedDoctorsPage() {
       user,
     },
   } =
-    await supabase.auth.getUser();
+    await supabase.auth
+      .getUser();
 
   if (!user) {
-    return null;
+    const parameters =
+      new URLSearchParams({
+        locale,
+        next:
+          "/patient-dashboard/saved-doctors",
+      });
+
+    redirect(
+      `/login?${parameters.toString()}`
+    );
   }
 
   const {
@@ -333,9 +397,7 @@ export default async function PatientSavedDoctorsPage() {
         }
       );
 
-  if (
-    savedRowsError
-  ) {
+  if (savedRowsError) {
     console.error(
       "Patient saved doctors lookup failed:",
       savedRowsError
@@ -344,8 +406,7 @@ export default async function PatientSavedDoctorsPage() {
 
   const savedRows =
     (
-      savedRowsData ??
-      []
+      savedRowsData ?? []
     ) as SavedDoctorRow[];
 
   const doctorIds =
@@ -356,12 +417,12 @@ export default async function PatientSavedDoctorsPage() {
 
   let doctors:
     DoctorRecord[] = [];
+
   let doctorsError:
     unknown = null;
 
   if (
-    doctorIds.length >
-    0
+    doctorIds.length > 0
   ) {
     const result =
       await supabase
@@ -408,15 +469,12 @@ export default async function PatientSavedDoctorsPage() {
 
     doctors =
       (
-        result.data ??
-        []
+        result.data ?? []
       ) as unknown as
         DoctorRecord[];
   }
 
-  if (
-    doctorsError
-  ) {
+  if (doctorsError) {
     console.error(
       "Patient saved doctor details lookup failed:",
       doctorsError
@@ -459,41 +517,55 @@ export default async function PatientSavedDoctorsPage() {
         doctorsError
     );
 
+  const directoryHref =
+    getDirectoryHref(
+      locale
+    );
+
   return (
-    <main className="min-h-screen bg-[#F0EEE9] px-4 py-8 sm:px-6">
+    <main className="min-h-screen bg-[#F0EEE9] px-[13px] py-[21px] sm:px-[21px] sm:py-[34px]">
       <div className="mx-auto max-w-7xl">
-        <header className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+        <header className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm sm:p-[34px]">
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#036661]">
-            Cont pacient
+            {t(
+              "eyebrow"
+            )}
           </p>
 
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-            Medicii mei salvați
+          <h1 className="mt-[8px] text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+            {t(
+              "title"
+            )}
           </h1>
 
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-            Păstrează aici medicii pe care dorești să îi găsești rapid și revino oricând la profilul sau programările lor.
+          <p className="mt-[13px] max-w-3xl text-sm leading-6 text-gray-600">
+            {t(
+              "description"
+            )}
           </p>
         </header>
 
         {hasError ? (
-          <section className="mt-8 rounded-3xl border border-red-200 bg-white p-8 shadow-sm">
+          <section className="mt-[34px] rounded-[21px] border border-red-200 bg-white p-[34px] shadow-sm">
             <h2 className="text-xl font-bold text-gray-900">
-              Lista nu a putut fi încărcată
+              {t(
+                "loadErrorTitle"
+              )}
             </h2>
 
-            <p className="mt-3 text-sm leading-6 text-red-700">
-              Reîncarcă pagina. Dacă problema continuă, verifică mesajul din consola serverului.
+            <p className="mt-[13px] text-sm leading-6 text-red-700">
+              {t(
+                "loadErrorDescription"
+              )}
             </p>
           </section>
-        ) : savedDoctors.length ===
-          0 ? (
-          <section className="mt-8 rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-sm sm:p-12">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#036661]/10 text-[#036661]">
+        ) : savedDoctors.length === 0 ? (
+          <section className="mt-[34px] rounded-[21px] border border-gray-200 bg-white p-[34px] text-center shadow-sm sm:p-[55px]">
+            <div className="mx-auto flex h-[55px] w-[55px] items-center justify-center rounded-full bg-[#036661]/10 text-[#036661]">
               <svg
                 viewBox="0 0 24 24"
                 aria-hidden="true"
-                className="h-7 w-7 fill-none"
+                className="h-[34px] w-[34px] fill-none"
               >
                 <path
                   d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z"
@@ -505,53 +577,73 @@ export default async function PatientSavedDoctorsPage() {
               </svg>
             </div>
 
-            <h2 className="mt-5 text-2xl font-bold text-gray-900">
-              Nu ai salvat încă niciun medic
+            <h2 className="mt-[21px] text-2xl font-bold text-gray-900">
+              {t(
+                "emptyTitle"
+              )}
             </h2>
 
-            <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-gray-600">
-              Folosește simbolul inimă de pe profilurile și cardurile medicilor pentru a-i adăuga în această listă.
+            <p className="mx-auto mt-[13px] max-w-xl text-sm leading-6 text-gray-600">
+              {t(
+                "emptyDescription"
+              )}
             </p>
 
             <Link
-              href="/medici"
-              className="romdoc-button romdoc-button-primary mt-6"
+              href={directoryHref}
+              className="romdoc-button romdoc-button-primary mt-[21px]"
             >
-              Caută medici
+              {t(
+                "searchDoctors"
+              )}
             </Link>
           </section>
         ) : (
           <section
-            className="mt-8"
+            className="mt-[34px]"
             aria-labelledby="saved-doctors-list-title"
           >
-            <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="flex flex-wrap items-end justify-between gap-[13px]">
               <div>
                 <h2
                   id="saved-doctors-list-title"
                   className="text-2xl font-bold tracking-tight text-gray-900"
                 >
-                  Lista salvată
+                  {t(
+                    "listTitle"
+                  )}
                 </h2>
 
-                <p className="mt-2 text-sm text-gray-600">
-                  {savedDoctors.length}{" "}
-                  {savedDoctors.length ===
-                  1
-                    ? "medic salvat"
-                    : "medici salvați"}
+                <p className="mt-[8px] text-sm text-gray-600">
+                  {savedDoctors.length === 1
+                    ? t(
+                        "savedCountSingular",
+                        {
+                          count:
+                            savedDoctors.length,
+                        }
+                      )
+                    : t(
+                        "savedCountPlural",
+                        {
+                          count:
+                            savedDoctors.length,
+                        }
+                      )}
                 </p>
               </div>
 
               <Link
-                href="/medici"
+                href={directoryHref}
                 className="romdoc-button romdoc-button-secondary romdoc-button-sm"
               >
-                Caută alți medici
+                {t(
+                  "searchOther"
+                )}
               </Link>
             </div>
 
-            <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-[21px] grid gap-[21px] md:grid-cols-2 xl:grid-cols-3">
               {savedDoctors.map(
                 ({
                   doctor,
@@ -561,26 +653,34 @@ export default async function PatientSavedDoctorsPage() {
                     formatDoctorName(
                       doctor.slug
                     );
+
                   const clinicName =
                     getClinicName(
-                      doctor
+                      doctor,
+                      locale
                     );
+
                   const price =
                     normalizePrice(
                       doctor.consultation_price
                     );
+
                   const isVerified =
                     doctor.verification_status ===
                     "verified";
 
+                  const profileHref =
+                    getDoctorHref(
+                      locale,
+                      doctor.slug
+                    );
+
                   return (
                     <article
-                      key={
-                        doctor.id
-                      }
-                      className="flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6"
+                      key={doctor.id}
+                      className="flex h-full flex-col rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm"
                     >
-                      <div className="flex items-start gap-4">
+                      <div className="flex items-start gap-[13px]">
                         <DoctorPhoto
                           photoUrl={
                             doctor.photo_url
@@ -588,31 +688,51 @@ export default async function PatientSavedDoctorsPage() {
                           doctorName={
                             doctorName
                           }
+                          alt={t(
+                            "photoAlt",
+                            {
+                              doctor:
+                                doctorName,
+                            }
+                          )}
+                          noPhotoAria={t(
+                            "noPhotoAria",
+                            {
+                              doctor:
+                                doctorName,
+                            }
+                          )}
                         />
 
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start justify-between gap-[13px]">
                             <div className="min-w-0">
                               <p className="text-sm font-semibold text-[#036661]">
                                 {getSpecialtyName(
-                                  doctor
+                                  doctor,
+                                  locale,
+                                  t(
+                                    "unavailableSpecialty"
+                                  )
                                 )}
                               </p>
 
-                              <h3 className="mt-1 text-xl font-bold tracking-tight text-gray-900">
+                              <h3 className="mt-[5px] text-xl font-bold tracking-tight text-gray-900">
                                 <Link
-                                  href={`/doctor/${doctor.slug}`}
-                                  className="romdoc-focus-ring rounded-sm transition hover:text-[#036661]"
+                                  href={profileHref}
+                                  className="romdoc-focus-ring rounded-[5px] transition hover:text-[#036661]"
                                 >
-                                  {
-                                    doctorName
-                                  }
+                                  {doctorName}
                                 </Link>
                               </h3>
 
-                              <p className="mt-1 text-sm text-gray-600">
+                              <p className="mt-[5px] text-sm text-gray-600">
                                 {getDoctorTitle(
-                                  doctor
+                                  doctor,
+                                  locale,
+                                  t(
+                                    "unavailableDoctor"
+                                  )
                                 )}
                               </p>
                             </div>
@@ -631,22 +751,29 @@ export default async function PatientSavedDoctorsPage() {
                           </div>
 
                           {isVerified && (
-                            <div className="mt-3">
-                              <PatientVerifiedDoctorBadge />
+                            <div className="mt-[13px]">
+                              <PatientVerifiedDoctorBadge
+                                title={t(
+                                  "verifiedTitle"
+                                )}
+                                label={t(
+                                  "verifiedLabel"
+                                )}
+                              />
                             </div>
                           )}
                         </div>
                       </div>
 
-                      <div className="mt-5 space-y-2 text-sm text-gray-600">
+                      <div className="mt-[21px] space-y-[8px] text-sm text-gray-600">
                         {clinicName && (
                           <p>
                             <span className="font-medium text-gray-800">
-                              Clinica:
+                              {t(
+                                "clinic"
+                              )}:
                             </span>{" "}
-                            {
-                              clinicName
-                            }
+                            {clinicName}
                           </p>
                         )}
 
@@ -654,50 +781,72 @@ export default async function PatientSavedDoctorsPage() {
                           null && (
                           <p>
                             <span className="font-medium text-gray-800">
-                              Experiență:
+                              {t(
+                                "experience"
+                              )}:
                             </span>{" "}
                             {
                               doctor.years_experience
                             }{" "}
-                            ani
+                            {doctor.years_experience === 1
+                              ? t(
+                                  "yearSingular"
+                                )
+                              : t(
+                                  "yearPlural"
+                                )}
                           </p>
                         )}
 
-                        {price !==
-                          null && (
+                        {price !== null && (
                           <p>
                             <span className="font-medium text-gray-800">
-                              Tarif:
+                              {t(
+                                "price"
+                              )}:
                             </span>{" "}
-                            de la{" "}
+                            {t(
+                              "from"
+                            )}{" "}
                             {formatPrice(
-                              price
+                              price,
+                              locale
                             )}{" "}
                             RON
                           </p>
                         )}
 
                         <p className="text-xs text-gray-500">
-                          Salvat la{" "}
-                          {formatSavedDate(
-                            savedAt
+                          {t(
+                            "savedAt",
+                            {
+                              date:
+                                formatSavedDate(
+                                  savedAt,
+                                  locale
+                                ),
+                            }
                           )}
                         </p>
                       </div>
 
-                      <div className="mt-auto grid gap-3 pt-6 sm:grid-cols-2">
+                      <div className="mt-auto grid gap-[13px] pt-[21px] sm:grid-cols-2">
                         <Link
-                          href={`/doctor/${doctor.slug}`}
+                          href={profileHref}
                           className="romdoc-button romdoc-button-secondary romdoc-button-full"
                         >
-                          Vezi profilul
+                          {t(
+                            "viewProfile"
+                          )}
                         </Link>
 
                         <Link
-                          href={`/doctor/${doctor.slug}#programare`}
+                          href={`${profileHref}#programare`}
                           className="romdoc-button romdoc-button-primary romdoc-button-full"
                         >
-                          Programează-te
+                          {t(
+                            "book"
+                          )}
                         </Link>
                       </div>
                     </article>

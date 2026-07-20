@@ -1,9 +1,19 @@
 "use client";
 
 import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
+import {
   useEffect,
+  useMemo,
   useState,
 } from "react";
+
+import {
+  type AppLocale,
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
 
 type DoctorOption = {
   id: string;
@@ -19,17 +29,19 @@ type Share = {
   active: boolean;
 };
 
+type AuditEvent = {
+  id: string;
+  event_type: string;
+  actor_role: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+
 type ResponsePayload = {
   doctors?: DoctorOption[];
   shares?: Share[];
   uploaderDoctorId?: string;
-  events?: Array<{
-    id: string;
-    event_type: string;
-    actor_role: string;
-    metadata: Record<string, unknown>;
-    created_at: string;
-  }>;
+  events?: AuditEvent[];
   error?: string;
 };
 
@@ -37,9 +49,36 @@ type Props = {
   documentId: string;
 };
 
-function formatDate(value: string) {
+const EVENT_KEYS = [
+  "created",
+  "shared",
+  "share_revoked",
+  "viewed",
+  "downloaded",
+  "soft_deleted",
+] as const;
+
+const ROLE_KEYS = [
+  "patient",
+  "doctor",
+  "staff",
+  "admin",
+  "system",
+] as const;
+
+const INTL_LOCALE:
+  Record<AppLocale, string> = {
+    ro: "ro-RO",
+    en: "en-GB",
+    de: "de-DE",
+  };
+
+function formatDate(
+  value: string,
+  locale: AppLocale
+) {
   return new Intl.DateTimeFormat(
-    "ro-RO",
+    INTL_LOCALE[locale],
     {
       day: "2-digit",
       month: "short",
@@ -47,82 +86,170 @@ function formatDate(value: string) {
       hour: "2-digit",
       minute: "2-digit",
     }
-  ).format(new Date(value));
+  ).format(
+    new Date(value)
+  );
 }
-
-const eventLabels:
-  Record<string, string> = {
-    created: "Document creat",
-    shared: "Document partajat",
-    share_revoked:
-      "Partajare revocată",
-    viewed: "Document consultat",
-    downloaded:
-      "Document descărcat",
-    soft_deleted:
-      "Document șters",
-  };
 
 export default function PatientDocumentSharing({
   documentId,
 }: Props) {
-  const [open, setOpen] =
-    useState(false);
-  const [doctors, setDoctors] =
-    useState<DoctorOption[]>([]);
-  const [shares, setShares] =
-    useState<Share[]>([]);
-  const [events, setEvents] =
-    useState<ResponsePayload["events"]>(
-      []
+  const locale =
+    normalizeAppLocale(
+      useLocale()
     );
-  const [doctorId, setDoctorId] =
-    useState("");
-  const [expiresAt, setExpiresAt] =
-    useState("");
-  const [error, setError] =
-    useState("");
-  const [isSaving, setIsSaving] =
-    useState(false);
+
+  const t =
+    useTranslations(
+      "PatientPages.folder.sharing"
+    );
+
+  const [
+    open,
+    setOpen,
+  ] = useState(false);
+
+  const [
+    doctors,
+    setDoctors,
+  ] = useState<DoctorOption[]>([]);
+
+  const [
+    shares,
+    setShares,
+  ] = useState<Share[]>([]);
+
+  const [
+    events,
+    setEvents,
+  ] = useState<AuditEvent[]>([]);
+
+  const [
+    doctorId,
+    setDoctorId,
+  ] = useState("");
+
+  const [
+    expiresAt,
+    setExpiresAt,
+  ] = useState("");
+
+  const [
+    error,
+    setError,
+  ] = useState("");
+
+  const [
+    isSaving,
+    setIsSaving,
+  ] = useState(false);
+
+  const eventLabels =
+    useMemo(
+      () =>
+        Object.fromEntries(
+          EVENT_KEYS.map(
+            (key) => [
+              key,
+              t(
+                `events.${key}`
+              ),
+            ]
+          )
+        ) as Record<
+          string,
+          string
+        >,
+      [t]
+    );
+
+  const roleLabels =
+    useMemo(
+      () =>
+        Object.fromEntries(
+          ROLE_KEYS.map(
+            (key) => [
+              key,
+              t(
+                `roles.${key}`
+              ),
+            ]
+          )
+        ) as Record<
+          string,
+          string
+        >,
+      [t]
+    );
 
   async function load() {
     setError("");
 
-    const [shareResponse, auditResponse] =
-      await Promise.all([
-        fetch(
-          `/api/patient/folder/shares?documentId=${documentId}`,
-          { cache: "no-store" }
-        ),
-        fetch(
-          `/api/patient/folder/audit?documentId=${documentId}`,
-          { cache: "no-store" }
-        ),
-      ]);
+    try {
+      const [
+        shareResponse,
+        auditResponse,
+      ] =
+        await Promise.all([
+          fetch(
+            `/api/patient/folder/shares?documentId=${encodeURIComponent(
+              documentId
+            )}`,
+            {
+              cache:
+                "no-store",
+            }
+          ),
+          fetch(
+            `/api/patient/folder/audit?documentId=${encodeURIComponent(
+              documentId
+            )}`,
+            {
+              cache:
+                "no-store",
+            }
+          ),
+        ]);
 
-    const sharePayload =
-      (await shareResponse.json()) as ResponsePayload;
-    const auditPayload =
-      (await auditResponse.json()) as ResponsePayload;
+      const sharePayload =
+        (await shareResponse.json()) as
+          ResponsePayload;
 
-    if (!shareResponse.ok) {
-      setError(
-        sharePayload.error ??
-          "Partajările nu au putut fi încărcate."
+      const auditPayload =
+        (await auditResponse.json()) as
+          ResponsePayload;
+
+      if (!shareResponse.ok) {
+        throw new Error(
+          locale === "ro" &&
+          sharePayload.error
+            ? sharePayload.error
+            : t(
+                "loadError"
+              )
+        );
+      }
+
+      setDoctors(
+        sharePayload.doctors ?? []
       );
-      return;
-    }
 
-    setDoctors(
-      sharePayload.doctors ?? []
-    );
-    setShares(
-      sharePayload.shares ?? []
-    );
+      setShares(
+        sharePayload.shares ?? []
+      );
 
-    if (auditResponse.ok) {
-      setEvents(
-        auditPayload.events ?? []
+      if (auditResponse.ok) {
+        setEvents(
+          auditPayload.events ?? []
+        );
+      }
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : t(
+              "loadError"
+            )
       );
     }
   }
@@ -136,7 +263,9 @@ export default function PatientDocumentSharing({
   async function createShare() {
     if (!doctorId) {
       setError(
-        "Selectează un medic."
+        t(
+          "selectDoctorError"
+        )
       );
       return;
     }
@@ -144,44 +273,58 @@ export default function PatientDocumentSharing({
     setIsSaving(true);
     setError("");
 
-    const response =
-      await fetch(
-        "/api/patient/folder/shares",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            documentId,
-            doctorId,
-            expiresAt:
-              expiresAt
-                ? new Date(
-                    `${expiresAt}T23:59:59`
-                  ).toISOString()
-                : null,
-          }),
-        }
-      );
+    try {
+      const response =
+        await fetch(
+          "/api/patient/folder/shares",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              documentId,
+              doctorId,
+              expiresAt:
+                expiresAt
+                  ? new Date(
+                      `${expiresAt}T23:59:59`
+                    ).toISOString()
+                  : null,
+            }),
+          }
+        );
 
-    const payload =
-      (await response.json()) as ResponsePayload;
+      const payload =
+        (await response.json()) as
+          ResponsePayload;
 
-    if (!response.ok) {
+      if (!response.ok) {
+        throw new Error(
+          locale === "ro" &&
+          payload.error
+            ? payload.error
+            : t(
+                "shareError"
+              )
+        );
+      }
+
+      setDoctorId("");
+      setExpiresAt("");
+      await load();
+    } catch (shareError) {
       setError(
-        payload.error ??
-          "Documentul nu a putut fi partajat."
+        shareError instanceof Error
+          ? shareError.message
+          : t(
+              "shareError"
+            )
       );
+    } finally {
       setIsSaving(false);
-      return;
     }
-
-    setDoctorId("");
-    setExpiresAt("");
-    await load();
-    setIsSaving(false);
   }
 
   async function revokeShare(
@@ -190,102 +333,152 @@ export default function PatientDocumentSharing({
     setIsSaving(true);
     setError("");
 
-    const response =
-      await fetch(
-        "/api/patient/folder/shares",
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            shareId,
-          }),
-        }
-      );
+    try {
+      const response =
+        await fetch(
+          "/api/patient/folder/shares",
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              shareId,
+            }),
+          }
+        );
 
-    const payload =
-      (await response.json()) as ResponsePayload;
+      const payload =
+        (await response.json()) as
+          ResponsePayload;
 
-    if (!response.ok) {
-      setError(
-        payload.error ??
-          "Partajarea nu a putut fi revocată."
-      );
-    } else {
+      if (!response.ok) {
+        throw new Error(
+          locale === "ro" &&
+          payload.error
+            ? payload.error
+            : t(
+                "revokeError"
+              )
+        );
+      }
+
       await load();
+    } catch (revokeError) {
+      setError(
+        revokeError instanceof Error
+          ? revokeError.message
+          : t(
+              "revokeError"
+            )
+      );
+    } finally {
+      setIsSaving(false);
     }
-
-    setIsSaving(false);
   }
 
+  const activeShares =
+    shares.filter(
+      (share) =>
+        share.active
+    );
+
   return (
-    <div className="mt-5 border-t border-gray-200 pt-5">
+    <div className="mt-[21px] border-t border-gray-200 pt-[21px]">
       <button
         type="button"
         onClick={() =>
-          setOpen((value) => !value)
+          setOpen(
+            (value) =>
+              !value
+          )
         }
         className="romdoc-button romdoc-button-secondary romdoc-button-sm"
       >
         {open
-          ? "Ascunde accesul"
-          : "Partajare și istoric"}
+          ? t(
+              "hide"
+            )
+          : t(
+              "show"
+            )}
       </button>
 
       {open && (
-        <div className="mt-4 space-y-5">
-          <div className="rounded-xl bg-gray-50 p-4">
+        <div className="mt-[13px] space-y-[21px]">
+          <div className="rounded-[13px] bg-gray-50 p-[13px]">
             <h3 className="font-semibold text-gray-900">
-              Partajează cu un medic
+              {t(
+                "shareTitle"
+              )}
             </h3>
 
-            <p className="mt-1 text-xs leading-5 text-gray-600">
-              Poți selecta numai medici asociați consultațiilor din contul tău.
+            <p className="mt-[5px] text-xs leading-5 text-gray-600">
+              {t(
+                "shareDescription"
+              )}
             </p>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <select
-                value={doctorId}
-                onChange={(event) =>
-                  setDoctorId(
-                    event.target.value
-                  )
-                }
-                className="romdoc-focus-ring rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm"
-              >
-                <option value="">
-                  Selectează medicul
-                </option>
+            <div className="mt-[13px] grid gap-[13px] sm:grid-cols-2">
+              <label className="block">
+                <span className="text-xs font-semibold text-gray-600">
+                  {t(
+                    "doctorLabel"
+                  )}
+                </span>
 
-                {doctors.map(
-                  (doctor) => (
-                    <option
-                      key={doctor.id}
-                      value={doctor.id}
-                    >
-                      {doctor.name}
-                    </option>
-                  )
-                )}
-              </select>
+                <select
+                  value={doctorId}
+                  onChange={(event) =>
+                    setDoctorId(
+                      event.target.value
+                    )
+                  }
+                  className="romdoc-focus-ring mt-[5px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[8px] text-sm"
+                >
+                  <option value="">
+                    {t(
+                      "selectDoctor"
+                    )}
+                  </option>
 
-              <input
-                type="date"
-                value={expiresAt}
-                min={
-                  new Date()
-                    .toISOString()
-                    .split("T")[0]
-                }
-                onChange={(event) =>
-                  setExpiresAt(
-                    event.target.value
-                  )
-                }
-                className="romdoc-focus-ring rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm"
-              />
+                  {doctors.map(
+                    (doctor) => (
+                      <option
+                        key={doctor.id}
+                        value={doctor.id}
+                      >
+                        {doctor.name}
+                      </option>
+                    )
+                  )}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="text-xs font-semibold text-gray-600">
+                  {t(
+                    "expirationLabel"
+                  )}
+                </span>
+
+                <input
+                  type="date"
+                  value={expiresAt}
+                  min={
+                    new Date()
+                      .toISOString()
+                      .split("T")[0]
+                  }
+                  onChange={(event) =>
+                    setExpiresAt(
+                      event.target.value
+                    )
+                  }
+                  className="romdoc-focus-ring mt-[5px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[8px] text-sm"
+                />
+              </label>
             </div>
 
             <button
@@ -297,35 +490,34 @@ export default function PatientDocumentSharing({
               onClick={() =>
                 void createShare()
               }
-              className="romdoc-button romdoc-button-primary romdoc-button-sm mt-3"
+              className="romdoc-button romdoc-button-primary romdoc-button-sm mt-[13px]"
             >
-              Partajează documentul
+              {t(
+                "shareButton"
+              )}
             </button>
           </div>
 
           <div>
             <h3 className="font-semibold text-gray-900">
-              Acces acordat
+              {t(
+                "accessGranted"
+              )}
             </h3>
 
-            <div className="mt-3 space-y-2">
-              {shares.filter(
-                (share) =>
-                  share.active
-              ).length === 0 ? (
+            <div className="mt-[13px] space-y-[8px]">
+              {activeShares.length === 0 ? (
                 <p className="text-sm text-gray-600">
-                  Documentul nu este partajat cu alți medici.
+                  {t(
+                    "noShares"
+                  )}
                 </p>
               ) : (
-                shares
-                  .filter(
-                    (share) =>
-                      share.active
-                  )
-                  .map((share) => (
+                activeShares.map(
+                  (share) => (
                     <div
                       key={share.id}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 p-3"
+                      className="flex flex-wrap items-center justify-between gap-[13px] rounded-[13px] border border-gray-200 p-[13px]"
                     >
                       <div>
                         <p className="text-sm font-semibold text-gray-900">
@@ -334,12 +526,21 @@ export default function PatientDocumentSharing({
                           }
                         </p>
 
-                        <p className="mt-1 text-xs text-gray-500">
+                        <p className="mt-[5px] text-xs text-gray-500">
                           {share.expires_at
-                            ? `Expiră la ${formatDate(
-                                share.expires_at
-                              )}`
-                            : "Fără dată de expirare"}
+                            ? t(
+                                "expiresAt",
+                                {
+                                  date:
+                                    formatDate(
+                                      share.expires_at,
+                                      locale
+                                    ),
+                                }
+                              )
+                            : t(
+                                "noExpiration"
+                              )}
                         </p>
                       </div>
 
@@ -355,63 +556,80 @@ export default function PatientDocumentSharing({
                         }
                         className="text-sm font-semibold text-red-700 hover:underline"
                       >
-                        Revocă
+                        {t(
+                          "revoke"
+                        )}
                       </button>
                     </div>
-                  ))
+                  )
+                )
               )}
             </div>
           </div>
 
           <div>
             <h3 className="font-semibold text-gray-900">
-              Istoric acces
+              {t(
+                "history"
+              )}
             </h3>
 
-            <ol className="mt-3 space-y-3 border-l-2 border-gray-200 pl-5">
-              {(events ?? []).map(
-                (event) => (
-                  <li
-                    key={event.id}
-                    className="relative"
-                  >
-                    <span className="absolute -left-[27px] top-1.5 h-3 w-3 rounded-full border-2 border-white bg-[#036661]" />
+            {events.length === 0 ? (
+              <p className="mt-[13px] text-sm text-gray-600">
+                {t(
+                  "noHistory"
+                )}
+              </p>
+            ) : (
+              <ol className="mt-[13px] space-y-[13px] border-l-2 border-gray-200 pl-[21px]">
+                {events.map(
+                  (event) => (
+                    <li
+                      key={event.id}
+                      className="relative"
+                    >
+                      <span className="absolute -left-[27px] top-[5px] h-[13px] w-[13px] rounded-full border-2 border-white bg-[#036661]" />
 
-                    <p className="text-sm font-semibold text-gray-900">
-                      {eventLabels[
-                        event.event_type
-                      ] ??
-                        event.event_type}
-                    </p>
-
-                    <p className="mt-1 text-xs text-gray-500">
-                      {formatDate(
-                        event.created_at
-                      )}
-                      {" · "}
-                      {event.actor_role}
-                    </p>
-
-                    {typeof event.metadata
-                      ?.doctor_name ===
-                      "string" && (
-                      <p className="mt-1 text-xs text-gray-600">
-                        {
-                          event.metadata
-                            .doctor_name
-                        }
+                      <p className="text-sm font-semibold text-gray-900">
+                        {eventLabels[
+                          event.event_type
+                        ] ??
+                          event.event_type}
                       </p>
-                    )}
-                  </li>
-                )
-              )}
-            </ol>
+
+                      <p className="mt-[5px] text-xs text-gray-500">
+                        {formatDate(
+                          event.created_at,
+                          locale
+                        )}
+                        {" · "}
+                        {roleLabels[
+                          event.actor_role
+                        ] ??
+                          event.actor_role}
+                      </p>
+
+                      {typeof event.metadata
+                        ?.doctor_name ===
+                        "string" && (
+                        <p className="mt-[5px] text-xs text-gray-600">
+                          {
+                            event.metadata
+                              .doctor_name
+                          }
+                        </p>
+                      )}
+                    </li>
+                  )
+                )}
+              </ol>
+            )}
           </div>
 
           {error && (
             <div
               role="alert"
-              className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800"
+              className="rounded-[13px] border border-red-200 bg-red-50 p-[13px] text-sm text-red-800"
             >
               {error}
             </div>

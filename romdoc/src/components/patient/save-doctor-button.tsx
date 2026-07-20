@@ -1,13 +1,21 @@
 "use client";
 
 import {
-  useEffect,
-  useState,
-} from "react";
+  useLocale,
+  useTranslations,
+} from "next-intl";
 import {
   usePathname,
   useRouter,
 } from "next/navigation";
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
 
 type SaveDoctorButtonProps = {
   doctorId: string;
@@ -29,72 +37,6 @@ type SavedDoctorApiResponse = {
   error?: string;
 };
 
-type Labels = {
-  save: string;
-  saved: string;
-  saving: string;
-  removing: string;
-  genericCount: string;
-  preciseCount: (count: number) => string;
-  saveAria: (doctorName: string) => string;
-  removeAria: (doctorName: string) => string;
-  genericError: string;
-};
-
-const labelsByLocale: Record<
-  string,
-  Labels
-> = {
-  ro: {
-    save: "Salvează medicul",
-    saved: "Medic salvat",
-    saving: "Se salvează...",
-    removing: "Se elimină...",
-    genericCount:
-      "Salvat în listele pacienților",
-    preciseCount: (count) =>
-      `Salvat de ${count} pacienți`,
-    saveAria: (doctorName) =>
-      `Salvează medicul ${doctorName} în lista de favorite`,
-    removeAria: (doctorName) =>
-      `Elimină medicul ${doctorName} din lista de favorite`,
-    genericError:
-      "Lista medicilor salvați nu a putut fi actualizată.",
-  },
-  en: {
-    save: "Save doctor",
-    saved: "Doctor saved",
-    saving: "Saving...",
-    removing: "Removing...",
-    genericCount:
-      "Saved in patient favourite lists",
-    preciseCount: (count) =>
-      `Saved by ${count} patients`,
-    saveAria: (doctorName) =>
-      `Save doctor ${doctorName} to favourites`,
-    removeAria: (doctorName) =>
-      `Remove doctor ${doctorName} from favourites`,
-    genericError:
-      "The saved-doctor list could not be updated.",
-  },
-  de: {
-    save: "Arzt speichern",
-    saved: "Arzt gespeichert",
-    saving: "Wird gespeichert...",
-    removing: "Wird entfernt...",
-    genericCount:
-      "In Patienten-Favoriten gespeichert",
-    preciseCount: (count) =>
-      `Von ${count} Patienten gespeichert`,
-    saveAria: (doctorName) =>
-      `Arzt ${doctorName} als Favorit speichern`,
-    removeAria: (doctorName) =>
-      `Arzt ${doctorName} aus den Favoriten entfernen`,
-    genericError:
-      "Die Favoritenliste konnte nicht aktualisiert werden.",
-  },
-};
-
 function HeartIcon({
   filled,
 }: {
@@ -104,7 +46,7 @@ function HeartIcon({
     <svg
       viewBox="0 0 24 24"
       aria-hidden="true"
-      className={`h-5 w-5 ${
+      className={`h-[21px] w-[21px] ${
         filled
           ? "fill-current"
           : "fill-none"
@@ -162,26 +104,21 @@ export default function SaveDoctorButton({
   compact = false,
   className = "",
 }: SaveDoctorButtonProps) {
+  const locale =
+    normalizeAppLocale(
+      useLocale()
+    );
+
+  const t =
+    useTranslations(
+      "PatientPages.savedDoctors.saveButton"
+    );
+
   const router =
     useRouter();
+
   const pathname =
     usePathname();
-
-  const firstPathSegment =
-    pathname
-      .split("/")
-      .filter(Boolean)[0];
-
-  const locale =
-    firstPathSegment === "en" ||
-    firstPathSegment === "de" ||
-    firstPathSegment === "ro"
-      ? firstPathSegment
-      : "ro";
-
-  const labels =
-    labelsByLocale[locale] ??
-    labelsByLocale.ro;
 
   const [
     isSaved,
@@ -189,6 +126,7 @@ export default function SaveDoctorButton({
   ] = useState<boolean | null>(
     initialIsSaved
   );
+
   const [
     savedCount,
     setSavedCount,
@@ -197,20 +135,24 @@ export default function SaveDoctorButton({
       initialSavedCount
     )
   );
+
   const [
     isLoading,
     setIsLoading,
   ] = useState(
     initialIsSaved === null
   );
+
   const [
     isUpdating,
     setIsUpdating,
   ] = useState(false);
+
   const [
     authenticationRequired,
     setAuthenticationRequired,
   ] = useState(false);
+
   const [
     error,
     setError,
@@ -262,9 +204,7 @@ export default function SaveDoctorButton({
           (await response.json()) as
             SavedDoctorApiResponse;
 
-        if (
-          !response.ok
-        ) {
+        if (!response.ok) {
           if (
             response.status === 403
           ) {
@@ -273,8 +213,12 @@ export default function SaveDoctorButton({
           }
 
           throw new Error(
-            payload.error ??
-              labels.genericError
+            locale === "ro" &&
+            payload.error
+              ? payload.error
+              : t(
+                  "genericError"
+                )
           );
         }
 
@@ -296,10 +240,8 @@ export default function SaveDoctorButton({
         }
       } catch (loadError) {
         if (
-          loadError instanceof
-            DOMException &&
-          loadError.name ===
-            "AbortError"
+          loadError instanceof DOMException &&
+          loadError.name === "AbortError"
         ) {
           return;
         }
@@ -312,7 +254,9 @@ export default function SaveDoctorButton({
         setError(
           loadError instanceof Error
             ? loadError.message
-            : labels.genericError
+            : t(
+                "genericError"
+              )
         );
       } finally {
         if (
@@ -331,7 +275,8 @@ export default function SaveDoctorButton({
   }, [
     doctorId,
     initialIsSaved,
-    labels.genericError,
+    locale,
+    t,
   ]);
 
   function redirectToLogin() {
@@ -341,17 +286,20 @@ export default function SaveDoctorButton({
         ? `${pathname}${window.location.search}${window.location.hash}`
         : pathname;
 
+    const parameters =
+      new URLSearchParams({
+        locale,
+        next:
+          currentUrl,
+      });
+
     router.push(
-      `/login?next=${encodeURIComponent(
-        currentUrl
-      )}`
+      `/login?${parameters.toString()}`
     );
   }
 
   async function toggleSavedDoctor() {
-    if (
-      isUpdating
-    ) {
+    if (isUpdating) {
       return;
     }
 
@@ -403,12 +351,14 @@ export default function SaveDoctorButton({
         (await response.json()) as
           SavedDoctorApiResponse;
 
-      if (
-        !response.ok
-      ) {
+      if (!response.ok) {
         throw new Error(
-          payload.error ??
-            labels.genericError
+          locale === "ro" &&
+          payload.error
+            ? payload.error
+            : t(
+                "genericError"
+              )
         );
       }
 
@@ -437,7 +387,9 @@ export default function SaveDoctorButton({
       setError(
         updateError instanceof Error
           ? updateError.message
-          : labels.genericError
+          : t(
+              "genericError"
+            )
       );
     } finally {
       setIsUpdating(false);
@@ -447,19 +399,35 @@ export default function SaveDoctorButton({
   const buttonLabel =
     isUpdating
       ? isSaved
-        ? labels.removing
-        : labels.saving
+        ? t(
+            "removing"
+          )
+        : t(
+            "saving"
+          )
       : isSaved
-        ? labels.saved
-        : labels.save;
+        ? t(
+            "saved"
+          )
+        : t(
+            "save"
+          );
 
   const ariaLabel =
     isSaved
-      ? labels.removeAria(
-          doctorName
+      ? t(
+          "removeAria",
+          {
+            doctor:
+              doctorName,
+          }
         )
-      : labels.saveAria(
-          doctorName
+      : t(
+          "saveAria",
+          {
+            doctor:
+              doctorName,
+          }
         );
 
   const countLabel =
@@ -467,9 +435,15 @@ export default function SaveDoctorButton({
     savedCount <= 0
       ? null
       : savedCount < 5
-        ? labels.genericCount
-        : labels.preciseCount(
-            savedCount
+        ? t(
+            "genericCount"
+          )
+        : t(
+            "preciseCount",
+            {
+              count:
+                savedCount,
+            }
           );
 
   return (
@@ -490,10 +464,10 @@ export default function SaveDoctorButton({
           isLoading ||
           isUpdating
         }
-        className={`romdoc-focus-ring inline-flex items-center justify-center gap-2 rounded-xl border font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
+        className={`romdoc-focus-ring inline-flex items-center justify-center gap-[8px] rounded-[13px] border font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
           compact
-            ? "h-10 w-10 p-0"
-            : "px-4 py-2 text-sm"
+            ? "h-[34px] w-[34px] p-0"
+            : "px-[13px] py-[8px] text-sm"
         } ${
           isSaved
             ? "border-[#036661] bg-[#036661] text-white hover:border-[#ff2800] hover:bg-[#ff2800]"
@@ -517,7 +491,7 @@ export default function SaveDoctorButton({
 
       {showSavedCount &&
         countLabel && (
-          <p className="mt-2 text-xs leading-5 text-gray-500">
+          <p className="mt-[8px] text-xs leading-5 text-gray-500">
             {countLabel}
           </p>
         )}
@@ -525,7 +499,7 @@ export default function SaveDoctorButton({
       {error && (
         <p
           role="alert"
-          className="mt-2 max-w-xs text-xs leading-5 text-red-700"
+          className="mt-[8px] max-w-xs text-xs leading-5 text-red-700"
         >
           {error}
         </p>

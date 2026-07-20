@@ -1,6 +1,10 @@
 "use client";
 
 import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
+import {
   useCallback,
   useEffect,
   useMemo,
@@ -8,10 +12,13 @@ import {
 } from "react";
 
 import {
+  type AppLocale,
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
+import {
   MEDICAL_PROFILE_FIELDS,
+  calculateAge,
   emptyMedicalProfileValue,
-  medicalProfileFieldLabel,
-  medicalProfileSummary,
   type MedicalProfileEntry,
   type MedicalProfileFieldKey,
   type MedicalProfileValue,
@@ -29,179 +36,56 @@ type ProfileResponse = {
 };
 
 const inputClasses =
-  "romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900";
+  "romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] text-sm text-gray-900";
 
-function formatAuditDate(
-  value: string
+const INTL_LOCALE:
+  Record<AppLocale, string> = {
+    ro: "ro-RO",
+    en: "en-GB",
+    de: "de-DE",
+  };
+
+function formatDateValue(
+  value: string,
+  locale: AppLocale
 ) {
+  const date =
+    new Date(
+      `${value}T12:00:00`
+    );
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return value;
+  }
+
   return new Intl.DateTimeFormat(
-    "ro-RO",
+    INTL_LOCALE[locale],
     {
       day: "2-digit",
       month: "long",
       year: "numeric",
     }
-  ).format(new Date(value));
+  ).format(date);
 }
 
-function textOrEmpty(
-  value: string | undefined
+function formatAuditDate(
+  value: string,
+  locale: AppLocale
 ) {
-  return value?.trim() ||
-    "Nu este completat.";
-}
-
-function fullValue(
-  fieldKey: MedicalProfileFieldKey,
-  value: MedicalProfileValue
-) {
-  switch (fieldKey) {
-    case "date_of_birth":
-      return (
-        <div className="space-y-1">
-          <p className="text-gray-900">
-            {medicalProfileSummary(
-              fieldKey,
-              value
-            )}
-          </p>
-
-          <p className="text-sm text-gray-500">
-            Vârsta este calculată automat.
-          </p>
-        </div>
-      );
-
-    case "sex":
-      return (
-        <p className="text-gray-900">
-          {medicalProfileSummary(
-            fieldKey,
-            value
-          )}
-        </p>
-      );
-
-    case "blood_group": {
-      const group =
-        value.group || "Necunoscută";
-      const rh =
-        value.rh === "positive"
-          ? "Pozitiv"
-          : value.rh === "negative"
-            ? "Negativ"
-            : "Necunoscut";
-
-      return (
-        <dl className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Grupa
-            </dt>
-            <dd className="mt-1 text-gray-900">
-              {group === "unknown"
-                ? "Necunoscută"
-                : group}
-            </dd>
-          </div>
-
-          <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Factor Rh
-            </dt>
-            <dd className="mt-1 text-gray-900">
-              {rh}
-            </dd>
-          </div>
-        </dl>
-      );
+  return new Intl.DateTimeFormat(
+    INTL_LOCALE[locale],
+    {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
     }
-
-    case "emergency_contact":
-      return (
-        <dl className="grid gap-3 sm:grid-cols-3">
-          <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Nume
-            </dt>
-            <dd className="mt-1 text-gray-900">
-              {textOrEmpty(
-                value.name
-              )}
-            </dd>
-          </div>
-
-          <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Relație
-            </dt>
-            <dd className="mt-1 text-gray-900">
-              {textOrEmpty(
-                value.relationship
-              )}
-            </dd>
-          </div>
-
-          <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Telefon
-            </dt>
-            <dd className="mt-1 text-gray-900">
-              {textOrEmpty(
-                value.phone
-              )}
-            </dd>
-          </div>
-        </dl>
-      );
-
-    case "family_doctor":
-      return (
-        <dl className="grid gap-3 sm:grid-cols-3">
-          <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Nume
-            </dt>
-            <dd className="mt-1 text-gray-900">
-              {textOrEmpty(
-                value.name
-              )}
-            </dd>
-          </div>
-
-          <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Cabinet / clinică
-            </dt>
-            <dd className="mt-1 text-gray-900">
-              {textOrEmpty(
-                value.clinic
-              )}
-            </dd>
-          </div>
-
-          <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Telefon
-            </dt>
-            <dd className="mt-1 text-gray-900">
-              {textOrEmpty(
-                value.phone
-              )}
-            </dd>
-          </div>
-        </dl>
-      );
-
-    default:
-      return (
-        <p className="whitespace-pre-wrap text-gray-900">
-          {textOrEmpty(
-            value.text
-          )}
-        </p>
-      );
-  }
+  ).format(
+    new Date(value)
+  );
 }
 
 function FieldEditor({
@@ -215,6 +99,11 @@ function FieldEditor({
     (value: MedicalProfileValue) =>
       void;
 }) {
+  const t =
+    useTranslations(
+      "PatientPages.folder.profile"
+    );
+
   function setValue(
     key: string,
     nextValue: string
@@ -230,11 +119,16 @@ function FieldEditor({
       return (
         <label className="block">
           <span className="text-sm font-semibold text-gray-700">
-            Data nașterii
+            {t(
+              "fields.date_of_birth"
+            )}
           </span>
+
           <input
             type="date"
-            value={value.date ?? ""}
+            value={
+              value.date ?? ""
+            }
             onChange={(event) =>
               setValue(
                 "date",
@@ -255,10 +149,15 @@ function FieldEditor({
       return (
         <label className="block">
           <span className="text-sm font-semibold text-gray-700">
-            Sex
+            {t(
+              "fields.sex"
+            )}
           </span>
+
           <select
-            value={value.sex ?? ""}
+            value={
+              value.sex ?? ""
+            }
             onChange={(event) =>
               setValue(
                 "sex",
@@ -268,13 +167,21 @@ function FieldEditor({
             className={inputClasses}
           >
             <option value="">
-              Necompletat
+              {t(
+                "notCompletedShort"
+              )}
             </option>
+
             <option value="male">
-              Masculin
+              {t(
+                "male"
+              )}
             </option>
+
             <option value="female">
-              Feminin
+              {t(
+                "female"
+              )}
             </option>
           </select>
         </label>
@@ -282,11 +189,14 @@ function FieldEditor({
 
     case "blood_group":
       return (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-[13px] sm:grid-cols-2">
           <label className="block">
             <span className="text-sm font-semibold text-gray-700">
-              Grupa sanguină
+              {t(
+                "fields.blood_group"
+              )}
             </span>
+
             <select
               value={
                 value.group ?? ""
@@ -300,32 +210,46 @@ function FieldEditor({
               className={inputClasses}
             >
               <option value="">
-                Necompletată
+                {t(
+                  "notCompletedShort"
+                )}
               </option>
+
               <option value="A">
                 A
               </option>
+
               <option value="B">
                 B
               </option>
+
               <option value="AB">
                 AB
               </option>
+
               <option value="O">
                 O
               </option>
+
               <option value="unknown">
-                Necunoscută
+                {t(
+                  "unknownFeminine"
+                )}
               </option>
             </select>
           </label>
 
           <label className="block">
             <span className="text-sm font-semibold text-gray-700">
-              Factor Rh
+              {t(
+                "rhFactor"
+              )}
             </span>
+
             <select
-              value={value.rh ?? ""}
+              value={
+                value.rh ?? ""
+              }
               onChange={(event) =>
                 setValue(
                   "rh",
@@ -335,16 +259,27 @@ function FieldEditor({
               className={inputClasses}
             >
               <option value="">
-                Necompletat
+                {t(
+                  "notCompletedShort"
+                )}
               </option>
+
               <option value="positive">
-                Pozitiv
+                {t(
+                  "positive"
+                )}
               </option>
+
               <option value="negative">
-                Negativ
+                {t(
+                  "negative"
+                )}
               </option>
+
               <option value="unknown">
-                Necunoscut
+                {t(
+                  "unknownMasculine"
+                )}
               </option>
             </select>
           </label>
@@ -353,11 +288,14 @@ function FieldEditor({
 
     case "emergency_contact":
       return (
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-[13px] sm:grid-cols-3">
           <label className="block">
             <span className="text-sm font-semibold text-gray-700">
-              Nume
+              {t(
+                "name"
+              )}
             </span>
+
             <input
               type="text"
               value={
@@ -376,8 +314,11 @@ function FieldEditor({
 
           <label className="block">
             <span className="text-sm font-semibold text-gray-700">
-              Relație
+              {t(
+                "relationship"
+              )}
             </span>
+
             <input
               type="text"
               value={
@@ -397,8 +338,11 @@ function FieldEditor({
 
           <label className="block">
             <span className="text-sm font-semibold text-gray-700">
-              Telefon
+              {t(
+                "phone"
+              )}
             </span>
+
             <input
               type="tel"
               value={
@@ -419,11 +363,14 @@ function FieldEditor({
 
     case "family_doctor":
       return (
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-[13px] sm:grid-cols-3">
           <label className="block">
             <span className="text-sm font-semibold text-gray-700">
-              Nume
+              {t(
+                "name"
+              )}
             </span>
+
             <input
               type="text"
               value={
@@ -442,8 +389,11 @@ function FieldEditor({
 
           <label className="block">
             <span className="text-sm font-semibold text-gray-700">
-              Cabinet / clinică
+              {t(
+                "clinic"
+              )}
             </span>
+
             <input
               type="text"
               value={
@@ -462,8 +412,11 @@ function FieldEditor({
 
           <label className="block">
             <span className="text-sm font-semibold text-gray-700">
-              Telefon
+              {t(
+                "phone"
+              )}
             </span>
+
             <input
               type="tel"
               value={
@@ -486,12 +439,15 @@ function FieldEditor({
       return (
         <label className="block">
           <span className="text-sm font-semibold text-gray-700">
-            {medicalProfileFieldLabel(
-              fieldKey
+            {t(
+              `fields.${fieldKey}`
             )}
           </span>
+
           <textarea
-            value={value.text ?? ""}
+            value={
+              value.text ?? ""
+            }
             onChange={(event) =>
               setValue(
                 "text",
@@ -500,7 +456,9 @@ function FieldEditor({
             }
             rows={5}
             maxLength={5000}
-            placeholder="Câte un element pe rând, dacă este cazul."
+            placeholder={t(
+              "listPlaceholder"
+            )}
             className={`${inputClasses} resize-y`}
           />
         </label>
@@ -512,6 +470,16 @@ export default function PatientMedicalProfile({
   appointmentId,
   editable = false,
 }: Props) {
+  const locale =
+    normalizeAppLocale(
+      useLocale()
+    );
+
+  const t =
+    useTranslations(
+      "PatientPages.folder.profile"
+    );
+
   const [
     entries,
     setEntries,
@@ -582,8 +550,12 @@ export default function PatientMedicalProfile({
 
         if (!response.ok) {
           throw new Error(
-            payload.error ??
-              "Profilul medical nu a putut fi încărcat."
+            locale === "ro" &&
+            payload.error
+              ? payload.error
+              : t(
+                  "loadError"
+                )
           );
         }
 
@@ -594,12 +566,18 @@ export default function PatientMedicalProfile({
         setError(
           loadError instanceof Error
             ? loadError.message
-            : "Profilul medical nu a putut fi încărcat."
+            : t(
+                "loadError"
+              )
         );
       } finally {
         setIsLoading(false);
       }
-    }, [endpoint]);
+    }, [
+      endpoint,
+      locale,
+      t,
+    ]);
 
   useEffect(() => {
     void loadProfile();
@@ -611,9 +589,11 @@ export default function PatientMedicalProfile({
     setEditingField(
       entry.fieldKey
     );
+
     setDraftValue({
       ...entry.value,
     });
+
     setError("");
   }
 
@@ -654,42 +634,381 @@ export default function PatientMedicalProfile({
 
       if (!response.ok) {
         throw new Error(
-          payload.error ??
-            "Informația medicală nu a putut fi salvată."
+          locale === "ro" &&
+          payload.error
+            ? payload.error
+            : t(
+                "saveError"
+              )
         );
       }
 
       setEntries(
         payload.entries ?? []
       );
+
       setEditingField(null);
       setDraftValue({});
     } catch (saveError) {
       setError(
         saveError instanceof Error
           ? saveError.message
-          : "Informația medicală nu a putut fi salvată."
+          : t(
+              "saveError"
+            )
       );
     } finally {
       setSavingField(null);
     }
   }
 
+  function getSummary(
+    fieldKey: MedicalProfileFieldKey,
+    value: MedicalProfileValue
+  ) {
+    switch (fieldKey) {
+      case "date_of_birth": {
+        const date =
+          value.date ?? "";
+
+        if (!date) {
+          return t(
+            "notCompletedShort"
+          );
+        }
+
+        const age =
+          calculateAge(date);
+
+        const formattedDate =
+          formatDateValue(
+            date,
+            locale
+          );
+
+        return age === null
+          ? formattedDate
+          : t(
+              "dateWithAge",
+              {
+                date:
+                  formattedDate,
+                age,
+              }
+            );
+      }
+
+      case "sex":
+        if (
+          value.sex === "male"
+        ) {
+          return t(
+            "male"
+          );
+        }
+
+        if (
+          value.sex === "female"
+        ) {
+          return t(
+            "female"
+          );
+        }
+
+        return t(
+          "notCompletedShort"
+        );
+
+      case "blood_group": {
+        const group =
+          value.group ?? "";
+
+        const rh =
+          value.rh ?? "";
+
+        if (
+          !group ||
+          group === "unknown"
+        ) {
+          return t(
+            "unknownFeminine"
+          );
+        }
+
+        if (
+          !rh ||
+          rh === "unknown"
+        ) {
+          return t(
+            "rhUnknown",
+            {
+              group,
+            }
+          );
+        }
+
+        return `${group}${
+          rh === "positive"
+            ? "+"
+            : "-"
+        }`;
+      }
+
+      case "emergency_contact":
+      case "family_doctor":
+        return (
+          value.name ||
+          t(
+            "notCompletedShort"
+          )
+        );
+
+      default: {
+        const text =
+          value.text?.trim() ?? "";
+
+        if (!text) {
+          return t(
+            "notCompletedShort"
+          );
+        }
+
+        const firstLine =
+          text.split("\n")[0];
+
+        return firstLine.length > 90
+          ? `${firstLine.slice(0, 87)}...`
+          : firstLine;
+      }
+    }
+  }
+
+  function textOrEmpty(
+    value: string | undefined
+  ) {
+    return (
+      value?.trim() ||
+      t(
+        "notCompleted"
+      )
+    );
+  }
+
+  function renderFullValue(
+    fieldKey: MedicalProfileFieldKey,
+    value: MedicalProfileValue
+  ) {
+    switch (fieldKey) {
+      case "date_of_birth":
+        return (
+          <div className="space-y-[5px]">
+            <p className="text-gray-900">
+              {getSummary(
+                fieldKey,
+                value
+              )}
+            </p>
+
+            <p className="text-sm text-gray-500">
+              {t(
+                "ageAutomatic"
+              )}
+            </p>
+          </div>
+        );
+
+      case "sex":
+        return (
+          <p className="text-gray-900">
+            {getSummary(
+              fieldKey,
+              value
+            )}
+          </p>
+        );
+
+      case "blood_group": {
+        const group =
+          value.group ||
+          t(
+            "unknownFeminine"
+          );
+
+        const rh =
+          value.rh === "positive"
+            ? t(
+                "positive"
+              )
+            : value.rh === "negative"
+              ? t(
+                  "negative"
+                )
+              : t(
+                  "unknownMasculine"
+                );
+
+        return (
+          <dl className="grid gap-[13px] sm:grid-cols-2">
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {t(
+                  "group"
+                )}
+              </dt>
+
+              <dd className="mt-[5px] text-gray-900">
+                {group === "unknown"
+                  ? t(
+                      "unknownFeminine"
+                    )
+                  : group}
+              </dd>
+            </div>
+
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {t(
+                  "rhFactor"
+                )}
+              </dt>
+
+              <dd className="mt-[5px] text-gray-900">
+                {rh}
+              </dd>
+            </div>
+          </dl>
+        );
+      }
+
+      case "emergency_contact":
+        return (
+          <dl className="grid gap-[13px] sm:grid-cols-3">
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {t(
+                  "name"
+                )}
+              </dt>
+
+              <dd className="mt-[5px] text-gray-900">
+                {textOrEmpty(
+                  value.name
+                )}
+              </dd>
+            </div>
+
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {t(
+                  "relationship"
+                )}
+              </dt>
+
+              <dd className="mt-[5px] text-gray-900">
+                {textOrEmpty(
+                  value.relationship
+                )}
+              </dd>
+            </div>
+
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {t(
+                  "phone"
+                )}
+              </dt>
+
+              <dd className="mt-[5px] text-gray-900">
+                {textOrEmpty(
+                  value.phone
+                )}
+              </dd>
+            </div>
+          </dl>
+        );
+
+      case "family_doctor":
+        return (
+          <dl className="grid gap-[13px] sm:grid-cols-3">
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {t(
+                  "name"
+                )}
+              </dt>
+
+              <dd className="mt-[5px] text-gray-900">
+                {textOrEmpty(
+                  value.name
+                )}
+              </dd>
+            </div>
+
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {t(
+                  "clinic"
+                )}
+              </dt>
+
+              <dd className="mt-[5px] text-gray-900">
+                {textOrEmpty(
+                  value.clinic
+                )}
+              </dd>
+            </div>
+
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {t(
+                  "phone"
+                )}
+              </dt>
+
+              <dd className="mt-[5px] text-gray-900">
+                {textOrEmpty(
+                  value.phone
+                )}
+              </dd>
+            </div>
+          </dl>
+        );
+
+      default:
+        return (
+          <p className="whitespace-pre-wrap text-gray-900">
+            {textOrEmpty(
+              value.text
+            )}
+          </p>
+        );
+    }
+  }
+
   return (
-    <section className="mt-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="border-b border-gray-200 p-5 sm:p-6">
+    <section className="mt-[34px] overflow-hidden rounded-[21px] border border-gray-200 bg-white shadow-sm">
+      <div className="border-b border-gray-200 p-[21px] sm:p-[34px]">
         <p className="text-sm font-semibold text-[#036661]">
-          Informații esențiale
+          {t(
+            "eyebrow"
+          )}
         </p>
 
-        <h2 className="mt-1 text-2xl font-bold text-gray-900">
-          Profil medical
+        <h2 className="mt-[5px] text-2xl font-bold text-gray-900">
+          {t(
+            "title"
+          )}
         </h2>
 
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-          Deschide fiecare secțiune pentru a vedea informațiile complete.
+        <p className="mt-[8px] max-w-3xl text-sm leading-6 text-gray-600">
+          {t(
+            "description"
+          )}
+
           {editable
-            ? " Poți modifica fiecare secțiune separat."
+            ? ` ${t(
+                "editableDescription"
+              )}`
             : ""}
         </p>
       </div>
@@ -697,15 +1016,17 @@ export default function PatientMedicalProfile({
       {error && (
         <div
           role="alert"
-          className="m-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 sm:m-6"
+          className="m-[21px] rounded-[13px] border border-red-200 bg-red-50 p-[13px] text-sm text-red-800"
         >
           {error}
         </div>
       )}
 
       {isLoading ? (
-        <div className="p-6 text-sm text-gray-600">
-          Se încarcă profilul medical...
+        <div className="p-[21px] text-sm text-gray-600">
+          {t(
+            "loading"
+          )}
         </div>
       ) : (
         <div className="divide-y divide-gray-200">
@@ -738,14 +1059,16 @@ export default function PatientMedicalProfile({
                   key={field.key}
                   className="group"
                 >
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#036661] sm:px-6 [&::-webkit-details-marker]:hidden">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-[13px] px-[21px] py-[13px] transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#036661] [&::-webkit-details-marker]:hidden">
                     <span className="min-w-0">
                       <span className="block font-semibold text-gray-900">
-                        {field.label}
+                        {t(
+                          `fields.${field.key}`
+                        )}
                       </span>
 
-                      <span className="mt-1 block truncate text-sm text-gray-500">
-                        {medicalProfileSummary(
+                      <span className="mt-[5px] block truncate text-sm text-gray-500">
+                        {getSummary(
                           field.key,
                           entry.value
                         )}
@@ -756,7 +1079,7 @@ export default function PatientMedicalProfile({
                       aria-hidden="true"
                       viewBox="0 0 20 20"
                       fill="none"
-                      className="h-5 w-5 shrink-0 text-gray-500 transition-transform group-open:rotate-180"
+                      className="h-[21px] w-[21px] shrink-0 text-gray-500 transition-transform group-open:rotate-180"
                     >
                       <path
                         d="m5 7.5 5 5 5-5"
@@ -768,7 +1091,7 @@ export default function PatientMedicalProfile({
                     </svg>
                   </summary>
 
-                  <div className="border-t border-gray-100 bg-gray-50/60 px-5 py-5 sm:px-6">
+                  <div className="border-t border-gray-100 bg-gray-50/60 px-[21px] py-[21px]">
                     {isEditing ? (
                       <div>
                         <FieldEditor
@@ -783,7 +1106,7 @@ export default function PatientMedicalProfile({
                           }
                         />
 
-                        <div className="mt-4 flex flex-wrap gap-3">
+                        <div className="mt-[13px] flex flex-wrap gap-[8px]">
                           <button
                             type="button"
                             onClick={() =>
@@ -799,8 +1122,12 @@ export default function PatientMedicalProfile({
                           >
                             {savingField ===
                             field.key
-                              ? "Se salvează..."
-                              : "Salvează"}
+                              ? t(
+                                  "saving"
+                                )
+                              : t(
+                                  "save"
+                                )}
                           </button>
 
                           <button
@@ -820,25 +1147,38 @@ export default function PatientMedicalProfile({
                             }
                             className="romdoc-button romdoc-button-secondary romdoc-button-sm"
                           >
-                            Renunță
+                            {t(
+                              "cancel"
+                            )}
                           </button>
                         </div>
                       </div>
                     ) : (
                       <>
-                        {fullValue(
+                        {renderFullValue(
                           field.key,
                           entry.value
                         )}
 
-                        <div className="mt-4 flex flex-col justify-between gap-3 border-t border-gray-200 pt-4 sm:flex-row sm:items-center">
+                        <div className="mt-[13px] flex flex-col justify-between gap-[13px] border-t border-gray-200 pt-[13px] sm:flex-row sm:items-center">
                           <p className="text-xs text-gray-500">
                             {entry.lastModifiedByDoctor &&
                             entry.lastModifiedAt
-                              ? `Ultima modificare de ${entry.lastModifiedByDoctor}, la ${formatAuditDate(
-                                  entry.lastModifiedAt
-                                )}.`
-                              : "Nu există încă modificări înregistrate."}
+                              ? t(
+                                  "lastModified",
+                                  {
+                                    doctor:
+                                      entry.lastModifiedByDoctor,
+                                    date:
+                                      formatAuditDate(
+                                        entry.lastModifiedAt,
+                                        locale
+                                      ),
+                                  }
+                                )
+                              : t(
+                                  "noChanges"
+                                )}
                           </p>
 
                           {editable && (
@@ -851,7 +1191,9 @@ export default function PatientMedicalProfile({
                               }
                               className="w-fit text-sm font-semibold text-[#036661] underline-offset-4 hover:underline"
                             >
-                              Editează
+                              {t(
+                                "edit"
+                              )}
                             </button>
                           )}
                         </div>

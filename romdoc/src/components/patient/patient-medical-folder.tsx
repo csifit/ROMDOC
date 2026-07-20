@@ -1,13 +1,21 @@
 "use client";
 
-import PatientDocumentSharing from "@/components/patient/patient-document-sharing";
-
+import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
 import {
   useCallback,
   useEffect,
   useMemo,
   useState,
 } from "react";
+
+import PatientDocumentSharing from "@/components/patient/patient-document-sharing";
+import {
+  type AppLocale,
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
 
 type DocumentType =
   | "consultation_note"
@@ -43,51 +51,31 @@ type FolderResponse = {
   error?: string;
 };
 
-const documentLabels:
-  Record<DocumentType, string> = {
-    consultation_note:
-      "Notă de consultație",
-    prescription:
-      "Rețetă",
-    laboratory_result:
-      "Rezultat de laborator",
-    imaging_result:
-      "Rezultat imagistic",
-    referral:
-      "Trimitere",
-    medical_certificate:
-      "Adeverință medicală",
-    discharge_summary:
-      "Scrisoare medicală",
-    other:
-      "Alt document",
-  };
-
-const filterOptions:
-  Array<{
-    value: "all" | DocumentType;
-    label: string;
-  }> = [
-    {
-      value: "all",
-      label: "Toate",
-    },
-    ...Object.entries(
-      documentLabels
-    ).map(
-      ([value, label]) => ({
-        value:
-          value as DocumentType,
-        label,
-      })
-    ),
+const DOCUMENT_TYPES:
+  DocumentType[] = [
+    "consultation_note",
+    "prescription",
+    "laboratory_result",
+    "imaging_result",
+    "referral",
+    "medical_certificate",
+    "discharge_summary",
+    "other",
   ];
 
+const INTL_LOCALE:
+  Record<AppLocale, string> = {
+    ro: "ro-RO",
+    en: "en-GB",
+    de: "de-DE",
+  };
+
 function formatDate(
-  value: string
+  value: string,
+  locale: AppLocale
 ) {
   return new Intl.DateTimeFormat(
-    "ro-RO",
+    INTL_LOCALE[locale],
     {
       day: "2-digit",
       month: "long",
@@ -99,14 +87,15 @@ function formatDate(
 }
 
 function formatAppointmentDate(
-  value: string | null
+  value: string | null,
+  locale: AppLocale
 ) {
   if (!value) {
     return null;
   }
 
   return new Intl.DateTimeFormat(
-    "ro-RO",
+    INTL_LOCALE[locale],
     {
       day: "2-digit",
       month: "long",
@@ -120,25 +109,48 @@ function formatAppointmentDate(
 }
 
 function formatFileSize(
-  bytes: number
+  bytes: number,
+  locale: AppLocale
 ) {
   if (bytes < 1024) {
     return `${bytes} B`;
   }
 
-  if (bytes < 1024 * 1024) {
-    return `${(
+  const formatter =
+    new Intl.NumberFormat(
+      INTL_LOCALE[locale],
+      {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      }
+    );
+
+  if (
+    bytes <
+    1024 * 1024
+  ) {
+    return `${formatter.format(
       bytes / 1024
-    ).toFixed(1)} KB`;
+    )} KB`;
   }
 
-  return `${(
+  return `${formatter.format(
     bytes /
-    (1024 * 1024)
-  ).toFixed(1)} MB`;
+      (1024 * 1024)
+  )} MB`;
 }
 
 export default function PatientMedicalFolder() {
+  const locale =
+    normalizeAppLocale(
+      useLocale()
+    );
+
+  const t =
+    useTranslations(
+      "PatientPages.folder.documents"
+    );
+
   const [
     documents,
     setDocuments,
@@ -153,8 +165,10 @@ export default function PatientMedicalFolder() {
     "all" | DocumentType
   >("all");
 
-  const [search, setSearch] =
-    useState("");
+  const [
+    search,
+    setSearch,
+  ] = useState("");
 
   const [
     isLoading,
@@ -175,8 +189,56 @@ export default function PatientMedicalFolder() {
     string | null
   >(null);
 
-  const [error, setError] =
-    useState("");
+  const [
+    error,
+    setError,
+  ] = useState("");
+
+  const documentLabels =
+    useMemo(
+      () =>
+        Object.fromEntries(
+          DOCUMENT_TYPES.map(
+            (type) => [
+              type,
+              t(
+                `types.${type}`
+              ),
+            ]
+          )
+        ) as Record<
+          DocumentType,
+          string
+        >,
+      [t]
+    );
+
+  const filterOptions =
+    useMemo(
+      () => [
+        {
+          value:
+            "all" as const,
+          label:
+            t(
+              "all"
+            ),
+        },
+        ...DOCUMENT_TYPES.map(
+          (type) => ({
+            value: type,
+            label:
+              documentLabels[
+                type
+              ],
+          })
+        ),
+      ],
+      [
+        documentLabels,
+        t,
+      ]
+    );
 
   const loadDocuments =
     useCallback(async () => {
@@ -194,29 +256,38 @@ export default function PatientMedicalFolder() {
           );
 
         const payload =
-          (await response.json()) as FolderResponse;
+          (await response.json()) as
+            FolderResponse;
 
         if (!response.ok) {
           throw new Error(
-            payload.error ??
-              "Dosarul medical nu a putut fi încărcat."
+            locale === "ro" &&
+            payload.error
+              ? payload.error
+              : t(
+                  "loadError"
+                )
           );
         }
 
         setDocuments(
-          payload.documents ??
-            []
+          payload.documents ?? []
         );
       } catch (loadError) {
         setError(
           loadError instanceof Error
             ? loadError.message
-            : "Dosarul medical nu a putut fi încărcat."
+            : t(
+                "loadError"
+              )
         );
       } finally {
         setIsLoading(false);
       }
-    }, []);
+    }, [
+      locale,
+      t,
+    ]);
 
   useEffect(() => {
     void loadDocuments();
@@ -228,7 +299,7 @@ export default function PatientMedicalFolder() {
         search
           .trim()
           .toLocaleLowerCase(
-            "ro"
+            locale
           );
 
       return documents.filter(
@@ -256,7 +327,7 @@ export default function PatientMedicalFolder() {
             .some((value) =>
               value
                 ?.toLocaleLowerCase(
-                  "ro"
+                  locale
                 )
                 .includes(
                   normalizedSearch
@@ -266,6 +337,7 @@ export default function PatientMedicalFolder() {
       );
     }, [
       documents,
+      locale,
       search,
       selectedType,
     ]);
@@ -295,15 +367,20 @@ export default function PatientMedicalFolder() {
         );
 
       const payload =
-        await response.json() as FolderResponse;
+        await response.json() as
+          FolderResponse;
 
       if (
         !response.ok ||
         !payload.signedUrl
       ) {
         throw new Error(
-          payload.error ??
-            "Documentul nu a putut fi descărcat."
+          locale === "ro" &&
+          payload.error
+            ? payload.error
+            : t(
+                "downloadError"
+              )
         );
       }
 
@@ -314,12 +391,12 @@ export default function PatientMedicalFolder() {
       setError(
         downloadError instanceof Error
           ? downloadError.message
-          : "Documentul nu a putut fi descărcat."
+          : t(
+              "downloadError"
+            )
       );
     } finally {
-      setDownloadingId(
-        null
-      );
+      setDownloadingId(null);
     }
   }
 
@@ -350,11 +427,16 @@ export default function PatientMedicalFolder() {
 
       if (!response.ok) {
         const payload =
-          (await response.json()) as FolderResponse;
+          (await response.json()) as
+            FolderResponse;
 
         throw new Error(
-          payload.error ??
-            "PDF-ul nu a putut fi generat."
+          locale === "ro" &&
+          payload.error
+            ? payload.error
+            : t(
+                "pdfError"
+              )
         );
       }
 
@@ -381,31 +463,32 @@ export default function PatientMedicalFolder() {
 
       anchor.click();
       anchor.remove();
-
       URL.revokeObjectURL(url);
     } catch (pdfError) {
       setError(
         pdfError instanceof Error
           ? pdfError.message
-          : "PDF-ul nu a putut fi generat."
+          : t(
+              "pdfError"
+            )
       );
     } finally {
-      setGeneratingPdfId(
-        null
-      );
+      setGeneratingPdfId(null);
     }
   }
 
   return (
-    <section className="mt-8">
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+    <section className="mt-[34px]">
+      <div className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
+        <div className="grid gap-[13px] lg:grid-cols-[minmax(0,1fr)_377px]">
           <div>
             <label
               htmlFor="folder-search"
               className="text-sm font-semibold text-gray-800"
             >
-              Caută în Dosar
+              {t(
+                "searchLabel"
+              )}
             </label>
 
             <input
@@ -417,8 +500,10 @@ export default function PatientMedicalFolder() {
                   event.target.value
                 )
               }
-              placeholder="Titlu, medic sau fișier"
-              className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm"
+              placeholder={t(
+                "searchPlaceholder"
+              )}
+              className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] text-sm"
             />
           </div>
 
@@ -427,7 +512,9 @@ export default function PatientMedicalFolder() {
               htmlFor="folder-type"
               className="text-sm font-semibold text-gray-800"
             >
-              Tip document
+              {t(
+                "typeLabel"
+              )}
             </label>
 
             <select
@@ -440,17 +527,13 @@ export default function PatientMedicalFolder() {
                     | DocumentType
                 )
               }
-              className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm"
+              className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] text-sm"
             >
               {filterOptions.map(
                 (option) => (
                   <option
-                    key={
-                      option.value
-                    }
-                    value={
-                      option.value
-                    }
+                    key={option.value}
+                    value={option.value}
                   >
                     {option.label}
                   </option>
@@ -464,96 +547,118 @@ export default function PatientMedicalFolder() {
       {error && (
         <div
           role="alert"
-          className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+          className="mt-[21px] rounded-[13px] border border-red-200 bg-red-50 p-[13px] text-sm text-red-800"
         >
           {error}
         </div>
       )}
 
       {isLoading ? (
-        <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-8 text-sm text-gray-600 shadow-sm">
-          Se încarcă Dosarul medical...
+        <div className="mt-[21px] rounded-[21px] border border-gray-200 bg-white p-[34px] text-sm text-gray-600 shadow-sm">
+          {t(
+            "loading"
+          )}
         </div>
-      ) : documents.length ===
-        0 ? (
-        <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+      ) : documents.length === 0 ? (
+        <div className="mt-[21px] rounded-[21px] border border-gray-200 bg-white p-[34px] shadow-sm">
           <h2 className="text-xl font-bold text-gray-900">
-            Dosarul este gol
+            {t(
+              "emptyTitle"
+            )}
           </h2>
 
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-600">
-            Documentele și notele medicale adăugate de medicii tăi vor apărea aici.
+          <p className="mt-[13px] max-w-2xl text-sm leading-6 text-gray-600">
+            {t(
+              "emptyDescription"
+            )}
           </p>
         </div>
-      ) : visibleDocuments.length ===
-        0 ? (
-        <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-8 text-sm text-gray-600 shadow-sm">
-          Nu există documente care corespund filtrelor selectate.
+      ) : visibleDocuments.length === 0 ? (
+        <div className="mt-[21px] rounded-[21px] border border-gray-200 bg-white p-[34px] text-sm text-gray-600 shadow-sm">
+          {t(
+            "noMatches"
+          )}
         </div>
       ) : (
-        <div className="mt-6 grid gap-5 lg:grid-cols-2">
+        <div className="mt-[21px] grid gap-[21px] lg:grid-cols-2">
           {visibleDocuments.map(
-            (document) => {
+            (medicalDocument) => {
               const appointmentDate =
                 formatAppointmentDate(
-                  document.appointmentDate
+                  medicalDocument.appointmentDate,
+                  locale
                 );
 
               return (
                 <article
-                  key={document.id}
-                  className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+                  key={
+                    medicalDocument.id
+                  }
+                  className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm"
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex flex-wrap items-start justify-between gap-[13px]">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-[#036661]">
                         {
                           documentLabels[
-                            document.documentType
+                            medicalDocument.documentType
                           ]
                         }
                       </p>
 
-                      <h2 className="mt-2 text-xl font-bold text-gray-900">
-                        {document.title}
+                      <h2 className="mt-[8px] text-xl font-bold text-gray-900">
+                        {
+                          medicalDocument.title
+                        }
                       </h2>
                     </div>
 
-                    <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
-                      {document.contentFormat ===
+                    <span className="rounded-full bg-gray-100 px-[13px] py-[5px] text-xs font-semibold text-gray-700">
+                      {medicalDocument.contentFormat ===
                       "text"
-                        ? "Notă"
-                        : "Fișier"}
+                        ? t(
+                            "note"
+                          )
+                        : t(
+                            "file"
+                          )}
                     </span>
                   </div>
 
-                  {document.description && (
-                    <p className="mt-4 text-sm leading-6 text-gray-600">
+                  {medicalDocument.description && (
+                    <p className="mt-[13px] text-sm leading-6 text-gray-600">
                       {
-                        document.description
+                        medicalDocument.description
                       }
                     </p>
                   )}
 
-                  <dl className="mt-5 grid gap-4 border-t border-gray-200 pt-5 text-sm sm:grid-cols-2">
+                  <dl className="mt-[21px] grid gap-[13px] border-t border-gray-200 pt-[21px] text-sm sm:grid-cols-2">
                     <div>
                       <dt className="font-medium text-gray-500">
-                        Medic
+                        {t(
+                          "doctor"
+                        )}
                       </dt>
-                      <dd className="mt-1 text-gray-900">
+
+                      <dd className="mt-[5px] text-gray-900">
                         {
-                          document.doctorName
+                          medicalDocument.doctorName
                         }
                       </dd>
                     </div>
 
                     <div>
                       <dt className="font-medium text-gray-500">
-                        Adăugat la
+                        {t(
+                          "addedAt"
+                        )}
                       </dt>
-                      <dd className="mt-1 text-gray-900">
+
+                      <dd className="mt-[5px] text-gray-900">
                         {formatDate(
-                          document.createdAt
+                          medicalDocument.createdAt,
+                          locale
                         )}
                       </dd>
                     </div>
@@ -561,9 +666,12 @@ export default function PatientMedicalFolder() {
                     {appointmentDate && (
                       <div>
                         <dt className="font-medium text-gray-500">
-                          Consultație
+                          {t(
+                            "consultation"
+                          )}
                         </dt>
-                        <dd className="mt-1 text-gray-900">
+
+                        <dd className="mt-[5px] text-gray-900">
                           {
                             appointmentDate
                           }
@@ -571,82 +679,96 @@ export default function PatientMedicalFolder() {
                       </div>
                     )}
 
-                    {document.contentFormat ===
+                    {medicalDocument.contentFormat ===
                       "file" && (
                       <div>
                         <dt className="font-medium text-gray-500">
-                          Fișier
+                          {t(
+                            "file"
+                          )}
                         </dt>
-                        <dd className="mt-1 break-all text-gray-900">
+
+                        <dd className="mt-[5px] break-all text-gray-900">
                           {
-                            document.originalFileName
+                            medicalDocument.originalFileName
                           }
                           {" · "}
                           {formatFileSize(
-                            document.fileSizeBytes
+                            medicalDocument.fileSizeBytes,
+                            locale
                           )}
                         </dd>
                       </div>
                     )}
                   </dl>
 
-                  {document.contentFormat ===
+                  {medicalDocument.contentFormat ===
                     "text" &&
-                    document.contentText && (
-                      <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50 p-4">
+                    medicalDocument.contentText && (
+                      <div className="mt-[21px] rounded-[13px] border border-blue-100 bg-blue-50 p-[13px]">
                         <p className="whitespace-pre-line text-sm leading-7 text-blue-950">
                           {
-                            document.contentText
+                            medicalDocument.contentText
                           }
                         </p>
                       </div>
                     )}
 
-                  {document.contentFormat ===
+                  {medicalDocument.contentFormat ===
                     "text" && (
                     <button
                       type="button"
                       disabled={
                         generatingPdfId ===
-                        document.id
+                        medicalDocument.id
                       }
                       onClick={() =>
                         void generatePdf(
-                          document.id,
-                          document.title
+                          medicalDocument.id,
+                          medicalDocument.title
                         )
                       }
-                      className="romdoc-button romdoc-button-primary mt-5"
+                      className="romdoc-button romdoc-button-primary mt-[21px]"
                     >
                       {generatingPdfId ===
-                      document.id
-                        ? "Se generează..."
-                        : "Descarcă nota ca PDF"}
+                      medicalDocument.id
+                        ? t(
+                            "generating"
+                          )
+                        : t(
+                            "downloadNotePdf"
+                          )}
                     </button>
                   )}
 
                   <PatientDocumentSharing
-                    documentId={document.id}
+                    documentId={
+                      medicalDocument.id
+                    }
                   />
 
-                  {document.canDownload && (
+                  {medicalDocument.canDownload && (
                     <button
                       type="button"
                       disabled={
                         downloadingId ===
-                        document.id
+                        medicalDocument.id
                       }
                       onClick={() =>
                         void downloadDocument(
-                          document.id
+                          medicalDocument.id
                         )
                       }
-                      className="romdoc-button romdoc-button-primary mt-5"
+                      className="romdoc-button romdoc-button-primary mt-[21px]"
                     >
                       {downloadingId ===
-                      document.id
-                        ? "Se pregătește..."
-                        : "Descarcă documentul"}
+                      medicalDocument.id
+                        ? t(
+                            "preparing"
+                          )
+                        : t(
+                            "downloadDocument"
+                          )}
                     </button>
                   )}
                 </article>

@@ -1,13 +1,22 @@
 "use client";
 
 import {
-  ChangeEvent,
-  FormEvent,
+  useLocale,
+  useTranslations,
+} from "next-intl";
+import {
+  type ChangeEvent,
+  type FormEvent,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
+
+import {
+  type AppLocale,
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
 
 type AppointmentMessageAttachment = {
   id: string;
@@ -55,11 +64,19 @@ const ALLOWED_FILE_TYPES =
     "image/webp",
   ]);
 
+const INTL_LOCALE:
+  Record<AppLocale, string> = {
+    ro: "ro-RO",
+    en: "en-GB",
+    de: "de-DE",
+  };
+
 function formatDateTime(
-  value: string
+  value: string,
+  locale: AppLocale
 ) {
   return new Intl.DateTimeFormat(
-    "ro-RO",
+    INTL_LOCALE[locale],
     {
       day: "2-digit",
       month: "short",
@@ -94,99 +111,78 @@ function formatFileSize(
   ).toFixed(1)} MB`;
 }
 
-function validateFiles(
-  files: File[]
+function getRoleKey(
+  role: string | null
 ) {
-  if (
-    files.length >
-    MAX_FILES
-  ) {
-    return `Poți atașa maximum ${MAX_FILES} fișiere la un mesaj.`;
+  switch (role) {
+    case "patient":
+    case "doctor":
+    case "staff":
+    case "admin":
+    case "manager":
+    case "clinic_manager":
+    case "system":
+      return role;
+    default:
+      return null;
   }
-
-  for (
-    const file of
-    files
-  ) {
-    if (
-      !ALLOWED_FILE_TYPES.has(
-        file.type
-      )
-    ) {
-      return "Poți atașa doar PDF, JPG, PNG sau WEBP.";
-    }
-
-    if (
-      file.size >
-      MAX_FILE_SIZE_BYTES
-    ) {
-      return "Fiecare fișier poate avea maximum 10 MB.";
-    }
-  }
-
-  return null;
 }
 
 export default function AppointmentMessages({
   appointmentId,
 }: AppointmentMessagesProps) {
+  const locale =
+    normalizeAppLocale(
+      useLocale()
+    );
+
+  const t =
+    useTranslations(
+      "PatientPages.messages.thread"
+    );
+
   const [
     messages,
     setMessages,
-  ] =
-    useState<
-      AppointmentMessage[]
-    >([]);
+  ] = useState<
+    AppointmentMessage[]
+  >([]);
 
   const [
     viewerProfileId,
     setViewerProfileId,
-  ] =
-    useState("");
+  ] = useState("");
 
   const [
     canSend,
     setCanSend,
-  ] =
-    useState(true);
+  ] = useState(true);
 
-  const [
-    body,
-    setBody,
-  ] =
+  const [body, setBody] =
     useState("");
 
-  const [
-    files,
-    setFiles,
-  ] =
-    useState<File[]>(
-      []
-    );
+  const [files, setFiles] =
+    useState<File[]>([]);
 
   const [
     isLoading,
     setIsLoading,
-  ] =
-    useState(true);
+  ] = useState(true);
 
   const [
     isSubmitting,
     setIsSubmitting,
-  ] =
-    useState(false);
+  ] = useState(false);
 
   const [
     errorMessage,
     setErrorMessage,
-  ] =
-    useState("");
+  ] = useState("");
 
   const [
     successMessage,
     setSuccessMessage,
-  ] =
-    useState("");
+  ] = useState("");
 
   const fileInputRef =
     useRef<HTMLInputElement | null>(
@@ -202,37 +198,70 @@ export default function AppointmentMessages({
     useMemo(
       () =>
         `/api/appointments/${appointmentId}/messages`,
-      [
-        appointmentId,
-      ]
+      [appointmentId]
     );
+
+  function validateFiles(
+    selectedFiles: File[]
+  ) {
+    if (
+      selectedFiles.length >
+      MAX_FILES
+    ) {
+      return t(
+        "maxFiles",
+        {
+          count:
+            MAX_FILES,
+        }
+      );
+    }
+
+    for (
+      const file of
+        selectedFiles
+    ) {
+      if (
+        !ALLOWED_FILE_TYPES.has(
+          file.type
+        )
+      ) {
+        return t(
+          "allowedTypes"
+        );
+      }
+
+      if (
+        file.size >
+        MAX_FILE_SIZE_BYTES
+      ) {
+        return t(
+          "maxFileSize"
+        );
+      }
+    }
+
+    return null;
+  }
 
   async function loadMessages({
     showLoader = true,
   }: {
     showLoader?: boolean;
   } = {}) {
-    if (
-      showLoader
-    ) {
-      setIsLoading(
-        true
-      );
+    if (showLoader) {
+      setIsLoading(true);
     }
 
-    setErrorMessage(
-      ""
-    );
+    setErrorMessage("");
 
     try {
       const response =
         await fetch(
           endpoint,
           {
-            method:
-              "GET",
-            cache:
-              "no-store",
+            method: "GET",
+            cache: "no-store",
           }
         );
 
@@ -240,12 +269,14 @@ export default function AppointmentMessages({
         (await response.json()) as
           MessagesApiResponse;
 
-      if (
-        !response.ok
-      ) {
+      if (!response.ok) {
         throw new Error(
-          result.error ??
-            "Mesajele nu au putut fi încărcate."
+          locale === "ro" &&
+          result.error
+            ? result.error
+            : t(
+                "loadError"
+              )
         );
       }
 
@@ -263,22 +294,17 @@ export default function AppointmentMessages({
         result.canSend ??
           false
       );
-    } catch (
-      error
-    ) {
+    } catch (error) {
       setErrorMessage(
-        error instanceof
-          Error
+        error instanceof Error
           ? error.message
-          : "Mesajele nu au putut fi încărcate."
+          : t(
+              "loadError"
+            )
       );
     } finally {
-      if (
-        showLoader
-      ) {
-        setIsLoading(
-          false
-        );
+      if (showLoader) {
+        setIsLoading(false);
       }
     }
   }
@@ -286,23 +312,19 @@ export default function AppointmentMessages({
   useEffect(() => {
     void loadMessages();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    endpoint,
-  ]);
+  }, [endpoint]);
 
   useEffect(() => {
-    conversationEndRef.current?.scrollIntoView({
-      behavior:
-        "smooth",
-      block:
-        "nearest",
-    });
-  }, [
-    messages.length,
-  ]);
+    conversationEndRef.current
+      ?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+  }, [messages.length]);
 
   function handleFileChange(
-    event: ChangeEvent<HTMLInputElement>
+    event:
+      ChangeEvent<HTMLInputElement>
   ) {
     const selectedFiles =
       Array.from(
@@ -315,44 +337,34 @@ export default function AppointmentMessages({
         selectedFiles
       );
 
-    if (
-      validationError
-    ) {
+    if (validationError) {
       setErrorMessage(
         validationError
       );
-
-      setFiles(
-        []
-      );
-
+      setFiles([]);
       event.target.value =
         "";
-
       return;
     }
 
-    setErrorMessage(
-      ""
-    );
-
+    setErrorMessage("");
     setFiles(
       selectedFiles
     );
   }
 
   async function handleSubmit(
-    event: FormEvent<HTMLFormElement>
+    event:
+      FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
-    if (
-      !canSend
-    ) {
+    if (!canSend) {
       setErrorMessage(
-        "Mesajele nu sunt disponibile pentru această programare."
+        t(
+          "unavailable"
+        )
       );
-
       return;
     }
 
@@ -362,42 +374,29 @@ export default function AppointmentMessages({
     if (
       trimmedBody.length ===
         0 &&
-      files.length ===
-        0
+      files.length === 0
     ) {
       setErrorMessage(
-        "Scrie un mesaj sau atașează cel puțin un fișier."
+        t(
+          "messageOrFileRequired"
+        )
       );
-
       return;
     }
 
     const validationError =
-      validateFiles(
-        files
-      );
+      validateFiles(files);
 
-    if (
-      validationError
-    ) {
+    if (validationError) {
       setErrorMessage(
         validationError
       );
-
       return;
     }
 
-    setIsSubmitting(
-      true
-    );
-
-    setErrorMessage(
-      ""
-    );
-
-    setSuccessMessage(
-      ""
-    );
+    setIsSubmitting(true);
+    setErrorMessage("");
+    setSuccessMessage("");
 
     try {
       const formData =
@@ -409,9 +408,7 @@ export default function AppointmentMessages({
       );
 
       files.forEach(
-        (
-          file
-        ) => {
+        (file) => {
           formData.append(
             "attachments",
             file
@@ -423,10 +420,8 @@ export default function AppointmentMessages({
         await fetch(
           endpoint,
           {
-            method:
-              "POST",
-            body:
-              formData,
+            method: "POST",
+            body: formData,
           }
         );
 
@@ -434,12 +429,14 @@ export default function AppointmentMessages({
         (await response.json()) as
           MessagesApiResponse;
 
-      if (
-        !response.ok
-      ) {
+      if (!response.ok) {
         throw new Error(
-          result.error ??
-            "Mesajul nu a putut fi trimis."
+          locale === "ro" &&
+          result.error
+            ? result.error
+            : t(
+                "sendError"
+              )
         );
       }
 
@@ -458,16 +455,12 @@ export default function AppointmentMessages({
           canSend
       );
 
-      setBody(
-        ""
-      );
-
-      setFiles(
-        []
-      );
-
+      setBody("");
+      setFiles([]);
       setSuccessMessage(
-        "Mesajul a fost trimis."
+        t(
+          "sent"
+        )
       );
 
       if (
@@ -476,19 +469,16 @@ export default function AppointmentMessages({
         fileInputRef.current.value =
           "";
       }
-    } catch (
-      error
-    ) {
+    } catch (error) {
       setErrorMessage(
-        error instanceof
-          Error
+        error instanceof Error
           ? error.message
-          : "Mesajul nu a putut fi trimis."
+          : t(
+              "sendError"
+            )
       );
     } finally {
-      setIsSubmitting(
-        false
-      );
+      setIsSubmitting(false);
     }
   }
 
@@ -497,15 +487,21 @@ export default function AppointmentMessages({
       <div className="flex flex-col gap-[13px] sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-[#036661]">
-            Mesaje programare
+            {t(
+              "eyebrow"
+            )}
           </p>
 
           <h2 className="mt-[5px] text-2xl font-bold text-gray-900">
-            Discuție legată de programare
+            {t(
+              "title"
+            )}
           </h2>
 
           <p className="mt-[8px] max-w-2xl text-sm leading-6 text-gray-600">
-            Folosește conversația pentru detalii administrative, documente și informații legate de programare.
+            {t(
+              "description"
+            )}
           </p>
         </div>
 
@@ -522,12 +518,16 @@ export default function AppointmentMessages({
           }
           className="romdoc-focus-ring inline-flex min-h-[34px] w-fit items-center rounded-[13px] border border-gray-300 bg-white px-[13px] py-[8px] text-sm font-semibold text-gray-700 transition hover:border-[#036661] hover:text-[#036661] disabled:opacity-60"
         >
-          Reîncarcă
+          {t(
+            "reload"
+          )}
         </button>
       </div>
 
       <div className="mt-[13px] rounded-[13px] border border-amber-200 bg-amber-50 px-[13px] py-[8px] text-xs leading-5 text-amber-900">
-        Nu folosi mesajele pentru urgențe medicale. În caz de urgență, apelează 112.
+        {t(
+          "emergency"
+        )}
       </div>
 
       <div
@@ -536,22 +536,36 @@ export default function AppointmentMessages({
       >
         {isLoading ? (
           <p className="text-sm text-gray-600">
-            Se încarcă mesajele...
+            {t(
+              "loading"
+            )}
           </p>
         ) : messages.length ===
           0 ? (
           <p className="text-sm text-gray-600">
-            Nu există încă mesaje pentru această programare.
+            {t(
+              "empty"
+            )}
           </p>
         ) : (
           <div className="space-y-[13px]">
             {messages.map(
-              (
-                message
-              ) => {
+              (message) => {
                 const isOwn =
                   message.senderProfileId ===
                   viewerProfileId;
+
+                const roleKey =
+                  getRoleKey(
+                    message.senderRole
+                  );
+
+                const roleLabel =
+                  roleKey
+                    ? t(
+                        `roles.${roleKey}`
+                      )
+                    : message.senderRoleLabel;
 
                 return (
                   <article
@@ -568,17 +582,18 @@ export default function AppointmentMessages({
                       <div>
                         <p className="font-semibold text-gray-900">
                           {isOwn
-                            ? "Tu"
+                            ? t(
+                                "you"
+                              )
                             : message.senderName}
                         </p>
 
                         <p className="mt-[3px] text-xs text-gray-500">
-                          {
-                            message.senderRoleLabel
-                          }{" "}
+                          {roleLabel}{" "}
                           ·{" "}
                           {formatDateTime(
-                            message.createdAt
+                            message.createdAt,
+                            locale
                           )}
                         </p>
                       </div>
@@ -596,9 +611,7 @@ export default function AppointmentMessages({
                       0 && (
                       <div className="mt-[13px] space-y-[8px]">
                         {message.attachments.map(
-                          (
-                            attachment
-                          ) => (
+                          (attachment) => (
                             <div
                               key={
                                 attachment.id
@@ -628,11 +641,15 @@ export default function AppointmentMessages({
                                   rel="noreferrer"
                                   className="romdoc-focus-ring inline-flex min-h-[34px] items-center rounded-[13px] border border-gray-300 px-[13px] py-[5px] text-sm font-semibold text-gray-700 transition hover:border-[#036661] hover:text-[#036661]"
                                 >
-                                  Deschide
+                                  {t(
+                                    "open"
+                                  )}
                                 </a>
                               ) : (
                                 <span className="text-xs text-gray-500">
-                                  Link indisponibil
+                                  {t(
+                                    "linkUnavailable"
+                                  )}
                                 </span>
                               )}
                             </div>
@@ -659,9 +676,7 @@ export default function AppointmentMessages({
           role="alert"
           className="mt-[13px] rounded-[13px] border border-red-200 bg-red-50 p-[13px] text-sm text-red-800"
         >
-          {
-            errorMessage
-          }
+          {errorMessage}
         </div>
       )}
 
@@ -670,9 +685,7 @@ export default function AppointmentMessages({
           role="status"
           className="mt-[13px] rounded-[13px] border border-green-200 bg-green-50 p-[13px] text-sm text-green-800"
         >
-          {
-            successMessage
-          }
+          {successMessage}
         </div>
       )}
 
@@ -685,42 +698,37 @@ export default function AppointmentMessages({
         >
           <label className="block">
             <span className="text-sm font-semibold text-gray-700">
-              Mesaj
+              {t(
+                "message"
+              )}
             </span>
 
             <textarea
               rows={5}
-              maxLength={
-                4000
-              }
-              value={
-                body
-              }
-              onChange={(
-                event
-              ) => {
+              maxLength={4000}
+              value={body}
+              onChange={(event) => {
                 setBody(
                   event.target.value
                 );
-
-                setSuccessMessage(
-                  ""
-                );
+                setSuccessMessage("");
               }}
-              placeholder="Scrie un mesaj legat de această programare..."
+              placeholder={t(
+                "placeholder"
+              )}
               className="romdoc-focus-ring mt-[8px] w-full resize-y rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] text-gray-900"
             />
           </label>
 
           <label className="mt-[13px] block">
             <span className="text-sm font-semibold text-gray-700">
-              Atașamente opționale
+              {t(
+                "optionalAttachments"
+              )}
             </span>
 
             <input
-              ref={
-                fileInputRef
-              }
+              ref={fileInputRef}
               type="file"
               multiple
               accept="application/pdf,image/jpeg,image/png,image/webp"
@@ -732,22 +740,19 @@ export default function AppointmentMessages({
           </label>
 
           <p className="mt-[8px] text-xs leading-5 text-gray-500">
-            Maximum 5 fișiere PDF, JPG, PNG sau WEBP; maximum 10 MB fiecare.
+            {t(
+              "attachmentHelp"
+            )}
           </p>
 
-          {files.length >
-            0 && (
+          {files.length > 0 && (
             <ul className="mt-[8px] space-y-[5px] text-sm text-gray-600">
               {files.map(
-                (
-                  file
-                ) => (
+                (file) => (
                   <li
                     key={`${file.name}-${file.size}`}
                   >
-                    {
-                      file.name
-                    }{" "}
+                    {file.name}{" "}
                     ·{" "}
                     {formatFileSize(
                       file.size
@@ -766,13 +771,19 @@ export default function AppointmentMessages({
             className="romdoc-focus-ring mt-[21px] inline-flex min-h-[55px] items-center justify-center rounded-[13px] bg-[#036661] px-[21px] py-[13px] text-sm font-semibold text-white transition hover:bg-[#ff2800] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting
-              ? "Se trimite..."
-              : "Trimite mesajul"}
+              ? t(
+                  "sending"
+                )
+              : t(
+                  "send"
+                )}
           </button>
         </form>
       ) : (
         <div className="mt-[21px] rounded-[13px] border border-gray-200 bg-gray-50 p-[13px] text-sm text-gray-600">
-          Conversația este disponibilă numai pentru citire.
+          {t(
+            "readOnly"
+          )}
         </div>
       )}
     </section>

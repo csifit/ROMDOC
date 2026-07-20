@@ -2,10 +2,19 @@
 
 import Link from "next/link";
 import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
+import {
   useCallback,
   useEffect,
   useState,
 } from "react";
+
+import {
+  type AppLocale,
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
 
 type ClosureResponse = {
   success?: boolean;
@@ -16,11 +25,19 @@ type ClosureResponse = {
   error?: string;
 };
 
+const INTL_LOCALE:
+  Record<AppLocale, string> = {
+    ro: "ro-RO",
+    en: "en-GB",
+    de: "de-DE",
+  };
+
 function formatDate(
-  value: string
+  value: string,
+  locale: AppLocale
 ) {
   return new Intl.DateTimeFormat(
-    "ro-RO",
+    INTL_LOCALE[locale],
     {
       dateStyle: "long",
       timeStyle: "short",
@@ -32,42 +49,66 @@ function formatDate(
   );
 }
 
+function getPrivacyHref(
+  locale: AppLocale
+) {
+  if (locale === "en") {
+    return "/en/privacy-policy";
+  }
+
+  if (locale === "de") {
+    return "/de/datenschutz";
+  }
+
+  return "/ro/confidentialitate";
+}
+
 export default function PatientAccountSettings() {
+  const locale =
+    normalizeAppLocale(
+      useLocale()
+    );
+
+  const t =
+    useTranslations(
+      "PatientPages.account"
+    );
+
   const [
     requestedAt,
     setRequestedAt,
-  ] =
-    useState<
-      string | null
-    >(null);
+  ] = useState<
+    string | null
+  >(null);
 
   const [
     isLoading,
     setIsLoading,
-  ] =
-    useState(true);
+  ] = useState(true);
 
   const [
     isSubmitting,
     setIsSubmitting,
-  ] =
-    useState(false);
+  ] = useState(false);
 
   const [
     message,
     setMessage,
-  ] =
-    useState<
-      string | null
-    >(null);
+  ] = useState<
+    string | null
+  >(null);
 
   const [
     error,
     setError,
-  ] =
-    useState<
-      string | null
-    >(null);
+  ] = useState<
+    string | null
+  >(null);
+
+  const privacyHref =
+    getPrivacyHref(
+      locale
+    );
 
   const loadStatus =
     useCallback(
@@ -91,12 +132,14 @@ export default function PatientAccountSettings() {
             (await response.json()) as
               ClosureResponse;
 
-          if (
-            !response.ok
-          ) {
+          if (!response.ok) {
             throw new Error(
-              payload.error ??
-                "Starea solicitării nu a putut fi încărcată."
+              locale === "ro" &&
+              payload.error
+                ? payload.error
+                : t(
+                    "statusLoadError"
+                  )
             );
           }
 
@@ -104,22 +147,23 @@ export default function PatientAccountSettings() {
             payload.requestedAt ??
               null
           );
-        } catch (
-          loadError
-        ) {
+        } catch (loadError) {
           setError(
             loadError instanceof
               Error
               ? loadError.message
-              : "Starea solicitării nu a putut fi încărcată."
+              : t(
+                  "statusLoadError"
+                )
           );
         } finally {
-          setIsLoading(
-            false
-          );
+          setIsLoading(false);
         }
       },
-      []
+      [
+        locale,
+        t,
+      ]
     );
 
   useEffect(() => {
@@ -129,7 +173,9 @@ export default function PatientAccountSettings() {
   async function requestClosure() {
     const confirmed =
       window.confirm(
-        "Trimiți administratorului solicitarea de închidere a contului?"
+        t(
+          "requestConfirm"
+        )
       );
 
     if (!confirmed) {
@@ -154,12 +200,14 @@ export default function PatientAccountSettings() {
         (await response.json()) as
           ClosureResponse;
 
-      if (
-        !response.ok
-      ) {
+      if (!response.ok) {
         throw new Error(
-          payload.error ??
-            "Solicitarea nu a putut fi trimisă."
+          locale === "ro" &&
+          payload.error
+            ? payload.error
+            : t(
+                "requestError"
+              )
         );
       }
 
@@ -169,29 +217,33 @@ export default function PatientAccountSettings() {
       );
 
       setMessage(
-        payload.message ??
-          "Solicitarea a fost trimisă."
+        locale === "ro" &&
+        payload.message
+          ? payload.message
+          : t(
+              "requestSuccess"
+            )
       );
-    } catch (
-      requestError
-    ) {
+    } catch (requestError) {
       setError(
         requestError instanceof
           Error
           ? requestError.message
-          : "Solicitarea nu a putut fi trimisă."
+          : t(
+              "requestError"
+            )
       );
     } finally {
-      setIsSubmitting(
-        false
-      );
+      setIsSubmitting(false);
     }
   }
 
   async function cancelRequest() {
     const confirmed =
       window.confirm(
-        "Anulezi solicitarea de închidere a contului?"
+        t(
+          "cancelConfirm"
+        )
       );
 
     if (!confirmed) {
@@ -216,62 +268,73 @@ export default function PatientAccountSettings() {
         (await response.json()) as
           ClosureResponse;
 
-      if (
-        !response.ok
-      ) {
+      if (!response.ok) {
         throw new Error(
-          payload.error ??
-            "Solicitarea nu a putut fi anulată."
+          locale === "ro" &&
+          payload.error
+            ? payload.error
+            : t(
+                "cancelError"
+              )
         );
       }
 
-      setRequestedAt(
-        null
-      );
+      setRequestedAt(null);
 
       setMessage(
-        payload.message ??
-          "Solicitarea a fost anulată."
+        locale === "ro" &&
+        payload.message
+          ? payload.message
+          : t(
+              "cancelSuccess"
+            )
       );
-    } catch (
-      cancelError
-    ) {
+    } catch (cancelError) {
       setError(
         cancelError instanceof
           Error
           ? cancelError.message
-          : "Solicitarea nu a putut fi anulată."
+          : t(
+              "cancelError"
+            )
       );
     } finally {
-      setIsSubmitting(
-        false
-      );
+      setIsSubmitting(false);
     }
   }
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+    <div className="space-y-[21px]">
+      <section className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm sm:p-[34px]">
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#036661]">
-          Cont pacient
+          {t(
+            "eyebrow"
+          )}
         </p>
 
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
-          Cont și confidențialitate
+        <h1 className="mt-[8px] text-3xl font-bold tracking-tight text-gray-900">
+          {t(
+            "title"
+          )}
         </h1>
 
-        <p className="mt-4 max-w-3xl text-sm leading-6 text-gray-600">
-          Poți solicita închiderea contului. Administratorul va analiza solicitarea și va bloca accesul la cont.
+        <p className="mt-[13px] max-w-3xl text-sm leading-6 text-gray-600">
+          {t(
+            "description"
+          )}
         </p>
 
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Înregistrările care trebuie păstrate din motive medicale, contabile sau legale nu sunt șterse automat.
-          {" "}
+        <p className="mt-[8px] max-w-3xl text-sm leading-6 text-gray-600">
+          {t(
+            "retention"
+          )}{" "}
           <Link
-            href="/confidentialitate"
-            className="font-semibold text-[#036661] underline underline-offset-4"
+            href={privacyHref}
+            className="romdoc-focus-ring rounded-sm font-semibold text-[#036661] underline underline-offset-4"
           >
-            Politica de confidențialitate
+            {t(
+              "privacyPolicy"
+            )}
           </Link>
         </p>
       </section>
@@ -279,7 +342,7 @@ export default function PatientAccountSettings() {
       {error && (
         <div
           role="alert"
-          className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-900"
+          className="rounded-[13px] border border-red-200 bg-red-50 px-[13px] py-[13px] text-sm text-red-900"
         >
           {error}
         </div>
@@ -288,37 +351,51 @@ export default function PatientAccountSettings() {
       {message && (
         <div
           role="status"
-          className="rounded-2xl border border-green-200 bg-green-50 px-5 py-4 text-sm text-green-900"
+          className="rounded-[13px] border border-green-200 bg-green-50 px-[13px] py-[13px] text-sm text-green-900"
         >
           {message}
         </div>
       )}
 
-      <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+      <section className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm sm:p-[34px]">
         <h2 className="text-xl font-bold text-gray-900">
-          Închiderea contului
+          {t(
+            "closureTitle"
+          )}
         </h2>
 
         {isLoading ? (
-          <p className="mt-4 text-sm text-gray-600">
-            Se încarcă...
+          <p className="mt-[13px] text-sm text-gray-600">
+            {t(
+              "loading"
+            )}
           </p>
         ) : requestedAt ? (
           <>
-            <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+            <div className="mt-[21px] rounded-[21px] border border-amber-200 bg-amber-50 p-[21px]">
               <p className="font-semibold text-amber-950">
-                Închidere solicitată
+                {t(
+                  "requested"
+                )}
               </p>
 
-              <p className="mt-2 text-sm text-amber-900">
-                Solicitarea a fost trimisă la{" "}
-                {formatDate(
-                  requestedAt
-                )}.
+              <p className="mt-[8px] text-sm text-amber-900">
+                {t(
+                  "requestedAt",
+                  {
+                    date:
+                      formatDate(
+                        requestedAt,
+                        locale
+                      ),
+                  }
+                )}
               </p>
 
-              <p className="mt-2 text-sm text-amber-900">
-                Contul rămâne activ până când administratorul îl blochează.
+              <p className="mt-[8px] text-sm text-amber-900">
+                {t(
+                  "activeUntilBlocked"
+                )}
               </p>
             </div>
 
@@ -330,17 +407,23 @@ export default function PatientAccountSettings() {
               disabled={
                 isSubmitting
               }
-              className="mt-5 rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-800 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+              className="romdoc-focus-ring mt-[21px] inline-flex min-h-[55px] items-center justify-center rounded-[13px] border border-gray-300 bg-white px-[21px] py-[13px] text-sm font-semibold text-gray-800 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting
-                ? "Se procesează..."
-                : "Anulează solicitarea"}
+                ? t(
+                    "processing"
+                  )
+                : t(
+                    "cancelRequest"
+                  )}
             </button>
           </>
         ) : (
           <>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-              După trimitere, administratorul va vedea solicitarea în pagina Utilizatori și va folosi acțiunea existentă de blocare a contului.
+            <p className="mt-[13px] max-w-3xl text-sm leading-6 text-gray-600">
+              {t(
+                "explanation"
+              )}
             </p>
 
             <button
@@ -351,11 +434,15 @@ export default function PatientAccountSettings() {
               disabled={
                 isSubmitting
               }
-              className="mt-5 rounded-xl bg-[#036661] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#ff2800] disabled:cursor-not-allowed disabled:opacity-60"
+              className="romdoc-focus-ring mt-[21px] inline-flex min-h-[55px] items-center justify-center rounded-[13px] bg-[#036661] px-[21px] py-[13px] text-sm font-semibold text-white transition hover:bg-[#ff2800] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting
-                ? "Se trimite..."
-                : "Solicită închiderea contului"}
+                ? t(
+                    "sending"
+                  )
+                : t(
+                    "requestClosure"
+                  )}
             </button>
           </>
         )}

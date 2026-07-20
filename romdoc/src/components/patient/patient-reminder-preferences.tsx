@@ -1,9 +1,17 @@
 "use client";
 
 import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
+import {
   useEffect,
   useState,
 } from "react";
+
+import {
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
 
 type ReminderPreferences = {
   emailRemindersEnabled: boolean;
@@ -18,8 +26,17 @@ const DEFAULT_PREFERENCES:
     reminder24HoursEnabled: true,
   };
 
-export default function
-PatientReminderPreferences() {
+export default function PatientReminderPreferences() {
+  const locale =
+    normalizeAppLocale(
+      useLocale()
+    );
+
+  const t =
+    useTranslations(
+      "PatientPages.reminders.preferences"
+    );
+
   const [
     preferences,
     setPreferences,
@@ -74,8 +91,12 @@ PatientReminderPreferences() {
 
         if (!response.ok) {
           throw new Error(
-            payload.error ??
-              "Preferințele nu au putut fi încărcate."
+            locale === "ro" &&
+            payload.error
+              ? payload.error
+              : t(
+                  "loadError"
+                )
           );
         }
 
@@ -92,7 +113,9 @@ PatientReminderPreferences() {
           setError(
             loadError instanceof Error
               ? loadError.message
-              : "Preferințele nu au putut fi încărcate."
+              : t(
+                  "loadError"
+                )
           );
         }
       } finally {
@@ -107,7 +130,10 @@ PatientReminderPreferences() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [
+    locale,
+    t,
+  ]);
 
   function updatePreference(
     key: keyof ReminderPreferences,
@@ -154,8 +180,12 @@ PatientReminderPreferences() {
 
       if (!response.ok) {
         throw new Error(
-          payload.error ??
-            "Preferințele nu au putut fi salvate."
+          locale === "ro" &&
+          payload.error
+            ? payload.error
+            : t(
+                "saveError"
+              )
         );
       }
 
@@ -166,13 +196,17 @@ PatientReminderPreferences() {
       }
 
       setMessage(
-        "Preferințele pentru reamintiri au fost salvate."
+        t(
+          "saved"
+        )
       );
     } catch (saveError) {
       setError(
         saveError instanceof Error
           ? saveError.message
-          : "Preferințele nu au putut fi salvate."
+          : t(
+              "saveError"
+            )
       );
     } finally {
       setIsSaving(false);
@@ -181,39 +215,49 @@ PatientReminderPreferences() {
 
   if (isLoading) {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
         <p className="text-sm text-gray-600">
-          Se încarcă preferințele…
+          {t(
+            "loading"
+          )}
         </p>
       </div>
     );
   }
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+    <section className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm sm:p-[34px]">
       <p className="text-sm font-semibold text-[#036661]">
-        Notificări
+        {t(
+          "eyebrow"
+        )}
       </p>
 
-      <h2 className="mt-2 text-2xl font-bold text-gray-900">
-        Reamintiri pentru programări
+      <h2 className="mt-[8px] text-2xl font-bold text-gray-900">
+        {t(
+          "title"
+        )}
       </h2>
 
-      <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-        Alege ce reamintiri dorești să primești prin e-mail.
-        Confirmările, reprogramările și anulările importante
-        rămân active chiar dacă dezactivezi reamintirile.
+      <p className="mt-[13px] max-w-3xl text-sm leading-6 text-gray-600">
+        {t(
+          "description"
+        )}
       </p>
 
-      <div className="mt-6 space-y-4">
-        <label className="flex cursor-pointer items-start justify-between gap-4 rounded-xl border border-gray-200 p-4">
+      <div className="mt-[21px] space-y-[13px]">
+        <label className="flex cursor-pointer items-start justify-between gap-[13px] rounded-[13px] border border-gray-200 p-[13px]">
           <span>
             <span className="block font-semibold text-gray-900">
-              Reamintiri prin e-mail
+              {t(
+                "emailTitle"
+              )}
             </span>
 
-            <span className="mt-1 block text-sm leading-5 text-gray-600">
-              Comutator principal pentru reamintirile de 48 și 24 de ore.
+            <span className="mt-[5px] block text-sm leading-5 text-gray-600">
+              {t(
+                "emailDescription"
+              )}
             </span>
           </span>
 
@@ -228,18 +272,22 @@ PatientReminderPreferences() {
                 event.target.checked
               )
             }
-            className="mt-1 h-5 w-5 accent-[#036661]"
+            className="mt-[5px] h-[21px] w-[21px] accent-[#036661]"
           />
         </label>
 
-        <label className="flex cursor-pointer items-start justify-between gap-4 rounded-xl border border-gray-200 p-4">
+        <label className="flex cursor-pointer items-start justify-between gap-[13px] rounded-[13px] border border-gray-200 p-[13px]">
           <span>
             <span className="block font-semibold text-gray-900">
-              Cu aproximativ 48 de ore înainte
+              {t(
+                "hours48Title"
+              )}
             </span>
 
-            <span className="mt-1 block text-sm leading-5 text-gray-600">
-              Primești timp suplimentar pentru a verifica sau anula programarea.
+            <span className="mt-[5px] block text-sm leading-5 text-gray-600">
+              {t(
+                "hours48Description"
+              )}
             </span>
           </span>
 
@@ -257,18 +305,22 @@ PatientReminderPreferences() {
                 event.target.checked
               )
             }
-            className="mt-1 h-5 w-5 accent-[#036661] disabled:cursor-not-allowed"
+            className="mt-[5px] h-[21px] w-[21px] accent-[#036661] disabled:cursor-not-allowed"
           />
         </label>
 
-        <label className="flex cursor-pointer items-start justify-between gap-4 rounded-xl border border-gray-200 p-4">
+        <label className="flex cursor-pointer items-start justify-between gap-[13px] rounded-[13px] border border-gray-200 p-[13px]">
           <span>
             <span className="block font-semibold text-gray-900">
-              Cu aproximativ 24 de ore înainte
+              {t(
+                "hours24Title"
+              )}
             </span>
 
-            <span className="mt-1 block text-sm leading-5 text-gray-600">
-              Primești o ultimă reamintire în ziua dinaintea programării.
+            <span className="mt-[5px] block text-sm leading-5 text-gray-600">
+              {t(
+                "hours24Description"
+              )}
             </span>
           </span>
 
@@ -286,19 +338,25 @@ PatientReminderPreferences() {
                 event.target.checked
               )
             }
-            className="mt-1 h-5 w-5 accent-[#036661] disabled:cursor-not-allowed"
+            className="mt-[5px] h-[21px] w-[21px] accent-[#036661] disabled:cursor-not-allowed"
           />
         </label>
       </div>
 
       {message && (
-        <p className="mt-5 rounded-xl bg-green-50 p-4 text-sm font-medium text-green-800">
+        <p
+          role="status"
+          className="mt-[21px] rounded-[13px] bg-green-50 p-[13px] text-sm font-medium text-green-800"
+        >
           {message}
         </p>
       )}
 
       {error && (
-        <p className="mt-5 rounded-xl bg-red-50 p-4 text-sm font-medium text-red-800">
+        <p
+          role="alert"
+          className="mt-[21px] rounded-[13px] bg-red-50 p-[13px] text-sm font-medium text-red-800"
+        >
           {error}
         </p>
       )}
@@ -309,11 +367,15 @@ PatientReminderPreferences() {
           void savePreferences()
         }
         disabled={isSaving}
-        className="romdoc-button romdoc-button-primary mt-6 disabled:cursor-not-allowed disabled:opacity-60"
+        className="romdoc-button romdoc-button-primary mt-[21px] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isSaving
-          ? "Se salvează…"
-          : "Salvează preferințele"}
+          ? t(
+              "saving"
+            )
+          : t(
+              "save"
+            )}
       </button>
     </section>
   );
