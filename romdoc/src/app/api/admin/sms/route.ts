@@ -1,19 +1,15 @@
-import {
-  NextRequest,
-  NextResponse,
-} from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 import {
   requireAdministratorCapability,
   requirePlatformOperatorAal2Api,
 } from "@/lib/auth/require-platform-operator-aal2-api";
-import {
-  createAdminClient,
-} from "@/lib/supabase/admin";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
-const SMS_UNIT_COST_MINOR = 30;
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
+const DEFAULT_SMS_UNIT_COST_MINOR = 30;
 const SMS_CURRENCY = "RON";
 
 type SmsPatchBody = {
@@ -40,8 +36,8 @@ type ProfileRow = {
 
 type SmsLogRow = {
   doctor_id: string | null;
-  event: string;
-  status: string;
+  event: string | null;
+  status: string | null;
   invoice_status: string | null;
   unit_cost_minor: number | null;
   currency: string | null;
@@ -66,8 +62,19 @@ type SmsBillingPeriodRow = {
   saga_invoice_issued_at: string | null;
 };
 
+function json(body: Record<string, unknown>, status = 200) {
+  return NextResponse.json(body, {
+    status,
+    headers: NO_STORE_HEADERS,
+  });
+}
+
 function boolFromUnknown(value: unknown) {
   return value === true;
+}
+
+function cleanText(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function nameFromSlug(slug: string) {
@@ -77,20 +84,20 @@ function nameFromSlug(slug: string) {
     .join(" ");
 }
 
-function cleanText(value: unknown) {
-  return typeof value === "string" ? value.trim() : "";
+function currentSmsUnitCostMinor(value: unknown) {
+  const priceRon = Number(value);
+  return Number.isFinite(priceRon) && priceRon >= 0
+    ? Math.round(priceRon * 100)
+    : DEFAULT_SMS_UNIT_COST_MINOR;
 }
 
 async function requireSmsBillingCapability(
   role: "admin" | "manager",
   profileId: string
 ) {
-  if (role === "admin") {
-    return null;
-  }
+  if (role === "admin") return null;
 
   const admin = createAdminClient();
-
   const { data, error } = await admin
     .from("manager_permissions")
     .select("id")
@@ -104,106 +111,81 @@ async function requireSmsBillingCapability(
     console.error("Accounting permission lookup failed:", error);
   }
 
-  if (data) {
-    return null;
-  }
+  if (data) return null;
 
-  return NextResponse.json(
+  return json(
     {
+      code: "accounting_permission_required",
       error:
         "Numai administratorii și managerii cu permisiune de contabilitate pot accesa facturarea SMS.",
-      code: "accounting_permission_required",
     },
-    {
-      status: 403,
-      headers: {
-        "Cache-Control": "no-store",
-      },
-    }
+    403
   );
 }
 
 export async function GET(): Promise<Response> {
   const authorization = await requirePlatformOperatorAal2Api();
+  if (authorization.response) return authorization.response;
 
-  if (authorization.response) {
-    return authorization.response;
-  }
-
-  const smsBillingOnly = await requireSmsBillingCapability(
+  const permissionError = await requireSmsBillingCapability(
     authorization.role,
     authorization.profileId
   );
-
-  if (smsBillingOnly) {
-    return smsBillingOnly;
-  }
+  if (permissionError) return permissionError;
 
   const admin = createAdminClient();
+  const [
+    settingsResult,
+    billingSettingsResult,
+    doctorsResult,
+    logsResult,
+    billingPeriodsResult,
+  ] = await Promise.all([
+    admin
+      .from("sms_platform_settings")
+      .select(
+        "sms_enabled, confirmation_sms_enabled, reminder_24h_sms_enabled, provider, updated_at"
+      )
+      .eq("id", 1)
+      .maybeSingle(),
+    admin
+      .from("clinic_billing_settings")
+      .select("sms_unit_price_ron")
+      .eq("id", 1)
+      .maybeSingle(),
+    admin
+      .from("doctors")
+      .select("id, slug, profile_id")
+      .order("slug", { ascending: true }),
+    admin
+      .from("sms_delivery_logs")
+      .select(
+        "doctor_id, event, status, invoice_status, unit_cost_minor, currency, created_at"
+      )
+      .order("created_at", { ascending: false }),
+    admin
+      .from("doctor_sms_billing_periods")
+      .select(
+        "id, doctor_id, profile_id, period_start, period_end, sms_count, net_amount_minor, vat_amount_minor, gross_amount_minor, currency, payment_status, paid_at, saga_invoice_status, saga_invoice_reference, saga_invoice_issued_at"
+      )
+      .order("period_start", { ascending: false }),
+  ]);
 
-  const [settingsResult, doctorsResult, logsResult, billingPeriodsResult] =
-    await Promise.all([
-      admin
-        .from("sms_platform_settings")
-        .select(
-          "sms_enabled, confirmation_sms_enabled, reminder_24h_sms_enabled, provider, updated_at"
-        )
-        .eq("id", 1)
-        .maybeSingle(),
+  const firstError =
+    settingsResult.error ??
+    billingSettingsResult.error ??
+    doctorsResult.error ??
+    logsResult.error ??
+    billingPeriodsResult.error;
 
-      admin
-        .from("doctors")
-        .select("id, slug, profile_id")
-        .order("slug", { ascending: true }),
-
-      admin
-        .from("sms_delivery_logs")
-        .select(
-          "doctor_id, event, status, invoice_status, unit_cost_minor, currency, created_at"
-        )
-        .order("created_at", { ascending: false }),
-
-      admin
-        .from("doctor_sms_billing_periods")
-        .select(
-          "id, doctor_id, profile_id, period_start, period_end, sms_count, net_amount_minor, vat_amount_minor, gross_amount_minor, currency, payment_status, paid_at, saga_invoice_status, saga_invoice_reference, saga_invoice_issued_at"
-        )
-        .order("period_start", { ascending: false }),
-    ]);
-
-  if (settingsResult.error) {
-    console.error("SMS settings query failed:", settingsResult.error);
-
-    return NextResponse.json(
-      { error: "Setările SMS nu au putut fi încărcate." },
-      { status: 500 }
-    );
-  }
-
-  if (doctorsResult.error) {
-    console.error("SMS doctors query failed:", doctorsResult.error);
-
-    return NextResponse.json(
-      { error: "Lista medicilor nu a putut fi încărcată." },
-      { status: 500 }
-    );
-  }
-
-  if (logsResult.error) {
-    console.error("SMS logs query failed:", logsResult.error);
-
-    return NextResponse.json(
-      { error: "Statisticile SMS nu au putut fi încărcate." },
-      { status: 500 }
-    );
-  }
-
-  if (billingPeriodsResult.error) {
-    console.error("SMS billing periods query failed:", billingPeriodsResult.error);
-
-    return NextResponse.json(
-      { error: "Facturarea SMS nu a putut fi încărcată." },
-      { status: 500 }
+  if (firstError) {
+    console.error("SMS administration query failed:", firstError);
+    return json(
+      {
+        code: "sms_administration_load_failed",
+        error: "Datele SMS nu au putut fi încărcate.",
+      },
+      500
     );
   }
 
@@ -211,6 +193,9 @@ export async function GET(): Promise<Response> {
   const logs = (logsResult.data ?? []) as SmsLogRow[];
   const billingPeriods =
     (billingPeriodsResult.data ?? []) as SmsBillingPeriodRow[];
+  const configuredUnitCostMinor = currentSmsUnitCostMinor(
+    billingSettingsResult.data?.sms_unit_price_ron
+  );
 
   const profileIds = Array.from(
     new Set(
@@ -219,17 +204,16 @@ export async function GET(): Promise<Response> {
         .filter((profileId): profileId is string => Boolean(profileId))
     )
   );
-
   const profileMap = new Map<string, ProfileRow>();
 
   if (profileIds.length > 0) {
-    const { data: profiles, error: profilesError } = await admin
+    const { data: profiles, error } = await admin
       .from("profiles")
       .select("id, first_name, last_name")
       .in("id", profileIds);
 
-    if (profilesError) {
-      console.error("SMS doctor profile query failed:", profilesError);
+    if (error) {
+      console.error("SMS Doctor profile query failed:", error);
     }
 
     for (const profile of (profiles ?? []) as ProfileRow[]) {
@@ -237,22 +221,27 @@ export async function GET(): Promise<Response> {
     }
   }
 
-  const doctorNameMap = new Map<string, { doctorName: string; slug: string }>();
+  const doctorIdentity = new Map<
+    string,
+    { doctorName: string; slug: string }
+  >();
 
   for (const doctor of doctors) {
-    const profile = doctor.profile_id ? profileMap.get(doctor.profile_id) : null;
+    const profile = doctor.profile_id
+      ? profileMap.get(doctor.profile_id)
+      : undefined;
     const profileName = [profile?.first_name, profile?.last_name]
       .filter(Boolean)
       .join(" ")
       .trim();
 
-    doctorNameMap.set(doctor.id, {
+    doctorIdentity.set(doctor.id, {
       doctorName: profileName || nameFromSlug(doctor.slug),
       slug: doctor.slug,
     });
   }
 
-  const logCounts = new Map<
+  const counts = new Map<
     string,
     {
       total: number;
@@ -272,11 +261,9 @@ export async function GET(): Promise<Response> {
   >();
 
   for (const log of logs) {
-    if (!log.doctor_id) {
-      continue;
-    }
+    if (!log.doctor_id) continue;
 
-    const current = logCounts.get(log.doctor_id) ?? {
+    const current = counts.get(log.doctor_id) ?? {
       total: 0,
       sent: 0,
       failed: 0,
@@ -291,9 +278,8 @@ export async function GET(): Promise<Response> {
       estimatedInvoicedMinor: 0,
       lastSentAt: null,
     };
-
     const invoiceStatus = log.invoice_status ?? "not_billable";
-    const unitCostMinor = log.unit_cost_minor ?? SMS_UNIT_COST_MINOR;
+    const unitCostMinor = log.unit_cost_minor ?? configuredUnitCostMinor;
 
     current.total += 1;
 
@@ -305,6 +291,9 @@ export async function GET(): Promise<Response> {
     } else if (log.status === "skipped") {
       current.skipped += 1;
     }
+
+    if (log.event === "confirmed") current.confirmed += 1;
+    if (log.event === "reminder_24_hours") current.reminder24h += 1;
 
     if (invoiceStatus === "invoiced") {
       current.invoiced += 1;
@@ -318,20 +307,15 @@ export async function GET(): Promise<Response> {
       current.notBillable += 1;
     }
 
-    if (log.event === "confirmed") {
-      current.confirmed += 1;
-    }
-
-    if (log.event === "reminder_24_hours") {
-      current.reminder24h += 1;
-    }
-
-    logCounts.set(log.doctor_id, current);
+    counts.set(log.doctor_id, current);
   }
 
-  const doctorCounters = doctors.map((doctor) => {
-    const doctorIdentity = doctorNameMap.get(doctor.id);
-    const counts = logCounts.get(doctor.id) ?? {
+  const doctorCounters = doctors.map((doctor) => ({
+    doctorId: doctor.id,
+    doctorName:
+      doctorIdentity.get(doctor.id)?.doctorName ?? nameFromSlug(doctor.slug),
+    slug: doctor.slug,
+    ...(counts.get(doctor.id) ?? {
       total: 0,
       sent: 0,
       failed: 0,
@@ -345,103 +329,79 @@ export async function GET(): Promise<Response> {
       estimatedUninvoicedMinor: 0,
       estimatedInvoicedMinor: 0,
       lastSentAt: null,
-    };
+    }),
+  }));
 
-    return {
-      doctorId: doctor.id,
-      doctorName: doctorIdentity?.doctorName ?? nameFromSlug(doctor.slug),
-      slug: doctor.slug,
-      ...counts,
-    };
-  });
+  const smsBillingPeriods = billingPeriods.map((period) => ({
+    ...period,
+    doctorName:
+      doctorIdentity.get(period.doctor_id)?.doctorName ?? "Medic necunoscut",
+    slug: doctorIdentity.get(period.doctor_id)?.slug ?? "",
+  }));
 
-  const smsBillingPeriods = billingPeriods.map((period) => {
-    const doctorIdentity = doctorNameMap.get(period.doctor_id);
-
-    return {
-      ...period,
-      doctorName: doctorIdentity?.doctorName ?? "Medic necunoscut",
-      slug: doctorIdentity?.slug ?? "",
-    };
-  });
-
-  return NextResponse.json(
-    {
-      settings:
-        settingsResult.data ?? {
-          sms_enabled: false,
-          confirmation_sms_enabled: true,
-          reminder_24h_sms_enabled: false,
-          provider: "smslink",
-          updated_at: null,
-        },
-      billing: {
-        unitCostMinor: SMS_UNIT_COST_MINOR,
-        currency: SMS_CURRENCY,
-        vatMode: "plus_vat",
+  return json({
+    code: "sms_administration_loaded",
+    settings:
+      settingsResult.data ?? {
+        sms_enabled: false,
+        confirmation_sms_enabled: true,
+        reminder_24h_sms_enabled: false,
+        provider: "smslink",
+        updated_at: null,
       },
-      doctorCounters,
-      smsBillingPeriods,
+    billing: {
+      unitCostMinor: configuredUnitCostMinor,
+      currency: SMS_CURRENCY,
+      vatMode: "plus_vat",
     },
-    {
-      headers: {
-        "Cache-Control": "no-store",
-      },
-    }
-  );
+    doctorCounters,
+    smsBillingPeriods,
+  });
 }
 
 export async function PATCH(request: NextRequest): Promise<Response> {
   const authorization = await requirePlatformOperatorAal2Api();
-
-  if (authorization.response) {
-    return authorization.response;
-  }
+  if (authorization.response) return authorization.response;
 
   let body: SmsPatchBody;
-
   try {
     body = (await request.json()) as SmsPatchBody;
   } catch {
-    return NextResponse.json(
-      { error: "Cererea nu conține date JSON valide." },
-      { status: 400 }
+    return json(
+      { code: "invalid_json", error: "Cererea nu conține date JSON valide." },
+      400
     );
   }
 
   const admin = createAdminClient();
 
   if (body.action === "mark_sms_billing_period_saga_issued") {
-    const smsBillingOnly = await requireSmsBillingCapability(
+    const permissionError = await requireSmsBillingCapability(
       authorization.role,
       authorization.profileId
     );
-
-    if (smsBillingOnly) {
-      return smsBillingOnly;
-    }
+    if (permissionError) return permissionError;
 
     const billingPeriodId = cleanText(body.billingPeriodId);
     const invoiceReference = cleanText(body.invoiceReference);
 
-    if (!billingPeriodId) {
-      return NextResponse.json(
-        { error: "Perioada de facturare lipsește." },
-        { status: 400 }
-      );
-    }
-
-    if (!invoiceReference) {
-      return NextResponse.json(
-        { error: "Referința facturii SAGA este obligatorie." },
-        { status: 400 }
+    if (!billingPeriodId || !invoiceReference) {
+      return json(
+        {
+          code: "saga_reference_required",
+          error: "Perioada și referința facturii SAGA sunt obligatorii.",
+        },
+        400
       );
     }
 
     if (invoiceReference.length > 120) {
-      return NextResponse.json(
-        { error: "Referința facturii poate avea maximum 120 de caractere." },
-        { status: 400 }
+      return json(
+        {
+          code: "invoice_reference_too_long",
+          error: "Referința facturii poate avea maximum 120 de caractere.",
+        },
+        400
       );
     }
 
@@ -458,56 +418,48 @@ export async function PATCH(request: NextRequest): Promise<Response> {
 
     if (error || !data) {
       console.error("SAGA invoice reference update failed:", error);
-
-      return NextResponse.json(
-        { error: "Referința SAGA nu a putut fi salvată." },
-        { status: 500 }
+      return json(
+        {
+          code: "saga_reference_save_failed",
+          error: "Referința SAGA nu a putut fi salvată.",
+        },
+        500
       );
     }
 
-    return NextResponse.json(
-      {
-        message: "Referința SAGA a fost salvată.",
-      },
-      {
-        headers: {
-          "Cache-Control": "no-store",
-        },
-      }
-    );
+    return json({
+      code: "saga_reference_saved",
+      message: "Referința SAGA a fost salvată.",
+    });
   }
 
   if (body.action === "mark_doctor_sms_invoiced") {
-    const smsBillingOnly = await requireSmsBillingCapability(
+    const permissionError = await requireSmsBillingCapability(
       authorization.role,
       authorization.profileId
     );
-
-    if (smsBillingOnly) {
-      return smsBillingOnly;
-    }
+    if (permissionError) return permissionError;
 
     const doctorId = cleanText(body.doctorId);
     const invoiceReference = cleanText(body.invoiceReference);
 
-    if (!doctorId) {
-      return NextResponse.json(
-        { error: "Medicul nu a fost selectat." },
-        { status: 400 }
-      );
-    }
-
-    if (!invoiceReference) {
-      return NextResponse.json(
-        { error: "Referința facturii este obligatorie." },
-        { status: 400 }
+    if (!doctorId || !invoiceReference) {
+      return json(
+        {
+          code: "doctor_invoice_reference_required",
+          error: "Medicul și referința facturii sunt obligatorii.",
+        },
+        400
       );
     }
 
     if (invoiceReference.length > 120) {
-      return NextResponse.json(
-        { error: "Referința facturii poate avea maximum 120 de caractere." },
-        { status: 400 }
+      return json(
+        {
+          code: "invoice_reference_too_long",
+          error: "Referința facturii poate avea maximum 120 de caractere.",
+        },
+        400
       );
     }
 
@@ -526,34 +478,27 @@ export async function PATCH(request: NextRequest): Promise<Response> {
 
     if (error) {
       console.error("SMS mark as invoiced failed:", error);
-
-      return NextResponse.json(
-        { error: "SMS-urile nu au putut fi marcate ca facturate." },
-        { status: 500 }
+      return json(
+        {
+          code: "sms_invoice_mark_failed",
+          error: "SMS-urile nu au putut fi marcate ca facturate.",
+        },
+        500
       );
     }
 
-    return NextResponse.json(
-      {
-        message: `${data?.length ?? 0} SMS-uri au fost marcate ca facturate.`,
-        updatedCount: data?.length ?? 0,
-      },
-      {
-        headers: {
-          "Cache-Control": "no-store",
-        },
-      }
-    );
+    return json({
+      code: "sms_marked_invoiced",
+      message: `${data?.length ?? 0} SMS-uri au fost marcate ca facturate.`,
+      updatedCount: data?.length ?? 0,
+    });
   }
 
-  const adminOnly = requireAdministratorCapability(
+  const administratorError = requireAdministratorCapability(
     authorization.role,
     "Numai administratorii pot modifica setările SMS."
   );
-
-  if (adminOnly) {
-    return adminOnly;
-  }
+  if (administratorError) return administratorError;
 
   const { data, error } = await admin
     .from("sms_platform_settings")
@@ -561,8 +506,12 @@ export async function PATCH(request: NextRequest): Promise<Response> {
       {
         id: 1,
         sms_enabled: boolFromUnknown(body.smsEnabled),
-        confirmation_sms_enabled: boolFromUnknown(body.confirmationSmsEnabled),
-        reminder_24h_sms_enabled: boolFromUnknown(body.reminder24hSmsEnabled),
+        confirmation_sms_enabled: boolFromUnknown(
+          body.confirmationSmsEnabled
+        ),
+        reminder_24h_sms_enabled: boolFromUnknown(
+          body.reminder24hSmsEnabled
+        ),
         provider: "smslink",
         updated_by_profile_id: authorization.profileId,
         updated_at: new Date().toISOString(),
@@ -576,22 +525,18 @@ export async function PATCH(request: NextRequest): Promise<Response> {
 
   if (error) {
     console.error("SMS settings update failed:", error);
-
-    return NextResponse.json(
-      { error: "Setările SMS nu au putut fi salvate." },
-      { status: 500 }
+    return json(
+      {
+        code: "sms_settings_save_failed",
+        error: "Setările SMS nu au putut fi salvate.",
+      },
+      500
     );
   }
 
-  return NextResponse.json(
-    {
-      message: "Setările SMS au fost salvate.",
-      settings: data,
-    },
-    {
-      headers: {
-        "Cache-Control": "no-store",
-      },
-    }
-  );
+  return json({
+    code: "sms_settings_saved",
+    message: "Setările SMS au fost salvate.",
+    settings: data,
+  });
 }

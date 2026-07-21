@@ -1,46 +1,22 @@
 import { redirect } from "next/navigation";
 
 import AdminSmsControlPanel from "@/components/admin/admin-sms-control-panel";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { getPlatformOperatorBilling } from "@/lib/i18n/platform-operator-billing";
+import { getStoredAppLocale } from "@/lib/i18n/server-app-locale";
 import { createClient } from "@/lib/supabase/server";
 
-async function canAccessSmsAccounting(profileId: string, role: string) {
-  if (role === "admin") {
-    return true;
-  }
-
-  if (role !== "manager") {
-    return false;
-  }
-
-  const admin = createAdminClient();
-
-  const { data, error } = await admin
-    .from("manager_permissions")
-    .select("id")
-    .eq("profile_id", profileId)
-    .eq("permission_key", "accounting")
-    .is("revoked_at", null)
-    .maybeSingle();
-
-  if (error) {
-    console.error("SMS page accounting permission query failed:", error);
-    return false;
-  }
-
-  return Boolean(data);
-}
-
 export default async function AdminSmsPage() {
+  const locale = await getStoredAppLocale();
+  const copy = getPlatformOperatorBilling(locale);
   const supabase = await createClient();
-
   const {
     data: { user },
     error: userError,
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    redirect("/login?next=/admin/sms");
+    const parameters = new URLSearchParams({ locale, next: "/admin/sms" });
+    redirect(`/login?${parameters.toString()}`);
   }
 
   const { data: profile, error: profileError } = await supabase
@@ -51,118 +27,109 @@ export default async function AdminSmsPage() {
 
   if (
     profileError ||
-    !profile ||
-    profile.account_status !== "active" ||
-    !(await canAccessSmsAccounting(user.id, profile.role))
+    profile?.role !== "admin" ||
+    profile.account_status !== "active"
   ) {
     redirect("/dashboard");
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-[34px]">
       <header>
         <p className="text-sm font-semibold text-[#9A4F35]">
-          Administrare
+          {copy.pages.smsAdmin.eyebrow}
         </p>
-
-        <h1 className="mt-2 text-3xl font-bold text-gray-900">
-          SMS
+        <h1 className="mt-[8px] text-3xl font-bold text-gray-900">
+          {copy.pages.smsAdmin.title}
         </h1>
-
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Gestionează serviciul SMS RomDoc, activează sau oprește notificările
-          și urmărește numărul de mesaje trimise pe fiecare cont de medic.
+        <p className="mt-[13px] max-w-3xl text-sm leading-6 text-gray-600">
+          {copy.pages.smsAdmin.description}
         </p>
       </header>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-        <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
+      <section className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
+        <div className="flex flex-col justify-between gap-[13px] lg:flex-row lg:items-end">
           <div>
             <h2 className="text-xl font-bold text-gray-900">
-              Export CSV pentru SAGA
+              {copy.smsPanel.exportTitle}
             </h2>
-            <p className="mt-2 text-sm leading-6 text-gray-600">
-              Alege perioada și statusurile dorite. Câmpurile goale exportă toate
-              înregistrările disponibile.
+            <p className="mt-[8px] text-sm leading-6 text-gray-600">
+              {copy.smsPanel.exportDescription}
             </p>
           </div>
-
           <a
             href="/api/admin/sms/export"
-            className="romdoc-focus-ring w-fit rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-semibold text-gray-800 transition hover:bg-gray-50"
+            className="romdoc-focus-ring w-fit rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] text-sm font-semibold text-gray-800 transition hover:bg-gray-50"
           >
-            Export fără filtre
+            {copy.smsPanel.exportWithoutFilters}
           </a>
         </div>
 
         <form
           action="/api/admin/sms/export"
           method="get"
-          className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5"
+          className="mt-[21px] grid gap-[13px] md:grid-cols-2 xl:grid-cols-5"
         >
           <label className="text-sm font-semibold text-gray-700">
-            De la
+            {copy.smsPanel.exportFrom}
             <input
               type="date"
               name="from"
-              className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm font-normal text-gray-950"
+              className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 px-[13px] py-[13px] text-sm font-normal text-gray-950"
             />
           </label>
 
           <label className="text-sm font-semibold text-gray-700">
-            Până la
+            {copy.smsPanel.exportTo}
             <input
               type="date"
               name="to"
-              className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm font-normal text-gray-950"
+              className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 px-[13px] py-[13px] text-sm font-normal text-gray-950"
             />
           </label>
 
           <label className="text-sm font-semibold text-gray-700">
-            Status plată
+            {copy.smsPanel.exportPaymentStatus}
             <select
               name="paymentStatus"
               defaultValue="all"
-              className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm font-normal text-gray-950"
+              className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 px-[13px] py-[13px] text-sm font-normal text-gray-950"
             >
-              <option value="all">Toate</option>
-              <option value="open">Neplătite / deschise</option>
-              <option value="unpaid">Neplătite</option>
-              <option value="checkout_open">Checkout deschis</option>
-              <option value="paid">Plătite</option>
-              <option value="failed">Eșuate</option>
-              <option value="cancelled">Anulate</option>
-              <option value="refunded">Rambursate</option>
+              <option value="all">{copy.common.all}</option>
+              <option value="open">{copy.smsPanel.statuses.unpaid}</option>
+              <option value="paid">{copy.smsPanel.statuses.paid}</option>
+              <option value="failed">{copy.smsPanel.statuses.failed}</option>
+              <option value="cancelled">{copy.smsPanel.statuses.cancelled}</option>
+              <option value="refunded">{copy.smsPanel.statuses.refunded}</option>
             </select>
           </label>
 
           <label className="text-sm font-semibold text-gray-700">
-            Status SAGA
+            {copy.smsPanel.exportSagaStatus}
             <select
               name="sagaStatus"
               defaultValue="all"
-              className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm font-normal text-gray-950"
+              className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 px-[13px] py-[13px] text-sm font-normal text-gray-950"
             >
-              <option value="all">Toate</option>
-              <option value="missing">Fără factură SAGA</option>
-              <option value="not_issued">Neemise</option>
-              <option value="issued">Emise</option>
-              <option value="cancelled">Anulate</option>
+              <option value="all">{copy.common.all}</option>
+              <option value="missing">{copy.smsPanel.statuses.sagaMissing}</option>
+              <option value="issued">{copy.smsPanel.statuses.sagaIssued}</option>
+              <option value="cancelled">{copy.smsPanel.statuses.sagaCancelled}</option>
             </select>
           </label>
 
           <div className="flex items-end">
             <button
               type="submit"
-              className="romdoc-focus-ring w-full rounded-xl bg-[#036661] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#024d49]"
+              className="romdoc-focus-ring w-full rounded-[13px] bg-[#036661] px-[21px] py-[13px] text-sm font-semibold text-white transition hover:bg-[#024d49]"
             >
-              Descarcă CSV
+              {copy.smsPanel.exportDownload}
             </button>
           </div>
         </form>
       </section>
 
-      <AdminSmsControlPanel />
+      <AdminSmsControlPanel locale={locale} />
     </div>
   );
 }

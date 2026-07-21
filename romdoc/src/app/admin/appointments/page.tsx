@@ -1,15 +1,26 @@
+import { redirect } from "next/navigation";
+
 import AdminAppointmentsAccordion, {
   type AdminAppointmentListItem,
 } from "@/components/admin/admin-appointments-accordion";
+import { selectTranslation } from "@/lib/i18n/app-locale";
+import { getPlatformOperatorBilling } from "@/lib/i18n/platform-operator-billing";
+import { getStoredAppLocale } from "@/lib/i18n/server-app-locale";
 import { createClient } from "@/lib/supabase/server";
+
+type DoctorTranslation = {
+  locale: string;
+  title: string | null;
+};
 
 type DoctorRelation = {
   slug: string;
+  doctor_translations: DoctorTranslation[] | null;
 };
 
 type ClinicTranslation = {
   locale: string;
-  name: string;
+  name: string | null;
 };
 
 type ClinicRelation = {
@@ -36,41 +47,48 @@ type Appointment = {
   clinics: ClinicRelation | ClinicRelation[] | null;
 };
 
-function getFirstRelation<T>(relation: T | T[] | null | undefined): T | null {
-  if (!relation) {
-    return null;
-  }
-
-  if (Array.isArray(relation)) {
-    return relation[0] ?? null;
-  }
-
-  return relation;
+function firstRelation<T>(relation: T | T[] | null | undefined): T | null {
+  if (!relation) return null;
+  return Array.isArray(relation) ? relation[0] ?? null : relation;
 }
 
-function formatNameFromSlug(slug: string) {
+function nameFromSlug(slug: string) {
   return slug
     .split("-")
-    .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 }
 
-function getClinicName(clinic: ClinicRelation | null) {
-  if (!clinic) {
-    return "Clinică indisponibilă";
+export default async function AdminAppointmentsPage() {
+  const locale = await getStoredAppLocale();
+  const copy = getPlatformOperatorBilling(locale);
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    const parameters = new URLSearchParams({
+      locale,
+      next: "/admin/appointments",
+    });
+    redirect(`/login?${parameters.toString()}`);
   }
 
-  return (
-    clinic.clinic_translations?.find(
-      (translation) => translation.locale === "ro"
-    )?.name ??
-    clinic.clinic_translations?.[0]?.name ??
-    formatNameFromSlug(clinic.slug)
-  );
-}
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role, account_status")
+    .eq("id", user.id)
+    .maybeSingle();
 
-export default async function AdminAppointmentsPage() {
-  const supabase = await createClient();
+  if (
+    profileError ||
+    profile?.role !== "admin" ||
+    profile.account_status !== "active"
+  ) {
+    redirect("/dashboard");
+  }
 
   const { data, error } = await supabase
     .from("appointments")
@@ -90,7 +108,11 @@ export default async function AdminAppointmentsPage() {
       created_at,
       updated_at,
       doctors (
-        slug
+        slug,
+        doctor_translations (
+          locale,
+          title
+        )
       ),
       clinics (
         slug,
@@ -100,68 +122,77 @@ export default async function AdminAppointmentsPage() {
         )
       )
     `)
-    .order("created_at", {
-      ascending: false,
-    });
+    .order("created_at", { ascending: false });
 
   if (error) {
     console.error("Admin appointments query failed:", error);
   }
 
-  const appointments =
-    (data as unknown as Appointment[] | null) ?? [];
+  const appointments = (data as unknown as Appointment[] | null) ?? [];
+  const items: AdminAppointmentListItem[] = appointments.map((appointment) => {
+    const doctor = firstRelation(appointment.doctors);
+    const clinic = firstRelation(appointment.clinics);
+    const doctorTranslation = selectTranslation(
+      doctor?.doctor_translations,
+      locale
+    )?.title;
+    const clinicTranslation = selectTranslation(
+      clinic?.clinic_translations,
+      locale
+    )?.name;
 
-  const appointmentListItems: AdminAppointmentListItem[] = appointments.map(
-    (appointment) => {
-      const doctor = getFirstRelation(appointment.doctors);
-      const clinic = getFirstRelation(appointment.clinics);
-
-      return {
-        id: appointment.id,
-        patientName: appointment.patient_name,
-        patientEmail: appointment.patient_email,
-        patientPhone: appointment.patient_phone,
-        requestedDate: appointment.requested_date,
-        requestedTime: appointment.requested_time,
-        scheduledDate: appointment.scheduled_date,
-        scheduledTime: appointment.scheduled_time,
-        rescheduleReason: appointment.reschedule_reason,
-        notes: appointment.notes,
-        source: appointment.source,
-        status: appointment.status,
-        createdAt: appointment.created_at,
-        updatedAt: appointment.updated_at,
-        doctorName: doctor ? formatNameFromSlug(doctor.slug) : "Medic indisponibil",
-        clinicName: getClinicName(clinic),
-      };
-    }
-  );
+    return {
+      id: appointment.id,
+      patientName: appointment.patient_name,
+      patientEmail: appointment.patient_email,
+      patientPhone: appointment.patient_phone,
+      requestedDate: appointment.requested_date,
+      requestedTime: appointment.requested_time,
+      scheduledDate: appointment.scheduled_date,
+      scheduledTime: appointment.scheduled_time,
+      rescheduleReason: appointment.reschedule_reason,
+      notes: appointment.notes,
+      source: appointment.source,
+      status: appointment.status,
+      createdAt: appointment.created_at,
+      updatedAt: appointment.updated_at,
+      doctorName:
+        doctorTranslation ||
+        (doctor ? nameFromSlug(doctor.slug) : copy.common.none),
+      clinicName:
+        clinicTranslation ||
+        (clinic ? nameFromSlug(clinic.slug) : copy.common.none),
+    };
+  });
 
   return (
-    <main className="px-6 py-12">
-      <div className="mx-auto max-w-7xl">
-        <header>
-          <p className="text-sm font-medium text-gray-500">
-            Panou administrator
-          </p>
+    <div className="space-y-[34px]">
+      <header>
+        <p className="text-sm font-semibold text-[#9A4F35]">
+          {copy.pages.appointments.eyebrow}
+        </p>
+        <h1 className="mt-[8px] text-3xl font-bold text-gray-900">
+          {copy.pages.appointments.title}
+        </h1>
+        <p className="mt-[13px] max-w-3xl text-sm leading-6 text-gray-600">
+          {copy.pages.appointments.description}
+        </p>
+      </header>
 
-          <h1 className="mt-2 text-4xl font-bold text-gray-900">
-            Programări
-          </h1>
+      <section className="rounded-[21px] border border-blue-200 bg-blue-50 p-[21px] text-blue-950">
+        <h2 className="font-bold">{copy.pages.appointments.privacyTitle}</h2>
+        <p className="mt-[8px] text-sm leading-6">
+          {copy.pages.appointments.privacyDescription}
+        </p>
+      </section>
 
-          <p className="mt-3 text-gray-600">
-            Caută, filtrează și gestionează programările din platformă.
-          </p>
-        </header>
-
-        {error ? (
-          <section className="mt-10 rounded-2xl border border-red-200 bg-red-50 p-8 text-red-800 shadow-sm">
-            Programările nu au putut fi încărcate.
-          </section>
-        ) : (
-          <AdminAppointmentsAccordion appointments={appointmentListItems} />
-        )}
-      </div>
-    </main>
+      {error ? (
+        <section className="rounded-[21px] border border-red-200 bg-red-50 p-[21px] text-sm text-red-800">
+          {copy.appointments.empty}
+        </section>
+      ) : (
+        <AdminAppointmentsAccordion appointments={items} locale={locale} />
+      )}
+    </div>
   );
 }

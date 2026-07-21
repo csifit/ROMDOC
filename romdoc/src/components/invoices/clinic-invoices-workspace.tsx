@@ -8,11 +8,17 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 
+import type { AppLocale } from "@/lib/i18n/app-locale";
 import {
   type ClinicInvoiceOrganization,
   type ClinicInvoiceRow,
   type ClinicInvoiceStatus,
 } from "@/lib/invoices/clinic-invoices";
+import {
+  getPlatformOperatorBilling,
+  interpolatePlatformBillingCopy,
+  PLATFORM_OPERATOR_BILLING_LOCALE_TAGS,
+} from "@/lib/i18n/platform-operator-billing";
 
 export type ClinicInvoiceInitialDraft = {
   organizationId: string;
@@ -21,64 +27,18 @@ export type ClinicInvoiceInitialDraft = {
   estimatedAmountRon: string;
 };
 
-type Props = {
+type ClinicInvoicesWorkspaceProps = {
   invoices: ClinicInvoiceRow[];
   organizations: ClinicInvoiceOrganization[];
   initialDraft?: ClinicInvoiceInitialDraft | null;
+  locale: AppLocale;
 };
 
 type ApiResponse = {
+  code?: string;
   error?: string;
+  success?: boolean;
 };
-
-function currency(value: number) {
-  return new Intl.NumberFormat("ro-RO", {
-    style: "currency",
-    currency: "RON",
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-function dateLabel(value: string | null) {
-  if (!value) return "—";
-
-  return new Intl.DateTimeFormat("ro-RO", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${value}T00:00:00Z`));
-}
-
-function periodLabel(start: string, end: string) {
-  const startDate = new Date(`${start}T00:00:00Z`);
-  const endDate = new Date(`${end}T00:00:00Z`);
-
-  if (
-    startDate.getUTCFullYear() === endDate.getUTCFullYear() &&
-    startDate.getUTCMonth() === endDate.getUTCMonth()
-  ) {
-    return new Intl.DateTimeFormat("ro-RO", {
-      month: "long",
-      year: "numeric",
-      timeZone: "UTC",
-    }).format(startDate);
-  }
-
-  return `${dateLabel(start)} – ${dateLabel(end)}`;
-}
-
-function statusLabel(status: ClinicInvoiceStatus) {
-  if (status === "paid") return "Plătită";
-  if (status === "draft") return "Draft";
-  return "Facturată";
-}
-
-function statusClasses(status: ClinicInvoiceStatus) {
-  if (status === "paid") return "bg-green-100 text-green-800";
-  if (status === "draft") return "bg-gray-100 text-gray-700";
-  return "bg-blue-100 text-blue-800";
-}
 
 function isoToday() {
   return new Date().toISOString().slice(0, 10);
@@ -88,36 +48,43 @@ function previousMonthStart() {
   const now = new Date();
   return new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)
-  ).toISOString().slice(0, 10);
+  )
+    .toISOString()
+    .slice(0, 10);
 }
 
 function previousMonthEnd() {
   const now = new Date();
   return new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0)
-  ).toISOString().slice(0, 10);
+  )
+    .toISOString()
+    .slice(0, 10);
+}
+
+function statusClasses(status: ClinicInvoiceStatus) {
+  if (status === "paid") return "border-green-200 bg-green-50 text-green-800";
+  if (status === "draft") return "border-gray-200 bg-gray-100 text-gray-700";
+  return "border-blue-200 bg-blue-50 text-blue-800";
 }
 
 export default function ClinicInvoicesWorkspace({
   invoices,
   organizations,
   initialDraft = null,
-}: Props) {
+  locale,
+}: ClinicInvoicesWorkspaceProps) {
+  const copy = getPlatformOperatorBilling(locale);
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
   const hasValidInitialDraft =
     initialDraft !== null &&
     organizations.some(
-      (organization) =>
-        organization.id ===
-        initialDraft.organizationId
+      (organization) => organization.id === initialDraft.organizationId
     );
 
-  const [isPending, startTransition] = useTransition();
-
-  const [showCreateForm, setShowCreateForm] = useState(
-    hasValidInitialDraft
-  );
+  const [showCreateForm, setShowCreateForm] = useState(hasValidInitialDraft);
   const [search, setSearch] = useState("");
   const [organizationFilter, setOrganizationFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -125,9 +92,7 @@ export default function ClinicInvoicesWorkspace({
   const [dateTo, setDateTo] = useState("");
 
   const [organizationId, setOrganizationId] = useState(
-    hasValidInitialDraft
-      ? initialDraft.organizationId
-      : ""
+    hasValidInitialDraft ? initialDraft.organizationId : ""
   );
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [issuedOn, setIssuedOn] = useState(isoToday());
@@ -137,51 +102,71 @@ export default function ClinicInvoicesWorkspace({
       : previousMonthStart()
   );
   const [billingPeriodEnd, setBillingPeriodEnd] = useState(
-    hasValidInitialDraft
-      ? initialDraft.billingPeriodEnd
-      : previousMonthEnd()
+    hasValidInitialDraft ? initialDraft.billingPeriodEnd : previousMonthEnd()
   );
   const [estimatedAmountRon, setEstimatedAmountRon] = useState(
-    hasValidInitialDraft
-      ? initialDraft.estimatedAmountRon
-      : ""
+    hasValidInitialDraft ? initialDraft.estimatedAmountRon : ""
   );
   const [amountRon, setAmountRon] = useState(
-    hasValidInitialDraft
-      ? initialDraft.estimatedAmountRon
-      : ""
+    hasValidInitialDraft ? initialDraft.estimatedAmountRon : ""
   );
   const [notes, setNotes] = useState("");
-  const [createError, setCreateError] = useState<string | null>(null);
+  const [createError, setCreateError] = useState("");
 
   const [paymentInvoiceId, setPaymentInvoiceId] = useState<string | null>(null);
   const [paidOn, setPaidOn] = useState(isoToday());
   const [paymentReference, setPaymentReference] = useState("");
-  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentError, setPaymentError] = useState("");
+
+  const currency = (value: number) =>
+    new Intl.NumberFormat(PLATFORM_OPERATOR_BILLING_LOCALE_TAGS[locale], {
+      style: "currency",
+      currency: "RON",
+      maximumFractionDigits: 2,
+    }).format(value);
+
+  const dateLabel = (value: string | null) => {
+    if (!value) return copy.common.none;
+    return new Intl.DateTimeFormat(
+      PLATFORM_OPERATOR_BILLING_LOCALE_TAGS[locale],
+      { dateStyle: "medium", timeZone: "UTC" }
+    ).format(new Date(`${value}T00:00:00Z`));
+  };
+
+  const periodLabel = (start: string, end: string) => {
+    const startDate = new Date(`${start}T00:00:00Z`);
+    const endDate = new Date(`${end}T00:00:00Z`);
+
+    if (
+      startDate.getUTCFullYear() === endDate.getUTCFullYear() &&
+      startDate.getUTCMonth() === endDate.getUTCMonth()
+    ) {
+      return new Intl.DateTimeFormat(
+        PLATFORM_OPERATOR_BILLING_LOCALE_TAGS[locale],
+        { month: "long", year: "numeric", timeZone: "UTC" }
+      ).format(startDate);
+    }
+
+    return `${dateLabel(start)} – ${dateLabel(end)}`;
+  };
+
+  const statusLabel = (status: ClinicInvoiceStatus) => {
+    if (status === "paid") return copy.invoiceWorkspace.statusPaid;
+    if (status === "draft") return copy.invoiceWorkspace.statusDraft;
+    return copy.invoiceWorkspace.statusInvoiced;
+  };
 
   const filteredInvoices = useMemo(() => {
-    const needle = search.trim().toLocaleLowerCase("ro-RO");
+    const needle = search.trim().toLocaleLowerCase(locale);
 
     return invoices.filter((invoice) => {
       if (organizationFilter && invoice.organizationId !== organizationFilter) {
         return false;
       }
-
-      if (statusFilter && invoice.status !== statusFilter) {
-        return false;
-      }
-
-      if (dateFrom && invoice.issuedOn < dateFrom) {
-        return false;
-      }
-
-      if (dateTo && invoice.issuedOn > dateTo) {
-        return false;
-      }
-
-      if (!needle) {
-        return true;
-      }
+      if (statusFilter && invoice.status !== statusFilter) return false;
+      if (dateFrom && invoice.issuedOn < dateFrom) return false;
+      if (dateTo && invoice.issuedOn > dateTo) return false;
+      if (!needle) return true;
 
       return [
         invoice.invoiceNumber,
@@ -193,72 +178,42 @@ export default function ClinicInvoicesWorkspace({
       ]
         .filter(Boolean)
         .join(" ")
-        .toLocaleLowerCase("ro-RO")
+        .toLocaleLowerCase(locale)
         .includes(needle);
     });
-  }, [invoices, organizationFilter, statusFilter, dateFrom, dateTo, search]);
+  }, [dateFrom, dateTo, invoices, locale, organizationFilter, search, statusFilter]);
 
   const processedPeriodInvoices = useMemo(() => {
-    if (!organizationId || !billingPeriodStart || !billingPeriodEnd) {
-      return [];
-    }
+    if (!organizationId || !billingPeriodStart || !billingPeriodEnd) return [];
 
-    return invoices.filter((invoice) => {
-      if (
-        invoice.organizationId !== organizationId ||
-        (invoice.status !== "invoiced" && invoice.status !== "paid")
-      ) {
-        return false;
-      }
-
-      return (
+    return invoices.filter(
+      (invoice) =>
+        invoice.organizationId === organizationId &&
+        ["invoiced", "paid"].includes(invoice.status) &&
         invoice.billingPeriodStart <= billingPeriodEnd &&
         invoice.billingPeriodEnd >= billingPeriodStart
-      );
-    });
-  }, [
-    invoices,
-    organizationId,
-    billingPeriodStart,
-    billingPeriodEnd,
-  ]);
+    );
+  }, [billingPeriodEnd, billingPeriodStart, invoices, organizationId]);
 
   const duplicateInvoiceNumber = useMemo(() => {
-    const normalizedInvoiceNumber = invoiceNumber
-      .trim()
-      .toLocaleLowerCase("ro-RO");
-
-    if (!normalizedInvoiceNumber) {
-      return null;
-    }
+    const normalized = invoiceNumber.trim().toLocaleLowerCase(locale);
+    if (!normalized) return null;
 
     return (
       invoices.find(
         (invoice) =>
-          invoice.invoiceNumber.trim().toLocaleLowerCase("ro-RO") ===
-          normalizedInvoiceNumber
+          invoice.invoiceNumber.trim().toLocaleLowerCase(locale) === normalized
       ) ?? null
     );
-  }, [invoices, invoiceNumber]);
-
-  const hasInvoiceConflict =
-    processedPeriodInvoices.length > 0 ||
-    duplicateInvoiceNumber !== null;
+  }, [invoiceNumber, invoices, locale]);
 
   const totals = useMemo(
     () =>
       invoices.reduce(
         (result, invoice) => {
           result.total += invoice.amountRon;
-
-          if (invoice.status === "paid") {
-            result.paid += invoice.amountRon;
-          }
-
-          if (invoice.status === "invoiced") {
-            result.outstanding += invoice.amountRon;
-          }
-
+          if (invoice.status === "paid") result.paid += invoice.amountRon;
+          if (invoice.status === "invoiced") result.outstanding += invoice.amountRon;
           return result;
         },
         { total: 0, paid: 0, outstanding: 0 }
@@ -275,17 +230,15 @@ export default function ClinicInvoicesWorkspace({
     setEstimatedAmountRon("");
     setAmountRon("");
     setNotes("");
-    setCreateError(null);
+    setCreateError("");
   }
 
   function submitInvoice(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setCreateError(null);
+    setCreateError("");
 
-    if (hasInvoiceConflict) {
-      setCreateError(
-        "Rezolvă avertismentele de duplicare înainte de salvare."
-      );
+    if (processedPeriodInvoices.length > 0 || duplicateInvoiceNumber) {
+      setCreateError(copy.invoiceWorkspace.resolveDuplicates);
       return;
     }
 
@@ -308,9 +261,12 @@ export default function ClinicInvoicesWorkspace({
         });
 
         const result = (await response.json()) as ApiResponse;
-
         if (!response.ok) {
-          throw new Error(result.error ?? "Factura nu a putut fi salvată.");
+          throw new Error(
+            locale === "ro" && result.error
+              ? result.error
+              : copy.invoiceWorkspace.createFailed
+          );
         }
 
         resetCreateForm();
@@ -320,7 +276,7 @@ export default function ClinicInvoicesWorkspace({
         setCreateError(
           error instanceof Error
             ? error.message
-            : "Factura nu a putut fi salvată."
+            : copy.invoiceWorkspace.createFailed
         );
       }
     });
@@ -328,9 +284,8 @@ export default function ClinicInvoicesWorkspace({
 
   function submitPayment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setPaymentError(null);
-
     if (!paymentInvoiceId) return;
+    setPaymentError("");
 
     startTransition(async () => {
       try {
@@ -344,9 +299,12 @@ export default function ClinicInvoicesWorkspace({
         );
 
         const result = (await response.json()) as ApiResponse;
-
         if (!response.ok) {
-          throw new Error(result.error ?? "Plata nu a putut fi confirmată.");
+          throw new Error(
+            locale === "ro" && result.error
+              ? result.error
+              : copy.invoiceWorkspace.paymentFailed
+          );
         }
 
         setPaymentInvoiceId(null);
@@ -357,175 +315,167 @@ export default function ClinicInvoicesWorkspace({
         setPaymentError(
           error instanceof Error
             ? error.message
-            : "Plata nu a putut fi confirmată."
+            : copy.invoiceWorkspace.paymentFailed
         );
       }
     });
   }
 
+  const filtersActive = Boolean(
+    search || organizationFilter || statusFilter || dateFrom || dateTo
+  );
+
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-3">
+    <div className="space-y-[21px]">
+      <div className="grid gap-[13px] md:grid-cols-3">
         {[
-          ["Total înregistrat", totals.total],
-          ["De încasat", totals.outstanding],
-          ["Încasat", totals.paid],
+          [copy.invoiceWorkspace.summaryTotal, totals.total],
+          [copy.invoiceWorkspace.summaryOutstanding, totals.outstanding],
+          [copy.invoiceWorkspace.summaryPaid, totals.paid],
         ].map(([label, value]) => (
           <div
             key={String(label)}
-            className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
+            className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm"
           >
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
               {label}
             </p>
-            <p className="mt-3 text-2xl font-bold text-gray-900">
+            <p className="mt-[13px] text-2xl font-bold text-gray-900">
               {currency(Number(value))}
             </p>
           </div>
         ))}
       </div>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+      <section className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
+        <div className="flex flex-col justify-between gap-[13px] lg:flex-row lg:items-start">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Facturi</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-              RomDoc urmărește facturile create manual în SAGA și confirmarea
-              încasării.
+            <h2 className="text-xl font-bold text-gray-900">
+              {copy.invoiceWorkspace.title}
+            </h2>
+            <p className="mt-[8px] max-w-3xl text-sm leading-6 text-gray-600">
+              {copy.invoiceWorkspace.description}
             </p>
           </div>
-
           <button
             type="button"
             onClick={() => {
               setShowCreateForm((current) => !current);
-              setCreateError(null);
+              setCreateError("");
             }}
-            className="romdoc-focus-ring rounded-xl bg-[#036661] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#ff2800]"
+            className="romdoc-focus-ring w-fit rounded-[13px] bg-[#036661] px-[21px] py-[13px] text-sm font-semibold text-white transition hover:bg-[#024d49]"
           >
-            {showCreateForm ? "Închide formularul" : "Adaugă factură"}
+            {showCreateForm
+              ? copy.invoiceWorkspace.closeForm
+              : copy.invoiceWorkspace.add}
           </button>
         </div>
 
         {showCreateForm ? (
           <form
             onSubmit={submitInvoice}
-            className="mt-6 rounded-2xl border border-gray-200 bg-gray-50 p-5"
+            className="mt-[21px] rounded-[21px] border border-gray-200 bg-gray-50 p-[21px]"
           >
             <h3 className="text-lg font-bold text-gray-900">
-              Înregistrează factura din SAGA
+              {copy.invoiceWorkspace.formTitle}
             </h3>
 
             {hasValidInitialDraft ? (
-              <div className="mt-4 rounded-xl border border-[#036661]/20 bg-[#036661]/5 p-4 text-sm leading-6 text-gray-700">
-                Organizația, perioada și estimarea RomDoc au fost preluate din
-                pagina de facturare. Completează numărul facturii din SAGA și
-                confirmă suma finală facturată.
-              </div>
+              <p className="mt-[13px] rounded-[13px] border border-[#036661]/20 bg-[#036661]/5 p-[13px] text-sm leading-6 text-gray-700">
+                {copy.invoiceWorkspace.prefilled}
+              </p>
             ) : null}
 
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <label>
-                <span className="text-sm font-semibold text-gray-800">
-                  Organizație clinică
+            <div className="mt-[21px] grid gap-[13px] md:grid-cols-2 xl:grid-cols-3">
+              <label className="block md:col-span-2 xl:col-span-1">
+                <span className="text-sm font-semibold text-gray-700">
+                  {copy.invoiceWorkspace.organization}
                 </span>
                 <select
                   required
                   value={organizationId}
                   onChange={(event) => setOrganizationId(event.target.value)}
-                  className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm"
+                  className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] text-sm text-gray-950"
                 >
-                  <option value="">Selectează organizația</option>
+                  <option value="">
+                    {copy.invoiceWorkspace.chooseOrganization}
+                  </option>
                   {organizations.map((organization) => (
                     <option key={organization.id} value={organization.id}>
                       {organization.name}
-                      {organization.companyName
-                        ? ` — ${organization.companyName}`
-                        : ""}
                     </option>
                   ))}
                 </select>
               </label>
 
-              <label>
-                <span className="text-sm font-semibold text-gray-800">
-                  Număr factură
+              <label className="block">
+                <span className="text-sm font-semibold text-gray-700">
+                  {copy.invoiceWorkspace.invoiceNumber}
                 </span>
                 <input
                   required
-                  maxLength={100}
                   value={invoiceNumber}
                   onChange={(event) => setInvoiceNumber(event.target.value)}
-                  placeholder="Ex. RD-2026-0012"
-                  className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm"
+                  className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] text-sm text-gray-950"
                 />
               </label>
 
-              <label>
-                <span className="text-sm font-semibold text-gray-800">
-                  Emisă la
+              <label className="block">
+                <span className="text-sm font-semibold text-gray-700">
+                  {copy.invoiceWorkspace.issuedOn}
                 </span>
                 <input
                   required
                   type="date"
                   value={issuedOn}
                   onChange={(event) => setIssuedOn(event.target.value)}
-                  className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm"
+                  className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] text-sm text-gray-950"
                 />
               </label>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label>
-                  <span className="text-sm font-semibold text-gray-800">
-                    Perioadă de la
-                  </span>
-                  <input
-                    required
-                    type="date"
-                    value={billingPeriodStart}
-                    onChange={(event) =>
-                      setBillingPeriodStart(event.target.value)
-                    }
-                    className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm"
-                  />
-                </label>
+              <label className="block">
+                <span className="text-sm font-semibold text-gray-700">
+                  {copy.invoiceWorkspace.periodStart}
+                </span>
+                <input
+                  required
+                  type="date"
+                  value={billingPeriodStart}
+                  onChange={(event) => setBillingPeriodStart(event.target.value)}
+                  className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] text-sm text-gray-950"
+                />
+              </label>
 
-                <label>
-                  <span className="text-sm font-semibold text-gray-800">
-                    Până la
-                  </span>
-                  <input
-                    required
-                    type="date"
-                    value={billingPeriodEnd}
-                    onChange={(event) =>
-                      setBillingPeriodEnd(event.target.value)
-                    }
-                    className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm"
-                  />
-                </label>
-              </div>
+              <label className="block">
+                <span className="text-sm font-semibold text-gray-700">
+                  {copy.invoiceWorkspace.periodEnd}
+                </span>
+                <input
+                  required
+                  type="date"
+                  value={billingPeriodEnd}
+                  onChange={(event) => setBillingPeriodEnd(event.target.value)}
+                  className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] text-sm text-gray-950"
+                />
+              </label>
 
-              <label>
-                <span className="text-sm font-semibold text-gray-800">
-                  Estimare RomDoc
+              <label className="block">
+                <span className="text-sm font-semibold text-gray-700">
+                  {copy.invoiceWorkspace.estimatedAmount}
                 </span>
                 <input
                   type="number"
                   min="0"
                   step="0.01"
                   value={estimatedAmountRon}
-                  onChange={(event) =>
-                    setEstimatedAmountRon(event.target.value)
-                  }
-                  placeholder="Opțional"
-                  className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm"
+                  onChange={(event) => setEstimatedAmountRon(event.target.value)}
+                  className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] text-sm text-gray-950"
                 />
               </label>
 
-              <label>
-                <span className="text-sm font-semibold text-gray-800">
-                  Sumă facturată
+              <label className="block">
+                <span className="text-sm font-semibold text-gray-700">
+                  {copy.invoiceWorkspace.finalAmount}
                 </span>
                 <input
                   required
@@ -534,344 +484,277 @@ export default function ClinicInvoicesWorkspace({
                   step="0.01"
                   value={amountRon}
                   onChange={(event) => setAmountRon(event.target.value)}
-                  placeholder="0.00"
-                  className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm"
+                  className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] text-sm text-gray-950"
                 />
               </label>
 
-              <label className="md:col-span-2">
-                <span className="text-sm font-semibold text-gray-800">
-                  Notițe
+              <label className="block md:col-span-2 xl:col-span-3">
+                <span className="text-sm font-semibold text-gray-700">
+                  {copy.invoiceWorkspace.notes}
                 </span>
                 <textarea
-                  rows={3}
-                  maxLength={2000}
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
-                  placeholder="Opțional"
-                  className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm"
+                  placeholder={copy.invoiceWorkspace.notesPlaceholder}
+                  rows={3}
+                  className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] text-sm text-gray-950"
                 />
               </label>
             </div>
 
             {processedPeriodInvoices.length > 0 ? (
-              <div
-                role="alert"
-                className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
-              >
-                <p className="font-bold">
-                  Atenție: această organizație are deja o factură procesată
-                  pentru perioada selectată.
-                </p>
-
-                <div className="mt-3 space-y-2">
-                  {processedPeriodInvoices.map((invoice) => (
-                    <p key={invoice.id} className="leading-6">
-                      Factura <strong>{invoice.invoiceNumber}</strong> ·{" "}
-                      {dateLabel(invoice.issuedOn)} ·{" "}
-                      {statusLabel(invoice.status)} ·{" "}
-                      {currency(invoice.amountRon)}
-                    </p>
-                  ))}
-                </div>
-
-                <p className="mt-3 leading-6">
-                  Verifică factura existentă înainte de a crea una nouă pentru
-                  aceeași organizație și perioadă.
-                </p>
-              </div>
+              <p className="mt-[13px] rounded-[13px] border border-amber-200 bg-amber-50 p-[13px] text-sm text-amber-900">
+                {copy.invoiceWorkspace.duplicatePeriod}
+              </p>
             ) : null}
-
             {duplicateInvoiceNumber ? (
-              <div
-                role="alert"
-                className="mt-4 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-900"
-              >
-                <p className="font-bold">
-                  Numărul de factură SAGA există deja în RomDoc.
-                </p>
-
-                <p className="mt-2 leading-6">
-                  Factura{" "}
-                  <strong>{duplicateInvoiceNumber.invoiceNumber}</strong>{" "}
-                  aparține organizației{" "}
-                  <strong>{duplicateInvoiceNumber.organizationName}</strong>,
-                  este emisă la {dateLabel(duplicateInvoiceNumber.issuedOn)} și
-                  are statusul {statusLabel(duplicateInvoiceNumber.status)}.
-                </p>
-              </div>
+              <p className="mt-[13px] rounded-[13px] border border-amber-200 bg-amber-50 p-[13px] text-sm text-amber-900">
+                {copy.invoiceWorkspace.duplicateNumber}
+              </p>
             ) : null}
-
             {createError ? (
-              <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              <p role="alert" className="mt-[13px] text-sm text-red-700">
                 {createError}
               </p>
             ) : null}
 
             <button
               type="submit"
-              disabled={isPending || hasInvoiceConflict}
-              className="romdoc-focus-ring mt-5 rounded-xl bg-[#036661] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#ff2800] disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isPending || processedPeriodInvoices.length > 0 || Boolean(duplicateInvoiceNumber)}
+              className="romdoc-focus-ring mt-[21px] rounded-[13px] bg-[#036661] px-[21px] py-[13px] text-sm font-semibold text-white transition hover:bg-[#024d49] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isPending
-                ? "Se salvează..."
-                : hasInvoiceConflict
-                  ? "Rezolvă avertismentele"
-                  : "Salvează ca Facturată"}
+                ? copy.invoiceWorkspace.saving
+                : copy.invoiceWorkspace.save}
             </button>
           </form>
         ) : null}
+      </section>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-5">
-          <label className="lg:col-span-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Caută
-            </span>
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Număr, organizație, firmă, CUI sau e-mail..."
-              className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm"
-            />
-          </label>
-
-          <label>
-            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Organizație
-            </span>
-            <select
-              value={organizationFilter}
-              onChange={(event) => setOrganizationFilter(event.target.value)}
-              className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm"
-            >
-              <option value="">Toate</option>
-              {organizations.map((organization) => (
-                <option key={organization.id} value={organization.id}>
-                  {organization.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Status
-            </span>
-            <select
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-              className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm"
-            >
-              <option value="">Toate</option>
-              <option value="draft">Draft</option>
-              <option value="invoiced">Facturată</option>
-              <option value="paid">Plătită</option>
-            </select>
-          </label>
-
-          <div className="grid gap-3">
-            <label>
-              <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Emisă de la
-              </span>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(event) => setDateFrom(event.target.value)}
-                className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-3 py-3 text-sm"
-              />
-            </label>
-
-            <label>
-              <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Până la
-              </span>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(event) => setDateTo(event.target.value)}
-                className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-3 py-3 text-sm"
-              />
-            </label>
+      <section className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
+        <div className="flex flex-col justify-between gap-[13px] lg:flex-row lg:items-start">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">
+              {copy.invoiceWorkspace.filtersTitle}
+            </h2>
+            <p className="mt-[5px] text-sm text-gray-500">
+              {interpolatePlatformBillingCopy(
+                copy.invoiceWorkspace.invoicesCount,
+                { filtered: filteredInvoices.length, total: invoices.length }
+              )}
+            </p>
           </div>
+          {filtersActive ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setOrganizationFilter("");
+                setStatusFilter("");
+                setDateFrom("");
+                setDateTo("");
+              }}
+              className="romdoc-focus-ring w-fit rounded-[13px] border border-gray-300 bg-white px-[13px] py-[8px] text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+            >
+              {copy.invoiceWorkspace.resetFilters}
+            </button>
+          ) : null}
         </div>
 
-        <p className="mt-4 text-sm text-gray-600">
-          {filteredInvoices.length} din {invoices.length} facturi
-        </p>
-
-        {filteredInvoices.length === 0 ? (
-          <div className="mt-5 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-6 text-sm text-gray-600">
-            Nu există facturi care corespund filtrelor selectate.
+        <div className="mt-[21px] grid gap-[13px] md:grid-cols-2 xl:grid-cols-5">
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={copy.invoiceWorkspace.searchPlaceholder}
+            className="romdoc-focus-ring rounded-[13px] border border-gray-300 px-[13px] py-[13px] text-sm xl:col-span-2"
+          />
+          <select
+            value={organizationFilter}
+            onChange={(event) => setOrganizationFilter(event.target.value)}
+            className="romdoc-focus-ring rounded-[13px] border border-gray-300 px-[13px] py-[13px] text-sm"
+          >
+            <option value="">{copy.invoiceWorkspace.allOrganizations}</option>
+            {organizations.map((organization) => (
+              <option key={organization.id} value={organization.id}>
+                {organization.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+            className="romdoc-focus-ring rounded-[13px] border border-gray-300 px-[13px] py-[13px] text-sm"
+          >
+            <option value="">{copy.invoiceWorkspace.allStatuses}</option>
+            <option value="draft">{copy.invoiceWorkspace.statusDraft}</option>
+            <option value="invoiced">{copy.invoiceWorkspace.statusInvoiced}</option>
+            <option value="paid">{copy.invoiceWorkspace.statusPaid}</option>
+          </select>
+          <div className="grid grid-cols-2 gap-[8px]">
+            <input
+              aria-label={copy.invoiceWorkspace.dateFrom}
+              type="date"
+              value={dateFrom}
+              onChange={(event) => setDateFrom(event.target.value)}
+              className="romdoc-focus-ring min-w-0 rounded-[13px] border border-gray-300 px-[8px] py-[13px] text-xs"
+            />
+            <input
+              aria-label={copy.invoiceWorkspace.dateTo}
+              type="date"
+              value={dateTo}
+              onChange={(event) => setDateTo(event.target.value)}
+              className="romdoc-focus-ring min-w-0 rounded-[13px] border border-gray-300 px-[8px] py-[13px] text-xs"
+            />
           </div>
-        ) : (
-          <div className="mt-5 overflow-x-auto">
-            <table className="w-full min-w-[1100px] divide-y divide-gray-200 text-sm">
-              <thead>
-                <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  <th className="px-3 py-3">Număr factură</th>
-                  <th className="px-3 py-3">Emisă la</th>
-                  <th className="px-3 py-3">Perioadă</th>
-                  <th className="px-3 py-3">Organizație clinică</th>
-                  <th className="px-3 py-3 text-right">Estimare</th>
-                  <th className="px-3 py-3 text-right">Facturat</th>
-                  <th className="px-3 py-3">Status</th>
-                  <th className="px-3 py-3">Plătită la</th>
-                  <th className="px-3 py-3">Acțiune</th>
-                </tr>
-              </thead>
+        </div>
+      </section>
 
-              <tbody className="divide-y divide-gray-100">
-                {filteredInvoices.map((invoice) => (
-                  <tr key={invoice.id} className="align-top">
-                    <td className="px-3 py-4">
-                      <p className="font-bold text-gray-900">
-                        {invoice.invoiceNumber}
-                      </p>
-                      {invoice.paymentReference ? (
-                        <p className="mt-1 text-xs text-gray-500">
-                          Ref. plată: {invoice.paymentReference}
+      {filteredInvoices.length === 0 ? (
+        <div className="rounded-[21px] border border-dashed border-gray-300 bg-white p-[34px] text-center text-sm text-gray-600">
+          {copy.invoiceWorkspace.empty}
+        </div>
+      ) : (
+        <div className="space-y-[13px]">
+          {filteredInvoices.map((invoice) => (
+            <details
+              key={invoice.id}
+              className="group overflow-hidden rounded-[21px] border border-gray-200 bg-white shadow-sm"
+            >
+              <summary className="romdoc-focus-ring flex cursor-pointer list-none flex-col gap-[13px] p-[21px] marker:content-none lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-[8px]">
+                    <h3 className="text-lg font-bold text-gray-900">
+                      {invoice.invoiceNumber}
+                    </h3>
+                    <span className={`rounded-full border px-[8px] py-[5px] text-xs font-semibold ${statusClasses(invoice.status)}`}>
+                      {statusLabel(invoice.status)}
+                    </span>
+                  </div>
+                  <p className="mt-[5px] text-sm text-gray-600">
+                    {invoice.organizationName} · {periodLabel(invoice.billingPeriodStart, invoice.billingPeriodEnd)}
+                  </p>
+                </div>
+                <div className="text-left lg:text-right">
+                  <p className="text-xl font-bold text-gray-900">
+                    {currency(invoice.amountRon)}
+                  </p>
+                  <p className="mt-[5px] text-xs text-gray-500">
+                    {copy.invoiceWorkspace.issued}: {dateLabel(invoice.issuedOn)}
+                  </p>
+                </div>
+              </summary>
+
+              <div className="border-t border-gray-200 bg-gray-50/60 p-[21px]">
+                <dl className="grid gap-[13px] md:grid-cols-2 xl:grid-cols-4">
+                  {[
+                    [copy.invoiceWorkspace.organizationDetails, invoice.companyName || invoice.organizationName],
+                    [copy.amounts.invoiceDetails.taxId, invoice.taxId || copy.common.none],
+                    [copy.amounts.invoiceDetails.billingEmail, invoice.billingEmail || copy.common.none],
+                    [copy.invoiceWorkspace.billingPeriod, periodLabel(invoice.billingPeriodStart, invoice.billingPeriodEnd)],
+                    [copy.invoiceWorkspace.estimatedAmount, invoice.estimatedAmountRon === null ? copy.common.none : currency(invoice.estimatedAmountRon)],
+                    [copy.invoiceWorkspace.amount, currency(invoice.amountRon)],
+                    [copy.invoiceWorkspace.paidOn, dateLabel(invoice.paidOn)],
+                    [copy.invoiceWorkspace.paymentReference, invoice.paymentReference || copy.common.none],
+                  ].map(([label, value]) => (
+                    <div key={String(label)}>
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        {label}
+                      </dt>
+                      <dd className="mt-[5px] text-sm font-medium text-gray-900">
+                        {value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+
+                {invoice.notes ? (
+                  <p className="mt-[13px] rounded-[13px] border border-gray-200 bg-white p-[13px] text-sm leading-6 text-gray-700">
+                    {invoice.notes}
+                  </p>
+                ) : null}
+
+                {invoice.status === "invoiced" ? (
+                  paymentInvoiceId === invoice.id ? (
+                    <form
+                      onSubmit={submitPayment}
+                      className="mt-[21px] rounded-[13px] border border-green-200 bg-green-50 p-[13px]"
+                    >
+                      <h4 className="font-bold text-green-950">
+                        {copy.invoiceWorkspace.markPaidTitle}
+                      </h4>
+                      <div className="mt-[13px] grid gap-[13px] md:grid-cols-2">
+                        <label>
+                          <span className="text-sm font-semibold text-green-950">
+                            {copy.invoiceWorkspace.paidDate}
+                          </span>
+                          <input
+                            required
+                            type="date"
+                            min={invoice.issuedOn}
+                            value={paidOn}
+                            onChange={(event) => setPaidOn(event.target.value)}
+                            className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-green-300 bg-white px-[13px] py-[13px] text-sm"
+                          />
+                        </label>
+                        <label>
+                          <span className="text-sm font-semibold text-green-950">
+                            {copy.invoiceWorkspace.paymentReferenceOptional}
+                          </span>
+                          <input
+                            value={paymentReference}
+                            onChange={(event) => setPaymentReference(event.target.value)}
+                            className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-green-300 bg-white px-[13px] py-[13px] text-sm"
+                          />
+                        </label>
+                      </div>
+                      {paymentError ? (
+                        <p role="alert" className="mt-[13px] text-sm text-red-700">
+                          {paymentError}
                         </p>
                       ) : null}
-                    </td>
-                    <td className="px-3 py-4 text-gray-700">
-                      {dateLabel(invoice.issuedOn)}
-                    </td>
-                    <td className="px-3 py-4 text-gray-700">
-                      {periodLabel(
-                        invoice.billingPeriodStart,
-                        invoice.billingPeriodEnd
-                      )}
-                    </td>
-                    <td className="px-3 py-4">
-                      <p className="font-semibold text-gray-900">
-                        {invoice.organizationName}
-                      </p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        {invoice.companyName ?? "Date firmă indisponibile"}
-                        {invoice.taxId ? ` · ${invoice.taxId}` : ""}
-                      </p>
-                    </td>
-                    <td className="px-3 py-4 text-right text-gray-700">
-                      {invoice.estimatedAmountRon === null
-                        ? "—"
-                        : currency(invoice.estimatedAmountRon)}
-                    </td>
-                    <td className="px-3 py-4 text-right font-bold text-gray-900">
-                      {currency(invoice.amountRon)}
-                    </td>
-                    <td className="px-3 py-4">
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusClasses(
-                          invoice.status
-                        )}`}
-                      >
-                        {statusLabel(invoice.status)}
-                      </span>
-                    </td>
-                    <td className="px-3 py-4 text-gray-700">
-                      {dateLabel(invoice.paidOn)}
-                    </td>
-                    <td className="px-3 py-4">
-                      {invoice.status === "paid" ? (
-                        <span className="font-semibold text-green-700">
-                          Plătită
-                        </span>
-                      ) : invoice.status === "invoiced" ? (
+                      <div className="mt-[13px] flex flex-wrap gap-[8px]">
+                        <button
+                          type="submit"
+                          disabled={isPending}
+                          className="romdoc-focus-ring rounded-[13px] bg-green-700 px-[21px] py-[13px] text-sm font-semibold text-white disabled:opacity-60"
+                        >
+                          {isPending
+                            ? copy.invoiceWorkspace.confirming
+                            : copy.invoiceWorkspace.confirmPayment}
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
-                            setPaymentInvoiceId(invoice.id);
-                            setPaidOn(isoToday());
-                            setPaymentReference("");
-                            setPaymentError(null);
+                            setPaymentInvoiceId(null);
+                            setPaymentError("");
                           }}
-                          className="romdoc-focus-ring rounded-xl border border-[#036661] px-3 py-2 text-xs font-semibold text-[#036661] hover:bg-[#036661] hover:text-white"
+                          className="romdoc-focus-ring rounded-[13px] border border-green-300 bg-white px-[21px] py-[13px] text-sm font-semibold text-green-900"
                         >
-                          Marchează Plătită
+                          {copy.common.cancel}
                         </button>
-                      ) : (
-                        <span className="text-gray-500">Draft</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      {paymentInvoiceId ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-        >
-          <form
-            onSubmit={submitPayment}
-            className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl"
-          >
-            <h2 className="text-xl font-bold text-gray-900">
-              Confirmă plata facturii
-            </h2>
-            <p className="mt-2 text-sm text-gray-600">
-              Acțiunea marchează factura ca plătită în CRM-ul RomDoc.
-            </p>
-
-            <label className="mt-5 block">
-              <span className="text-sm font-semibold text-gray-800">
-                Data plății
-              </span>
-              <input
-                required
-                type="date"
-                value={paidOn}
-                onChange={(event) => setPaidOn(event.target.value)}
-                className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm"
-              />
-            </label>
-
-            <label className="mt-4 block">
-              <span className="text-sm font-semibold text-gray-800">
-                Referință plată
-              </span>
-              <input
-                maxLength={200}
-                value={paymentReference}
-                onChange={(event) => setPaymentReference(event.target.value)}
-                placeholder="Opțional"
-                className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm"
-              />
-            </label>
-
-            {paymentError ? (
-              <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-                {paymentError}
-              </p>
-            ) : null}
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                disabled={isPending}
-                onClick={() => setPaymentInvoiceId(null)}
-                className="romdoc-focus-ring rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-              >
-                Anulează
-              </button>
-              <button
-                type="submit"
-                disabled={isPending}
-                className="romdoc-focus-ring rounded-xl bg-[#036661] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#ff2800] disabled:opacity-60"
-              >
-                {isPending ? "Se confirmă..." : "Confirmă plata"}
-              </button>
-            </div>
-          </form>
+                      </div>
+                    </form>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPaymentInvoiceId(invoice.id);
+                        setPaidOn(isoToday());
+                        setPaymentReference("");
+                        setPaymentError("");
+                      }}
+                      className="romdoc-focus-ring mt-[21px] rounded-[13px] border border-green-300 bg-green-50 px-[21px] py-[13px] text-sm font-semibold text-green-900 transition hover:bg-green-100"
+                    >
+                      {copy.invoiceWorkspace.markPaid}
+                    </button>
+                  )
+                ) : null}
+              </div>
+            </details>
+          ))}
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
