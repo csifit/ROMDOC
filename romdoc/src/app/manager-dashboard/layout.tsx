@@ -1,4 +1,7 @@
 import {
+  NextIntlClientProvider,
+} from "next-intl";
+import {
   redirect,
 } from "next/navigation";
 import type {
@@ -10,6 +13,13 @@ import {
   getAdminMfaRedirect,
 } from "@/lib/auth/admin-mfa";
 import {
+  getPlatformOperatorFoundation,
+  platformOperatorMessagesByLocale,
+} from "@/lib/i18n/platform-operator-foundation";
+import {
+  getStoredAppLocale,
+} from "@/lib/i18n/server-app-locale";
+import {
   createClient,
 } from "@/lib/supabase/server";
 
@@ -20,30 +30,53 @@ type ManagerDashboardLayoutProps = {
 export default async function ManagerDashboardLayout({
   children,
 }: ManagerDashboardLayoutProps) {
+  const locale =
+    await getStoredAppLocale();
+
+  const copy =
+    getPlatformOperatorFoundation(
+      locale
+    );
+
   const supabase =
     await createClient();
 
   const {
-    data: { user },
-    error: userError,
+    data: {
+      user,
+    },
+    error:
+      userError,
   } =
-    await supabase.auth.getUser();
+    await supabase.auth
+      .getUser();
 
   if (
     userError ||
     !user
   ) {
+    const parameters =
+      new URLSearchParams({
+        locale,
+        next:
+          "/manager-dashboard",
+      });
+
     redirect(
-      "/login?next=/manager-dashboard"
+      `/login?${parameters.toString()}`
     );
   }
 
   const {
-    data: profile,
-    error: profileError,
+    data:
+      profile,
+    error:
+      profileError,
   } =
     await supabase
-      .from("profiles")
+      .from(
+        "profiles"
+      )
       .select(`
         role,
         account_status,
@@ -59,17 +92,22 @@ export default async function ManagerDashboardLayout({
   if (
     profileError ||
     !profile ||
-    profile.account_status !==
+    profile
+      .account_status !==
       "active"
   ) {
-    redirect("/");
+    redirect(
+      `/${locale}`
+    );
   }
 
   if (
     profile.role ===
     "admin"
   ) {
-    redirect("/admin");
+    redirect(
+      "/admin"
+    );
   }
 
   if (
@@ -86,37 +124,70 @@ export default async function ManagerDashboardLayout({
       supabase,
       nextPath:
         "/manager-dashboard",
+      locale,
     });
 
-  if (mfaRedirect) {
-    redirect(mfaRedirect);
+  if (
+    mfaRedirect
+  ) {
+    redirect(
+      mfaRedirect
+    );
   }
 
-  const fullName = [
-    profile.first_name,
-    profile.last_name,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
+  const fullName =
+    [
+      profile.first_name,
+      profile.last_name,
+    ]
+      .filter(
+        Boolean
+      )
+      .join(
+        " "
+      )
+      .trim();
 
   const userName =
     fullName ||
     user.email?.split(
       "@"
     )[0] ||
-    "Manager";
+    copy.common
+      .fallbackManager;
 
   const userEmail =
     user.email ??
-    "E-mail indisponibil";
+    copy.common
+      .emailUnavailable;
 
   return (
-    <ManagerDashboardSidebar
-      userName={userName}
-      userEmail={userEmail}
+    <NextIntlClientProvider
+      locale={
+        locale
+      }
+      messages={
+        platformOperatorMessagesByLocale[
+          locale
+        ]
+      }
     >
-      {children}
-    </ManagerDashboardSidebar>
+      <ManagerDashboardSidebar
+        userName={
+          userName
+        }
+        userEmail={
+          userEmail
+        }
+        roleLabel={
+          copy.common
+            .roleManager
+        }
+      >
+        {
+          children
+        }
+      </ManagerDashboardSidebar>
+    </NextIntlClientProvider>
   );
 }

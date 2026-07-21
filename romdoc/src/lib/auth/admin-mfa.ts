@@ -2,11 +2,25 @@ import type {
   SupabaseClient,
 } from "@supabase/supabase-js";
 
-function safeNextPath(
-  value: string
+import type {
+  AppLocale,
+} from "@/lib/i18n/app-locale";
+
+export function sanitizePlatformOperatorNextPath(
+  value:
+    | string
+    | null
+    | undefined
 ) {
+  if (
+    !value
+  ) {
+    return "/dashboard";
+  }
+
   const isAdminPath =
-    value === "/admin" ||
+    value ===
+      "/admin" ||
     value.startsWith(
       "/admin/"
     );
@@ -18,11 +32,21 @@ function safeNextPath(
       "/manager-dashboard/"
     );
 
+  const isClinicManagerPath =
+    value ===
+      "/clinic-manager-dashboard" ||
+    value.startsWith(
+      "/clinic-manager-dashboard/"
+    );
+
   if (
-    value.startsWith("//") ||
+    value.startsWith(
+      "//"
+    ) ||
     (
       !isAdminPath &&
-      !isManagerPath
+      !isManagerPath &&
+      !isClinicManagerPath
     )
   ) {
     return "/dashboard";
@@ -31,82 +55,123 @@ function safeNextPath(
   return value;
 }
 
-export async function
-getAdminMfaRedirect({
+function buildMfaHref({
+  route,
+  nextPath,
+  locale,
+}: {
+  route: string;
+  nextPath: string;
+  locale?:
+    AppLocale;
+}) {
+  const parameters =
+    new URLSearchParams({
+      next:
+        nextPath,
+    });
+
+  if (
+    locale
+  ) {
+    parameters.set(
+      "locale",
+      locale
+    );
+  }
+
+  return `${route}?${parameters.toString()}`;
+}
+
+export async function getAdminMfaRedirect({
   supabase,
   nextPath,
+  locale,
 }: {
   supabase:
     SupabaseClient;
   nextPath: string;
+  locale?:
+    AppLocale;
 }) {
   const safeNext =
-    safeNextPath(
+    sanitizePlatformOperatorNextPath(
       nextPath
     );
 
   const {
-    data: assurance,
-    error: assuranceError,
+    data:
+      assurance,
+    error:
+      assuranceError,
   } =
     await supabase.auth.mfa
       .getAuthenticatorAssuranceLevel();
 
-  if (assuranceError) {
+  if (
+    assuranceError
+  ) {
     console.error(
       "Administrative MFA assurance lookup failed:",
       assuranceError
     );
 
-    return (
-      "/mfa/admin/verify?next=" +
-      encodeURIComponent(
-        safeNext
-      )
-    );
+    return buildMfaHref({
+      route:
+        "/mfa/admin/verify",
+      nextPath:
+        safeNext,
+      locale,
+    });
   }
 
   if (
-    assurance.currentLevel ===
+    assurance
+      .currentLevel ===
     "aal2"
   ) {
     return null;
   }
 
   const {
-    data: factors,
-    error: factorsError,
+    data:
+      factors,
+    error:
+      factorsError,
   } =
     await supabase.auth.mfa
       .listFactors();
 
-  if (factorsError) {
+  if (
+    factorsError
+  ) {
     console.error(
       "Administrative MFA factor lookup failed:",
       factorsError
     );
 
-    return (
-      "/mfa/admin/setup?next=" +
-      encodeURIComponent(
-        safeNext
-      )
-    );
+    return buildMfaHref({
+      route:
+        "/mfa/admin/setup",
+      nextPath:
+        safeNext,
+      locale,
+    });
   }
 
   const hasVerifiedTotp =
-    factors.totp.length > 0;
+    factors.totp.length >
+    0;
 
   const route =
     hasVerifiedTotp
       ? "/mfa/admin/verify"
       : "/mfa/admin/setup";
 
-  return (
-    route +
-    "?next=" +
-    encodeURIComponent(
-      safeNext
-    )
-  );
+  return buildMfaHref({
+    route,
+    nextPath:
+      safeNext,
+    locale,
+  });
 }

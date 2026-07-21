@@ -1,4 +1,7 @@
 import {
+  NextIntlClientProvider,
+} from "next-intl";
+import {
   redirect,
 } from "next/navigation";
 import type {
@@ -13,6 +16,13 @@ import {
   isTrustedAdminMfaIp,
 } from "@/lib/auth/admin-mfa-ip";
 import {
+  getStoredAppLocale,
+} from "@/lib/i18n/server-app-locale";
+import {
+  getPlatformOperatorFoundation,
+  platformOperatorMessagesByLocale,
+} from "@/lib/i18n/platform-operator-foundation";
+import {
   createClient,
 } from "@/lib/supabase/server";
 
@@ -23,30 +33,53 @@ type AdminDashboardLayoutProps = {
 export default async function AdminDashboardLayout({
   children,
 }: AdminDashboardLayoutProps) {
+  const locale =
+    await getStoredAppLocale();
+
+  const copy =
+    getPlatformOperatorFoundation(
+      locale
+    );
+
   const supabase =
     await createClient();
 
   const {
-    data: { user },
-    error: userError,
+    data: {
+      user,
+    },
+    error:
+      userError,
   } =
-    await supabase.auth.getUser();
+    await supabase.auth
+      .getUser();
 
   if (
     userError ||
     !user
   ) {
+    const parameters =
+      new URLSearchParams({
+        locale,
+        next:
+          "/admin",
+      });
+
     redirect(
-      "/login?next=/admin"
+      `/login?${parameters.toString()}`
     );
   }
 
   const {
-    data: profile,
-    error: profileError,
+    data:
+      profile,
+    error:
+      profileError,
   } =
     await supabase
-      .from("profiles")
+      .from(
+        "profiles"
+      )
       .select(`
         role,
         account_status,
@@ -62,10 +95,13 @@ export default async function AdminDashboardLayout({
   if (
     profileError ||
     !profile ||
-    profile.account_status !==
+    profile
+      .account_status !==
       "active"
   ) {
-    redirect("/");
+    redirect(
+      `/${locale}`
+    );
   }
 
   if (
@@ -81,53 +117,87 @@ export default async function AdminDashboardLayout({
     profile.role !==
     "admin"
   ) {
-    redirect("/");
+    redirect(
+      `/${locale}`
+    );
   }
 
   const trustedIp =
     await isTrustedAdminMfaIp();
 
-  if (!trustedIp) {
+  if (
+    !trustedIp
+  ) {
     const mfaRedirect =
       await getAdminMfaRedirect({
         supabase,
         nextPath:
           "/admin",
+        locale,
       });
 
-    if (mfaRedirect) {
+    if (
+      mfaRedirect
+    ) {
       redirect(
         mfaRedirect
       );
     }
   }
 
-  const fullName = [
-    profile.first_name,
-    profile.last_name,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
+  const fullName =
+    [
+      profile.first_name,
+      profile.last_name,
+    ]
+      .filter(
+        Boolean
+      )
+      .join(
+        " "
+      )
+      .trim();
 
   const userName =
     fullName ||
     user.email?.split(
       "@"
     )[0] ||
-    "Administrator";
+    copy.common
+      .fallbackAdmin;
 
   const userEmail =
     user.email ??
-    "E-mail indisponibil";
+    copy.common
+      .emailUnavailable;
 
   return (
-    <AdminDashboardSidebar
-      userName={userName}
-      userEmail={userEmail}
-      roleLabel="Administrator"
+    <NextIntlClientProvider
+      locale={
+        locale
+      }
+      messages={
+        platformOperatorMessagesByLocale[
+          locale
+        ]
+      }
     >
-      {children}
-    </AdminDashboardSidebar>
+      <AdminDashboardSidebar
+        userName={
+          userName
+        }
+        userEmail={
+          userEmail
+        }
+        roleLabel={
+          copy.common
+            .roleAdmin
+        }
+      >
+        {
+          children
+        }
+      </AdminDashboardSidebar>
+    </NextIntlClientProvider>
   );
 }

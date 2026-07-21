@@ -3,11 +3,14 @@ import {
 } from "next/navigation";
 
 import {
-  createAdminClient,
-} from "@/lib/supabase/admin";
-import {
   getAdminMfaRedirect,
 } from "@/lib/auth/admin-mfa";
+import {
+  getStoredAppLocale,
+} from "@/lib/i18n/server-app-locale";
+import {
+  createAdminClient,
+} from "@/lib/supabase/admin";
 import {
   createClient,
 } from "@/lib/supabase/server";
@@ -23,35 +26,49 @@ type ProfileRole =
   | "user";
 
 type ProfileRow = {
-  role: ProfileRole;
+  role:
+    ProfileRole;
   account_status:
     | string
     | null;
 };
 
 export default async function DashboardRouterPage() {
+  const locale =
+    await getStoredAppLocale();
+
   const supabase =
     await createClient();
 
   const {
-    data: { user },
-    error: userError,
+    data: {
+      user,
+    },
+    error:
+      userError,
   } =
-    await supabase.auth.getUser();
+    await supabase.auth
+      .getUser();
 
   if (
     userError ||
     !user
   ) {
-    redirect("/login");
+    redirect(
+      `/login?locale=${locale}`
+    );
   }
 
   const {
-    data: profile,
-    error: profileError,
+    data:
+      profile,
+    error:
+      profileError,
   } =
     await supabase
-      .from("profiles")
+      .from(
+        "profiles"
+      )
       .select(`
         role,
         account_status
@@ -66,18 +83,23 @@ export default async function DashboardRouterPage() {
     profileError ||
     !profile
   ) {
-    redirect("/");
+    redirect(
+      `/${locale}`
+    );
   }
 
   const typedProfile =
-    profile as ProfileRow;
+    profile as
+      ProfileRow;
 
   if (
     typedProfile
       .account_status ===
     "blocked"
   ) {
-    redirect("/");
+    redirect(
+      `/${locale}`
+    );
   }
 
   if (
@@ -89,13 +111,20 @@ export default async function DashboardRouterPage() {
         supabase,
         nextPath:
           "/admin",
+        locale,
       });
 
-    if (mfaRedirect) {
-      redirect(mfaRedirect);
+    if (
+      mfaRedirect
+    ) {
+      redirect(
+        mfaRedirect
+      );
     }
 
-    redirect("/admin");
+    redirect(
+      "/admin"
+    );
   }
 
   if (
@@ -106,13 +135,16 @@ export default async function DashboardRouterPage() {
       createAdminClient();
 
     const {
-      data: invitation,
+      data:
+        invitation,
     } =
       await admin
         .from(
           "manager_invitations"
         )
-        .select("id")
+        .select(
+          "id"
+        )
         .eq(
           "invited_user_id",
           user.id
@@ -123,7 +155,9 @@ export default async function DashboardRouterPage() {
         )
         .maybeSingle();
 
-    if (invitation) {
+    if (
+      invitation
+    ) {
       const now =
         new Date()
           .toISOString();
@@ -166,10 +200,15 @@ export default async function DashboardRouterPage() {
         supabase,
         nextPath:
           "/manager-dashboard",
+        locale,
       });
 
-    if (mfaRedirect) {
-      redirect(mfaRedirect);
+    if (
+      mfaRedirect
+    ) {
+      redirect(
+        mfaRedirect
+      );
     }
 
     redirect(
@@ -207,6 +246,8 @@ export default async function DashboardRouterPage() {
       );
 
     default:
-      redirect("/");
+      redirect(
+        `/${locale}`
+      );
   }
 }
