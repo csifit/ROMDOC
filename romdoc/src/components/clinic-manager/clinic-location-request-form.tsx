@@ -1,10 +1,29 @@
 "use client";
 
-import { FormEvent, useCallback, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import {
+  type FormEvent,
+  useCallback,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
+import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
+import {
+  useRouter,
+} from "next/navigation";
 
-import GooglePlaceAutocomplete from "@/components/clinic/google-place-autocomplete";
-import type { GoogleClinicAddress } from "@/lib/locations/google-address";
+import GooglePlaceAutocomplete, {
+  type GooglePlaceAutocompleteCopy,
+} from "@/components/clinic/google-place-autocomplete";
+import {
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
+import type {
+  GoogleClinicAddress,
+} from "@/lib/locations/google-address";
 
 type ClinicOrganizationOption = {
   id: string;
@@ -13,7 +32,8 @@ type ClinicOrganizationOption = {
 };
 
 type ClinicLocationRequestFormProps = {
-  organizations: ClinicOrganizationOption[];
+  organizations:
+    ClinicOrganizationOption[];
 };
 
 type LocationResponse = {
@@ -24,261 +44,783 @@ type LocationResponse = {
 export default function ClinicLocationRequestForm({
   organizations,
 }: ClinicLocationRequestFormProps) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const locale =
+    normalizeAppLocale(
+      useLocale()
+    );
 
-  const activeOrganizations = organizations.filter(
-    (organization) => organization.status === "active"
-  );
+  const t =
+    useTranslations(
+      "ClinicOrganisationDashboard.locationForm"
+    );
 
-  const [organizationId, setOrganizationId] = useState(
-    activeOrganizations[0]?.id ?? ""
-  );
-  const [name, setName] = useState("");
-  const [selectedAddress, setSelectedAddress] =
-    useState<GoogleClinicAddress | null>(null);
-  const [addressLine2, setAddressLine2] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [website, setWebsite] = useState("");
-  const [description, setDescription] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const router =
+    useRouter();
 
-  const handleAddressSelected = useCallback((address: GoogleClinicAddress) => {
-    setSelectedAddress(address);
-    setError(null);
-  }, []);
+  const [
+    isPending,
+    startTransition,
+  ] =
+    useTransition();
+
+  const activeOrganizations =
+    useMemo(
+      () =>
+        organizations.filter(
+          (
+            organization
+          ) =>
+            organization.status ===
+            "active"
+        ),
+      [
+        organizations,
+      ]
+    );
+
+  const [
+    organizationId,
+    setOrganizationId,
+  ] =
+    useState(
+      activeOrganizations[0]
+        ?.id ??
+      ""
+    );
+
+  const [
+    name,
+    setName,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    selectedAddress,
+    setSelectedAddress,
+  ] =
+    useState<
+      GoogleClinicAddress | null
+    >(
+      null
+    );
+
+  const [
+    addressLine2,
+    setAddressLine2,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    phone,
+    setPhone,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    email,
+    setEmail,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    website,
+    setWebsite,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    description,
+    setDescription,
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    autocompleteVersion,
+    setAutocompleteVersion,
+  ] =
+    useState(
+      0
+    );
+
+  const [
+    error,
+    setError,
+  ] =
+    useState<
+      string | null
+    >(
+      null
+    );
+
+  const [
+    success,
+    setSuccess,
+  ] =
+    useState<
+      string | null
+    >(
+      null
+    );
+
+  const googleCopy =
+    useMemo<GooglePlaceAutocompleteCopy>(
+      () => ({
+        placeholder:
+          t(
+            "google.placeholder"
+          ),
+
+        importUnavailable:
+          t(
+            "google.importUnavailable"
+          ),
+
+        elementUnavailable:
+          t(
+            "google.elementUnavailable"
+          ),
+
+        predictionMissing:
+          t(
+            "google.predictionMissing"
+          ),
+
+        placeIdMissing:
+          t(
+            "google.placeIdMissing"
+          ),
+
+        verifyError:
+          t(
+            "google.verifyError"
+          ),
+
+        loadError:
+          t(
+            "google.loadError"
+          ),
+
+        label:
+          t(
+            "google.label"
+          ),
+
+        help:
+          t(
+            "google.help"
+          ),
+
+        loading:
+          t(
+            "google.loading"
+          ),
+
+        verifying:
+          t(
+            "google.verifying"
+          ),
+
+        selected:
+          t(
+            "google.selected"
+          ),
+
+        city:
+          t(
+            "google.city"
+          ),
+
+        region:
+          t(
+            "google.region"
+          ),
+
+        postalCode:
+          t(
+            "google.postalCode"
+          ),
+
+        country:
+          t(
+            "google.country"
+          ),
+      }),
+      [
+        t,
+      ]
+    );
+
+  const handleAddressSelected =
+    useCallback(
+      (
+        address:
+          GoogleClinicAddress
+      ) => {
+        setSelectedAddress(
+          address
+        );
+
+        setError(
+          null
+        );
+      },
+      []
+    );
 
   function resetForm() {
-    setName("");
-    setSelectedAddress(null);
-    setAddressLine2("");
-    setPhone("");
-    setEmail("");
-    setWebsite("");
-    setDescription("");
+    setName(
+      ""
+    );
+
+    setSelectedAddress(
+      null
+    );
+
+    setAddressLine2(
+      ""
+    );
+
+    setPhone(
+      ""
+    );
+
+    setEmail(
+      ""
+    );
+
+    setWebsite(
+      ""
+    );
+
+    setDescription(
+      ""
+    );
+
+    setAutocompleteVersion(
+      (
+        current
+      ) =>
+        current +
+        1
+    );
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(
+    event:
+      FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
-    setError(null);
-    setSuccess(null);
 
-    if (!organizationId) {
-      setError("Selectează organizația clinicii.");
+    setError(
+      null
+    );
+
+    setSuccess(
+      null
+    );
+
+    if (
+      !organizationId
+    ) {
+      setError(
+        t(
+          "validation.organization"
+        )
+      );
+
       return;
     }
 
-    if (name.trim().length < 2) {
-      setError("Introdu numele locației.");
+    if (
+      name.trim().length <
+      2
+    ) {
+      setError(
+        t(
+          "validation.name"
+        )
+      );
+
       return;
     }
 
-    if (!selectedAddress) {
-      setError("Selectează adresa locației din lista Google.");
+    if (
+      !selectedAddress
+    ) {
+      setError(
+        t(
+          "validation.address"
+        )
+      );
+
       return;
     }
 
-    startTransition(async () => {
-      try {
-        const response = await fetch("/api/clinic-manager/locations", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            organizationId,
-            name: name.trim(),
-            placeId: selectedAddress.placeId,
-            addressLine2: addressLine2.trim(),
-            phone: phone.trim(),
-            email: email.trim(),
-            website: website.trim(),
-            description: description.trim(),
-          }),
-        });
+    startTransition(
+      async () => {
+        try {
+          const response =
+            await fetch(
+              "/api/clinic-manager/locations",
+              {
+                method:
+                  "POST",
 
-        const result = (await response.json()) as LocationResponse;
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
 
-        if (!response.ok) {
-          throw new Error(result.error ?? "Locația nu a putut fi trimisă.");
+                body:
+                  JSON.stringify({
+                    organizationId,
+
+                    name:
+                      name.trim(),
+
+                    placeId:
+                      selectedAddress.placeId,
+
+                    addressLine2:
+                      addressLine2.trim(),
+
+                    phone:
+                      phone.trim(),
+
+                    email:
+                      email.trim(),
+
+                    website:
+                      website.trim(),
+
+                    description:
+                      description.trim(),
+
+                    locale,
+                  }),
+              }
+            );
+
+          const result =
+            (await response.json()) as
+              LocationResponse;
+
+          if (
+            !response.ok
+          ) {
+            throw new Error(
+              locale ===
+                "ro" &&
+              result.error
+                ? result.error
+                : t(
+                    "error"
+                  )
+            );
+          }
+
+          setSuccess(
+            locale ===
+              "ro" &&
+            result.message
+              ? result.message
+              : t(
+                  "success"
+                )
+          );
+
+          resetForm();
+
+          router.refresh();
+        } catch (
+          submitError
+        ) {
+          setError(
+            submitError instanceof
+              Error
+              ? submitError.message
+              : t(
+                  "error"
+                )
+          );
         }
-
-        setSuccess(result.message ?? "Locația a fost trimisă.");
-        resetForm();
-        router.refresh();
-      } catch (submitError) {
-        setError(
-          submitError instanceof Error
-            ? submitError.message
-            : "Locația nu a putut fi trimisă."
-        );
       }
-    });
+    );
   }
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+    <section className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
       <div>
         <p className="text-sm font-semibold text-[#9A4F35]">
-          Locații clinică
+          {t(
+            "eyebrow"
+          )}
         </p>
-        <h2 className="mt-1 text-xl font-bold text-gray-900">
-          Solicită un punct de lucru
+
+        <h2 className="mt-[5px] text-xl font-bold text-gray-900">
+          {t(
+            "title"
+          )}
         </h2>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-          Adaugă locațiile reale ale organizației. RomDoc verifică locația și
-          asocierea cu organizația înainte ca medicii clinicii să poată fi
-          repartizați acolo.
+
+        <p className="mt-[8px] max-w-3xl text-sm leading-6 text-gray-600">
+          {t(
+            "description"
+          )}
         </p>
       </div>
 
-      {activeOrganizations.length === 0 ? (
-        <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-          Nu există o organizație activă pentru acest cont. Locațiile pot fi
-          solicitate doar după activarea organizației de către RomDoc.
+      {activeOrganizations.length ===
+      0 ? (
+        <div className="mt-[21px] rounded-[13px] border border-amber-200 bg-amber-50 p-[13px] text-sm leading-6 text-amber-900">
+          {t(
+            "noActiveOrganization"
+          )}
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+        <form
+          onSubmit={
+            handleSubmit
+          }
+          className="mt-[21px] space-y-[21px]"
+        >
           <label className="block">
             <span className="text-sm font-medium text-gray-700">
-              Organizație clinică
+              {t(
+                "organization"
+              )}
             </span>
+
             <select
               required
-              value={organizationId}
-              disabled={isPending}
-              onChange={(event) => setOrganizationId(event.target.value)}
-              className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900"
+              value={
+                organizationId
+              }
+              disabled={
+                isPending
+              }
+              onChange={(
+                event
+              ) =>
+                setOrganizationId(
+                  event.target
+                    .value
+                )
+              }
+              className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] text-sm text-gray-900"
             >
-              {activeOrganizations.map((organization) => (
-                <option key={organization.id} value={organization.id}>
-                  {organization.name}
-                </option>
-              ))}
+              {activeOrganizations.map(
+                (
+                  organization
+                ) => (
+                  <option
+                    key={
+                      organization.id
+                    }
+                    value={
+                      organization.id
+                    }
+                  >
+                    {
+                      organization.name
+                    }
+                  </option>
+                )
+              )}
             </select>
           </label>
 
           <label className="block">
             <span className="text-sm font-medium text-gray-700">
-              Numele locației / punctului de lucru
+              {t(
+                "locationName"
+              )}
             </span>
+
             <input
               type="text"
               required
-              minLength={2}
-              maxLength={200}
-              value={name}
-              disabled={isPending}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="Exemplu: Clinica Floare - Arad Centru"
-              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+              minLength={
+                2
+              }
+              maxLength={
+                200
+              }
+              value={
+                name
+              }
+              disabled={
+                isPending
+              }
+              onChange={(
+                event
+              ) =>
+                setName(
+                  event.target
+                    .value
+                )
+              }
+              placeholder={t(
+                "locationPlaceholder"
+              )}
+              className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 px-[13px] py-[13px]"
             />
           </label>
 
           <GooglePlaceAutocomplete
-            disabled={isPending}
-            onAddressSelected={handleAddressSelected}
+            key={
+              autocompleteVersion
+            }
+            disabled={
+              isPending
+            }
+            locale={
+              locale
+            }
+            copy={
+              googleCopy
+            }
+            onAddressSelected={
+              handleAddressSelected
+            }
           />
 
           <label className="block">
             <span className="text-sm font-medium text-gray-700">
-              Detalii suplimentare ale adresei
+              {t(
+                "addressLine2"
+              )}
             </span>
-            <span className="ml-2 text-xs text-gray-500">Opțional</span>
+
+            <span className="ml-[8px] text-xs text-gray-500">
+              {t(
+                "optional"
+              )}
+            </span>
+
             <input
               type="text"
-              maxLength={300}
-              value={addressLine2}
-              disabled={isPending}
-              onChange={(event) => setAddressLine2(event.target.value)}
-              placeholder="Etaj, cabinet, corp de clădire"
-              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+              maxLength={
+                300
+              }
+              value={
+                addressLine2
+              }
+              disabled={
+                isPending
+              }
+              onChange={(
+                event
+              ) =>
+                setAddressLine2(
+                  event.target
+                    .value
+                )
+              }
+              placeholder={t(
+                "addressLine2Placeholder"
+              )}
+              className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 px-[13px] py-[13px]"
             />
           </label>
 
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid gap-[21px] sm:grid-cols-2">
             <label className="block">
               <span className="text-sm font-medium text-gray-700">
-                Telefon locație
+                {t(
+                  "phone"
+                )}
               </span>
-              <span className="ml-2 text-xs text-gray-500">Opțional</span>
+
+              <span className="ml-[8px] text-xs text-gray-500">
+                {t(
+                  "optional"
+                )}
+              </span>
+
               <input
                 type="tel"
-                maxLength={50}
-                value={phone}
-                disabled={isPending}
-                onChange={(event) => setPhone(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+                maxLength={
+                  50
+                }
+                value={
+                  phone
+                }
+                disabled={
+                  isPending
+                }
+                onChange={(
+                  event
+                ) =>
+                  setPhone(
+                    event.target
+                      .value
+                  )
+                }
+                className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 px-[13px] py-[13px]"
               />
             </label>
 
             <label className="block">
               <span className="text-sm font-medium text-gray-700">
-                E-mail locație
+                {t(
+                  "email"
+                )}
               </span>
-              <span className="ml-2 text-xs text-gray-500">Opțional</span>
+
+              <span className="ml-[8px] text-xs text-gray-500">
+                {t(
+                  "optional"
+                )}
+              </span>
+
               <input
                 type="email"
-                maxLength={320}
-                value={email}
-                disabled={isPending}
-                onChange={(event) => setEmail(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+                maxLength={
+                  320
+                }
+                value={
+                  email
+                }
+                disabled={
+                  isPending
+                }
+                onChange={(
+                  event
+                ) =>
+                  setEmail(
+                    event.target
+                      .value
+                  )
+                }
+                className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 px-[13px] py-[13px]"
               />
             </label>
           </div>
 
           <label className="block">
             <span className="text-sm font-medium text-gray-700">
-              Website locație
+              {t(
+                "website"
+              )}
             </span>
-            <span className="ml-2 text-xs text-gray-500">Opțional</span>
+
+            <span className="ml-[8px] text-xs text-gray-500">
+              {t(
+                "optional"
+              )}
+            </span>
+
             <input
               type="url"
-              maxLength={500}
-              value={website}
-              disabled={isPending}
-              onChange={(event) => setWebsite(event.target.value)}
+              maxLength={
+                500
+              }
+              value={
+                website
+              }
+              disabled={
+                isPending
+              }
+              onChange={(
+                event
+              ) =>
+                setWebsite(
+                  event.target
+                    .value
+                )
+              }
               placeholder="https://..."
-              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+              className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 px-[13px] py-[13px]"
             />
           </label>
 
           <label className="block">
             <span className="text-sm font-medium text-gray-700">
-              Descriere
+              {t(
+                "descriptionLabel"
+              )}
             </span>
-            <span className="ml-2 text-xs text-gray-500">Opțional</span>
+
+            <span className="ml-[8px] text-xs text-gray-500">
+              {t(
+                "optional"
+              )}
+            </span>
+
             <textarea
-              rows={4}
-              maxLength={3000}
-              value={description}
-              disabled={isPending}
-              onChange={(event) => setDescription(event.target.value)}
-              className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+              rows={
+                4
+              }
+              maxLength={
+                3000
+              }
+              value={
+                description
+              }
+              disabled={
+                isPending
+              }
+              onChange={(
+                event
+              ) =>
+                setDescription(
+                  event.target
+                    .value
+                )
+              }
+              className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 px-[13px] py-[13px]"
             />
           </label>
 
           {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800">
-              {error}
+            <div
+              role="alert"
+              className="rounded-[13px] border border-red-200 bg-red-50 p-[13px] text-sm leading-6 text-red-800"
+            >
+              {
+                error
+              }
             </div>
           )}
 
           {success && (
-            <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm leading-6 text-green-800">
-              {success}
+            <div
+              role="status"
+              className="rounded-[13px] border border-green-200 bg-green-50 p-[13px] text-sm leading-6 text-green-800"
+            >
+              {
+                success
+              }
             </div>
           )}
 
           <button
             type="submit"
-            disabled={isPending}
-            className="romdoc-focus-ring rounded-xl bg-[#036661] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#024d49] disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={
+              isPending
+            }
+            className="romdoc-focus-ring rounded-[13px] bg-[#036661] px-[21px] py-[13px] text-sm font-semibold text-white transition hover:bg-[#024d49] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isPending ? "Se trimite..." : "Trimite locația spre verificare"}
+            {isPending
+              ? t(
+                  "sending"
+                )
+              : t(
+                  "submit"
+                )}
           </button>
         </form>
       )}

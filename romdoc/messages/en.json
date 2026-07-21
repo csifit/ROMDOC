@@ -2250,6 +2250,249 @@
         "linking": "The account was created, but the clinic invitation could not be linked. Contact RomDoc.",
         "registration": "Registration could not be completed."
       }
+    },
+    "locations": {
+      "eyebrow": "Clinic manager",
+      "title": "Locations and workplaces",
+      "description": "Manage the organisation's real locations. After RomDoc verification, they can be used for Doctor assignment, availability and appointments.",
+      "stats": {
+        "organizations": "Organisations",
+        "organizationsHelper": "Clinic organisations associated with your account.",
+        "active": "Active locations",
+        "activeHelper": "Workplaces approved for the organisation.",
+        "pending": "Under review",
+        "pendingHelper": "Locations or associations awaiting RomDoc review."
+      },
+      "listTitle": "Organisation locations",
+      "listDescription": "Only active locations can be used for Doctor assignment. Locations under review remain visible for transparency.",
+      "count": "{count, plural, one {# location} other {# locations}}",
+      "empty": "There are no locations associated with your organisation yet. Submit the first request using the form above.",
+      "location": "Location",
+      "organization": "Organisation",
+      "associationStatus": "Association status",
+      "clinicStatus": "Clinic status",
+      "contact": "Contact",
+      "addressUnavailable": "Address unavailable",
+      "phoneUnavailable": "Phone unavailable",
+      "openMaps": "Open in Google Maps",
+      "fallbackLocation": "Location",
+      "statuses": {
+        "organization": {
+          "active": "Active",
+          "suspended": "Suspended",
+          "rejected": "Rejected",
+          "archived": "Archived",
+          "pending": "Pending"
+        },
+        "association": {
+          "active": "Active",
+          "removed": "Removed",
+          "pending": "Under review"
+        },
+        "clinic": {
+          "approved": "Approved clinic",
+          "rejected": "Rejected clinic",
+          "suspended": "Suspended clinic",
+          "pending": "Clinic under review"
+        }
+      }
+    },
+    "locationForm": {
+      "eyebrow": "Clinic locations",
+      "title": "Request a workplace",
+      "description": "Add the organisation's real locations. RomDoc verifies the location and organisation association before Doctors can be assigned there.",
+      "noActiveOrganization": "There is no active organisation for this account. Locations can be requested after RomDoc activates the organisation.",
+      "organization": "Clinic organisation",
+      "locationName": "Location / workplace name",
+      "locationPlaceholder": "Example: Central Clinic — London",
+      "addressLine2": "Additional address details",
+      "addressLine2Placeholder": "Floor, room, building wing",
+      "phone": "Location phone",
+      "email": "Location email",
+      "website": "Location website",
+      "descriptionLabel": "Description",
+      "optional": "Optional",
+      "sending": "Sending...",
+      "submit": "Submit location for review",
+      "success": "The location was submitted for review.",
+      "error": "The location could not be submitted.",
+      "validation": {
+        "organization": "Select the clinic organisation.",
+        "name": "Enter the location name.",
+        "address": "Select the location address from the Google list."
+      },
+      "google": {
+        "placeholder": "Search for the clinic address",
+        "importUnavailable": "Google Maps importLibrary is unavailable.",
+        "elementUnavailable": "Google Places did not provide the address search component.",
+        "predictionMissing": "Google did not return the selected suggestion.",
+        "placeIdMissing": "Google did not return a valid address identifier.",
+        "verifyError": "The address could not be verified.",
+        "loadError": "Google Places could not be loaded.",
+        "label": "Clinic address",
+        "help": "Select an address from the Google list",
+        "loading": "Loading Google Places...",
+        "verifying": "Verifying the address...",
+        "selected": "Selected address",
+        "city": "City",
+        "region": "Region",
+        "postalCode": "Postal code",
+        "country": "Country"
+      }
+    },
+    "doctors": {
+      "eyebrow": "Clinic manager",
+      "title": "Doctors managed by the clinic",
+      "description": "Track invited Doctors, created accounts and the approved location assigned to each Doctor. The clinic manages the commercial relationship, while each Doctor remains responsible for their professional profile.",
+      "stats": {
+        "openInvitations": "Open invitations",
+        "openInvitationsHelper": "Invited Doctors who have not created an account yet.",
+        "createdAccounts": "Created accounts",
+        "createdAccountsHelper": "Invitations accepted through Doctor registration.",
+        "doctorProfiles": "Doctor profiles",
+        "doctorProfilesHelper": "Doctors with a connected professional profile.",
+        "assignedLocations": "Assigned to location",
+        "assignedLocationsHelper": "Doctors with an approved location selected.",
+        "monthlyEstimate": "Monthly estimate",
+        "monthlyEstimateHelper": "Only Doctors with active clinic coverage."
+      },
+      "noOrganizationsTitle": "No organisations are associated with your account yet",
+      "noOrganizationsDescription": "Invited Doctors will appear after your account is associated with a clinic organisation.",
+      "noDoctorsTitle": "No Doctors have been invited yet",
+      "noDoctorsDescription": "Use the invitations page to send the first registration link to a Doctor.",
+      "inviteDoctor": "Invite a Doctor",
+      "listTitle": "Invited Doctors",
+      "listDescription": "Assign each Doctor to an approved location belonging to the clinic organisation.",
+      "manageLocations": "Manage locations",
+      "inviteNewDoctor": "Invite new Doctor",
+      "count": "{count, plural, one {# Doctor} other {# Doctors}}",
+      "doctor": "Doctor",
+      "organization": "Organisation",
+      "invitation": "Invitation",
+      "coverage": "Coverage",
+      "approvedLocation": "Approved location",
+      "profile": "Profile",
+      "monthlyCost": "Monthly cost",
+      "dates": "Dates",
+      "emailUnavailable": "Email unavailable",
+      "unknownOrganization": "Unknown organisation",
+      "invitedDoctor": "Invited Doctor",
+      "viewPublicProfile": "View public profile",
+      "profilePreparing": "Account created, profile in preparation",
+      "waitingRegistration": "Awaiting registration",
+      "invitedAt": "Invited",
+      "acceptedAt": "Accepted",
+      "expiresAt": "Expires",
+      "monthlyPrice": "RON {price}/month + VAT",
+      "assignmentNotice": "Doctors can only be assigned to approved organisation locations. When the list is empty, create a request on the Locations page and wait for RomDoc approval.",
+      "statuses": {
+        "organization": {
+          "active": "Active",
+          "suspended": "Suspended",
+          "rejected": "Rejected",
+          "pending": "Under review"
+        },
+        "invitation": {
+          "pending": "Sent",
+          "accepted": "Accepted",
+          "declined": "Declined",
+          "expired": "Expired",
+          "cancelled": "Cancelled"
+        },
+        "coverage": {
+          "active": "Active",
+          "paused": "Paused",
+          "cancelled": "Cancelled",
+          "ended": "Ended",
+          "none": "No coverage",
+          "pending": "In progress"
+        }
+      }
+    },
+    "doctorAssignment": {
+      "noLocations": "There are no approved locations for this organisation yet. Create a request on the Locations page and wait for RomDoc approval.",
+      "choose": "Choose location",
+      "save": "Save location",
+      "saving": "Saving...",
+      "success": "The location was saved.",
+      "error": "The location could not be saved."
+    },
+    "sms": {
+      "eyebrow": "Clinic manager",
+      "title": "Clinic SMS usage",
+      "description": "View SMS usage for the selected period. This page shows delivery and billing metadata only, without message content, medical notes or patient Medical Folders.",
+      "period": "Period",
+      "calculatedRange": "Calculated range",
+      "previousMonth": "Previous month",
+      "nextMonth": "Next month",
+      "currentMonth": "Current month",
+      "unavailableTitle": "SMS usage unavailable",
+      "unavailableDescription": "Usage data could not be loaded. Reload the page or contact the RomDoc administrator.",
+      "noOrganizationsTitle": "No clinic organisation is associated with your account yet",
+      "noOrganizationsDescription": "SMS usage will appear after your account is linked to an active organisation.",
+      "stats": {
+        "sent": "SMS sent",
+        "sentHelper": "Messages accepted by the provider as sent.",
+        "failed": "Failed",
+        "failedHelper": "Messages whose delivery failed.",
+        "uninvoiced": "Uninvoiced",
+        "uninvoicedHelper": "SMS messages that may be included in the clinic invoice.",
+        "estimatedCost": "Estimated cost",
+        "estimatedCostHelper": "Estimate for uninvoiced SMS messages."
+      },
+      "detailsTitle": "SMS details",
+      "detailsDescription": "The patient number is masked and the message body is not displayed to the Clinic manager.",
+      "count": "{count, plural, one {# record} other {# records}}",
+      "empty": "There is no SMS usage for the selected period.",
+      "date": "Date",
+      "organization": "Organisation",
+      "event": "Event",
+      "delivery": "Delivery",
+      "billing": "Billing",
+      "phone": "Phone",
+      "cost": "Cost",
+      "visibilityTitle": "Visibility limit",
+      "visibilityDescription": "The Clinic manager only sees information required for cost and billing: date, event type, status, masked phone and cost. SMS content and medical data are not displayed.",
+      "deliveryStatuses": {
+        "sent": "Sent",
+        "failed": "Failed",
+        "skipped": "Skipped",
+        "queued": "Queued",
+        "unknown": "Unknown"
+      },
+      "invoiceStatuses": {
+        "uninvoiced": "Uninvoiced",
+        "invoiced": "Invoiced",
+        "credited": "Credited",
+        "not_billable": "Not billable",
+        "unknown": "Unknown"
+      },
+      "eventTypes": {
+        "confirmed": "Appointment confirmation",
+        "reminder_24_hours": "24h appointment reminder",
+        "unknown": "Other event"
+      }
+    },
+    "security": {
+      "eyebrow": "Clinic manager",
+      "title": "Account security",
+      "description": "Protect the Clinic manager account with multifactor authentication. It is recommended for accounts managing Doctors, billing and SMS usage.",
+      "loadError": "MFA settings could not be loaded. Reload the page and try again.",
+      "activeTitle": "Google Authenticator is active",
+      "activeDescription": "Your account has multifactor authentication configured. Additional verification may be requested for sensitive actions.",
+      "configuredAt": "Configured or updated on {date}.",
+      "sessionLevel": "Current session level",
+      "aal2": "AAL2 — verified through MFA",
+      "aal1": "AAL1 — standard authentication",
+      "inactiveTitle": "Google Authenticator is not configured",
+      "inactiveDescription": "Multifactor authentication is optional but recommended. You can activate it now and then return to the clinic dashboard.",
+      "activate": "Activate Google Authenticator",
+      "recommendationsTitle": "Recommendations",
+      "recommendations": {
+        "codes": "Never share temporary six-digit codes.",
+        "phone": "Protect the phone on which the authenticator is installed.",
+        "lostDevice": "Notify RomDoc when you lose access to the device."
+      }
     }
   }
 }

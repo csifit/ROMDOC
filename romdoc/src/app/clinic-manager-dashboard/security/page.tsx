@@ -1,108 +1,245 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import {
+  getTranslations,
+} from "next-intl/server";
+import {
+  redirect,
+} from "next/navigation";
 
-import { createClient } from "@/lib/supabase/server";
+import {
+  type AppLocale,
+} from "@/lib/i18n/app-locale";
+import {
+  getStoredAppLocale,
+} from "@/lib/i18n/server-app-locale";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
-function formatDate(value: string | undefined) {
-  if (!value) {
+const DATE_LOCALE:
+  Record<
+    AppLocale,
+    string
+  > = {
+    ro:
+      "ro-RO",
+    en:
+      "en-GB",
+    de:
+      "de-DE",
+  };
+
+function formatDate(
+  value:
+    | string
+    | undefined,
+  locale:
+    AppLocale
+) {
+  if (
+    !value
+  ) {
     return null;
   }
 
-  const date = new Date(value);
+  const date =
+    new Date(
+      value
+    );
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
     return null;
   }
 
-  return new Intl.DateTimeFormat("ro-RO", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Europe/Bucharest",
-  }).format(date);
+  return new Intl
+    .DateTimeFormat(
+      DATE_LOCALE[
+        locale
+      ],
+      {
+        dateStyle:
+          "medium",
+
+        timeStyle:
+          "short",
+
+        timeZone:
+          "Europe/Bucharest",
+      }
+    )
+    .format(
+      date
+    );
 }
 
 export default async function ClinicManagerSecurityPage() {
-  const supabase = await createClient();
+  const locale =
+    await getStoredAppLocale();
+
+  const t =
+    await getTranslations({
+      locale,
+      namespace:
+        "ClinicOrganisationDashboard.security",
+    });
+
+  const supabase =
+    await createClient();
 
   const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+    data: {
+      user,
+    },
+    error:
+      userError,
+  } =
+    await supabase.auth
+      .getUser();
 
-  if (userError || !user) {
-    redirect("/login?next=/clinic-manager-dashboard/security");
+  if (
+    userError ||
+    !user
+  ) {
+    const parameters =
+      new URLSearchParams({
+        locale,
+        next:
+          "/clinic-manager-dashboard/security",
+      });
+
+    redirect(
+      `/login?${parameters.toString()}`
+    );
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("role, account_status")
-    .eq("id", user.id)
-    .maybeSingle();
+  const {
+    data:
+      profile,
+    error:
+      profileError,
+  } =
+    await supabase
+      .from(
+        "profiles"
+      )
+      .select(
+        "role, account_status"
+      )
+      .eq(
+        "id",
+        user.id
+      )
+      .maybeSingle();
 
   if (
     profileError ||
     !profile ||
-    profile.role !== "clinic_manager" ||
-    profile.account_status !== "active"
+    profile.role !==
+      "clinic_manager" ||
+    profile
+      .account_status !==
+      "active"
   ) {
-    redirect("/dashboard");
+    redirect(
+      "/dashboard"
+    );
   }
 
-  const [factorsResult, assuranceResult] = await Promise.all([
-    supabase.auth.mfa.listFactors(),
-    supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
-  ]);
+  const [
+    factorsResult,
+    assuranceResult,
+  ] =
+    await Promise.all([
+      supabase.auth.mfa
+        .listFactors(),
 
-  const factor = factorsResult.data?.totp?.[0] ?? null;
-  const configuredAt = factor
-    ? formatDate(factor.updated_at ?? factor.created_at)
-    : null;
-  const currentLevel = assuranceResult.data?.currentLevel ?? "aal1";
+      supabase.auth.mfa
+        .getAuthenticatorAssuranceLevel(),
+    ]);
+
+  const factor =
+    factorsResult.data
+      ?.totp?.[0] ??
+    null;
+
+  const configuredAt =
+    factor
+      ? formatDate(
+          factor.updated_at ??
+            factor.created_at,
+          locale
+        )
+      : null;
+
+  const currentLevel =
+    assuranceResult.data
+      ?.currentLevel ??
+    "aal1";
+
+  const setupParameters =
+    new URLSearchParams({
+      locale,
+      next:
+        "/clinic-manager-dashboard/security",
+    });
 
   return (
     <section className="mx-auto w-full max-w-4xl">
       <header>
         <p className="text-sm font-semibold text-[#9A4F35]">
-          Clinic Manager
+          {t(
+            "eyebrow"
+          )}
         </p>
-        <h1 className="mt-2 text-3xl font-bold text-gray-900">
-          Securitatea contului
+
+        <h1 className="mt-[8px] text-3xl font-bold text-gray-900">
+          {t(
+            "title"
+          )}
         </h1>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Activează opțional Google Authenticator pentru a proteja contul de
-          Clinic Manager. Această verificare nu este obligatorie pentru acces,
-          dar este recomandată pentru conturile care gestionează medici,
-          facturare și SMS-uri ale clinicii.
+
+        <p className="mt-[13px] max-w-3xl text-sm leading-6 text-gray-600">
+          {t(
+            "description"
+          )}
         </p>
       </header>
 
       {factorsResult.error ? (
         <div
           role="alert"
-          className="mt-8 rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-800 shadow-sm"
+          className="mt-[34px] rounded-[21px] border border-red-200 bg-red-50 p-[21px] text-sm text-red-800 shadow-sm"
         >
-          Setările MFA nu au putut fi încărcate. Reîncarcă pagina și încearcă
-          din nou.
+          {t(
+            "loadError"
+          )}
         </div>
       ) : factor ? (
-        <div className="mt-8 rounded-2xl border border-green-200 bg-green-50 p-6 shadow-sm">
-          <div className="flex items-start gap-4">
+        <div className="mt-[34px] rounded-[21px] border border-green-200 bg-green-50 p-[21px] shadow-sm">
+          <div className="flex items-start gap-[13px]">
             <div
               aria-hidden="true"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-green-700 text-white"
+              className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full bg-green-700 text-white"
             >
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
                 className="h-6 w-6"
                 stroke="currentColor"
-                strokeWidth="1.8"
+                strokeWidth={
+                  1.8
+                }
               >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   d="M12 3 19 6v5c0 4.6-2.7 8-7 10-4.3-2-7-5.4-7-10V6l7-3Z"
                 />
+
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -113,52 +250,156 @@ export default async function ClinicManagerSecurityPage() {
 
             <div>
               <h2 className="text-xl font-bold text-green-950">
-                Google Authenticator este activ
+                {t(
+                  "activeTitle"
+                )}
               </h2>
-              <p className="mt-2 text-sm leading-6 text-green-900">
-                Contul tău de Clinic Manager are MFA configurat. La acțiuni
-                sensibile viitoare putem cere verificare suplimentară.
+
+              <p className="mt-[8px] text-sm leading-6 text-green-900">
+                {t(
+                  "activeDescription"
+                )}
               </p>
 
-              {configuredAt ? (
-                <p className="mt-3 text-xs text-green-800">
-                  Configurat sau actualizat la {configuredAt}.
+              {configuredAt && (
+                <p className="mt-[13px] text-xs text-green-800">
+                  {t(
+                    "configuredAt",
+                    {
+                      date:
+                        configuredAt,
+                    }
+                  )}
                 </p>
-              ) : null}
+              )}
 
-              <p className="mt-1 text-xs text-green-800">
-                Nivelul sesiunii curente: <strong>{currentLevel === "aal2" ? "AAL2 — verificată prin MFA" : "AAL1 — autentificare normală"}</strong>
+              <p className="mt-[5px] text-xs text-green-800">
+                {t(
+                  "sessionLevel"
+                )}
+                :{" "}
+
+                <strong>
+                  {currentLevel ===
+                  "aal2"
+                    ? t(
+                        "aal2"
+                      )
+                    : t(
+                        "aal1"
+                      )}
+                </strong>
               </p>
             </div>
           </div>
         </div>
       ) : (
-        <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-amber-950">
-            Google Authenticator nu este configurat
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-amber-900">
-            MFA este opțional pentru Clinic Manager, dar recomandat. Poți activa
-            Google Authenticator acum și poți continua apoi în dashboard-ul
-            clinicii.
-          </p>
-          <Link
-            href="/mfa/admin/setup?next=/clinic-manager-dashboard/security"
-            className="romdoc-button romdoc-button-primary romdoc-button-sm mt-5"
-          >
-            Activează Google Authenticator
-          </Link>
+        <div className="mt-[34px] rounded-[21px] border border-amber-200 bg-amber-50 p-[21px] shadow-sm">
+          <div className="flex items-start gap-[13px]">
+            <div
+              aria-hidden="true"
+              className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full bg-amber-700 text-white"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                className="h-6 w-6"
+                stroke="currentColor"
+                strokeWidth={
+                  1.8
+                }
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 3 19 6v5c0 4.6-2.7 8-7 10-4.3-2-7-5.4-7-10V6l7-3Z"
+                />
+
+                <path
+                  strokeLinecap="round"
+                  d="M12 8v5M12 17h.01"
+                />
+              </svg>
+            </div>
+
+            <div>
+              <h2 className="text-xl font-bold text-amber-950">
+                {t(
+                  "inactiveTitle"
+                )}
+              </h2>
+
+              <p className="mt-[13px] text-sm leading-6 text-amber-900">
+                {t(
+                  "inactiveDescription"
+                )}
+              </p>
+
+              <Link
+                href={`/mfa/admin/setup?${setupParameters.toString()}`}
+                className="romdoc-button romdoc-button-primary romdoc-button-sm mt-[21px]"
+              >
+                {t(
+                  "activate"
+                )}
+              </Link>
+            </div>
+          </div>
         </div>
       )}
 
-      <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="mt-[21px] rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
         <h2 className="text-lg font-bold text-gray-900">
-          Recomandări
+          {t(
+            "recommendationsTitle"
+          )}
         </h2>
-        <ul className="mt-3 space-y-2 text-sm leading-6 text-gray-600">
-          <li>Nu comunica nimănui codurile temporare de șase cifre.</li>
-          <li>Protejează telefonul pe care este instalat autentificatorul.</li>
-          <li>Anunță RomDoc dacă pierzi accesul la dispozitiv.</li>
+
+        <ul className="mt-[13px] space-y-[8px] text-sm leading-6 text-gray-600">
+          <li className="flex gap-[8px]">
+            <span
+              aria-hidden="true"
+              className="text-[#036661]"
+            >
+              •
+            </span>
+
+            <span>
+              {t(
+                "recommendations.codes"
+              )}
+            </span>
+          </li>
+
+          <li className="flex gap-[8px]">
+            <span
+              aria-hidden="true"
+              className="text-[#036661]"
+            >
+              •
+            </span>
+
+            <span>
+              {t(
+                "recommendations.phone"
+              )}
+            </span>
+          </li>
+
+          <li className="flex gap-[8px]">
+            <span
+              aria-hidden="true"
+              className="text-[#036661]"
+            >
+              •
+            </span>
+
+            <span>
+              {t(
+                "recommendations.lostDevice"
+              )}
+            </span>
+          </li>
         </ul>
       </div>
     </section>

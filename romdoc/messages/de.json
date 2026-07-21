@@ -2250,6 +2250,249 @@
         "linking": "Das Konto wurde erstellt, aber die Klinikeinladung konnte nicht verknüpft werden. Kontaktieren Sie RomDoc.",
         "registration": "Die Registrierung konnte nicht abgeschlossen werden."
       }
+    },
+    "locations": {
+      "eyebrow": "Klinikmanager",
+      "title": "Standorte und Betriebsstätten",
+      "description": "Verwalten Sie die realen Standorte der Organisation. Nach der Prüfung durch RomDoc können sie für Arztzuweisung, Verfügbarkeit und Termine verwendet werden.",
+      "stats": {
+        "organizations": "Organisationen",
+        "organizationsHelper": "Ihrem Konto zugeordnete Klinikorganisationen.",
+        "active": "Aktive Standorte",
+        "activeHelper": "Für die Organisation genehmigte Betriebsstätten.",
+        "pending": "In Prüfung",
+        "pendingHelper": "Standorte oder Zuordnungen, die auf die Prüfung durch RomDoc warten."
+      },
+      "listTitle": "Standorte der Organisation",
+      "listDescription": "Nur aktive Standorte können für die Arztzuweisung verwendet werden. Standorte in Prüfung bleiben aus Transparenzgründen sichtbar.",
+      "count": "{count, plural, one {# Standort} other {# Standorte}}",
+      "empty": "Ihrer Organisation sind noch keine Standorte zugeordnet. Senden Sie den ersten Antrag mit dem Formular oben.",
+      "location": "Standort",
+      "organization": "Organisation",
+      "associationStatus": "Zuordnungsstatus",
+      "clinicStatus": "Klinikstatus",
+      "contact": "Kontakt",
+      "addressUnavailable": "Adresse nicht verfügbar",
+      "phoneUnavailable": "Telefon nicht verfügbar",
+      "openMaps": "In Google Maps öffnen",
+      "fallbackLocation": "Standort",
+      "statuses": {
+        "organization": {
+          "active": "Aktiv",
+          "suspended": "Gesperrt",
+          "rejected": "Abgelehnt",
+          "archived": "Archiviert",
+          "pending": "Ausstehend"
+        },
+        "association": {
+          "active": "Aktiv",
+          "removed": "Entfernt",
+          "pending": "In Prüfung"
+        },
+        "clinic": {
+          "approved": "Genehmigte Klinik",
+          "rejected": "Abgelehnte Klinik",
+          "suspended": "Gesperrte Klinik",
+          "pending": "Klinik in Prüfung"
+        }
+      }
+    },
+    "locationForm": {
+      "eyebrow": "Klinikstandorte",
+      "title": "Betriebsstätte beantragen",
+      "description": "Fügen Sie die realen Standorte der Organisation hinzu. RomDoc prüft Standort und Organisationszuordnung, bevor Ärzte dort zugewiesen werden können.",
+      "noActiveOrganization": "Für dieses Konto gibt es keine aktive Organisation. Standorte können nach der Aktivierung durch RomDoc beantragt werden.",
+      "organization": "Klinikorganisation",
+      "locationName": "Name des Standorts / der Betriebsstätte",
+      "locationPlaceholder": "Beispiel: Zentralklinik — München",
+      "addressLine2": "Zusätzliche Adressangaben",
+      "addressLine2Placeholder": "Etage, Raum, Gebäudeflügel",
+      "phone": "Telefon des Standorts",
+      "email": "E-Mail des Standorts",
+      "website": "Website des Standorts",
+      "descriptionLabel": "Beschreibung",
+      "optional": "Optional",
+      "sending": "Wird gesendet...",
+      "submit": "Standort zur Prüfung senden",
+      "success": "Der Standort wurde zur Prüfung eingereicht.",
+      "error": "Der Standort konnte nicht eingereicht werden.",
+      "validation": {
+        "organization": "Wählen Sie die Klinikorganisation aus.",
+        "name": "Geben Sie den Namen des Standorts ein.",
+        "address": "Wählen Sie die Standortadresse aus der Google-Liste aus."
+      },
+      "google": {
+        "placeholder": "Klinikadresse suchen",
+        "importUnavailable": "Google Maps importLibrary ist nicht verfügbar.",
+        "elementUnavailable": "Google Places hat die Adresssuchkomponente nicht bereitgestellt.",
+        "predictionMissing": "Google hat den ausgewählten Vorschlag nicht zurückgegeben.",
+        "placeIdMissing": "Google hat keine gültige Adresskennung zurückgegeben.",
+        "verifyError": "Die Adresse konnte nicht überprüft werden.",
+        "loadError": "Google Places konnte nicht geladen werden.",
+        "label": "Klinikadresse",
+        "help": "Wählen Sie eine Adresse aus der Google-Liste",
+        "loading": "Google Places wird geladen...",
+        "verifying": "Adresse wird überprüft...",
+        "selected": "Ausgewählte Adresse",
+        "city": "Stadt",
+        "region": "Region",
+        "postalCode": "Postleitzahl",
+        "country": "Land"
+      }
+    },
+    "doctors": {
+      "eyebrow": "Klinikmanager",
+      "title": "Von der Klinik verwaltete Ärzte",
+      "description": "Verfolgen Sie eingeladene Ärzte, erstellte Konten und den jedem Arzt zugewiesenen genehmigten Standort. Die Klinik verwaltet die Geschäftsbeziehung, während jeder Arzt für sein Berufsprofil verantwortlich bleibt.",
+      "stats": {
+        "openInvitations": "Offene Einladungen",
+        "openInvitationsHelper": "Eingeladene Ärzte, die noch kein Konto erstellt haben.",
+        "createdAccounts": "Erstellte Konten",
+        "createdAccountsHelper": "Durch Arztregistrierung angenommene Einladungen.",
+        "doctorProfiles": "Arztprofile",
+        "doctorProfilesHelper": "Ärzte mit verbundenem Berufsprofil.",
+        "assignedLocations": "Standort zugewiesen",
+        "assignedLocationsHelper": "Ärzte mit ausgewähltem genehmigten Standort.",
+        "monthlyEstimate": "Monatliche Schätzung",
+        "monthlyEstimateHelper": "Nur Ärzte mit aktiver Klinikabdeckung."
+      },
+      "noOrganizationsTitle": "Ihrem Konto sind noch keine Organisationen zugeordnet",
+      "noOrganizationsDescription": "Eingeladene Ärzte erscheinen, nachdem Ihr Konto einer Klinikorganisation zugeordnet wurde.",
+      "noDoctorsTitle": "Es wurden noch keine Ärzte eingeladen",
+      "noDoctorsDescription": "Senden Sie über die Einladungsseite den ersten Registrierungslink an einen Arzt.",
+      "inviteDoctor": "Arzt einladen",
+      "listTitle": "Eingeladene Ärzte",
+      "listDescription": "Weisen Sie jeden Arzt einem genehmigten Standort der Klinikorganisation zu.",
+      "manageLocations": "Standorte verwalten",
+      "inviteNewDoctor": "Neuen Arzt einladen",
+      "count": "{count, plural, one {# Arzt} other {# Ärzte}}",
+      "doctor": "Arzt",
+      "organization": "Organisation",
+      "invitation": "Einladung",
+      "coverage": "Abdeckung",
+      "approvedLocation": "Genehmigter Standort",
+      "profile": "Profil",
+      "monthlyCost": "Monatliche Kosten",
+      "dates": "Daten",
+      "emailUnavailable": "E-Mail nicht verfügbar",
+      "unknownOrganization": "Unbekannte Organisation",
+      "invitedDoctor": "Eingeladener Arzt",
+      "viewPublicProfile": "Öffentliches Profil anzeigen",
+      "profilePreparing": "Konto erstellt, Profil wird vorbereitet",
+      "waitingRegistration": "Warten auf Registrierung",
+      "invitedAt": "Eingeladen",
+      "acceptedAt": "Angenommen",
+      "expiresAt": "Läuft ab",
+      "monthlyPrice": "{price} RON/Monat + MwSt.",
+      "assignmentNotice": "Ärzte können nur genehmigten Organisationsstandorten zugewiesen werden. Wenn die Liste leer ist, erstellen Sie auf der Seite Standorte einen Antrag und warten Sie auf die Genehmigung durch RomDoc.",
+      "statuses": {
+        "organization": {
+          "active": "Aktiv",
+          "suspended": "Gesperrt",
+          "rejected": "Abgelehnt",
+          "pending": "In Prüfung"
+        },
+        "invitation": {
+          "pending": "Gesendet",
+          "accepted": "Angenommen",
+          "declined": "Abgelehnt",
+          "expired": "Abgelaufen",
+          "cancelled": "Storniert"
+        },
+        "coverage": {
+          "active": "Aktiv",
+          "paused": "Pausiert",
+          "cancelled": "Storniert",
+          "ended": "Beendet",
+          "none": "Keine Abdeckung",
+          "pending": "In Bearbeitung"
+        }
+      }
+    },
+    "doctorAssignment": {
+      "noLocations": "Für diese Organisation gibt es noch keine genehmigten Standorte. Erstellen Sie auf der Seite Standorte einen Antrag und warten Sie auf die Genehmigung durch RomDoc.",
+      "choose": "Standort auswählen",
+      "save": "Standort speichern",
+      "saving": "Wird gespeichert...",
+      "success": "Der Standort wurde gespeichert.",
+      "error": "Der Standort konnte nicht gespeichert werden."
+    },
+    "sms": {
+      "eyebrow": "Klinikmanager",
+      "title": "SMS-Nutzung der Klinik",
+      "description": "Zeigt die SMS-Nutzung für den ausgewählten Zeitraum. Die Seite enthält nur Liefer- und Abrechnungsmetadaten, ohne Nachrichteninhalt, medizinische Notizen oder Patientenakten.",
+      "period": "Zeitraum",
+      "calculatedRange": "Berechneter Zeitraum",
+      "previousMonth": "Vorheriger Monat",
+      "nextMonth": "Nächster Monat",
+      "currentMonth": "Aktueller Monat",
+      "unavailableTitle": "SMS-Nutzung nicht verfügbar",
+      "unavailableDescription": "Die Nutzungsdaten konnten nicht geladen werden. Laden Sie die Seite neu oder kontaktieren Sie den RomDoc-Administrator.",
+      "noOrganizationsTitle": "Ihrem Konto ist noch keine Klinikorganisation zugeordnet",
+      "noOrganizationsDescription": "Die SMS-Nutzung erscheint, nachdem Ihr Konto einer aktiven Organisation zugeordnet wurde.",
+      "stats": {
+        "sent": "Gesendete SMS",
+        "sentHelper": "Vom Anbieter als gesendet akzeptierte Nachrichten.",
+        "failed": "Fehlgeschlagen",
+        "failedHelper": "Nachrichten mit fehlgeschlagener Zustellung.",
+        "uninvoiced": "Nicht abgerechnet",
+        "uninvoicedHelper": "SMS, die in die Klinikrechnung aufgenommen werden können.",
+        "estimatedCost": "Geschätzte Kosten",
+        "estimatedCostHelper": "Schätzung für nicht abgerechnete SMS."
+      },
+      "detailsTitle": "SMS-Details",
+      "detailsDescription": "Die Patientennummer ist maskiert und der Nachrichteninhalt wird dem Klinikmanager nicht angezeigt.",
+      "count": "{count, plural, one {# Eintrag} other {# Einträge}}",
+      "empty": "Für den ausgewählten Zeitraum gibt es keine SMS-Nutzung.",
+      "date": "Datum",
+      "organization": "Organisation",
+      "event": "Ereignis",
+      "delivery": "Zustellung",
+      "billing": "Abrechnung",
+      "phone": "Telefon",
+      "cost": "Kosten",
+      "visibilityTitle": "Sichtbarkeitsgrenze",
+      "visibilityDescription": "Der Klinikmanager sieht nur für Kosten und Abrechnung erforderliche Angaben: Datum, Ereignistyp, Status, maskiertes Telefon und Kosten. SMS-Inhalt und medizinische Daten werden nicht angezeigt.",
+      "deliveryStatuses": {
+        "sent": "Gesendet",
+        "failed": "Fehlgeschlagen",
+        "skipped": "Übersprungen",
+        "queued": "In Warteschlange",
+        "unknown": "Unbekannt"
+      },
+      "invoiceStatuses": {
+        "uninvoiced": "Nicht abgerechnet",
+        "invoiced": "Abgerechnet",
+        "credited": "Gutgeschrieben",
+        "not_billable": "Nicht abrechenbar",
+        "unknown": "Unbekannt"
+      },
+      "eventTypes": {
+        "confirmed": "Terminbestätigung",
+        "reminder_24_hours": "Terminerinnerung 24h",
+        "unknown": "Anderes Ereignis"
+      }
+    },
+    "security": {
+      "eyebrow": "Klinikmanager",
+      "title": "Kontosicherheit",
+      "description": "Schützen Sie das Klinikmanager-Konto mit Mehrfaktorauthentifizierung. Sie wird für Konten empfohlen, die Ärzte, Abrechnung und SMS-Nutzung verwalten.",
+      "loadError": "Die MFA-Einstellungen konnten nicht geladen werden. Laden Sie die Seite neu und versuchen Sie es erneut.",
+      "activeTitle": "Google Authenticator ist aktiv",
+      "activeDescription": "Für Ihr Konto ist Mehrfaktorauthentifizierung eingerichtet. Bei sensiblen Aktionen kann eine zusätzliche Prüfung verlangt werden.",
+      "configuredAt": "Konfiguriert oder aktualisiert am {date}.",
+      "sessionLevel": "Aktuelle Sitzungsstufe",
+      "aal2": "AAL2 — durch MFA bestätigt",
+      "aal1": "AAL1 — normale Anmeldung",
+      "inactiveTitle": "Google Authenticator ist nicht konfiguriert",
+      "inactiveDescription": "Mehrfaktorauthentifizierung ist optional, wird jedoch empfohlen. Sie können sie jetzt aktivieren und anschließend zum Klinik-Dashboard zurückkehren.",
+      "activate": "Google Authenticator aktivieren",
+      "recommendationsTitle": "Empfehlungen",
+      "recommendations": {
+        "codes": "Geben Sie temporäre sechsstellige Codes niemals weiter.",
+        "phone": "Schützen Sie das Telefon, auf dem der Authenticator installiert ist.",
+        "lostDevice": "Informieren Sie RomDoc, wenn Sie den Zugriff auf das Gerät verlieren."
+      }
     }
   }
 }

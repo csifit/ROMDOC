@@ -2250,6 +2250,249 @@
         "linking": "Contul a fost creat, dar invitația clinicii nu a putut fi conectată. Contactează RomDoc.",
         "registration": "Înregistrarea nu a putut fi finalizată."
       }
+    },
+    "locations": {
+      "eyebrow": "Manager clinică",
+      "title": "Locații și puncte de lucru",
+      "description": "Administrează locațiile reale ale organizației. După verificarea RomDoc, acestea pot fi folosite pentru repartizarea medicilor, disponibilitate și programări.",
+      "stats": {
+        "organizations": "Organizații",
+        "organizationsHelper": "Organizații de clinică asociate contului tău.",
+        "active": "Locații active",
+        "activeHelper": "Puncte de lucru aprobate pentru organizație.",
+        "pending": "În verificare",
+        "pendingHelper": "Locații sau asocieri care așteaptă verificarea RomDoc."
+      },
+      "listTitle": "Locațiile organizației",
+      "listDescription": "Doar locațiile active pot fi folosite pentru repartizarea medicilor. Locațiile aflate în verificare rămân vizibile pentru transparență.",
+      "count": "{count, plural, one {# locație} few {# locații} other {# de locații}}",
+      "empty": "Nu există încă locații asociate organizației tale. Trimite prima solicitare folosind formularul de mai sus.",
+      "location": "Locație",
+      "organization": "Organizație",
+      "associationStatus": "Status asociere",
+      "clinicStatus": "Status clinică",
+      "contact": "Contact",
+      "addressUnavailable": "Adresă indisponibilă",
+      "phoneUnavailable": "Telefon indisponibil",
+      "openMaps": "Deschide în Google Maps",
+      "fallbackLocation": "Locație",
+      "statuses": {
+        "organization": {
+          "active": "Activă",
+          "suspended": "Suspendată",
+          "rejected": "Respinsă",
+          "archived": "Arhivată",
+          "pending": "În așteptare"
+        },
+        "association": {
+          "active": "Activă",
+          "removed": "Eliminată",
+          "pending": "În verificare"
+        },
+        "clinic": {
+          "approved": "Clinică aprobată",
+          "rejected": "Clinică respinsă",
+          "suspended": "Clinică suspendată",
+          "pending": "Clinică în verificare"
+        }
+      }
+    },
+    "locationForm": {
+      "eyebrow": "Locații clinică",
+      "title": "Solicită un punct de lucru",
+      "description": "Adaugă locațiile reale ale organizației. RomDoc verifică locația și asocierea înainte ca medicii clinicii să poată fi repartizați acolo.",
+      "noActiveOrganization": "Nu există o organizație activă pentru acest cont. Locațiile pot fi solicitate după activarea organizației de către RomDoc.",
+      "organization": "Organizație clinică",
+      "locationName": "Numele locației / punctului de lucru",
+      "locationPlaceholder": "Exemplu: Clinica Centrală — București",
+      "addressLine2": "Detalii suplimentare ale adresei",
+      "addressLine2Placeholder": "Etaj, cabinet, corp de clădire",
+      "phone": "Telefon locație",
+      "email": "E-mail locație",
+      "website": "Website locație",
+      "descriptionLabel": "Descriere",
+      "optional": "Opțional",
+      "sending": "Se trimite...",
+      "submit": "Trimite locația spre verificare",
+      "success": "Locația a fost trimisă spre verificare.",
+      "error": "Locația nu a putut fi trimisă.",
+      "validation": {
+        "organization": "Selectează organizația clinicii.",
+        "name": "Introdu numele locației.",
+        "address": "Selectează adresa locației din lista Google."
+      },
+      "google": {
+        "placeholder": "Caută adresa clinicii",
+        "importUnavailable": "Funcția Google Maps importLibrary nu este disponibilă.",
+        "elementUnavailable": "Google Places nu a furnizat componenta de căutare a adreselor.",
+        "predictionMissing": "Google nu a returnat sugestia selectată.",
+        "placeIdMissing": "Google nu a returnat un identificator valid pentru adresă.",
+        "verifyError": "Adresa nu a putut fi verificată.",
+        "loadError": "Google Places nu a putut fi încărcat.",
+        "label": "Adresa clinicii",
+        "help": "Selectează o adresă din lista Google",
+        "loading": "Se încarcă Google Places...",
+        "verifying": "Adresa este verificată...",
+        "selected": "Adresă selectată",
+        "city": "Oraș",
+        "region": "Regiune",
+        "postalCode": "Cod poștal",
+        "country": "Țară"
+      }
+    },
+    "doctors": {
+      "eyebrow": "Manager clinică",
+      "title": "Medici gestionați de clinică",
+      "description": "Urmărește medicii invitați, conturile create și locațiile aprobate atribuite fiecărui medic. Clinica gestionează relația comercială, iar medicul rămâne responsabil pentru profilul profesional.",
+      "stats": {
+        "openInvitations": "Invitații deschise",
+        "openInvitationsHelper": "Medici invitați care nu au creat încă un cont.",
+        "createdAccounts": "Conturi create",
+        "createdAccountsHelper": "Invitații acceptate prin înregistrarea medicului.",
+        "doctorProfiles": "Profiluri medic",
+        "doctorProfilesHelper": "Medici care au deja profil profesional conectat.",
+        "assignedLocations": "Atribuiți locației",
+        "assignedLocationsHelper": "Medici cu o locație aprobată selectată.",
+        "monthlyEstimate": "Estimare lunară",
+        "monthlyEstimateHelper": "Doar medicii acoperiți activ de clinică."
+      },
+      "noOrganizationsTitle": "Nu există încă organizații asociate contului tău",
+      "noOrganizationsDescription": "După asocierea contului cu o organizație de clinică, medicii invitați vor apărea aici.",
+      "noDoctorsTitle": "Nu există încă medici invitați",
+      "noDoctorsDescription": "Folosește pagina de invitații pentru a trimite primul link de înregistrare către un medic.",
+      "inviteDoctor": "Invită un medic",
+      "listTitle": "Lista medicilor invitați",
+      "listDescription": "Atribuie fiecare medic unei locații aprobate din organizația clinicii.",
+      "manageLocations": "Gestionează locații",
+      "inviteNewDoctor": "Invită medic nou",
+      "count": "{count, plural, one {# medic} few {# medici} other {# de medici}}",
+      "doctor": "Medic",
+      "organization": "Organizație",
+      "invitation": "Invitație",
+      "coverage": "Acoperire",
+      "approvedLocation": "Locație aprobată",
+      "profile": "Profil",
+      "monthlyCost": "Cost lunar",
+      "dates": "Date",
+      "emailUnavailable": "E-mail indisponibil",
+      "unknownOrganization": "Organizație necunoscută",
+      "invitedDoctor": "Medic invitat",
+      "viewPublicProfile": "Vezi profilul public",
+      "profilePreparing": "Cont creat, profil în pregătire",
+      "waitingRegistration": "În așteptarea înregistrării",
+      "invitedAt": "Invitat",
+      "acceptedAt": "Acceptat",
+      "expiresAt": "Expiră",
+      "monthlyPrice": "{price} RON/lună + TVA",
+      "assignmentNotice": "Medicii pot fi atribuiți doar locațiilor aprobate ale organizației. Când lista este goală, creează mai întâi o solicitare în pagina Locații și așteaptă aprobarea RomDoc.",
+      "statuses": {
+        "organization": {
+          "active": "Activă",
+          "suspended": "Suspendată",
+          "rejected": "Respinsă",
+          "pending": "În verificare"
+        },
+        "invitation": {
+          "pending": "Trimisă",
+          "accepted": "Acceptată",
+          "declined": "Refuzată",
+          "expired": "Expirată",
+          "cancelled": "Anulată"
+        },
+        "coverage": {
+          "active": "Activă",
+          "paused": "Suspendată",
+          "cancelled": "Anulată",
+          "ended": "Încheiată",
+          "none": "Fără acoperire",
+          "pending": "În curs"
+        }
+      }
+    },
+    "doctorAssignment": {
+      "noLocations": "Nu există încă locații aprobate pentru această organizație. Creează o solicitare din pagina Locații și așteaptă aprobarea RomDoc.",
+      "choose": "Alege locația",
+      "save": "Salvează locația",
+      "saving": "Se salvează...",
+      "success": "Locația a fost salvată.",
+      "error": "Locația nu a putut fi salvată."
+    },
+    "sms": {
+      "eyebrow": "Manager clinică",
+      "title": "Consum SMS clinică",
+      "description": "Vezi consumul SMS pentru perioada selectată. Pagina afișează doar metadate de livrare și facturare, fără conținutul mesajelor, note medicale sau dosare ale pacienților.",
+      "period": "Perioadă",
+      "calculatedRange": "Interval calculat",
+      "previousMonth": "Luna anterioară",
+      "nextMonth": "Luna următoare",
+      "currentMonth": "Luna curentă",
+      "unavailableTitle": "Consum SMS indisponibil",
+      "unavailableDescription": "Datele de consum nu au putut fi încărcate. Reîncarcă pagina sau contactează administratorul RomDoc.",
+      "noOrganizationsTitle": "Nu există încă o organizație de clinică asociată contului tău",
+      "noOrganizationsDescription": "După asocierea contului cu o organizație activă, consumul SMS va fi afișat aici.",
+      "stats": {
+        "sent": "SMS trimise",
+        "sentHelper": "Mesaje acceptate de furnizor ca trimise.",
+        "failed": "Eșuate",
+        "failedHelper": "Mesaje pentru care livrarea a eșuat.",
+        "uninvoiced": "Nefacturate",
+        "uninvoicedHelper": "SMS care pot intra în factura clinicii.",
+        "estimatedCost": "Cost estimat",
+        "estimatedCostHelper": "Estimare pentru SMS nefacturate."
+      },
+      "detailsTitle": "Detalii SMS",
+      "detailsDescription": "Numărul pacientului este mascat, iar corpul mesajului nu este afișat Managerului clinicii.",
+      "count": "{count, plural, one {# înregistrare} few {# înregistrări} other {# de înregistrări}}",
+      "empty": "Nu există consum SMS pentru perioada selectată.",
+      "date": "Dată",
+      "organization": "Organizație",
+      "event": "Eveniment",
+      "delivery": "Livrare",
+      "billing": "Facturare",
+      "phone": "Telefon",
+      "cost": "Cost",
+      "visibilityTitle": "Limită de vizibilitate",
+      "visibilityDescription": "Managerul clinicii vede doar informațiile necesare pentru cost și facturare: data, tipul evenimentului, statusul, telefonul mascat și costul. Conținutul SMS și datele medicale nu sunt afișate.",
+      "deliveryStatuses": {
+        "sent": "Trimis",
+        "failed": "Eșuat",
+        "skipped": "Omis",
+        "queued": "În așteptare",
+        "unknown": "Necunoscut"
+      },
+      "invoiceStatuses": {
+        "uninvoiced": "Nefacturat",
+        "invoiced": "Facturat",
+        "credited": "Stornat",
+        "not_billable": "Nefacturabil",
+        "unknown": "Necunoscut"
+      },
+      "eventTypes": {
+        "confirmed": "Confirmare programare",
+        "reminder_24_hours": "Reminder programare 24h",
+        "unknown": "Alt eveniment"
+      }
+    },
+    "security": {
+      "eyebrow": "Manager clinică",
+      "title": "Securitatea contului",
+      "description": "Protejează contul de Manager clinică prin autentificare multifactor. Este recomandată pentru conturile care gestionează medici, facturare și consum SMS.",
+      "loadError": "Setările MFA nu au putut fi încărcate. Reîncarcă pagina și încearcă din nou.",
+      "activeTitle": "Google Authenticator este activ",
+      "activeDescription": "Contul tău are autentificare multifactor configurată. Pentru acțiuni sensibile poate fi solicitată o verificare suplimentară.",
+      "configuredAt": "Configurat sau actualizat la {date}.",
+      "sessionLevel": "Nivelul sesiunii curente",
+      "aal2": "AAL2 — verificată prin MFA",
+      "aal1": "AAL1 — autentificare normală",
+      "inactiveTitle": "Google Authenticator nu este configurat",
+      "inactiveDescription": "Autentificarea multifactor este opțională, dar recomandată. O poți activa acum și apoi reveni în dashboard-ul clinicii.",
+      "activate": "Activează Google Authenticator",
+      "recommendationsTitle": "Recomandări",
+      "recommendations": {
+        "codes": "Nu comunica nimănui codurile temporare de șase cifre.",
+        "phone": "Protejează telefonul pe care este instalat autentificatorul.",
+        "lostDevice": "Anunță RomDoc dacă pierzi accesul la dispozitiv."
+      }
     }
   }
 }
