@@ -1,15 +1,17 @@
 "use client";
 
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useLocale } from "next-intl";
+
+import Button from "@/components/ui/button";
+import type { PlatformOperatorDirectoryApiPayload } from "@/lib/api/platform-operator-directory-codes";
+import { normalizeAppLocale } from "@/lib/i18n/app-locale";
 import {
-  type FormEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import {
-  createLocationSlug,
-} from "@/lib/locations/create-location-slug";
+  getPlatformDirectoryApiMessage,
+  getPlatformOperatorDirectory,
+  interpolatePlatformDirectoryCopy,
+} from "@/lib/i18n/platform-operator-directory";
+import { createLocationSlug } from "@/lib/locations/create-location-slug";
 
 type CityTranslation = {
   id: string;
@@ -21,37 +23,28 @@ type City = {
   id: string;
   slug: string;
   country_code: string;
-
-  latitude:
-    | number
-    | string
-    | null;
-
-  longitude:
-    | number
-    | string
-    | null;
-
+  latitude: number | string | null;
+  longitude: number | string | null;
   is_active: boolean;
   clinic_count: number;
   created_at: string;
   updated_at: string;
-
-  city_translations:
-    | CityTranslation[]
-    | null;
+  city_translations: CityTranslation[] | null;
 };
 
-type ApiResponse = {
+type CityCapabilities = {
+  canCreateCities: boolean;
+  canUpdateCities: boolean;
+  canDeleteCities: boolean;
+};
+
+type ApiResponse = PlatformOperatorDirectoryApiPayload & {
   cities?: City[];
-  message?: string;
-  error?: string;
+  operatorRole?: "admin" | "manager";
+  capabilities?: Partial<CityCapabilities>;
 };
 
-type StatusFilter =
-  | "all"
-  | "active"
-  | "inactive";
+type StatusFilter = "all" | "active" | "inactive";
 
 type CityFormState = {
   cityId: string;
@@ -64,7 +57,7 @@ type CityFormState = {
   isActive: boolean;
 };
 
-const emptyForm: CityFormState = {
+const EMPTY_FORM: CityFormState = {
   cityId: "",
   nameRo: "",
   nameEn: "",
@@ -75,988 +68,652 @@ const emptyForm: CityFormState = {
   isActive: true,
 };
 
-function getTranslation(
-  city: City,
-  locale: string
-) {
+function getTranslation(city: City, locale: string) {
   return (
-    city.city_translations
-      ?.find(
-        (translation) =>
-          translation.locale ===
-          locale
-      ) ?? null
+    city.city_translations?.find(
+      (translation) => translation.locale === locale
+    ) ?? null
   );
 }
 
-function coordinateToString(
-  value:
-    | number
-    | string
-    | null
-) {
-  if (
-    value === null ||
-    value === undefined
-  ) {
-    return "";
-  }
+function coordinateToString(value: number | string | null) {
+  return value === null || value === undefined ? "" : String(value);
+}
 
-  return String(value);
+function metricCard(label: string, value: number) {
+  return (
+    <article className="rounded-2xl border border-gray-200 bg-white p-[13px] shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+        {label}
+      </p>
+      <p className="mt-[5px] text-2xl font-bold text-gray-900">{value}</p>
+    </article>
+  );
 }
 
 export default function CitiesManagement() {
-  const [cities, setCities] =
-    useState<City[]>([]);
+  const locale = normalizeAppLocale(useLocale());
+  const copy = getPlatformOperatorDirectory(locale);
 
-  const [form, setForm] =
-    useState<CityFormState>(
-      emptyForm
-    );
+  const [cities, setCities] = useState<City[]>([]);
+  const [form, setForm] = useState<CityFormState>(EMPTY_FORM);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [changingCityId, setChangingCityId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [capabilities, setCapabilities] = useState<CityCapabilities>({
+    canCreateCities: false,
+    canUpdateCities: true,
+    canDeleteCities: false,
+  });
 
-  const [search, setSearch] =
-    useState("");
+  const isEditing = Boolean(form.cityId);
 
-  const [
-    statusFilter,
-    setStatusFilter,
-  ] =
-    useState<StatusFilter>(
-      "all"
-    );
+  const loadCities = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-  const [isLoading, setIsLoading] =
-    useState(true);
+      const response = await fetch("/api/admin/cities", {
+        method: "GET",
+        cache: "no-store",
+      });
+      const result = (await response.json()) as ApiResponse;
 
-  const [isSaving, setIsSaving] =
-    useState(false);
-
-  const [
-    changingCityId,
-    setChangingCityId,
-  ] =
-    useState<string | null>(
-      null
-    );
-
-  const [error, setError] =
-    useState<string | null>(null);
-
-  const [success, setSuccess] =
-    useState<string | null>(null);
-
-  const isEditing =
-    Boolean(form.cityId);
-
-  const loadCities =
-    useCallback(async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        const response =
-          await fetch(
-            "/api/admin/cities",
-            {
-              method: "GET",
-              cache: "no-store",
-            }
-          );
-
-        const result =
-          (await response.json()) as
-            ApiResponse;
-
-        if (!response.ok) {
-          throw new Error(
-            result.error ??
-              "Orașele nu au putut fi încărcate."
-          );
-        }
-
-        setCities(
-          result.cities ?? []
+      if (!response.ok) {
+        throw new Error(
+          getPlatformDirectoryApiMessage(
+            locale,
+            result.code,
+            result.error ?? copy.cities.states.loadFailed
+          )
         );
-      } catch (loadError) {
-        setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "Orașele nu au putut fi încărcate."
-        );
-      } finally {
-        setIsLoading(false);
       }
-    }, []);
+
+      setCities(result.cities ?? []);
+      setCapabilities((current) => ({
+        ...current,
+        ...result.capabilities,
+      }));
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error ? loadError.message : copy.cities.states.loadFailed
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [copy.cities.states.loadFailed, locale]);
 
   useEffect(() => {
     void loadCities();
   }, [loadCities]);
 
-  const filteredCities =
-    useMemo(() => {
-      const normalizedSearch =
-        search
-          .trim()
-          .toLowerCase();
+  const metrics = useMemo(() => {
+    const active = cities.filter((city) => city.is_active).length;
+    const withCoordinates = cities.filter(
+      (city) => city.latitude !== null && city.longitude !== null
+    ).length;
 
-      return cities.filter(
-        (city) => {
-          if (
-            statusFilter ===
-              "active" &&
-            !city.is_active
-          ) {
-            return false;
-          }
+    return {
+      total: cities.length,
+      active,
+      inactive: cities.length - active,
+      withCoordinates,
+    };
+  }, [cities]);
 
-          if (
-            statusFilter ===
-              "inactive" &&
-            city.is_active
-          ) {
-            return false;
-          }
+  const filteredCities = useMemo(() => {
+    const normalizedSearch = search.trim().toLocaleLowerCase(locale);
 
-          if (
-            !normalizedSearch
-          ) {
-            return true;
-          }
+    return cities.filter((city) => {
+      if (statusFilter === "active" && !city.is_active) return false;
+      if (statusFilter === "inactive" && city.is_active) return false;
+      if (!normalizedSearch) return true;
 
-          const ro =
-            getTranslation(
-              city,
-              "ro"
-            );
+      const values = [
+        city.slug,
+        city.country_code,
+        getTranslation(city, "ro")?.name,
+        getTranslation(city, "en")?.name,
+      ];
 
-          const en =
-            getTranslation(
-              city,
-              "en"
-            );
+      return values
+        .filter((value): value is string => Boolean(value))
+        .some((value) => value.toLocaleLowerCase(locale).includes(normalizedSearch));
+    });
+  }, [cities, locale, search, statusFilter]);
 
-          return [
-            city.slug,
-            city.country_code,
-            ro?.name,
-            en?.name,
-          ]
-            .filter(Boolean)
-            .some((value) =>
-              value
-                ?.toLowerCase()
-                .includes(
-                  normalizedSearch
-                )
-            );
-        }
-      );
-    }, [
-      cities,
-      search,
-      statusFilter,
-    ]);
-
-  function updateForm<
-    Key extends keyof CityFormState,
-  >(
+  function updateForm<Key extends keyof CityFormState>(
     key: Key,
-    value:
-      CityFormState[Key]
+    value: CityFormState[Key]
   ) {
-    setForm(
-      (current) => ({
-        ...current,
-        [key]: value,
-      })
-    );
+    setForm((current) => ({ ...current, [key]: value }));
   }
 
   function resetForm() {
-    setForm(emptyForm);
+    setForm(EMPTY_FORM);
     setError(null);
+    setSuccess(null);
   }
 
-  function beginEditing(
-    city: City
-  ) {
-    const ro =
-      getTranslation(
-        city,
-        "ro"
-      );
-
-    const en =
-      getTranslation(
-        city,
-        "en"
-      );
+  function beginEditing(city: City) {
+    const ro = getTranslation(city, "ro");
+    const en = getTranslation(city, "en");
 
     setForm({
-      cityId:
-        city.id,
-
-      nameRo:
-        ro?.name ?? "",
-
-      nameEn:
-        en?.name ?? "",
-
-      slug:
-        city.slug,
-
-      countryCode:
-        city.country_code,
-
-      latitude:
-        coordinateToString(
-          city.latitude
-        ),
-
-      longitude:
-        coordinateToString(
-          city.longitude
-        ),
-
-      isActive:
-        city.is_active,
+      cityId: city.id,
+      nameRo: ro?.name ?? "",
+      nameEn: en?.name ?? "",
+      slug: city.slug,
+      countryCode: city.country_code,
+      latitude: coordinateToString(city.latitude),
+      longitude: coordinateToString(city.longitude),
+      isActive: city.is_active,
     });
-
     setError(null);
     setSuccess(null);
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  async function saveCity(
-    event: FormEvent<HTMLFormElement>
+  async function submitCity(
+    payload: CityFormState,
+    method: "POST" | "PATCH"
   ) {
-    event.preventDefault();
+    const response = await fetch("/api/admin/cities", {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...payload,
+        countryCode: payload.countryCode.trim().toUpperCase(),
+        latitude: payload.latitude.trim(),
+        longitude: payload.longitude.trim(),
+      }),
+    });
+    const result = (await response.json()) as ApiResponse;
 
+    if (!response.ok) {
+      throw new Error(
+        getPlatformDirectoryApiMessage(
+          locale,
+          result.code,
+          result.error ?? copy.cities.states.saveFailed
+        )
+      );
+    }
+
+    return result;
+  }
+
+  async function saveCity(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setError(null);
     setSuccess(null);
 
-    if (
-      form.nameRo
-        .trim()
-        .length < 2
-    ) {
-      setError(
-        "Introdu numele orașului în limba română."
-      );
-
+    if (form.nameRo.trim().length < 2) {
+      setError(copy.cities.form.nameRoRequired);
       return;
     }
-
-    if (
-      form.nameEn
-        .trim()
-        .length < 2
-    ) {
-      setError(
-        "Introdu numele orașului în limba engleză."
-      );
-
+    if (form.nameEn.trim().length < 2) {
+      setError(copy.cities.form.nameEnRequired);
       return;
     }
-
-    if (
-      !/^[A-Za-z]{2}$/.test(
-        form.countryCode.trim()
-      )
-    ) {
-      setError(
-        "Codul țării trebuie să conțină exact două litere."
-      );
-
+    if (!/^[A-Za-z]{2}$/.test(form.countryCode.trim())) {
+      setError(copy.cities.form.countryInvalid);
+      return;
+    }
+    if (!isEditing && !capabilities.canCreateCities) {
+      setError(copy.cities.form.adminOnlyDescription);
       return;
     }
 
     setIsSaving(true);
 
     try {
-      const response =
-        await fetch(
-          "/api/admin/cities",
-          {
-            method:
-              isEditing
-                ? "PATCH"
-                : "POST",
-
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-
-            body:
-              JSON.stringify({
-                ...form,
-
-                countryCode:
-                  form.countryCode
-                    .trim()
-                    .toUpperCase(),
-
-                latitude:
-                  form.latitude.trim(),
-
-                longitude:
-                  form.longitude.trim(),
-              }),
-          }
-        );
-
-      const result =
-        (await response.json()) as
-          ApiResponse;
-
-      if (!response.ok) {
-        throw new Error(
-          result.error ??
-            "Orașul nu a putut fi salvat."
-        );
-      }
-
+      const result = await submitCity(form, isEditing ? "PATCH" : "POST");
       setSuccess(
-        result.message ??
-          "Orașul a fost salvat."
+        getPlatformDirectoryApiMessage(
+          locale,
+          result.code,
+          result.message ??
+            (isEditing ? copy.cities.states.updated : copy.cities.states.created)
+        )
       );
-
-      setForm(emptyForm);
-
+      setForm(EMPTY_FORM);
       await loadCities();
     } catch (saveError) {
       setError(
-        saveError instanceof Error
-          ? saveError.message
-          : "Orașul nu a putut fi salvat."
+        saveError instanceof Error ? saveError.message : copy.cities.states.saveFailed
       );
     } finally {
       setIsSaving(false);
     }
   }
 
-  async function toggleCity(
-    city: City
-  ) {
-    const ro =
-      getTranslation(
-        city,
-        "ro"
-      );
+  async function toggleCity(city: City) {
+    const nextActive = !city.is_active;
 
-    const en =
-      getTranslation(
-        city,
-        "en"
-      );
-
-    const nextActive =
-      !city.is_active;
-
-    if (
-      !nextActive &&
-      city.clinic_count > 0
-    ) {
-      setError(
-        "Orașul este asociat unor clinici și nu poate fi dezactivat."
-      );
-
+    if (!nextActive && city.clinic_count > 0) {
+      setError(copy.cities.list.inUse);
       return;
     }
 
-    const confirmed =
-      window.confirm(
-        nextActive
-          ? "Reactivezi acest oraș?"
-          : "Dezactivezi acest oraș?"
-      );
+    const confirmed = window.confirm(
+      nextActive
+        ? copy.cities.list.confirmActivate
+        : copy.cities.list.confirmDeactivate
+    );
+    if (!confirmed) return;
 
-    if (!confirmed) {
-      return;
-    }
+    const ro = getTranslation(city, "ro");
+    const en = getTranslation(city, "en");
 
     setError(null);
     setSuccess(null);
-    setChangingCityId(
-      city.id
-    );
+    setChangingCityId(city.id);
 
     try {
-      const response =
-        await fetch(
-          "/api/admin/cities",
-          {
-            method: "PATCH",
-
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-
-            body:
-              JSON.stringify({
-                cityId:
-                  city.id,
-
-                nameRo:
-                  ro?.name ?? "",
-
-                nameEn:
-                  en?.name ?? "",
-
-                slug:
-                  city.slug,
-
-                countryCode:
-                  city.country_code,
-
-                latitude:
-                  coordinateToString(
-                    city.latitude
-                  ),
-
-                longitude:
-                  coordinateToString(
-                    city.longitude
-                  ),
-
-                isActive:
-                  nextActive,
-              }),
-          }
-        );
-
-      const result =
-        (await response.json()) as
-          ApiResponse;
-
-      if (!response.ok) {
-        throw new Error(
-          result.error ??
-            "Statutul orașului nu a putut fi actualizat."
-        );
-      }
-
-      setSuccess(
-        result.message ??
-          "Statutul orașului a fost actualizat."
+      const result = await submitCity(
+        {
+          cityId: city.id,
+          nameRo: ro?.name ?? "",
+          nameEn: en?.name ?? "",
+          slug: city.slug,
+          countryCode: city.country_code,
+          latitude: coordinateToString(city.latitude),
+          longitude: coordinateToString(city.longitude),
+          isActive: nextActive,
+        },
+        "PATCH"
       );
 
+      setSuccess(
+        getPlatformDirectoryApiMessage(
+          locale,
+          result.code,
+          result.message ??
+            (nextActive ? copy.cities.states.updated : copy.cities.states.deactivated)
+        )
+      );
       await loadCities();
     } catch (toggleError) {
       setError(
         toggleError instanceof Error
           ? toggleError.message
-          : "Statutul orașului nu a putut fi actualizat."
+          : copy.cities.states.statusFailed
       );
     } finally {
-      setChangingCityId(
-        null
-      );
+      setChangingCityId(null);
     }
   }
 
+  const showForm = capabilities.canCreateCities || isEditing;
+
   return (
-    <div className="space-y-8">
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold text-[#036661]">
-              {isEditing
-                ? "Editare"
-                : "Oraș nou"}
-            </p>
-
-            <h2 className="mt-2 text-2xl font-bold text-gray-900">
-              {isEditing
-                ? "Editează orașul"
-                : "Adaugă un oraș"}
-            </h2>
-
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
-              Orașele sunt utilizate în directoarele SEO, în filtre și
-              pentru asocierea clinicilor cu o localitate internă RomDoc.
-            </p>
-          </div>
-
-          {isEditing && (
-            <button
-              type="button"
-              onClick={resetForm}
-              className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-            >
-              Anulează editarea
-            </button>
-          )}
-        </div>
-
-        <form
-          onSubmit={saveCity}
-          className="mt-8 space-y-6"
-        >
-          <div className="grid gap-5 md:grid-cols-2">
-            <label className="block">
-              <span className="text-sm font-medium text-gray-700">
-                Nume în română
-              </span>
-
-              <input
-                required
-                type="text"
-                maxLength={200}
-                value={form.nameRo}
-                disabled={isSaving}
-                onChange={(event) => {
-                  const name =
-                    event.target.value;
-
-                  updateForm(
-                    "nameRo",
-                    name
-                  );
-
-                  if (
-                    !isEditing ||
-                    !form.slug
-                  ) {
-                    updateForm(
-                      "slug",
-                      createLocationSlug(
-                        name
-                      )
-                    );
-                  }
-                }}
-                placeholder="Exemplu: Timișoara"
-                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
-              />
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-medium text-gray-700">
-                Nume în engleză
-              </span>
-
-              <input
-                required
-                type="text"
-                maxLength={200}
-                value={form.nameEn}
-                disabled={isSaving}
-                onChange={(event) =>
-                  updateForm(
-                    "nameEn",
-                    event.target.value
-                  )
-                }
-                placeholder="Exemplu: Timisoara"
-                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
-              />
-            </label>
-          </div>
-
-          <div className="grid gap-5 md:grid-cols-2">
-            <label className="block">
-              <span className="text-sm font-medium text-gray-700">
-                Slug
-              </span>
-
-              <input
-                required
-                type="text"
-                maxLength={200}
-                value={form.slug}
-                disabled={isSaving}
-                onChange={(event) =>
-                  updateForm(
-                    "slug",
-                    createLocationSlug(
-                      event.target.value
-                    )
-                  )
-                }
-                placeholder="timisoara"
-                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 font-mono text-sm outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
-              />
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-medium text-gray-700">
-                Cod țară
-              </span>
-
-              <input
-                required
-                type="text"
-                minLength={2}
-                maxLength={2}
-                value={
-                  form.countryCode
-                }
-                disabled={isSaving}
-                onChange={(event) =>
-                  updateForm(
-                    "countryCode",
-                    event.target.value
-                      .toUpperCase()
-                      .replace(
-                        /[^A-Z]/g,
-                        ""
-                      )
-                      .slice(0, 2)
-                  )
-                }
-                placeholder="RO"
-                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 uppercase outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
-              />
-
-              <p className="mt-2 text-xs text-gray-500">
-                Cod ISO din două litere. Pentru România folosește RO.
-              </p>
-            </label>
-          </div>
-
-          <div className="grid gap-5 md:grid-cols-2">
-            <label className="block">
-              <span className="text-sm font-medium text-gray-700">
-                Latitudine
-              </span>
-
-              <span className="ml-2 text-xs text-gray-500">
-                Opțional
-              </span>
-
-              <input
-                type="number"
-                step="0.0000001"
-                min="-90"
-                max="90"
-                value={form.latitude}
-                disabled={isSaving}
-                onChange={(event) =>
-                  updateForm(
-                    "latitude",
-                    event.target.value
-                  )
-                }
-                placeholder="45.7488716"
-                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
-              />
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-medium text-gray-700">
-                Longitudine
-              </span>
-
-              <span className="ml-2 text-xs text-gray-500">
-                Opțional
-              </span>
-
-              <input
-                type="number"
-                step="0.0000001"
-                min="-180"
-                max="180"
-                value={form.longitude}
-                disabled={isSaving}
-                onChange={(event) =>
-                  updateForm(
-                    "longitude",
-                    event.target.value
-                  )
-                }
-                placeholder="21.2086793"
-                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
-              />
-            </label>
-          </div>
-
-          {error && (
-            <div
-              role="alert"
-              className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
-            >
-              {error}
-            </div>
-          )}
-
-          {success && (
-            <div
-              role="status"
-              className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800"
-            >
-              {success}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={isSaving}
-            className="rounded-xl bg-[#036661] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#ff2800] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isSaving
-              ? "Se salvează..."
-              : isEditing
-                ? "Salvează modificările"
-                : "Adaugă orașul"}
-          </button>
-        </form>
+    <div className="space-y-[34px]">
+      <section className="grid gap-[13px] sm:grid-cols-2 xl:grid-cols-4">
+        {metricCard(copy.cities.metrics.total, metrics.total)}
+        {metricCard(copy.cities.metrics.active, metrics.active)}
+        {metricCard(copy.cities.metrics.inactive, metrics.inactive)}
+        {metricCard(copy.cities.metrics.coordinates, metrics.withCoordinates)}
       </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              Lista orașelor
-            </h2>
+      {showForm ? (
+        <section className="rounded-2xl border border-gray-200 bg-white p-[21px] shadow-sm sm:p-[34px]">
+          <div className="flex flex-wrap items-start justify-between gap-[13px]">
+            <div>
+              <p className="text-sm font-semibold text-[#036661]">
+                {isEditing ? copy.cities.form.editEyebrow : copy.cities.form.newEyebrow}
+              </p>
+              <h2 className="mt-[8px] text-2xl font-bold text-gray-900">
+                {isEditing ? copy.cities.form.editTitle : copy.cities.form.newTitle}
+              </h2>
+              <p className="mt-[8px] max-w-2xl text-sm leading-6 text-gray-600">
+                {copy.cities.form.description}
+              </p>
+            </div>
 
-            <p className="mt-2 text-sm text-gray-600">
-              {cities.length} orașe înregistrate.
+            {isEditing && (
+              <Button type="button" variant="secondary" size="sm" onClick={resetForm}>
+                {copy.cities.form.cancelEdit}
+              </Button>
+            )}
+          </div>
+
+          <form onSubmit={saveCity} className="mt-[21px] space-y-[21px]">
+            <div className="grid gap-[13px] md:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">
+                  {copy.cities.form.nameRo}
+                </span>
+                <input
+                  required
+                  type="text"
+                  maxLength={200}
+                  value={form.nameRo}
+                  disabled={isSaving}
+                  onChange={(event) => {
+                    const name = event.target.value;
+                    updateForm("nameRo", name);
+                    if (!isEditing || !form.slug) {
+                      updateForm("slug", createLocationSlug(name));
+                    }
+                  }}
+                  placeholder="Timișoara"
+                  className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 px-[13px] py-[13px]"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">
+                  {copy.cities.form.nameEn}
+                </span>
+                <input
+                  required
+                  type="text"
+                  maxLength={200}
+                  value={form.nameEn}
+                  disabled={isSaving}
+                  onChange={(event) => updateForm("nameEn", event.target.value)}
+                  placeholder="Timisoara"
+                  className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 px-[13px] py-[13px]"
+                />
+              </label>
+            </div>
+
+            <div className="grid gap-[13px] md:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">
+                  {copy.common.slug}
+                </span>
+                <input
+                  required
+                  type="text"
+                  maxLength={200}
+                  value={form.slug}
+                  disabled={isSaving}
+                  onChange={(event) =>
+                    updateForm("slug", createLocationSlug(event.target.value))
+                  }
+                  placeholder="timisoara"
+                  className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 px-[13px] py-[13px] font-mono text-sm"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">
+                  {copy.cities.form.countryCode}
+                </span>
+                <input
+                  required
+                  type="text"
+                  minLength={2}
+                  maxLength={2}
+                  value={form.countryCode}
+                  disabled={isSaving}
+                  onChange={(event) =>
+                    updateForm(
+                      "countryCode",
+                      event.target.value
+                        .toUpperCase()
+                        .replace(/[^A-Z]/g, "")
+                        .slice(0, 2)
+                    )
+                  }
+                  placeholder="RO"
+                  className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 px-[13px] py-[13px] uppercase"
+                />
+                <p className="mt-[8px] text-xs text-gray-500">
+                  {copy.cities.form.countryHelp}
+                </p>
+              </label>
+            </div>
+
+            <div className="grid gap-[13px] md:grid-cols-2">
+              <CoordinateField
+                label={copy.cities.form.latitude}
+                optionalLabel={copy.common.optional}
+                value={form.latitude}
+                disabled={isSaving}
+                minimum={-90}
+                maximum={90}
+                placeholder="45.7488716"
+                onChange={(value) => updateForm("latitude", value)}
+              />
+              <CoordinateField
+                label={copy.cities.form.longitude}
+                optionalLabel={copy.common.optional}
+                value={form.longitude}
+                disabled={isSaving}
+                minimum={-180}
+                maximum={180}
+                placeholder="21.2086793"
+                onChange={(value) => updateForm("longitude", value)}
+              />
+            </div>
+
+            {error && (
+              <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-[13px] text-sm text-red-800">
+                {error}
+              </div>
+            )}
+            {success && (
+              <div role="status" className="rounded-xl border border-green-200 bg-green-50 p-[13px] text-sm text-green-800">
+                {success}
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              isLoading={isSaving}
+              loadingText={copy.cities.form.saving}
+              disabled={isEditing ? !capabilities.canUpdateCities : !capabilities.canCreateCities}
+            >
+              {isEditing ? copy.cities.form.save : copy.cities.form.create}
+            </Button>
+          </form>
+        </section>
+      ) : (
+        <section className="rounded-2xl border border-blue-200 bg-blue-50 p-[21px] text-blue-950 shadow-sm">
+          <h2 className="text-lg font-bold">{copy.cities.form.adminOnlyTitle}</h2>
+          <p className="mt-[8px] text-sm leading-6">
+            {copy.cities.form.adminOnlyDescription}
+          </p>
+        </section>
+      )}
+
+      {!showForm && error && (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-[13px] text-sm text-red-800">
+          {error}
+        </div>
+      )}
+      {!showForm && success && (
+        <div role="status" className="rounded-xl border border-green-200 bg-green-50 p-[13px] text-sm text-green-800">
+          {success}
+        </div>
+      )}
+
+      <section className="rounded-2xl border border-gray-200 bg-white p-[21px] shadow-sm sm:p-[34px]">
+        <div className="flex flex-wrap items-end justify-between gap-[13px]">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">{copy.cities.list.title}</h2>
+            <p className="mt-[8px] text-sm text-gray-600">
+              {interpolatePlatformDirectoryCopy(copy.cities.list.count, {
+                count: cities.length,
+              })}
             </p>
           </div>
 
-          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+          <div className="flex w-full flex-col gap-[8px] sm:w-auto sm:flex-row">
             <label className="w-full sm:w-52">
-              <span className="sr-only">
-                Filtrează după status
-              </span>
-
+              <span className="sr-only">{copy.cities.list.statusLabel}</span>
               <select
                 value={statusFilter}
                 onChange={(event) =>
-                  setStatusFilter(
-                    event.target
-                      .value as StatusFilter
-                  )
+                  setStatusFilter(event.target.value as StatusFilter)
                 }
-                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+                className="romdoc-focus-ring w-full rounded-xl border border-gray-300 bg-white px-[13px] py-[13px]"
               >
-                <option value="all">
-                  Toate orașele
-                </option>
-
-                <option value="active">
-                  Active
-                </option>
-
-                <option value="inactive">
-                  Inactive
-                </option>
+                <option value="all">{copy.cities.list.allStatuses}</option>
+                <option value="active">{copy.cities.list.active}</option>
+                <option value="inactive">{copy.cities.list.inactive}</option>
               </select>
             </label>
 
             <label className="w-full sm:w-80">
-              <span className="sr-only">
-                Caută oraș
-              </span>
-
+              <span className="sr-only">{copy.cities.list.searchLabel}</span>
               <input
                 type="search"
                 value={search}
-                onChange={(event) =>
-                  setSearch(
-                    event.target.value
-                  )
-                }
-                placeholder="Caută după nume, slug sau țară..."
-                className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={copy.cities.list.searchPlaceholder}
+                className="romdoc-focus-ring w-full rounded-xl border border-gray-300 px-[13px] py-[13px]"
               />
             </label>
           </div>
         </div>
 
         {isLoading ? (
-          <p className="mt-6 text-sm text-gray-600">
-            Se încarcă orașele...
-          </p>
-        ) : filteredCities.length ===
-          0 ? (
-          <p className="mt-6 rounded-xl bg-gray-50 p-5 text-sm text-gray-600">
-            Nu există orașe care corespund filtrelor selectate.
+          <p className="mt-[21px] text-sm text-gray-600">{copy.cities.list.loading}</p>
+        ) : filteredCities.length === 0 ? (
+          <p className="mt-[21px] rounded-xl bg-gray-50 p-[21px] text-sm text-gray-600">
+            {copy.cities.list.empty}
           </p>
         ) : (
-          <div className="mt-6 overflow-x-auto">
+          <div className="mt-[21px] overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 text-left text-sm">
               <thead>
                 <tr className="text-gray-500">
-                  <th className="px-4 py-3 font-semibold">
-                    Oraș
-                  </th>
-
-                  <th className="px-4 py-3 font-semibold">
-                    Engleză
-                  </th>
-
-                  <th className="px-4 py-3 font-semibold">
-                    Slug
-                  </th>
-
-                  <th className="px-4 py-3 font-semibold">
-                    Țară
-                  </th>
-
-                  <th className="px-4 py-3 font-semibold">
-                    Coordonate
-                  </th>
-
-                  <th className="px-4 py-3 font-semibold">
-                    Clinici
-                  </th>
-
-                  <th className="px-4 py-3 font-semibold">
-                    Status
-                  </th>
-
-                  <th className="px-4 py-3 text-right font-semibold">
-                    Acțiuni
-                  </th>
+                  <th className="px-[13px] py-[13px] font-semibold">{copy.cities.list.city}</th>
+                  <th className="px-[13px] py-[13px] font-semibold">{copy.cities.list.english}</th>
+                  <th className="px-[13px] py-[13px] font-semibold">{copy.common.slug}</th>
+                  <th className="px-[13px] py-[13px] font-semibold">{copy.cities.list.country}</th>
+                  <th className="px-[13px] py-[13px] font-semibold">{copy.cities.list.coordinates}</th>
+                  <th className="px-[13px] py-[13px] font-semibold">{copy.cities.list.clinics}</th>
+                  <th className="px-[13px] py-[13px] font-semibold">{copy.common.status}</th>
+                  <th className="px-[13px] py-[13px] text-right font-semibold">{copy.common.actions}</th>
                 </tr>
               </thead>
-
               <tbody className="divide-y divide-gray-100">
-                {filteredCities.map(
-                  (city) => {
-                    const ro =
-                      getTranslation(
-                        city,
-                        "ro"
-                      );
+                {filteredCities.map((city) => {
+                  const ro = getTranslation(city, "ro");
+                  const en = getTranslation(city, "en");
+                  const isChanging = changingCityId === city.id;
 
-                    const en =
-                      getTranslation(
-                        city,
-                        "en"
-                      );
-
-                    const isChanging =
-                      changingCityId ===
-                      city.id;
-
-                    return (
-                      <tr
-                        key={city.id}
-                        className="align-top"
-                      >
-                        <td className="px-4 py-4">
-                          <p className="font-semibold text-gray-900">
-                            {ro?.name ??
-                              "—"}
-                          </p>
-                        </td>
-
-                        <td className="px-4 py-4 text-gray-700">
-                          {en?.name ??
-                            "—"}
-                        </td>
-
-                        <td className="px-4 py-4 font-mono text-xs text-gray-600">
-                          {city.slug}
-                        </td>
-
-                        <td className="px-4 py-4 font-semibold text-gray-700">
-                          {
-                            city.country_code
-                          }
-                        </td>
-
-                        <td className="px-4 py-4 text-xs text-gray-600">
-                          {city.latitude !==
-                            null &&
-                          city.longitude !==
-                            null ? (
-                            <>
-                              <span className="block">
-                                Lat:{" "}
-                                {
-                                  city.latitude
-                                }
-                              </span>
-
-                              <span className="mt-1 block">
-                                Lng:{" "}
-                                {
-                                  city.longitude
-                                }
-                              </span>
-                            </>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-
-                        <td className="px-4 py-4 text-gray-700">
-                          {
-                            city.clinic_count
-                          }
-                        </td>
-
-                        <td className="px-4 py-4">
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                              city.is_active
-                                ? "bg-green-100 text-green-800"
-                                : "bg-gray-200 text-gray-700"
-                            }`}
+                  return (
+                    <tr key={city.id} className="align-top">
+                      <td className="px-[13px] py-[13px] font-semibold text-gray-900">
+                        {ro?.name ?? copy.common.none}
+                      </td>
+                      <td className="px-[13px] py-[13px] text-gray-700">
+                        {en?.name ?? copy.common.none}
+                      </td>
+                      <td className="px-[13px] py-[13px] font-mono text-xs text-gray-600">
+                        {city.slug}
+                      </td>
+                      <td className="px-[13px] py-[13px] font-semibold text-gray-700">
+                        {city.country_code}
+                      </td>
+                      <td className="px-[13px] py-[13px] text-xs text-gray-600">
+                        {city.latitude !== null && city.longitude !== null ? (
+                          <>
+                            <span className="block">
+                              {copy.cities.list.latitudeShort}: {city.latitude}
+                            </span>
+                            <span className="mt-[5px] block">
+                              {copy.cities.list.longitudeShort}: {city.longitude}
+                            </span>
+                          </>
+                        ) : (
+                          copy.common.none
+                        )}
+                      </td>
+                      <td className="px-[13px] py-[13px] text-gray-700">
+                        {city.clinic_count}
+                      </td>
+                      <td className="px-[13px] py-[13px]">
+                        <span className={`rounded-full px-[13px] py-[5px] text-xs font-semibold ${
+                          city.is_active
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-200 text-gray-700"
+                        }`}>
+                          {city.is_active ? copy.common.active : copy.common.inactive}
+                        </span>
+                      </td>
+                      <td className="px-[13px] py-[13px]">
+                        <div className="flex justify-end gap-[8px]">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            disabled={!capabilities.canUpdateCities}
+                            onClick={() => beginEditing(city)}
+                          >
+                            {copy.cities.list.edit}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={city.is_active ? "secondary" : "primary"}
+                            isLoading={isChanging}
+                            loadingText={copy.cities.list.updating}
+                            disabled={!capabilities.canUpdateCities}
+                            onClick={() => void toggleCity(city)}
                           >
                             {city.is_active
-                              ? "Activ"
-                              : "Inactiv"}
-                          </span>
-                        </td>
-
-                        <td className="px-4 py-4">
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                beginEditing(
-                                  city
-                                )
-                              }
-                              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-                            >
-                              Editează
-                            </button>
-
-                            <button
-                              type="button"
-                              disabled={
-                                isChanging
-                              }
-                              onClick={() =>
-                                toggleCity(
-                                  city
-                                )
-                              }
-                              className={`rounded-lg px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-60 ${
-                                city.is_active
-                                  ? "border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100"
-                                  : "bg-[#036661] text-white hover:bg-[#ff2800]"
-                              }`}
-                            >
-                              {isChanging
-                                ? "Se actualizează..."
-                                : city.is_active
-                                  ? "Dezactivează"
-                                  : "Activează"}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  }
-                )}
+                              ? copy.cities.list.deactivate
+                              : copy.cities.list.activate}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </section>
     </div>
+  );
+}
+
+function CoordinateField({
+  label,
+  optionalLabel,
+  value,
+  disabled,
+  minimum,
+  maximum,
+  placeholder,
+  onChange,
+}: {
+  label: string;
+  optionalLabel: string;
+  value: string;
+  disabled: boolean;
+  minimum: number;
+  maximum: number;
+  placeholder: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="text-sm font-medium text-gray-700">{label}</span>
+      <span className="ml-[8px] text-xs text-gray-500">{optionalLabel}</span>
+      <input
+        type="number"
+        step="0.0000001"
+        min={minimum}
+        max={maximum}
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 px-[13px] py-[13px]"
+      />
+    </label>
   );
 }

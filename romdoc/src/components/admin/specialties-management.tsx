@@ -1,16 +1,17 @@
 "use client";
 
-import {
-  type FormEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useLocale } from "next-intl";
 
+import Button from "@/components/ui/button";
+import type { PlatformOperatorDirectoryApiPayload } from "@/lib/api/platform-operator-directory-codes";
+import { normalizeAppLocale } from "@/lib/i18n/app-locale";
 import {
-  createSpecialtySlug,
-} from "@/lib/specialties/create-specialty-slug";
+  getPlatformDirectoryApiMessage,
+  getPlatformOperatorDirectory,
+  interpolatePlatformDirectoryCopy,
+} from "@/lib/i18n/platform-operator-directory";
+import { createSpecialtySlug } from "@/lib/specialties/create-specialty-slug";
 
 type SpecialtyTranslation = {
   id: string;
@@ -28,16 +29,20 @@ type Specialty = {
   doctor_count: number;
   created_at: string;
   updated_at: string;
-  specialty_translations:
-    | SpecialtyTranslation[]
-    | null;
+  specialty_translations: SpecialtyTranslation[] | null;
 };
 
-type ApiResponse = {
-  specialties?: Specialty[];
-  message?: string;
-  error?: string;
+type SpecialtyCapabilities = {
+  canCreateSpecialties: boolean;
+  canUpdateSpecialties: boolean;
 };
+
+type ApiResponse = PlatformOperatorDirectoryApiPayload & {
+  specialties?: Specialty[];
+  capabilities?: Partial<SpecialtyCapabilities>;
+};
+
+type StatusFilter = "all" | "active" | "inactive";
 
 type SpecialtyFormState = {
   specialtyId: string;
@@ -55,7 +60,7 @@ type SpecialtyFormState = {
   isActive: boolean;
 };
 
-const emptyForm: SpecialtyFormState = {
+const EMPTY_FORM: SpecialtyFormState = {
   specialtyId: "",
   nameRo: "",
   nameEn: "",
@@ -71,185 +76,140 @@ const emptyForm: SpecialtyFormState = {
   isActive: true,
 };
 
-function getTranslation(
-  specialty: Specialty,
-  locale: string
-) {
+function getTranslation(specialty: Specialty, locale: string) {
   return (
-    specialty.specialty_translations
-      ?.find(
-        (translation) =>
-          translation.locale === locale
-      ) ?? null
+    specialty.specialty_translations?.find(
+      (translation) => translation.locale === locale
+    ) ?? null
   );
 }
 
-export default function
-SpecialtiesManagement() {
-  const [
-    specialties,
-    setSpecialties,
-  ] = useState<Specialty[]>([]);
+function metricCard(label: string, value: number) {
+  return (
+    <article className="rounded-2xl border border-gray-200 bg-white p-[13px] shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+        {label}
+      </p>
+      <p className="mt-[5px] text-2xl font-bold text-gray-900">{value}</p>
+    </article>
+  );
+}
 
-  const [form, setForm] =
-    useState<SpecialtyFormState>(
-      emptyForm
-    );
+export default function SpecialtiesManagement() {
+  const locale = normalizeAppLocale(useLocale());
+  const copy = getPlatformOperatorDirectory(locale);
 
-  const [search, setSearch] =
-    useState("");
+  const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [form, setForm] = useState<SpecialtyFormState>(EMPTY_FORM);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [changingSpecialtyId, setChangingSpecialtyId] = useState<string | null>(
+    null
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [capabilities, setCapabilities] = useState<SpecialtyCapabilities>({
+    canCreateSpecialties: true,
+    canUpdateSpecialties: true,
+  });
 
-  const [isLoading, setIsLoading] =
-    useState(true);
+  const isEditing = Boolean(form.specialtyId);
 
-  const [isSaving, setIsSaving] =
-    useState(false);
+  const loadSpecialties = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-  const [error, setError] =
-    useState<string | null>(null);
+      const response = await fetch("/api/admin/specialties", {
+        method: "GET",
+        cache: "no-store",
+      });
+      const result = (await response.json()) as ApiResponse;
 
-  const [success, setSuccess] =
-    useState<string | null>(null);
-
-  const isEditing =
-    Boolean(form.specialtyId);
-
-  const loadSpecialties =
-    useCallback(async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        const response =
-          await fetch(
-            "/api/admin/specialties",
-            {
-              method: "GET",
-              cache: "no-store",
-            }
-          );
-
-        const result =
-          (await response.json()) as
-            ApiResponse;
-
-        if (!response.ok) {
-          throw new Error(
-            result.error ??
-              "Specialitățile nu au putut fi încărcate."
-          );
-        }
-
-        setSpecialties(
-          result.specialties ?? []
+      if (!response.ok) {
+        throw new Error(
+          getPlatformDirectoryApiMessage(
+            locale,
+            result.code,
+            result.error ?? copy.specialties.states.loadFailed
+          )
         );
-      } catch (loadError) {
-        setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "Specialitățile nu au putut fi încărcate."
-        );
-      } finally {
-        setIsLoading(false);
       }
-    }, []);
+
+      setSpecialties(result.specialties ?? []);
+      setCapabilities((current) => ({
+        ...current,
+        ...result.capabilities,
+      }));
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : copy.specialties.states.loadFailed
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [copy.specialties.states.loadFailed, locale]);
 
   useEffect(() => {
-    const timeoutId =
-      window.setTimeout(() => {
-        void loadSpecialties();
-      }, 0);
-
-    return () => {
-      window.clearTimeout(
-        timeoutId
-      );
-    };
+    void loadSpecialties();
   }, [loadSpecialties]);
 
-  const filteredSpecialties =
-    useMemo(() => {
-      const normalized =
-        search.trim().toLowerCase();
+  const metrics = useMemo(() => {
+    const active = specialties.filter((specialty) => specialty.is_active).length;
+    const missingGerman = specialties.filter(
+      (specialty) => !getTranslation(specialty, "de")?.name
+    ).length;
 
-      if (!normalized) {
-        return specialties;
-      }
+    return {
+      total: specialties.length,
+      active,
+      inactive: specialties.length - active,
+      missingGerman,
+    };
+  }, [specialties]);
 
-      return specialties.filter(
-        (specialty) => {
-          const ro =
-            getTranslation(
-              specialty,
-              "ro"
-            );
+  const filteredSpecialties = useMemo(() => {
+    const normalized = search.trim().toLocaleLowerCase(locale);
 
-          const en =
-            getTranslation(
-              specialty,
-              "en"
-            );
+    return specialties.filter((specialty) => {
+      if (statusFilter === "active" && !specialty.is_active) return false;
+      if (statusFilter === "inactive" && specialty.is_active) return false;
+      if (!normalized) return true;
 
-          const de =
-            getTranslation(
-              specialty,
-              "de"
-            );
+      const values = [
+        specialty.slug,
+        getTranslation(specialty, "ro")?.name,
+        getTranslation(specialty, "en")?.name,
+        getTranslation(specialty, "de")?.name,
+      ];
 
-          return [
-            specialty.slug,
-            ro?.name,
-            en?.name,
-            de?.name,
-          ]
-            .filter(Boolean)
-            .some((value) =>
-              value
-                ?.toLowerCase()
-                .includes(normalized)
-            );
-        }
-      );
-    }, [search, specialties]);
+      return values
+        .filter((value): value is string => Boolean(value))
+        .some((value) => value.toLocaleLowerCase(locale).includes(normalized));
+    });
+  }, [locale, search, specialties, statusFilter]);
 
-  function updateForm<
-    Key extends keyof SpecialtyFormState,
-  >(
+  function updateForm<Key extends keyof SpecialtyFormState>(
     key: Key,
     value: SpecialtyFormState[Key]
   ) {
-    setForm((current) => ({
-      ...current,
-      [key]: value,
-    }));
+    setForm((current) => ({ ...current, [key]: value }));
   }
 
   function resetForm() {
-    setForm(emptyForm);
+    setForm(EMPTY_FORM);
     setError(null);
     setSuccess(null);
   }
 
-  function beginEditing(
-    specialty: Specialty
-  ) {
-    const ro =
-      getTranslation(
-        specialty,
-        "ro"
-      );
-
-    const en =
-      getTranslation(
-        specialty,
-        "en"
-      );
-
-    const de =
-      getTranslation(
-        specialty,
-        "de"
-      );
+  function beginEditing(specialty: Specialty) {
+    const ro = getTranslation(specialty, "ro");
+    const en = getTranslation(specialty, "en");
+    const de = getTranslation(specialty, "de");
 
     setForm({
       specialtyId: specialty.id,
@@ -258,309 +218,222 @@ SpecialtiesManagement() {
       nameDe: de?.name ?? "",
       slug: specialty.slug,
       icon: specialty.icon ?? "",
-      metaTitleRo:
-        ro?.meta_title ?? "",
-      metaTitleEn:
-        en?.meta_title ?? "",
-      metaTitleDe:
-        de?.meta_title ?? "",
-      metaDescriptionRo:
-        ro?.meta_description ?? "",
-      metaDescriptionEn:
-        en?.meta_description ?? "",
-      metaDescriptionDe:
-        de?.meta_description ?? "",
-      isActive:
-        specialty.is_active,
+      metaTitleRo: ro?.meta_title ?? "",
+      metaTitleEn: en?.meta_title ?? "",
+      metaTitleDe: de?.meta_title ?? "",
+      metaDescriptionRo: ro?.meta_description ?? "",
+      metaDescriptionEn: en?.meta_description ?? "",
+      metaDescriptionDe: de?.meta_description ?? "",
+      isActive: specialty.is_active,
     });
-
     setError(null);
     setSuccess(null);
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function submitForm(
     payload: SpecialtyFormState,
     method: "POST" | "PATCH"
   ) {
-    const response =
-      await fetch(
-        "/api/admin/specialties",
-        {
-          method,
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body:
-            JSON.stringify(payload),
-        }
-      );
-
-    const result =
-      (await response.json()) as
-        ApiResponse;
+    const response = await fetch("/api/admin/specialties", {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const result = (await response.json()) as ApiResponse;
 
     if (!response.ok) {
       throw new Error(
-        result.error ??
-          "Specialitatea nu a putut fi salvată."
+        getPlatformDirectoryApiMessage(
+          locale,
+          result.code,
+          result.error ?? copy.specialties.states.saveFailed
+        )
       );
     }
 
     return result;
   }
 
-  async function saveSpecialty(
-    event: FormEvent<HTMLFormElement>
-  ) {
+  async function saveSpecialty(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setSuccess(null);
 
-    if (
-      form.nameRo.trim().length < 2
-    ) {
-      setError(
-        "Introdu numele în limba română."
-      );
+    if (form.nameRo.trim().length < 2) {
+      setError(copy.specialties.form.nameRoRequired);
       return;
     }
 
-    if (
-      form.nameEn.trim().length < 2
-    ) {
-      setError(
-        "Introdu numele în limba engleză."
-      );
+    if (form.nameEn.trim().length < 2) {
+      setError(copy.specialties.form.nameEnRequired);
       return;
     }
 
     setIsSaving(true);
 
     try {
-      const result =
-        await submitForm(
-          form,
-          isEditing
-            ? "PATCH"
-            : "POST"
-        );
-
+      const result = await submitForm(form, isEditing ? "PATCH" : "POST");
       setSuccess(
-        result.message ??
-          "Specialitatea a fost salvată."
+        getPlatformDirectoryApiMessage(
+          locale,
+          result.code,
+          result.message ??
+            (isEditing
+              ? copy.specialties.states.updated
+              : copy.specialties.states.created)
+        )
       );
-
-      setForm(emptyForm);
+      setForm(EMPTY_FORM);
       await loadSpecialties();
     } catch (saveError) {
       setError(
         saveError instanceof Error
           ? saveError.message
-          : "Specialitatea nu a putut fi salvată."
+          : copy.specialties.states.saveFailed
       );
     } finally {
       setIsSaving(false);
     }
   }
 
-  async function toggleSpecialty(
-    specialty: Specialty
-  ) {
-    const nextActive =
-      !specialty.is_active;
+  async function toggleSpecialty(specialty: Specialty) {
+    const nextActive = !specialty.is_active;
 
-    if (
-      !nextActive &&
-      specialty.doctor_count > 0
-    ) {
-      setError(
-        "Specialitatea este asociată unor medici și nu poate fi dezactivată."
-      );
+    if (!nextActive && specialty.doctor_count > 0) {
+      setError(copy.specialties.list.inUse);
       return;
     }
 
-    const confirmed =
-      window.confirm(
-        nextActive
-          ? "Reactivezi această specialitate?"
-          : "Dezactivezi această specialitate?"
-      );
+    const confirmed = window.confirm(
+      nextActive
+        ? copy.specialties.list.confirmActivate
+        : copy.specialties.list.confirmDeactivate
+    );
+    if (!confirmed) return;
 
-    if (!confirmed) {
-      return;
-    }
-
-    const ro =
-      getTranslation(
-        specialty,
-        "ro"
-      );
-
-    const en =
-      getTranslation(
-        specialty,
-        "en"
-      );
-
-    const de =
-      getTranslation(
-        specialty,
-        "de"
-      );
+    const ro = getTranslation(specialty, "ro");
+    const en = getTranslation(specialty, "en");
+    const de = getTranslation(specialty, "de");
 
     setError(null);
     setSuccess(null);
+    setChangingSpecialtyId(specialty.id);
 
     try {
-      const result =
-        await submitForm(
-          {
-            specialtyId:
-              specialty.id,
-            slug:
-              specialty.slug,
-            icon:
-              specialty.icon ?? "",
-            nameRo:
-              ro?.name ?? "",
-            nameEn:
-              en?.name ?? "",
-            nameDe:
-              de?.name ?? "",
-            metaTitleRo:
-              ro?.meta_title ?? "",
-            metaTitleEn:
-              en?.meta_title ?? "",
-            metaTitleDe:
-              de?.meta_title ?? "",
-            metaDescriptionRo:
-              ro?.meta_description ??
-              "",
-            metaDescriptionEn:
-              en?.meta_description ??
-              "",
-            metaDescriptionDe:
-              de?.meta_description ??
-              "",
-            isActive:
-              nextActive,
-          },
-          "PATCH"
-        );
-
-      setSuccess(
-        result.message ??
-          "Statutul a fost actualizat."
+      const result = await submitForm(
+        {
+          specialtyId: specialty.id,
+          slug: specialty.slug,
+          icon: specialty.icon ?? "",
+          nameRo: ro?.name ?? "",
+          nameEn: en?.name ?? "",
+          nameDe: de?.name ?? "",
+          metaTitleRo: ro?.meta_title ?? "",
+          metaTitleEn: en?.meta_title ?? "",
+          metaTitleDe: de?.meta_title ?? "",
+          metaDescriptionRo: ro?.meta_description ?? "",
+          metaDescriptionEn: en?.meta_description ?? "",
+          metaDescriptionDe: de?.meta_description ?? "",
+          isActive: nextActive,
+        },
+        "PATCH"
       );
 
+      setSuccess(
+        getPlatformDirectoryApiMessage(
+          locale,
+          result.code,
+          result.message ??
+            (nextActive
+              ? copy.specialties.states.updated
+              : copy.specialties.states.deactivated)
+        )
+      );
       await loadSpecialties();
     } catch (toggleError) {
       setError(
         toggleError instanceof Error
           ? toggleError.message
-          : "Statutul nu a putut fi actualizat."
+          : copy.specialties.states.statusFailed
       );
+    } finally {
+      setChangingSpecialtyId(null);
     }
   }
 
   return (
-    <div className="space-y-8">
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="space-y-[34px]">
+      <section className="grid gap-[13px] sm:grid-cols-2 xl:grid-cols-4">
+        {metricCard(copy.specialties.metrics.total, metrics.total)}
+        {metricCard(copy.specialties.metrics.active, metrics.active)}
+        {metricCard(copy.specialties.metrics.inactive, metrics.inactive)}
+        {metricCard(copy.specialties.metrics.missingGerman, metrics.missingGerman)}
+      </section>
+
+      <section className="rounded-2xl border border-gray-200 bg-white p-[21px] shadow-sm sm:p-[34px]">
+        <div className="flex flex-wrap items-start justify-between gap-[13px]">
           <div>
             <p className="text-sm font-semibold text-[#036661]">
               {isEditing
-                ? "Editare"
-                : "Specialitate nouă"}
+                ? copy.specialties.form.editEyebrow
+                : copy.specialties.form.newEyebrow}
             </p>
-
-            <h2 className="mt-2 text-2xl font-bold text-gray-900">
+            <h2 className="mt-[8px] text-2xl font-bold text-gray-900">
               {isEditing
-                ? "Editează specialitatea"
-                : "Adaugă o specialitate"}
+                ? copy.specialties.form.editTitle
+                : copy.specialties.form.newTitle}
             </h2>
+            <p className="mt-[8px] max-w-2xl text-sm leading-6 text-gray-600">
+              {copy.specialties.form.description}
+            </p>
           </div>
 
           {isEditing && (
-            <button
-              type="button"
-              onClick={resetForm}
-              className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-            >
-              Anulează editarea
-            </button>
+            <Button type="button" variant="secondary" size="sm" onClick={resetForm}>
+              {copy.specialties.form.cancelEdit}
+            </Button>
           )}
         </div>
 
-        <form
-          onSubmit={saveSpecialty}
-          className="mt-8 space-y-6"
-        >
-          <div className="grid gap-5 lg:grid-cols-3">
+        <form onSubmit={saveSpecialty} className="mt-[21px] space-y-[21px]">
+          <div className="grid gap-[13px] lg:grid-cols-3">
             <LanguageNameField
-              label="Nume în română"
+              label={copy.specialties.form.nameRo}
               required
               value={form.nameRo}
               disabled={isSaving}
+              optionalLabel={copy.common.optional}
               onChange={(name) => {
-                updateForm(
-                  "nameRo",
-                  name
-                );
-
-                if (
-                  !isEditing ||
-                  !form.slug
-                ) {
-                  updateForm(
-                    "slug",
-                    createSpecialtySlug(
-                      name
-                    )
-                  );
+                updateForm("nameRo", name);
+                if (!isEditing || !form.slug) {
+                  updateForm("slug", createSpecialtySlug(name));
                 }
               }}
             />
-
             <LanguageNameField
-              label="Nume în engleză"
+              label={copy.specialties.form.nameEn}
               required
               value={form.nameEn}
               disabled={isSaving}
-              onChange={(value) =>
-                updateForm(
-                  "nameEn",
-                  value
-                )
-              }
+              optionalLabel={copy.common.optional}
+              onChange={(value) => updateForm("nameEn", value)}
             />
-
             <LanguageNameField
-              label="Nume în germană"
+              label={copy.specialties.form.nameDe}
               optional
               value={form.nameDe}
               disabled={isSaving}
-              onChange={(value) =>
-                updateForm(
-                  "nameDe",
-                  value
-                )
-              }
+              optionalLabel={copy.common.optional}
+              onChange={(value) => updateForm("nameDe", value)}
             />
           </div>
 
-          <div className="grid gap-5 md:grid-cols-2">
+          <div className="grid gap-[13px] md:grid-cols-2">
             <label className="block">
               <span className="text-sm font-medium text-gray-700">
-                Slug
+                {copy.common.slug}
               </span>
-
               <input
                 required
                 type="text"
@@ -568,346 +441,224 @@ SpecialtiesManagement() {
                 value={form.slug}
                 disabled={isSaving}
                 onChange={(event) =>
-                  updateForm(
-                    "slug",
-                    createSpecialtySlug(
-                      event.target.value
-                    )
-                  )
+                  updateForm("slug", createSpecialtySlug(event.target.value))
                 }
-                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 font-mono text-sm outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+                className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 px-[13px] py-[13px] font-mono text-sm"
               />
             </label>
 
             <label className="block">
               <span className="text-sm font-medium text-gray-700">
-                Icon
+                {copy.common.icon}
               </span>
-
-              <span className="ml-2 text-xs text-gray-500">
-                Opțional
+              <span className="ml-[8px] text-xs text-gray-500">
+                {copy.common.optional}
               </span>
-
               <input
                 type="text"
                 maxLength={100}
                 value={form.icon}
                 disabled={isSaving}
-                onChange={(event) =>
-                  updateForm(
-                    "icon",
-                    event.target.value
-                  )
-                }
-                placeholder="Exemplu: heart"
-                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+                onChange={(event) => updateForm("icon", event.target.value)}
+                placeholder={copy.specialties.form.iconPlaceholder}
+                className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 px-[13px] py-[13px]"
               />
             </label>
           </div>
 
-          <details className="rounded-xl border border-gray-200 bg-gray-50 p-5">
+          <details className="rounded-xl border border-gray-200 bg-gray-50 p-[21px]">
             <summary className="cursor-pointer font-semibold text-gray-900">
-              Câmpuri SEO
+              {copy.specialties.form.seoSummary}
             </summary>
-
-            <p className="mt-3 text-sm leading-6 text-gray-600">
-              Câmpurile germane sunt opționale. Completează-le
-              manual când traducerea este disponibilă.
+            <p className="mt-[8px] text-sm leading-6 text-gray-600">
+              {copy.specialties.form.seoHelp}
             </p>
 
-            <div className="mt-5 grid gap-5 lg:grid-cols-3">
+            <div className="mt-[21px] grid gap-[21px] lg:grid-cols-3">
               <SeoLanguageFields
-                language="română"
+                language={copy.common.romanian}
                 title={form.metaTitleRo}
-                description={
-                  form.metaDescriptionRo
-                }
+                description={form.metaDescriptionRo}
                 disabled={isSaving}
-                onTitleChange={(value) =>
-                  updateForm(
-                    "metaTitleRo",
-                    value
-                  )
-                }
-                onDescriptionChange={(
-                  value
-                ) =>
-                  updateForm(
-                    "metaDescriptionRo",
-                    value
-                  )
+                titleLabel={copy.specialties.form.metaTitle}
+                descriptionLabel={copy.specialties.form.metaDescription}
+                onTitleChange={(value) => updateForm("metaTitleRo", value)}
+                onDescriptionChange={(value) =>
+                  updateForm("metaDescriptionRo", value)
                 }
               />
-
               <SeoLanguageFields
-                language="engleză"
+                language={copy.common.english}
                 title={form.metaTitleEn}
-                description={
-                  form.metaDescriptionEn
-                }
+                description={form.metaDescriptionEn}
                 disabled={isSaving}
-                onTitleChange={(value) =>
-                  updateForm(
-                    "metaTitleEn",
-                    value
-                  )
-                }
-                onDescriptionChange={(
-                  value
-                ) =>
-                  updateForm(
-                    "metaDescriptionEn",
-                    value
-                  )
+                titleLabel={copy.specialties.form.metaTitle}
+                descriptionLabel={copy.specialties.form.metaDescription}
+                onTitleChange={(value) => updateForm("metaTitleEn", value)}
+                onDescriptionChange={(value) =>
+                  updateForm("metaDescriptionEn", value)
                 }
               />
-
               <SeoLanguageFields
-                language="germană"
+                language={copy.common.german}
                 title={form.metaTitleDe}
-                description={
-                  form.metaDescriptionDe
-                }
+                description={form.metaDescriptionDe}
                 disabled={isSaving}
-                onTitleChange={(value) =>
-                  updateForm(
-                    "metaTitleDe",
-                    value
-                  )
-                }
-                onDescriptionChange={(
-                  value
-                ) =>
-                  updateForm(
-                    "metaDescriptionDe",
-                    value
-                  )
+                titleLabel={copy.specialties.form.metaTitle}
+                descriptionLabel={copy.specialties.form.metaDescription}
+                onTitleChange={(value) => updateForm("metaTitleDe", value)}
+                onDescriptionChange={(value) =>
+                  updateForm("metaDescriptionDe", value)
                 }
               />
             </div>
           </details>
 
           {error && (
-            <div
-              role="alert"
-              className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
-            >
+            <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-[13px] text-sm text-red-800">
               {error}
             </div>
           )}
-
           {success && (
-            <div
-              role="status"
-              className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800"
-            >
+            <div role="status" className="rounded-xl border border-green-200 bg-green-50 p-[13px] text-sm text-green-800">
               {success}
             </div>
           )}
 
-          <button
+          <Button
             type="submit"
-            disabled={isSaving}
-            className="rounded-xl bg-[#036661] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#ff2800] disabled:cursor-not-allowed disabled:opacity-60"
+            isLoading={isSaving}
+            loadingText={copy.specialties.form.saving}
+            disabled={!capabilities.canCreateSpecialties && !isEditing}
           >
-            {isSaving
-              ? "Se salvează..."
-              : isEditing
-                ? "Salvează modificările"
-                : "Adaugă specialitatea"}
-          </button>
+            {isEditing
+              ? copy.specialties.form.save
+              : copy.specialties.form.create}
+          </Button>
         </form>
       </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+      <section className="rounded-2xl border border-gray-200 bg-white p-[21px] shadow-sm sm:p-[34px]">
+        <div className="flex flex-wrap items-end justify-between gap-[13px]">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">
-              Lista specialităților
+              {copy.specialties.list.title}
             </h2>
-
-            <p className="mt-2 text-sm text-gray-600">
-              {specialties.length} specialități înregistrate.
+            <p className="mt-[8px] text-sm text-gray-600">
+              {interpolatePlatformDirectoryCopy(copy.specialties.list.count, {
+                count: specialties.length,
+              })}
             </p>
           </div>
 
-          <label className="w-full sm:w-80">
-            <span className="sr-only">
-              Caută specialitate
-            </span>
+          <div className="flex w-full flex-col gap-[8px] sm:w-auto sm:flex-row">
+            <label className="w-full sm:w-52">
+              <span className="sr-only">{copy.specialties.list.statusLabel}</span>
+              <select
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(event.target.value as StatusFilter)
+                }
+                className="romdoc-focus-ring w-full rounded-xl border border-gray-300 bg-white px-[13px] py-[13px]"
+              >
+                <option value="all">{copy.specialties.list.allStatuses}</option>
+                <option value="active">{copy.specialties.list.active}</option>
+                <option value="inactive">{copy.specialties.list.inactive}</option>
+              </select>
+            </label>
 
-            <input
-              type="search"
-              value={search}
-              onChange={(event) =>
-                setSearch(
-                  event.target.value
-                )
-              }
-              placeholder="Caută după nume sau slug..."
-              className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
-            />
-          </label>
+            <label className="w-full sm:w-80">
+              <span className="sr-only">{copy.specialties.list.searchLabel}</span>
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={copy.specialties.list.searchPlaceholder}
+                className="romdoc-focus-ring w-full rounded-xl border border-gray-300 px-[13px] py-[13px]"
+              />
+            </label>
+          </div>
         </div>
 
         {isLoading ? (
-          <p className="mt-6 text-sm text-gray-600">
-            Se încarcă specialitățile...
+          <p className="mt-[21px] text-sm text-gray-600">
+            {copy.specialties.list.loading}
           </p>
-        ) : filteredSpecialties.length ===
-          0 ? (
-          <p className="mt-6 rounded-xl bg-gray-50 p-5 text-sm text-gray-600">
-            Nu există specialități care corespund căutării.
+        ) : filteredSpecialties.length === 0 ? (
+          <p className="mt-[21px] rounded-xl bg-gray-50 p-[21px] text-sm text-gray-600">
+            {copy.specialties.list.empty}
           </p>
         ) : (
-          <div className="mt-6 overflow-x-auto">
+          <div className="mt-[21px] overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 text-left text-sm">
               <thead>
                 <tr className="text-gray-500">
-                  <th className="px-4 py-3 font-semibold">
-                    Română
-                  </th>
-
-                  <th className="px-4 py-3 font-semibold">
-                    Engleză
-                  </th>
-
-                  <th className="px-4 py-3 font-semibold">
-                    Germană
-                  </th>
-
-                  <th className="px-4 py-3 font-semibold">
-                    Slug
-                  </th>
-
-                  <th className="px-4 py-3 font-semibold">
-                    Medici
-                  </th>
-
-                  <th className="px-4 py-3 font-semibold">
-                    Status
-                  </th>
-
-                  <th className="px-4 py-3 text-right font-semibold">
-                    Acțiuni
-                  </th>
+                  <th className="px-[13px] py-[13px] font-semibold">{copy.specialties.list.romanian}</th>
+                  <th className="px-[13px] py-[13px] font-semibold">{copy.specialties.list.english}</th>
+                  <th className="px-[13px] py-[13px] font-semibold">{copy.specialties.list.german}</th>
+                  <th className="px-[13px] py-[13px] font-semibold">{copy.common.slug}</th>
+                  <th className="px-[13px] py-[13px] font-semibold">{copy.specialties.list.doctors}</th>
+                  <th className="px-[13px] py-[13px] font-semibold">{copy.common.status}</th>
+                  <th className="px-[13px] py-[13px] text-right font-semibold">{copy.common.actions}</th>
                 </tr>
               </thead>
-
               <tbody className="divide-y divide-gray-100">
-                {filteredSpecialties.map(
-                  (specialty) => {
-                    const ro =
-                      getTranslation(
-                        specialty,
-                        "ro"
-                      );
+                {filteredSpecialties.map((specialty) => {
+                  const ro = getTranslation(specialty, "ro");
+                  const en = getTranslation(specialty, "en");
+                  const de = getTranslation(specialty, "de");
+                  const isChanging = changingSpecialtyId === specialty.id;
 
-                    const en =
-                      getTranslation(
-                        specialty,
-                        "en"
-                      );
-
-                    const de =
-                      getTranslation(
-                        specialty,
-                        "de"
-                      );
-
-                    return (
-                      <tr
-                        key={specialty.id}
-                        className="align-top"
-                      >
-                        <td className="px-4 py-4">
-                          <p className="font-semibold text-gray-900">
-                            {ro?.name ?? "—"}
+                  return (
+                    <tr key={specialty.id} className="align-top">
+                      <td className="px-[13px] py-[13px]">
+                        <p className="font-semibold text-gray-900">{ro?.name ?? copy.common.none}</p>
+                        {specialty.icon && (
+                          <p className="mt-[5px] text-xs text-gray-500">
+                            {copy.common.icon}: {specialty.icon}
                           </p>
-
-                          {specialty.icon && (
-                            <p className="mt-1 text-xs text-gray-500">
-                              Icon:{" "}
-                              {specialty.icon}
-                            </p>
-                          )}
-                        </td>
-
-                        <td className="px-4 py-4 text-gray-700">
-                          {en?.name ?? "—"}
-                        </td>
-
-                        <td className="px-4 py-4 text-gray-700">
-                          {de?.name ? (
-                            de.name
-                          ) : (
-                            <span className="text-gray-400">
-                              Netadusă
-                            </span>
-                          )}
-                        </td>
-
-                        <td className="px-4 py-4 font-mono text-xs text-gray-600">
-                          {specialty.slug}
-                        </td>
-
-                        <td className="px-4 py-4 text-gray-700">
-                          {
-                            specialty.doctor_count
-                          }
-                        </td>
-
-                        <td className="px-4 py-4">
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                              specialty.is_active
-                                ? "bg-green-100 text-green-800"
-                                : "bg-gray-200 text-gray-700"
-                            }`}
+                        )}
+                      </td>
+                      <td className="px-[13px] py-[13px] text-gray-700">{en?.name ?? copy.common.none}</td>
+                      <td className="px-[13px] py-[13px] text-gray-700">
+                        {de?.name ?? (
+                          <span className="text-gray-400">{copy.specialties.list.notTranslated}</span>
+                        )}
+                      </td>
+                      <td className="px-[13px] py-[13px] font-mono text-xs text-gray-600">{specialty.slug}</td>
+                      <td className="px-[13px] py-[13px] text-gray-700">{specialty.doctor_count}</td>
+                      <td className="px-[13px] py-[13px]">
+                        <span className={`rounded-full px-[13px] py-[5px] text-xs font-semibold ${
+                          specialty.is_active
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-200 text-gray-700"
+                        }`}>
+                          {specialty.is_active ? copy.common.active : copy.common.inactive}
+                        </span>
+                      </td>
+                      <td className="px-[13px] py-[13px]">
+                        <div className="flex justify-end gap-[8px]">
+                          <Button type="button" size="sm" variant="secondary" onClick={() => beginEditing(specialty)}>
+                            {copy.specialties.list.edit}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={specialty.is_active ? "secondary" : "primary"}
+                            isLoading={isChanging}
+                            loadingText={copy.specialties.list.updating}
+                            disabled={!capabilities.canUpdateSpecialties}
+                            onClick={() => void toggleSpecialty(specialty)}
                           >
                             {specialty.is_active
-                              ? "Activă"
-                              : "Inactivă"}
-                          </span>
-                        </td>
-
-                        <td className="px-4 py-4">
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                beginEditing(
-                                  specialty
-                                )
-                              }
-                              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-                            >
-                              Editează
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                toggleSpecialty(
-                                  specialty
-                                )
-                              }
-                              className={`rounded-lg px-3 py-2 text-xs font-semibold ${
-                                specialty.is_active
-                                  ? "border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100"
-                                  : "bg-[#036661] text-white hover:bg-[#ff2800]"
-                              }`}
-                            >
-                              {specialty.is_active
-                                ? "Dezactivează"
-                                : "Activează"}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  }
-                )}
+                              ? copy.specialties.list.deactivate
+                              : copy.specialties.list.activate}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -923,6 +674,7 @@ function LanguageNameField({
   disabled,
   required = false,
   optional = false,
+  optionalLabel,
   onChange,
 }: {
   label: string;
@@ -930,30 +682,23 @@ function LanguageNameField({
   disabled: boolean;
   required?: boolean;
   optional?: boolean;
+  optionalLabel: string;
   onChange: (value: string) => void;
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-medium text-gray-700">
-        {label}
-      </span>
-
+      <span className="text-sm font-medium text-gray-700">{label}</span>
       {optional && (
-        <span className="ml-2 text-xs text-gray-500">
-          Opțional
-        </span>
+        <span className="ml-[8px] text-xs text-gray-500">{optionalLabel}</span>
       )}
-
       <input
         required={required}
         type="text"
         maxLength={200}
         value={value}
         disabled={disabled}
-        onChange={(event) =>
-          onChange(event.target.value)
-        }
-        className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
+        onChange={(event) => onChange(event.target.value)}
+        className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 px-[13px] py-[13px]"
       />
     </label>
   );
@@ -964,6 +709,8 @@ function SeoLanguageFields({
   title,
   description,
   disabled,
+  titleLabel,
+  descriptionLabel,
   onTitleChange,
   onDescriptionChange,
 }: {
@@ -971,48 +718,38 @@ function SeoLanguageFields({
   title: string;
   description: string;
   disabled: boolean;
-  onTitleChange:
-    (value: string) => void;
-  onDescriptionChange:
-    (value: string) => void;
+  titleLabel: string;
+  descriptionLabel: string;
+  onTitleChange: (value: string) => void;
+  onDescriptionChange: (value: string) => void;
 }) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-[13px]">
       <label className="block">
         <span className="text-sm font-medium text-gray-700">
-          Titlu SEO {language}
+          {interpolatePlatformDirectoryCopy(titleLabel, { language })}
         </span>
-
         <input
           type="text"
           maxLength={250}
           value={title}
           disabled={disabled}
-          onChange={(event) =>
-            onTitleChange(
-              event.target.value
-            )
-          }
-          className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3"
+          onChange={(event) => onTitleChange(event.target.value)}
+          className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 bg-white px-[13px] py-[13px]"
         />
       </label>
 
       <label className="block">
         <span className="text-sm font-medium text-gray-700">
-          Descriere SEO {language}
+          {interpolatePlatformDirectoryCopy(descriptionLabel, { language })}
         </span>
-
         <textarea
           rows={4}
           maxLength={500}
           value={description}
           disabled={disabled}
-          onChange={(event) =>
-            onDescriptionChange(
-              event.target.value
-            )
-          }
-          className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3"
+          onChange={(event) => onDescriptionChange(event.target.value)}
+          className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 bg-white px-[13px] py-[13px]"
         />
       </label>
     </div>

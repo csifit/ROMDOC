@@ -1,16 +1,15 @@
-import {
-  NextRequest,
-  NextResponse,
-} from "next/server";
-import {
-  createAdminClient,
-} from "@/lib/supabase/admin";
-import {
-  requirePlatformOperatorAal2Api,
-} from "@/lib/auth/require-platform-operator-aal2-api";
+import { NextRequest, NextResponse } from "next/server";
 
-export const runtime =
-  "nodejs";
+import { PLATFORM_OPERATOR_DIRECTORY_CODES } from "@/lib/api/platform-operator-directory-codes";
+import { requirePlatformOperatorAal2Api } from "@/lib/auth/require-platform-operator-aal2-api";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export const runtime = "nodejs";
+
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
+const REVIEW_STATUSES = ["published", "hidden", "removed"] as const;
+
+type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 
 type ReviewActionBody = {
   reviewId?: unknown;
@@ -18,42 +17,40 @@ type ReviewActionBody = {
   moderationReason?: unknown;
 };
 
-function normalizeString(
-  value: unknown,
-  maximumLength = 2000
-) {
-  if (typeof value !== "string") {
-    return "";
-  }
-
-  return value
-    .trim()
-    .slice(0, maximumLength);
+function normalizeString(value: unknown, maximumLength = 2000) {
+  return typeof value === "string"
+    ? value.trim().slice(0, maximumLength)
+    : "";
 }
 
-export async function GET(
-  request: NextRequest
-): Promise<Response> {
-  const authorization =
-    await requirePlatformOperatorAal2Api();
+function json(body: Record<string, unknown>, status = 200) {
+  return NextResponse.json(body, {
+    status,
+    headers: NO_STORE_HEADERS,
+  });
+}
 
-  if (authorization.response) {
-    return authorization.response;
-  }
+function failure(code: string, error: string, status: number) {
+  return json({ code, error }, status);
+}
 
-  const requestedStatus =
-    request.nextUrl
-      .searchParams
-      .get("status");
+function success(
+  code: string,
+  message: string,
+  extra?: Record<string, unknown>
+) {
+  return json({ code, message, ...extra });
+}
 
-  const allowedStatuses = [
-    "published",
-    "hidden",
-    "removed",
-  ];
+export async function GET(request: NextRequest): Promise<Response> {
+  const authorization = await requirePlatformOperatorAal2Api();
+  if (authorization.response) return authorization.response;
 
-  const admin =
-    createAdminClient();
+  const requestedStatus = request.nextUrl.searchParams.get("status");
+  const status = REVIEW_STATUSES.includes(requestedStatus as ReviewStatus)
+    ? (requestedStatus as ReviewStatus)
+    : null;
+  const admin = createAdminClient();
 
   let query = admin
     .from("reviews")
@@ -86,218 +83,144 @@ export async function GET(
         status
       )
     `)
-    .order(
-      "created_at",
-      {
-        ascending: false,
-      }
-    );
+    .order("created_at", { ascending: false });
 
-  if (
-    requestedStatus &&
-    allowedStatuses.includes(
-      requestedStatus
-    )
-  ) {
-    query =
-      query.eq(
-        "status",
-        requestedStatus
-      );
+  if (status) query = query.eq("status", status);
+
+  const [reviewsResult, countResults] = await Promise.all([
+    query,
+    Promise.all(
+      REVIEW_STATUSES.map((reviewStatus) =>
+        admin
+          .from("reviews")
+          .select("id", { count: "exact", head: true })
+          .eq("status", reviewStatus)
+      )
+    ),
+  ]);
+
+  if (reviewsResult.error) {
+    console.error("Admin reviews query failed:", reviewsResult.error);
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.reviewsLoadFailed,
+      "Recenziile nu au putut fi încărcate.",
+      500
+    );
   }
 
-  const {
-    data: reviews,
-    error,
-  } = await query;
+  const statusCounts = Object.fromEntries(
+    REVIEW_STATUSES.map((reviewStatus, index) => [
+      reviewStatus,
+      countResults[index]?.count ?? 0,
+    ])
+  );
 
-  if (error) {
-    console.error(
-      "Admin reviews query failed:",
-      error
-    );
-
-    return NextResponse.json(
-      {
-        error:
-          "Recenziile nu au putut fi încărcate.",
+  return success(
+    PLATFORM_OPERATOR_DIRECTORY_CODES.reviewsLoaded,
+    "Recenziile au fost încărcate.",
+    {
+      reviews: reviewsResult.data ?? [],
+      statusCounts,
+      operatorRole: authorization.role,
+      capabilities: {
+        canModerateReviews: true,
       },
-      {
-        status: 500,
-      }
-    );
-  }
-
-  return NextResponse.json({
-    reviews:
-      reviews ?? [],
-    operatorRole:
-      authorization.role,
-    capabilities: {
-      canModerateReviews:
-        true,
-    },
-  });
+    }
+  );
 }
 
-export async function PATCH(
-  request: NextRequest
-): Promise<Response> {
-  const authorization =
-    await requirePlatformOperatorAal2Api();
-
-  if (authorization.response) {
-    return authorization.response;
-  }
+export async function PATCH(request: NextRequest): Promise<Response> {
+  const authorization = await requirePlatformOperatorAal2Api();
+  if (authorization.response) return authorization.response;
 
   let body: ReviewActionBody;
 
   try {
-    body =
-      (await request.json()) as
-        ReviewActionBody;
+    body = (await request.json()) as ReviewActionBody;
   } catch {
-    return NextResponse.json(
-      {
-        error:
-          "Cererea nu conține date JSON valide.",
-      },
-      {
-        status: 400,
-      }
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.invalidJson,
+      "Cererea nu conține date JSON valide.",
+      400
     );
   }
 
-  const reviewId =
-    normalizeString(
-      body.reviewId,
-      100
-    );
-
-  const action =
-    normalizeString(
-      body.action,
-      50
-    );
-
-  const moderationReason =
-    normalizeString(
-      body.moderationReason,
-      2000
-    );
+  const reviewId = normalizeString(body.reviewId, 100);
+  const action = normalizeString(body.action, 50);
+  const moderationReason = normalizeString(body.moderationReason, 2000);
 
   if (!reviewId) {
-    return NextResponse.json(
-      {
-        error:
-          "Recenzia lipsește.",
-      },
-      {
-        status: 400,
-      }
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.reviewIdRequired,
+      "Recenzia lipsește.",
+      400
+    );
+  }
+
+  if (!["hide", "restore", "remove"].includes(action)) {
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.reviewActionInvalid,
+      "Acțiunea solicitată nu este validă.",
+      400
     );
   }
 
   if (
-    ![
-      "hide",
-      "restore",
-      "remove",
-    ].includes(action)
-  ) {
-    return NextResponse.json(
-      {
-        error:
-          "Acțiunea solicitată nu este validă.",
-      },
-      {
-        status: 400,
-      }
-    );
-  }
-
-  if (
-    (
-      action === "hide" ||
-      action === "remove"
-    ) &&
+    (action === "hide" || action === "remove") &&
     moderationReason.length < 3
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Introdu motivul moderării.",
-      },
-      {
-        status: 400,
-      }
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.reviewReasonRequired,
+      "Introdu motivul moderării.",
+      400
     );
   }
 
-  const admin =
-    createAdminClient();
-
-  const nextStatus =
+  const nextStatus: ReviewStatus =
     action === "restore"
       ? "published"
       : action === "hide"
         ? "hidden"
         : "removed";
-
-  const {
-    data: updatedReview,
-    error,
-  } = await admin
+  const admin = createAdminClient();
+  const { data: updatedReview, error } = await admin
     .from("reviews")
     .update({
-      status:
-        nextStatus,
-
-      approved:
-        nextStatus ===
-        "published",
-
-      moderation_reason:
-        action === "restore"
-          ? null
-          : moderationReason,
-
-      moderated_by_profile_id:
-        authorization.profileId,
-
-      moderated_at:
-        new Date().toISOString(),
+      status: nextStatus,
+      approved: nextStatus === "published",
+      moderation_reason: action === "restore" ? null : moderationReason,
+      moderated_by_profile_id: authorization.profileId,
+      moderated_at: new Date().toISOString(),
     })
     .eq("id", reviewId)
     .select("id")
     .maybeSingle();
 
-  if (
-    error ||
-    !updatedReview
-  ) {
-    console.error(
-      "Review moderation failed:",
-      error
-    );
-
-    return NextResponse.json(
-      {
-        error:
-          "Recenzia nu a putut fi actualizată.",
-      },
-      {
-        status: 500,
-      }
+  if (error || !updatedReview) {
+    console.error("Review moderation failed:", error);
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.reviewUpdateFailed,
+      "Recenzia nu a putut fi actualizată.",
+      500
     );
   }
 
-  return NextResponse.json({
-    message:
-      action === "restore"
-        ? "Recenzia a fost republicată."
-        : action === "hide"
-          ? "Recenzia a fost ascunsă."
-          : "Recenzia a fost eliminată.",
-  });
+  if (action === "restore") {
+    return success(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.reviewRestored,
+      "Recenzia a fost republicată."
+    );
+  }
+
+  if (action === "hide") {
+    return success(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.reviewHidden,
+      "Recenzia a fost ascunsă."
+    );
+  }
+
+  return success(
+    PLATFORM_OPERATOR_DIRECTORY_CODES.reviewRemoved,
+    "Recenzia a fost eliminată."
+  );
 }

@@ -1,27 +1,16 @@
-import {
-  NextRequest,
-  NextResponse,
-} from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
+import { PLATFORM_OPERATOR_DIRECTORY_CODES } from "@/lib/api/platform-operator-directory-codes";
 import {
-  createAdminClient,
-} from "@/lib/supabase/admin";
-import {
-  createClient,
-} from "@/lib/supabase/server";
-import {
-  createSpecialtySlug,
-} from "@/lib/specialties/create-specialty-slug";
+  requireAdministratorCapability,
+  requirePlatformOperatorAal2Api,
+} from "@/lib/auth/require-platform-operator-aal2-api";
+import { createSpecialtySlug } from "@/lib/specialties/create-specialty-slug";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
-type AdminAuthorizationResult =
-  | {
-      response: null;
-    }
-  | {
-      response: NextResponse;
-    };
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 
 type SpecialtyRequestBody = {
   specialtyId?: unknown;
@@ -39,6 +28,11 @@ type SpecialtyRequestBody = {
   isActive?: unknown;
 };
 
+type SpecialtyQueryRow = {
+  doctor_specialties?: Array<{ doctor_id: string }> | null;
+  [key: string]: unknown;
+};
+
 type TranslationInput = {
   specialty_id: string;
   locale: "ro" | "en" | "de";
@@ -47,81 +41,54 @@ type TranslationInput = {
   meta_description: string | null;
 };
 
-function normalizeString(
-  value: unknown,
-  maximumLength = 500
-) {
-  if (typeof value !== "string") {
-    return "";
-  }
-
-  return value
-    .trim()
-    .slice(0, maximumLength);
+function normalizeString(value: unknown, maximumLength = 500) {
+  return typeof value === "string"
+    ? value.trim().slice(0, maximumLength)
+    : "";
 }
 
-async function requireAdmin():
-Promise<AdminAuthorizationResult> {
-  const supabase =
-    await createClient();
+function json(body: Record<string, unknown>, status = 200) {
+  return NextResponse.json(body, {
+    status,
+    headers: NO_STORE_HEADERS,
+  });
+}
 
-  const {
-    data: { user },
-    error: userError,
-  } =
-    await supabase.auth.getUser();
+function failure(code: string, error: string, status: number) {
+  return json({ code, error }, status);
+}
 
-  if (
-    userError ||
-    !user
-  ) {
+function success(
+  code: string,
+  message: string,
+  extra?: Record<string, unknown>,
+  status = 200
+) {
+  return json({ code, message, ...extra }, status);
+}
+
+async function authorizeAdministrator() {
+  const authorization = await requirePlatformOperatorAal2Api();
+
+  if (authorization.response) {
     return {
-      response:
-        NextResponse.json(
-          {
-            error:
-              "Trebuie să fii autentificat.",
-          },
-          {
-            status: 401,
-          }
-        ),
+      authorization,
+      response: authorization.response,
     };
   }
 
-  const {
-    data: profile,
-    error: profileError,
-  } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (
-    profileError ||
-    profile?.role !== "admin"
-  ) {
-    return {
-      response:
-        NextResponse.json(
-          {
-            error:
-              "Nu ai permisiunea de a administra specialitățile.",
-          },
-          {
-            status: 403,
-          }
-        ),
-    };
-  }
+  const adminOnlyResponse = requireAdministratorCapability(
+    authorization.role,
+    "Doar administratorii pot administra specialitățile."
+  );
 
   return {
-    response: null,
+    authorization,
+    response: adminOnlyResponse,
   };
 }
 
-function buildRequiredTranslations(
+function requiredTranslations(
   specialtyId: string,
   body: SpecialtyRequestBody
 ): TranslationInput[] {
@@ -129,199 +96,96 @@ function buildRequiredTranslations(
     {
       specialty_id: specialtyId,
       locale: "ro",
-      name:
-        normalizeString(
-          body.nameRo,
-          200
-        ),
-      meta_title:
-        normalizeString(
-          body.metaTitleRo,
-          250
-        ) || null,
+      name: normalizeString(body.nameRo, 200),
+      meta_title: normalizeString(body.metaTitleRo, 250) || null,
       meta_description:
-        normalizeString(
-          body.metaDescriptionRo,
-          500
-        ) || null,
+        normalizeString(body.metaDescriptionRo, 500) || null,
     },
     {
       specialty_id: specialtyId,
       locale: "en",
-      name:
-        normalizeString(
-          body.nameEn,
-          200
-        ),
-      meta_title:
-        normalizeString(
-          body.metaTitleEn,
-          250
-        ) || null,
+      name: normalizeString(body.nameEn, 200),
+      meta_title: normalizeString(body.metaTitleEn, 250) || null,
       meta_description:
-        normalizeString(
-          body.metaDescriptionEn,
-          500
-        ) || null,
+        normalizeString(body.metaDescriptionEn, 500) || null,
     },
   ];
 }
 
-function buildGermanTranslation(
+function germanTranslation(
   specialtyId: string,
   body: SpecialtyRequestBody
 ): TranslationInput | null {
-  const name =
-    normalizeString(
-      body.nameDe,
-      200
-    );
+  const name = normalizeString(body.nameDe, 200);
 
-  if (!name) {
-    return null;
-  }
+  if (!name) return null;
 
   return {
     specialty_id: specialtyId,
     locale: "de",
     name,
-    meta_title:
-      normalizeString(
-        body.metaTitleDe,
-        250
-      ) || null,
-    meta_description:
-      normalizeString(
-        body.metaDescriptionDe,
-        500
-      ) || null,
+    meta_title: normalizeString(body.metaTitleDe, 250) || null,
+    meta_description: normalizeString(body.metaDescriptionDe, 500) || null,
   };
 }
 
-function validateRequiredNames(
+async function saveTranslations(
+  specialtyId: string,
   body: SpecialtyRequestBody
-): NextResponse | null {
-  if (
-    normalizeString(
-      body.nameRo,
-      200
-    ).length < 2
-  ) {
-    return NextResponse.json(
-      {
-        error:
-          "Introdu numele specialității în limba română.",
-      },
-      {
-        status: 400,
-      }
-    );
-  }
+) {
+  const admin = createAdminClient();
+  const optionalGerman = germanTranslation(specialtyId, body);
+  const translations = optionalGerman
+    ? [...requiredTranslations(specialtyId, body), optionalGerman]
+    : requiredTranslations(specialtyId, body);
 
-  if (
-    normalizeString(
-      body.nameEn,
-      200
-    ).length < 2
-  ) {
-    return NextResponse.json(
-      {
-        error:
-          "Introdu numele specialității în limba engleză.",
-      },
-      {
-        status: 400,
-      }
-    );
-  }
-
-  return null;
-}
-
-async function saveTranslations({
-  specialtyId,
-  body,
-}: {
-  specialtyId: string;
-  body: SpecialtyRequestBody;
-}) {
-  const admin =
-    createAdminClient();
-
-  const requiredTranslations =
-    buildRequiredTranslations(
-      specialtyId,
-      body
-    );
-
-  const germanTranslation =
-    buildGermanTranslation(
-      specialtyId,
-      body
-    );
-
-  const translations =
-    germanTranslation
-      ? [
-          ...requiredTranslations,
-          germanTranslation,
-        ]
-      : requiredTranslations;
-
-  const {
-    error: upsertError,
-  } = await admin
+  const { error: upsertError } = await admin
     .from("specialty_translations")
-    .upsert(
-      translations,
-      {
-        onConflict:
-          "specialty_id,locale",
-      }
-    );
+    .upsert(translations, {
+      onConflict: "specialty_id,locale",
+    });
 
-  if (upsertError) {
-    return upsertError;
-  }
+  if (upsertError) return upsertError;
 
-  if (!germanTranslation) {
-    const {
-      error: deleteGermanError,
-    } = await admin
-      .from(
-        "specialty_translations"
-      )
+  if (!optionalGerman) {
+    const { error: deleteGermanError } = await admin
+      .from("specialty_translations")
       .delete()
-      .eq(
-        "specialty_id",
-        specialtyId
-      )
+      .eq("specialty_id", specialtyId)
       .eq("locale", "de");
 
-    if (deleteGermanError) {
-      return deleteGermanError;
-    }
+    if (deleteGermanError) return deleteGermanError;
   }
 
   return null;
 }
 
-export async function GET():
-Promise<Response> {
-  const authorization =
-    await requireAdmin();
-
-  if (authorization.response) {
-    return authorization.response;
+function validateNames(body: SpecialtyRequestBody) {
+  if (normalizeString(body.nameRo, 200).length < 2) {
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.specialtyNameRoRequired,
+      "Introdu numele specialității în limba română.",
+      400
+    );
   }
 
-  const admin =
-    createAdminClient();
+  if (normalizeString(body.nameEn, 200).length < 2) {
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.specialtyNameEnRequired,
+      "Introdu numele specialității în limba engleză.",
+      400
+    );
+  }
 
-  const {
-    data: specialties,
-    error,
-  } = await admin
+  return null;
+}
+
+export async function GET(): Promise<Response> {
+  const authorization = await authorizeAdministrator();
+  if (authorization.response) return authorization.response;
+
+  const admin = createAdminClient();
+  const { data: specialties, error } = await admin
     .from("specialties")
     .select(`
       id,
@@ -341,150 +205,92 @@ Promise<Response> {
         doctor_id
       )
     `)
-    .order(
-      "slug",
-      {
-        ascending: true,
-      }
-    );
+    .order("slug", { ascending: true });
 
   if (error) {
-    console.error(
-      "Admin specialties query failed:",
-      error
-    );
-
-    return NextResponse.json(
-      {
-        error:
-          "Specialitățile nu au putut fi încărcate.",
-      },
-      {
-        status: 500,
-      }
+    console.error("Admin specialties query failed:", error);
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.specialtiesLoadFailed,
+      "Specialitățile nu au putut fi încărcate.",
+      500
     );
   }
 
-  const result =
-    (specialties ?? []).map(
-      (specialty) => ({
-        ...specialty,
-        doctor_count:
-          specialty
-            .doctor_specialties
-            ?.length ?? 0,
-      })
-    );
+  const result = ((specialties ?? []) as SpecialtyQueryRow[]).map(
+    (specialty) => ({
+    ...specialty,
+      doctor_count: specialty.doctor_specialties?.length ?? 0,
+    })
+  );
 
-  return NextResponse.json({
-    specialties: result,
-  });
+  return success(
+    PLATFORM_OPERATOR_DIRECTORY_CODES.specialtiesLoaded,
+    "Specialitățile au fost încărcate.",
+    {
+      specialties: result,
+      capabilities: {
+        canCreateSpecialties: true,
+        canUpdateSpecialties: true,
+      },
+    }
+  );
 }
 
-export async function POST(
-  request: NextRequest
-): Promise<Response> {
-  const authorization =
-    await requireAdmin();
-
-  if (authorization.response) {
-    return authorization.response;
-  }
+export async function POST(request: NextRequest): Promise<Response> {
+  const authorization = await authorizeAdministrator();
+  if (authorization.response) return authorization.response;
 
   let body: SpecialtyRequestBody;
 
   try {
-    body =
-      (await request.json()) as
-        SpecialtyRequestBody;
+    body = (await request.json()) as SpecialtyRequestBody;
   } catch {
-    return NextResponse.json(
-      {
-        error:
-          "Cererea nu conține date JSON valide.",
-      },
-      {
-        status: 400,
-      }
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.invalidJson,
+      "Cererea nu conține date JSON valide.",
+      400
     );
   }
 
-  const validationResponse =
-    validateRequiredNames(body);
+  const validationResponse = validateNames(body);
+  if (validationResponse) return validationResponse;
 
-  if (validationResponse) {
-    return validationResponse;
-  }
-
-  const nameRo =
-    normalizeString(
-      body.nameRo,
-      200
-    );
-
-  const providedSlug =
-    normalizeString(
-      body.slug,
-      200
-    );
-
-  const slug =
-    createSpecialtySlug(
-      providedSlug || nameRo
-    );
+  const nameRo = normalizeString(body.nameRo, 200);
+  const providedSlug = normalizeString(body.slug, 200);
+  const slug = createSpecialtySlug(providedSlug || nameRo);
 
   if (!slug) {
-    return NextResponse.json(
-      {
-        error:
-          "Nu a putut fi generat un slug valid.",
-      },
-      {
-        status: 400,
-      }
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.specialtySlugInvalid,
+      "Nu a putut fi generat un slug valid.",
+      400
     );
   }
 
-  const admin =
-    createAdminClient();
-
-  const {
-    data: duplicateSlug,
-    error: duplicateSlugError,
-  } = await admin
+  const admin = createAdminClient();
+  const { data: duplicateSlug, error: duplicateSlugError } = await admin
     .from("specialties")
     .select("id")
     .eq("slug", slug)
     .maybeSingle();
 
   if (duplicateSlugError) {
-    return NextResponse.json(
-      {
-        error:
-          "Slug-ul nu a putut fi verificat.",
-      },
-      {
-        status: 500,
-      }
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.specialtySlugCheckFailed,
+      "Slug-ul nu a putut fi verificat.",
+      500
     );
   }
 
   if (duplicateSlug) {
-    return NextResponse.json(
-      {
-        error:
-          "Există deja o specialitate cu acest slug.",
-      },
-      {
-        status: 409,
-      }
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.specialtySlugDuplicate,
+      "Există deja o specialitate cu acest slug.",
+      409
     );
   }
 
-  const {
-    data: duplicateName,
-    error: duplicateNameError,
-  } = await admin
+  const { data: duplicateName, error: duplicateNameError } = await admin
     .from("specialty_translations")
     .select("specialty_id")
     .eq("locale", "ro")
@@ -492,289 +298,154 @@ export async function POST(
     .maybeSingle();
 
   if (duplicateNameError) {
-    return NextResponse.json(
-      {
-        error:
-          "Numele specialității nu a putut fi verificat.",
-      },
-      {
-        status: 500,
-      }
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.specialtyNameCheckFailed,
+      "Numele specialității nu a putut fi verificat.",
+      500
     );
   }
 
   if (duplicateName) {
-    return NextResponse.json(
-      {
-        error:
-          "Există deja o specialitate cu acest nume.",
-      },
-      {
-        status: 409,
-      }
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.specialtyNameDuplicate,
+      "Există deja o specialitate cu acest nume.",
+      409
     );
   }
 
-  const {
-    data: specialty,
-    error: specialtyError,
-  } = await admin
+  const { data: specialty, error: specialtyError } = await admin
     .from("specialties")
     .insert({
       slug,
-      icon:
-        normalizeString(
-          body.icon,
-          100
-        ) || null,
+      icon: normalizeString(body.icon, 100) || null,
       is_active: true,
     })
-    .select(`
-      id,
-      slug,
-      icon,
-      is_active,
-      created_at,
-      updated_at
-    `)
+    .select("id, slug, icon, is_active, created_at, updated_at")
     .single();
 
-  if (
-    specialtyError ||
-    !specialty
-  ) {
-    console.error(
-      "Specialty creation failed:",
-      specialtyError
-    );
+  if (specialtyError || !specialty) {
+    console.error("Specialty creation failed:", specialtyError);
+    const duplicate = specialtyError?.code === "23505";
 
-    return NextResponse.json(
-      {
-        error:
-          specialtyError?.code ===
-          "23505"
-            ? "Există deja o specialitate cu acest slug."
-            : "Specialitatea nu a putut fi creată.",
-      },
-      {
-        status:
-          specialtyError?.code ===
-          "23505"
-            ? 409
-            : 500,
-      }
+    return failure(
+      duplicate
+        ? PLATFORM_OPERATOR_DIRECTORY_CODES.specialtySlugDuplicate
+        : PLATFORM_OPERATOR_DIRECTORY_CODES.specialtyCreateFailed,
+      duplicate
+        ? "Există deja o specialitate cu acest slug."
+        : "Specialitatea nu a putut fi creată.",
+      duplicate ? 409 : 500
     );
   }
 
-  const translationError =
-    await saveTranslations({
-      specialtyId:
-        specialty.id,
-      body,
-    });
+  const translationError = await saveTranslations(specialty.id, body);
 
   if (translationError) {
-    console.error(
-      "Specialty translations creation failed:",
-      translationError
-    );
+    console.error("Specialty translations creation failed:", translationError);
+    await admin.from("specialties").delete().eq("id", specialty.id);
 
-    await admin
-      .from("specialties")
-      .delete()
-      .eq("id", specialty.id);
-
-    return NextResponse.json(
-      {
-        error:
-          "Traducerile specialității nu au putut fi salvate.",
-      },
-      {
-        status: 500,
-      }
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.specialtyTranslationCreateFailed,
+      "Traducerile specialității nu au putut fi salvate.",
+      500
     );
   }
 
-  return NextResponse.json(
-    {
-      message:
-        "Specialitatea a fost adăugată.",
-      specialty,
-    },
-    {
-      status: 201,
-    }
+  return success(
+    PLATFORM_OPERATOR_DIRECTORY_CODES.specialtyCreated,
+    "Specialitatea a fost adăugată.",
+    { specialty },
+    201
   );
 }
 
-export async function PATCH(
-  request: NextRequest
-): Promise<Response> {
-  const authorization =
-    await requireAdmin();
-
-  if (authorization.response) {
-    return authorization.response;
-  }
+export async function PATCH(request: NextRequest): Promise<Response> {
+  const authorization = await authorizeAdministrator();
+  if (authorization.response) return authorization.response;
 
   let body: SpecialtyRequestBody;
 
   try {
-    body =
-      (await request.json()) as
-        SpecialtyRequestBody;
+    body = (await request.json()) as SpecialtyRequestBody;
   } catch {
-    return NextResponse.json(
-      {
-        error:
-          "Cererea nu conține date JSON valide.",
-      },
-      {
-        status: 400,
-      }
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.invalidJson,
+      "Cererea nu conține date JSON valide.",
+      400
     );
   }
 
-  const specialtyId =
-    normalizeString(
-      body.specialtyId,
-      100
-    );
+  const specialtyId = normalizeString(body.specialtyId, 100);
 
   if (!specialtyId) {
-    return NextResponse.json(
-      {
-        error:
-          "Specialitatea lipsește.",
-      },
-      {
-        status: 400,
-      }
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.specialtyIdRequired,
+      "Specialitatea lipsește.",
+      400
     );
   }
 
-  const validationResponse =
-    validateRequiredNames(body);
+  const validationResponse = validateNames(body);
+  if (validationResponse) return validationResponse;
 
-  if (validationResponse) {
-    return validationResponse;
-  }
+  const admin = createAdminClient();
+  const { data: existingSpecialty, error: existingSpecialtyError } =
+    await admin
+      .from("specialties")
+      .select("id, slug, icon, is_active")
+      .eq("id", specialtyId)
+      .maybeSingle();
 
-  const admin =
-    createAdminClient();
-
-  const {
-    data: existingSpecialty,
-    error:
-      existingSpecialtyError,
-  } = await admin
-    .from("specialties")
-    .select(`
-      id,
-      slug,
-      icon,
-      is_active
-    `)
-    .eq("id", specialtyId)
-    .maybeSingle();
-
-  if (
-    existingSpecialtyError ||
-    !existingSpecialty
-  ) {
-    return NextResponse.json(
-      {
-        error:
-          "Specialitatea nu a fost găsită.",
-      },
-      {
-        status: 404,
-      }
+  if (existingSpecialtyError || !existingSpecialty) {
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.specialtyNotFound,
+      "Specialitatea nu a fost găsită.",
+      404
     );
   }
 
   const requestedActive =
-    typeof body.isActive ===
-      "boolean"
+    typeof body.isActive === "boolean"
       ? body.isActive
-      : existingSpecialty
-          .is_active;
+      : existingSpecialty.is_active;
 
-  if (
-    requestedActive === false &&
-    existingSpecialty
-      .is_active === true
-  ) {
-    const {
-      count: doctorCount,
-      error: countError,
-    } = await admin
+  if (!requestedActive && existingSpecialty.is_active) {
+    const { count: doctorCount, error: countError } = await admin
       .from("doctor_specialties")
-      .select("*", {
-        count: "exact",
-        head: true,
-      })
-      .eq(
-        "specialty_id",
-        specialtyId
-      );
+      .select("*", { count: "exact", head: true })
+      .eq("specialty_id", specialtyId);
 
     if (countError) {
-      return NextResponse.json(
-        {
-          error:
-            "Utilizarea specialității nu a putut fi verificată.",
-        },
-        {
-          status: 500,
-        }
+      return failure(
+        PLATFORM_OPERATOR_DIRECTORY_CODES.specialtyUsageCheckFailed,
+        "Utilizarea specialității nu a putut fi verificată.",
+        500
       );
     }
 
-    if (
-      (doctorCount ?? 0) > 0
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Specialitatea este asociată unor medici și nu poate fi dezactivată.",
-        },
-        {
-          status: 409,
-        }
+    if ((doctorCount ?? 0) > 0) {
+      return failure(
+        PLATFORM_OPERATOR_DIRECTORY_CODES.specialtyInUse,
+        "Specialitatea este asociată unor medici și nu poate fi dezactivată.",
+        409
       );
     }
   }
 
-  const requestedSlug =
-    normalizeString(
-      body.slug,
-      200
-    );
-
-  const slug =
-    requestedSlug
-      ? createSpecialtySlug(
-          requestedSlug
-        )
-      : existingSpecialty.slug;
+  const requestedSlug = normalizeString(body.slug, 200);
+  const slug = requestedSlug
+    ? createSpecialtySlug(requestedSlug)
+    : existingSpecialty.slug;
 
   if (!slug) {
-    return NextResponse.json(
-      {
-        error:
-          "Slug-ul nu este valid.",
-      },
-      {
-        status: 400,
-      }
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.specialtySlugInvalid,
+      "Slug-ul nu este valid.",
+      400
     );
   }
 
-  const {
-    data: duplicateSlug,
-    error: duplicateSlugError,
-  } = await admin
+  const { data: duplicateSlug, error: duplicateSlugError } = await admin
     .from("specialties")
     .select("id")
     .eq("slug", slug)
@@ -782,86 +453,56 @@ export async function PATCH(
     .maybeSingle();
 
   if (duplicateSlugError) {
-    return NextResponse.json(
-      {
-        error:
-          "Slug-ul nu a putut fi verificat.",
-      },
-      {
-        status: 500,
-      }
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.specialtySlugCheckFailed,
+      "Slug-ul nu a putut fi verificat.",
+      500
     );
   }
 
   if (duplicateSlug) {
-    return NextResponse.json(
-      {
-        error:
-          "Există deja o specialitate cu acest slug.",
-      },
-      {
-        status: 409,
-      }
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.specialtySlugDuplicate,
+      "Există deja o specialitate cu acest slug.",
+      409
     );
   }
 
-  const {
-    error: updateError,
-  } = await admin
+  const { error: updateError } = await admin
     .from("specialties")
     .update({
       slug,
-      icon:
-        normalizeString(
-          body.icon,
-          100
-        ) || null,
-      is_active:
-        requestedActive,
-      updated_at:
-        new Date().toISOString(),
+      icon: normalizeString(body.icon, 100) || null,
+      is_active: requestedActive,
+      updated_at: new Date().toISOString(),
     })
     .eq("id", specialtyId);
 
   if (updateError) {
-    return NextResponse.json(
-      {
-        error:
-          "Specialitatea nu a putut fi actualizată.",
-      },
-      {
-        status: 500,
-      }
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.specialtyUpdateFailed,
+      "Specialitatea nu a putut fi actualizată.",
+      500
     );
   }
 
-  const translationError =
-    await saveTranslations({
-      specialtyId,
-      body,
-    });
+  const translationError = await saveTranslations(specialtyId, body);
 
   if (translationError) {
-    console.error(
-      "Specialty translations update failed:",
-      translationError
-    );
-
-    return NextResponse.json(
-      {
-        error:
-          "Traducerile specialității nu au putut fi actualizate.",
-      },
-      {
-        status: 500,
-      }
+    console.error("Specialty translations update failed:", translationError);
+    return failure(
+      PLATFORM_OPERATOR_DIRECTORY_CODES.specialtyTranslationUpdateFailed,
+      "Traducerile specialității nu au putut fi actualizate.",
+      500
     );
   }
 
-  return NextResponse.json({
-    message:
-      requestedActive
-        ? "Specialitatea a fost actualizată."
-        : "Specialitatea a fost dezactivată.",
-  });
+  return success(
+    requestedActive
+      ? PLATFORM_OPERATOR_DIRECTORY_CODES.specialtyUpdated
+      : PLATFORM_OPERATOR_DIRECTORY_CODES.specialtyDeactivated,
+    requestedActive
+      ? "Specialitatea a fost actualizată."
+      : "Specialitatea a fost dezactivată."
+  );
 }

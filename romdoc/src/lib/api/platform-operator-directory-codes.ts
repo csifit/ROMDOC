@@ -1,0 +1,63 @@
+export const PLATFORM_OPERATOR_DIRECTORY_CODES = {
+  invalidJson: "invalid_json",
+  specialtiesLoaded: "specialties_loaded",
+  specialtiesLoadFailed: "specialties_load_failed",
+  specialtyNameRoRequired: "specialty_name_ro_required",
+  specialtyNameEnRequired: "specialty_name_en_required",
+  specialtySlugInvalid: "specialty_slug_invalid",
+  specialtySlugCheckFailed: "specialty_slug_check_failed",
+  specialtySlugDuplicate: "specialty_slug_duplicate",
+  specialtyNameCheckFailed: "specialty_name_check_failed",
+  specialtyNameDuplicate: "specialty_name_duplicate",
+  specialtyCreateFailed: "specialty_create_failed",
+  specialtyTranslationCreateFailed: "specialty_translation_create_failed",
+  specialtyCreated: "specialty_created",
+  specialtyIdRequired: "specialty_id_required",
+  specialtyNotFound: "specialty_not_found",
+  specialtyUsageCheckFailed: "specialty_usage_check_failed",
+  specialtyInUse: "specialty_in_use",
+  specialtyUpdateFailed: "specialty_update_failed",
+  specialtyTranslationUpdateFailed: "specialty_translation_update_failed",
+  specialtyUpdated: "specialty_updated",
+  specialtyDeactivated: "specialty_deactivated",
+  citiesLoaded: "cities_loaded",
+  citiesLoadFailed: "cities_load_failed",
+  cityNameRoRequired: "city_name_ro_required",
+  cityNameEnRequired: "city_name_en_required",
+  cityCountryCodeInvalid: "city_country_code_invalid",
+  cityCoordinatesInvalid: "city_coordinates_invalid",
+  citySlugInvalid: "city_slug_invalid",
+  citySlugCheckFailed: "city_slug_check_failed",
+  citySlugDuplicate: "city_slug_duplicate",
+  cityNameCheckFailed: "city_name_check_failed",
+  cityNameDuplicate: "city_name_duplicate",
+  cityCreateFailed: "city_create_failed",
+  cityTranslationCreateFailed: "city_translation_create_failed",
+  cityCreated: "city_created",
+  cityIdRequired: "city_id_required",
+  cityNotFound: "city_not_found",
+  cityUsageCheckFailed: "city_usage_check_failed",
+  cityInUse: "city_in_use",
+  cityUpdateFailed: "city_update_failed",
+  cityTranslationUpdateFailed: "city_translation_update_failed",
+  cityUpdated: "city_updated",
+  cityDeactivated: "city_deactivated",
+  reviewsLoaded: "reviews_loaded",
+  reviewsLoadFailed: "reviews_load_failed",
+  reviewIdRequired: "review_id_required",
+  reviewActionInvalid: "review_action_invalid",
+  reviewReasonRequired: "review_reason_required",
+  reviewUpdateFailed: "review_update_failed",
+  reviewRestored: "review_restored",
+  reviewHidden: "review_hidden",
+  reviewRemoved: "review_removed",
+} as const;
+
+export type PlatformOperatorDirectoryCode =
+  (typeof PLATFORM_OPERATOR_DIRECTORY_CODES)[keyof typeof PLATFORM_OPERATOR_DIRECTORY_CODES];
+
+export type PlatformOperatorDirectoryApiPayload = {
+  code?: string;
+  error?: string;
+  message?: string;
+};
