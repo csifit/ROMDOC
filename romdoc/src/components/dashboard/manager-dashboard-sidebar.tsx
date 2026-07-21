@@ -19,10 +19,11 @@ type ManagerDashboardSidebarProps = {
   userName: string;
   userEmail: string;
   roleLabel: string;
+  canManageBilling: boolean;
   children: ReactNode;
 };
 
-const NAVIGATION_ITEMS = [
+const PRIMARY_NAVIGATION_ITEMS = [
   {
     href:
       "/manager-dashboard",
@@ -63,14 +64,18 @@ const NAVIGATION_ITEMS = [
     icon:
       "clinics",
   },
-  {
-    href:
-      "/manager-dashboard/invoices",
-    labelKey:
-      "invoices",
-    icon:
-      "invoices",
-  },
+] as const;
+
+const BILLING_NAVIGATION_ITEM = {
+  href:
+    "/manager-dashboard/invoices",
+  labelKey:
+    "invoices",
+  icon:
+    "invoices",
+} as const;
+
+const SECONDARY_NAVIGATION_ITEMS = [
   {
     href:
       "/manager-dashboard/cities",
@@ -101,6 +106,7 @@ export default function ManagerDashboardSidebar({
   userName,
   userEmail,
   roleLabel,
+  canManageBilling,
   children,
 }: ManagerDashboardSidebarProps) {
   const locale =
@@ -113,22 +119,58 @@ export default function ManagerDashboardSidebar({
       "PlatformOperatorFoundation.sidebar"
     );
 
+  const translatedPrimaryItems:
+    PlatformOperatorNavigationItem[] =
+    PRIMARY_NAVIGATION_ITEMS.map(
+      (
+        item
+      ) => ({
+        href:
+          item.href,
+        label:
+          t(
+            `navigation.${item.labelKey}`
+          ),
+        icon:
+          item.icon,
+      })
+    );
+
+  const translatedSecondaryItems:
+    PlatformOperatorNavigationItem[] =
+    SECONDARY_NAVIGATION_ITEMS.map(
+      (
+        item
+      ) => ({
+        href:
+          item.href,
+        label:
+          t(
+            `navigation.${item.labelKey}`
+          ),
+        icon:
+          item.icon,
+      })
+    );
+
   const navigationItems:
     PlatformOperatorNavigationItem[] = [
-      ...NAVIGATION_ITEMS.map(
-        (
-          item
-        ) => ({
-          href:
-            item.href,
-          label:
-            t(
-              `navigation.${item.labelKey}`
-            ),
-          icon:
-            item.icon,
-        })
-      ),
+      ...translatedPrimaryItems,
+      ...(canManageBilling
+        ? [
+            {
+              href:
+                BILLING_NAVIGATION_ITEM.href,
+              label:
+                t(
+                  `navigation.${BILLING_NAVIGATION_ITEM.labelKey}`
+                ),
+              icon:
+                BILLING_NAVIGATION_ITEM.icon,
+            },
+          ]
+        : []),
+      ...translatedSecondaryItems,
       {
         href:
           `/${locale}`,

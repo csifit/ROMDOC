@@ -20,6 +20,9 @@ import {
   getStoredAppLocale,
 } from "@/lib/i18n/server-app-locale";
 import {
+  createAdminClient,
+} from "@/lib/supabase/admin";
+import {
   createClient,
 } from "@/lib/supabase/server";
 
@@ -135,6 +138,51 @@ export default async function ManagerDashboardLayout({
     );
   }
 
+  const admin =
+    createAdminClient();
+
+  const {
+    data:
+      accountingPermission,
+    error:
+      accountingPermissionError,
+  } =
+    await admin
+      .from(
+        "manager_permissions"
+      )
+      .select(
+        "profile_id"
+      )
+      .eq(
+        "profile_id",
+        user.id
+      )
+      .eq(
+        "permission_key",
+        "accounting"
+      )
+      .is(
+        "revoked_at",
+        null
+      )
+      .maybeSingle();
+
+  if (
+    accountingPermissionError
+  ) {
+    console.error(
+      "Manager accounting permission lookup failed:",
+      accountingPermissionError
+    );
+  }
+
+  const canManageBilling =
+    !accountingPermissionError &&
+    Boolean(
+      accountingPermission
+    );
+
   const fullName =
     [
       profile.first_name,
@@ -182,6 +230,9 @@ export default async function ManagerDashboardLayout({
         roleLabel={
           copy.common
             .roleManager
+        }
+        canManageBilling={
+          canManageBilling
         }
       >
         {

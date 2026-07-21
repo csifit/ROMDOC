@@ -1,128 +1,342 @@
-import Link from "next/link";
+import {
+  OverviewAccordion,
+  OverviewActionCard,
+  OverviewActionLink,
+} from "@/components/dashboard/platform-operator-overview-ui";
+import {
+  getPlatformOperatorOverview,
+} from "@/lib/i18n/platform-operator-overview";
+import {
+  getStoredAppLocale,
+} from "@/lib/i18n/server-app-locale";
+import {
+  requireClinicInvoiceAccess,
+} from "@/lib/invoices/require-clinic-invoice-access";
 
-const sections = [
-  {
-    href:
-      "/manager-dashboard/users",
-    title: "Utilizatori",
-    description:
-      "Vezi utilizatorii și gestionează suspendarea conturilor în limitele rolului de manager.",
-  },
-  {
-    href:
-      "/manager-dashboard/doctors",
-    title: "Medici",
-    description:
-      "Caută medicii și gestionează profilurile fără acțiunile rezervate administratorului.",
-  },
-  {
-    href:
-      "/manager-dashboard/verifications",
-    title:
-      "Verificări profesionale",
-    description:
-      "Analizează cererile de verificare profesională și documentele asociate.",
-  },
-  {
-    href:
-      "/manager-dashboard/clinics",
-    title: "Clinici",
-    description:
-      "Verifică și gestionează clinicile propuse în platformă.",
-  },
-  {
-    href:
-      "/manager-dashboard/clinic-sms",
-    title: "Facturare SMS clinici",
-    description:
-      "Pentru managerii Facturare: vezi consumul SMS al clinicilor și datele necesare pentru invoicing.",
-  },
-  {
-    href:
-      "/manager-dashboard/doctor-sms",
-    title: "Facturare SMS medici",
-    description:
-      "Pentru managerii Facturare: vezi consumul SMS al medicilor individuali și datele necesare pentru invoicing.",
-  },
-  {
-    href:
-      "/manager-dashboard/cities",
-    title: "Orașe",
-    description:
-      "Actualizează informațiile orașelor utilizate în directoare și filtre.",
-  },
-  {
-    href:
-      "/manager-dashboard/reviews",
-    title: "Recenzii",
-    description:
-      "Moderează recenziile care încalcă regulile platformei.",
-  },
-  {
-    href:
-      "/manager-dashboard/security",
-    title: "Account security",
-    description:
-      "Verifică starea autentificării în doi pași a contului de manager.",
-  },
-] as const;
+export default async function ManagerDashboardPage() {
+  const locale =
+    await getStoredAppLocale();
 
-export default function ManagerDashboardPage() {
+  const copy =
+    getPlatformOperatorOverview(
+      locale
+    );
+
+  const invoiceAccess =
+    await requireClinicInvoiceAccess();
+
+  const canManageBilling =
+    invoiceAccess.ok &&
+    invoiceAccess.actor.role ===
+      "manager";
+
+  const coreSections = [
+    {
+      href:
+        "/manager-dashboard/users",
+      title:
+        copy.manager
+          .users.title,
+      description:
+        copy.manager
+          .users
+          .description,
+    },
+    {
+      href:
+        "/manager-dashboard/doctors",
+      title:
+        copy.manager
+          .doctors.title,
+      description:
+        copy.manager
+          .doctors
+          .description,
+    },
+    {
+      href:
+        "/manager-dashboard/verifications",
+      title:
+        copy.manager
+          .verifications
+          .title,
+      description:
+        copy.manager
+          .verifications
+          .description,
+    },
+    {
+      href:
+        "/manager-dashboard/clinics",
+      title:
+        copy.manager
+          .clinics.title,
+      description:
+        copy.manager
+          .clinics
+          .description,
+    },
+  ] as const;
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-[34px]">
       <header>
         <p className="text-sm font-semibold text-[#036661]">
-          Panou manager
+          {
+            copy.manager
+              .eyebrow
+          }
         </p>
 
-        <h1 className="mt-2 text-3xl font-bold text-gray-900 sm:text-4xl">
-          Prezentare generală
+        <h1 className="mt-[8px] text-3xl font-bold text-gray-950 sm:text-4xl">
+          {
+            copy.manager
+              .title
+          }
         </h1>
 
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Accesează instrumentele operaționale atribuite managerilor
-          RomDoc. Funcțiile rezervate exclusiv administratorului nu apar
-          în acest panou.
+        <p className="mt-[13px] max-w-3xl text-sm leading-[1.6] text-gray-600">
+          {
+            copy.manager
+              .description
+          }
         </p>
       </header>
 
-      <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-        {sections.map(
-          (section) => (
-            <Link
-              key={
-                section.href
-              }
-              href={
-                section.href
-              }
-              className="romdoc-focus-ring rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-[#036661]/40 hover:shadow-md"
-            >
-              <h2 className="text-lg font-bold text-gray-900">
-                {section.title}
-              </h2>
+      <section className="space-y-[13px]">
+        <div>
+          <h2 className="text-xl font-bold text-gray-950">
+            {
+              copy.manager
+                .coreOperations
+                .title
+            }
+          </h2>
 
-              <p className="mt-2 text-sm leading-6 text-gray-600">
-                {
+          <p className="mt-[5px] text-sm text-gray-600">
+            {
+              copy.manager
+                .coreOperations
+                .description
+            }
+          </p>
+        </div>
+
+        <div className="grid gap-[13px] sm:grid-cols-2 xl:grid-cols-4">
+          {coreSections.map(
+            (
+              section
+            ) => (
+              <OverviewActionCard
+                key={
+                  section.href
+                }
+                href={
+                  section.href
+                }
+                title={
+                  section.title
+                }
+                description={
                   section.description
                 }
-              </p>
+                actionLabel={
+                  copy.common
+                    .openSection
+                }
+              />
+            )
+          )}
+        </div>
+      </section>
 
-              <span className="mt-5 inline-flex text-sm font-semibold text-[#036661]">
-                Deschide secțiunea →
-              </span>
-            </Link>
-          )
+      <OverviewAccordion
+        title={
+          copy.manager
+            .directoryAndModeration
+            .title
+        }
+        description={
+          copy.manager
+            .directoryAndModeration
+            .description
+        }
+      >
+        <div className="grid gap-[13px] lg:grid-cols-2">
+          <OverviewActionLink
+            href="/manager-dashboard/cities"
+            title={
+              copy.manager
+                .cities.title
+            }
+            description={
+              copy.manager
+                .cities
+                .description
+            }
+            actionLabel={
+              copy.common
+                .openSection
+            }
+          />
+
+          <OverviewActionLink
+            href="/manager-dashboard/reviews"
+            title={
+              copy.manager
+                .reviews.title
+            }
+            description={
+              copy.manager
+                .reviews
+                .description
+            }
+            actionLabel={
+              copy.common
+                .openSection
+            }
+          />
+        </div>
+      </OverviewAccordion>
+
+      <OverviewAccordion
+        title={
+          copy.manager
+            .billing.title
+        }
+        description={
+          copy.manager
+            .billing
+            .description
+        }
+        attention={
+          !canManageBilling
+        }
+      >
+        {canManageBilling ? (
+          <div className="grid gap-[13px] lg:grid-cols-3">
+            <OverviewActionLink
+              href="/manager-dashboard/invoices"
+              title={
+                copy.manager
+                  .invoices.title
+              }
+              description={
+                copy.manager
+                  .invoices
+                  .description
+              }
+              actionLabel={
+                copy.common
+                  .openSection
+              }
+            />
+
+            <OverviewActionLink
+              href="/manager-dashboard/clinic-sms"
+              title={
+                copy.manager
+                  .clinicSms.title
+              }
+              description={
+                copy.manager
+                  .clinicSms
+                  .description
+              }
+              actionLabel={
+                copy.common
+                  .openSection
+              }
+            />
+
+            <OverviewActionLink
+              href="/manager-dashboard/doctor-sms"
+              title={
+                copy.manager
+                  .doctorSms.title
+              }
+              description={
+                copy.manager
+                  .doctorSms
+                  .description
+              }
+              actionLabel={
+                copy.common
+                  .openSection
+              }
+            />
+          </div>
+        ) : (
+          <div className="rounded-[13px] border border-amber-200 bg-amber-50 p-[13px] text-amber-950">
+            <h3 className="font-bold">
+              {
+                copy.manager
+                  .billing
+                  .noAccessTitle
+              }
+            </h3>
+
+            <p className="mt-[8px] text-sm leading-[1.55]">
+              {
+                copy.manager
+                  .billing
+                  .noAccessDescription
+              }
+            </p>
+          </div>
         )}
-      </section>
+      </OverviewAccordion>
 
-      <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm leading-6 text-blue-950">
-        Rolul de manager folosește aceleași API-uri securizate ca zona
-        administrativă, însă fiecare acțiune este verificată separat prin
-        capabilitățile atribuite managerului. Secțiunile de facturare SMS
-        pentru clinici și medici sunt vizibile doar managerilor cu permisiunea
-        <strong> Facturare</strong>.
-      </section>
+      <div className="grid gap-[13px] xl:grid-cols-2">
+        <OverviewAccordion
+          title={
+            copy.manager
+              .account.title
+          }
+          description={
+            copy.manager
+              .account
+              .description
+          }
+        >
+          <OverviewActionLink
+            href="/manager-dashboard/security"
+            title={
+              copy.manager
+                .security.title
+            }
+            description={
+              copy.manager
+                .security
+                .description
+            }
+            actionLabel={
+              copy.common
+                .openSection
+            }
+          />
+        </OverviewAccordion>
+
+        <OverviewAccordion
+          title={
+            copy.manager
+              .rules.title
+          }
+          description={
+            copy.manager
+              .rules
+              .description
+          }
+        >
+          <p className="text-sm leading-[1.6] text-gray-600">
+            {
+              copy.manager
+                .rules
+                .description
+            }
+          </p>
+        </OverviewAccordion>
+      </div>
     </div>
   );
 }
