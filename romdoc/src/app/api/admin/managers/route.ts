@@ -1,15 +1,15 @@
-import {
-  NextRequest,
-  NextResponse,
-} from "next/server";
+import type { User } from "@supabase/supabase-js";
+import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 
+import { PLATFORM_OPERATOR_ACCESS_CODES } from "@/lib/api/platform-operator-access-codes";
+import { requireAdminAal2Api } from "@/lib/auth/require-admin-aal2-api";
 import {
-  createAdminClient,
-} from "@/lib/supabase/admin";
-import {
-  requireAdminAal2Api,
-} from "@/lib/auth/require-admin-aal2-api";
+  type AppLocale,
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
+import { getPlatformOperatorAccess } from "@/lib/i18n/platform-operator-access";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
@@ -21,6 +21,7 @@ type ManagerActionBody = {
   profileId?: unknown;
   invitationId?: unknown;
   managerType?: unknown;
+  locale?: unknown;
 };
 
 type PermissionRow = {
@@ -55,15 +56,35 @@ type ManagerInvitationRow = {
   updated_at: string | null;
 };
 
-function normalizeString(
-  value: unknown,
-  maximumLength: number
-) {
-  if (typeof value !== "string") {
-    return "";
-  }
+function apiError(code: string, error: string, status: number) {
+  return NextResponse.json(
+    { code, error },
+    {
+      status,
+      headers: { "Cache-Control": "no-store" },
+    }
+  );
+}
 
-  return value.trim().slice(0, maximumLength);
+function apiSuccess(
+  code: string,
+  message: string,
+  extra: Record<string, unknown> = {},
+  status = 200
+) {
+  return NextResponse.json(
+    { code, message, ...extra },
+    {
+      status,
+      headers: { "Cache-Control": "no-store" },
+    }
+  );
+}
+
+function normalizeString(value: unknown, maximumLength: number) {
+  return typeof value === "string"
+    ? value.trim().slice(0, maximumLength)
+    : "";
 }
 
 function normalizeEmail(value: unknown) {
@@ -89,15 +110,20 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#039;");
 }
 
-function getManagerTypeLabel(managerType: string) {
-  return managerType === "accounting"
-    ? "Manager Facturare"
-    : "Manager Operațional";
+function replaceTokens(
+  template: string,
+  values: Record<string, string | number>
+) {
+  return Object.entries(values).reduce(
+    (result, [key, value]) =>
+      result.replaceAll(`{${key}}`, String(value)),
+    template
+  );
 }
 
 async function listAuthUsers() {
   const admin = createAdminClient();
-  const users = [];
+  const users: User[] = [];
   let page = 1;
   const perPage = 1000;
 
@@ -107,16 +133,10 @@ async function listAuthUsers() {
       perPage,
     });
 
-    if (error) {
-      throw error;
-    }
-
+    if (error) throw error;
     users.push(...data.users);
 
-    if (data.users.length < perPage) {
-      break;
-    }
-
+    if (data.users.length < perPage) break;
     page += 1;
   }
 
@@ -136,10 +156,7 @@ function buildPermissionMap(permissions: PermissionRow[]) {
   const map = new Map<string, string[]>();
 
   for (const permission of permissions) {
-    if (permission.revoked_at) {
-      continue;
-    }
-
+    if (permission.revoked_at) continue;
     const current = map.get(permission.profile_id) ?? [];
 
     if (!current.includes(permission.permission_key)) {
@@ -153,12 +170,9 @@ function buildPermissionMap(permissions: PermissionRow[]) {
 }
 
 async function loadActivePermissions(profileIds: string[]) {
-  if (profileIds.length === 0) {
-    return new Map<string, string[]>();
-  }
+  if (profileIds.length === 0) return new Map<string, string[]>();
 
   const admin = createAdminClient();
-
   const { data, error } = await admin
     .from("manager_permissions")
     .select("profile_id, permission_key, revoked_at")
@@ -178,7 +192,6 @@ async function grantAccountingPermission(
   actorProfileId: string
 ) {
   const admin = createAdminClient();
-
   const { data: existingRows, error: existingError } = await admin
     .from("manager_permissions")
     .select("profile_id, permission_key, revoked_at")
@@ -190,11 +203,7 @@ async function grantAccountingPermission(
     return existingError;
   }
 
-  const existingActive = (existingRows ?? []).some(
-    (row) => !row.revoked_at
-  );
-
-  if (existingActive) {
+  if ((existingRows ?? []).some((row: PermissionRow) => !row.revoked_at)) {
     return null;
   }
 
@@ -216,14 +225,12 @@ async function grantAccountingPermission(
     return null;
   }
 
-  const { error } = await admin
-    .from("manager_permissions")
-    .insert({
-      profile_id: profileId,
-      permission_key: "accounting",
-      granted_by_profile_id: actorProfileId,
-      revoked_at: null,
-    });
+  const { error } = await admin.from("manager_permissions").insert({
+    profile_id: profileId,
+    permission_key: "accounting",
+    granted_by_profile_id: actorProfileId,
+    revoked_at: null,
+  });
 
   if (error) {
     console.error("Accounting permission grant failed:", error);
@@ -235,12 +242,9 @@ async function grantAccountingPermission(
 
 async function revokeAccountingPermission(profileId: string) {
   const admin = createAdminClient();
-
   const { error } = await admin
     .from("manager_permissions")
-    .update({
-      revoked_at: new Date().toISOString(),
-    })
+    .update({ revoked_at: new Date().toISOString() })
     .eq("profile_id", profileId)
     .eq("permission_key", "accounting")
     .is("revoked_at", null);
@@ -258,12 +262,14 @@ async function sendManagerInvitationEmail({
   firstName,
   lastName,
   managerType,
+  locale,
   actionLink,
 }: {
   email: string;
   firstName: string;
   lastName: string;
   managerType: string;
+  locale: AppLocale;
   actionLink: string;
 }) {
   const resendApiKey = process.env.RESEND_API_KEY;
@@ -276,35 +282,40 @@ async function sendManagerInvitationEmail({
     };
   }
 
-  const resend = new Resend(resendApiKey);
-  const managerTypeLabel = getManagerTypeLabel(managerType);
-  const displayName = [firstName, lastName]
-    .filter(Boolean)
-    .join(" ")
-    .trim() || "Manager";
-
-  const safeName = escapeHtml(displayName);
-  const safeType = escapeHtml(managerTypeLabel);
+  const copy = getPlatformOperatorAccess(locale).managers.emailInvitation;
+  const displayName =
+    [firstName, lastName].filter(Boolean).join(" ").trim() || "Manager";
+  const managerTypeLabel =
+    managerType === "accounting"
+      ? copy.accountingType
+      : copy.operationalType;
+  const subject =
+    managerType === "accounting"
+      ? copy.subjectAccounting
+      : copy.subjectOperational;
+  const greeting = replaceTokens(copy.greeting, { name: displayName });
+  const body = replaceTokens(copy.body, { type: managerTypeLabel });
   const safeLink = escapeHtml(actionLink);
+  const resend = new Resend(resendApiKey);
 
   const { error } = await resend.emails.send({
     from: resendFromEmail,
     to: email,
-    subject: `Invitație RomDoc — ${managerTypeLabel}`,
+    subject,
     html: `
       <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827;max-width:640px;margin:0 auto;">
-        <h1 style="font-size:22px;margin:0 0 16px;">Invitație RomDoc</h1>
-        <p>Bună, ${safeName},</p>
-        <p>Ai fost invitat(ă) să devii <strong>${safeType}</strong> în platforma RomDoc.</p>
-        <p>Apasă butonul de mai jos pentru a confirma invitația și pentru a crea parola contului.</p>
+        <h1 style="font-size:22px;margin:0 0 16px;">${escapeHtml(copy.heading)}</h1>
+        <p>${escapeHtml(greeting)}</p>
+        <p>${escapeHtml(body)}</p>
+        <p>${escapeHtml(copy.instructions)}</p>
         <p style="margin:24px 0;">
           <a href="${safeLink}" style="display:inline-block;background:#036661;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:700;">
-            Acceptă invitația
+            ${escapeHtml(copy.action)}
           </a>
         </p>
-        <p style="font-size:13px;color:#4b5563;">Dacă butonul nu funcționează, copiază acest link în browser:</p>
+        <p style="font-size:13px;color:#4b5563;">${escapeHtml(copy.fallback)}</p>
         <p style="font-size:13px;word-break:break-all;color:#036661;">${safeLink}</p>
-        <p style="font-size:13px;color:#4b5563;">Dacă nu te așteptai la această invitație, poți ignora acest e-mail.</p>
+        <p style="font-size:13px;color:#4b5563;">${escapeHtml(copy.ignore)}</p>
       </div>
     `,
   });
@@ -317,53 +328,27 @@ async function sendManagerInvitationEmail({
     };
   }
 
-  return {
-    sent: true,
-    error: null,
-  };
+  return { sent: true, error: null };
 }
 
 export async function GET(): Promise<Response> {
   const authorization = await requireAdminAal2Api();
-
-  if (authorization.response) {
-    return authorization.response;
-  }
+  if (authorization.response) return authorization.response;
 
   const admin = createAdminClient();
-
   const [profilesResult, invitationsResult] = await Promise.all([
     admin
       .from("profiles")
-      .select(`
-        id,
-        first_name,
-        last_name,
-        role,
-        account_status,
-        created_at,
-        updated_at
-      `)
+      .select(
+        "id, first_name, last_name, role, account_status, created_at, updated_at"
+      )
       .eq("role", "manager")
       .order("created_at", { ascending: false }),
-
     admin
       .from("manager_invitations")
-      .select(`
-        id,
-        email,
-        first_name,
-        last_name,
-        invited_by_profile_id,
-        invited_user_id,
-        accepted_by_profile_id,
-        status,
-        expires_at,
-        accepted_at,
-        revoked_at,
-        created_at,
-        updated_at
-      `)
+      .select(
+        "id, email, first_name, last_name, invited_by_profile_id, invited_user_id, accepted_by_profile_id, status, expires_at, accepted_at, revoked_at, created_at, updated_at"
+      )
       .order("created_at", { ascending: false }),
   ]);
 
@@ -372,49 +357,42 @@ export async function GET(): Promise<Response> {
       "Manager management query failed:",
       profilesResult.error ?? invitationsResult.error
     );
-
-    return NextResponse.json(
-      { error: "Managerii nu au putut fi încărcați." },
-      { status: 500 }
+    return apiError(
+      PLATFORM_OPERATOR_ACCESS_CODES.managersLoadFailed,
+      "Managerii nu au putut fi încărcați.",
+      500
     );
   }
 
   let authUsers: Awaited<ReturnType<typeof listAuthUsers>>;
-
   try {
     authUsers = await listAuthUsers();
-  } catch (error) {
-    console.error("Manager auth user lookup failed:", error);
-
-    return NextResponse.json(
-      {
-        error:
-          "Datele de autentificare ale managerilor nu au putut fi încărcate.",
-      },
-      { status: 500 }
+  } catch (authError) {
+    console.error("Manager auth user lookup failed:", authError);
+    return apiError(
+      PLATFORM_OPERATOR_ACCESS_CODES.managerAuthLoadFailed,
+      "Datele de autentificare ale managerilor nu au putut fi încărcate.",
+      500
     );
   }
 
   const profiles = (profilesResult.data ?? []) as ManagerProfileRow[];
-  const invitations = (invitationsResult.data ?? []) as ManagerInvitationRow[];
+  const invitations =
+    (invitationsResult.data ?? []) as ManagerInvitationRow[];
   const permissionProfileIds = Array.from(
-    new Set(
-      [
-        ...profiles.map((profile) => profile.id),
-        ...invitations
-          .map((invitation) => invitation.invited_user_id)
-          .filter((id): id is string => Boolean(id)),
-      ]
-    )
+    new Set([
+      ...profiles.map((profile) => profile.id),
+      ...invitations
+        .map((invitation) => invitation.invited_user_id)
+        .filter((id): id is string => Boolean(id)),
+    ])
   );
   const permissionMap = await loadActivePermissions(permissionProfileIds);
-
   const managers = profiles.map((profile) => ({
     ...profile,
     permissions: permissionMap.get(profile.id) ?? [],
     auth: authUsers.get(profile.id) ?? null,
   }));
-
   const invitationsWithPermissions = invitations.map((invitation) => ({
     ...invitation,
     permissions: invitation.invited_user_id
@@ -424,32 +402,26 @@ export async function GET(): Promise<Response> {
 
   return NextResponse.json(
     {
+      code: PLATFORM_OPERATOR_ACCESS_CODES.managersLoaded,
       managers,
       invitations: invitationsWithPermissions,
     },
-    {
-      headers: {
-        "Cache-Control": "no-store",
-      },
-    }
+    { headers: { "Cache-Control": "no-store" } }
   );
 }
 
 export async function POST(request: NextRequest): Promise<Response> {
   const authorization = await requireAdminAal2Api();
-
-  if (authorization.response) {
-    return authorization.response;
-  }
+  if (authorization.response) return authorization.response;
 
   let body: ManagerActionBody;
-
   try {
     body = (await request.json()) as ManagerActionBody;
   } catch {
-    return NextResponse.json(
-      { error: "Datele trimise nu sunt valide." },
-      { status: 400 }
+    return apiError(
+      PLATFORM_OPERATOR_ACCESS_CODES.invalidRequestData,
+      "Datele trimise nu sunt valide.",
+      400
     );
   }
 
@@ -457,16 +429,19 @@ export async function POST(request: NextRequest): Promise<Response> {
   const firstName = normalizeString(body.firstName, 100);
   const lastName = normalizeString(body.lastName, 100);
   const managerType = normalizeManagerType(body.managerType);
+  const locale = normalizeAppLocale(
+    typeof body.locale === "string" ? body.locale : undefined
+  );
 
   if (!email || !isValidEmail(email)) {
-    return NextResponse.json(
-      { error: "Introdu o adresă de e-mail validă." },
-      { status: 400 }
+    return apiError(
+      PLATFORM_OPERATOR_ACCESS_CODES.invalidEmail,
+      "Introdu o adresă de e-mail validă.",
+      400
     );
   }
 
   const admin = createAdminClient();
-
   const { data: existingInvitation } = await admin
     .from("manager_invitations")
     .select("id, status")
@@ -475,9 +450,10 @@ export async function POST(request: NextRequest): Promise<Response> {
     .maybeSingle();
 
   if (existingInvitation) {
-    return NextResponse.json(
-      { error: "Există deja o invitație activă pentru această adresă." },
-      { status: 409 }
+    return apiError(
+      PLATFORM_OPERATOR_ACCESS_CODES.managerInvitationExists,
+      "Există deja o invitație activă pentru această adresă.",
+      409
     );
   }
 
@@ -485,40 +461,44 @@ export async function POST(request: NextRequest): Promise<Response> {
   const redirectTo = new URL("/set-password", siteUrl);
   redirectTo.searchParams.set("mode", "invite");
   redirectTo.searchParams.set("next", "/dashboard");
+  redirectTo.searchParams.set("locale", locale);
 
-  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-    type: "invite",
-    email,
-    options: {
-      redirectTo: redirectTo.toString(),
-      data: {
-        role: "manager",
-        manager_type: managerType,
-        permissions: managerType === "accounting" ? ["accounting"] : [],
-        first_name: firstName || null,
-        last_name: lastName || null,
-        password_initialized: false,
+  const { data: linkData, error: linkError } =
+    await admin.auth.admin.generateLink({
+      type: "invite",
+      email,
+      options: {
+        redirectTo: redirectTo.toString(),
+        data: {
+          role: "manager",
+          manager_type: managerType,
+          permissions:
+            managerType === "accounting" ? ["accounting"] : [],
+          invitation_locale: locale,
+          first_name: firstName || null,
+          last_name: lastName || null,
+          password_initialized: false,
+        },
       },
-    },
-  });
+    });
 
   if (linkError || !linkData.user || !linkData.properties?.action_link) {
     console.error("Manager invitation link error:", linkError);
-
     const message = linkError?.message ?? "";
+    const existing = message.toLowerCase().includes("already");
 
-    return NextResponse.json(
-      {
-        error: message.toLowerCase().includes("already")
-          ? "Adresa aparține deja unui cont. Rolul trebuie acordat printr-un flux administrativ separat."
-          : "Linkul de invitație nu a putut fi generat.",
-      },
-      { status: message.toLowerCase().includes("already") ? 409 : 500 }
+    return apiError(
+      existing
+        ? PLATFORM_OPERATOR_ACCESS_CODES.existingAccountRequiresSeparateFlow
+        : PLATFORM_OPERATOR_ACCESS_CODES.managerInvitationLinkFailed,
+      existing
+        ? "Adresa aparține deja unui cont. Rolul trebuie acordat printr-un flux administrativ separat."
+        : "Linkul de invitație nu a putut fi generat.",
+      existing ? 409 : 500
     );
   }
 
   const userId = linkData.user.id;
-
   const { error: profileError } = await admin.from("profiles").upsert(
     {
       id: userId,
@@ -533,10 +513,10 @@ export async function POST(request: NextRequest): Promise<Response> {
   if (profileError) {
     console.error("Manager profile creation failed:", profileError);
     await admin.auth.admin.deleteUser(userId);
-
-    return NextResponse.json(
-      { error: "Profilul de manager nu a putut fi creat." },
-      { status: 500 }
+    return apiError(
+      PLATFORM_OPERATOR_ACCESS_CODES.managerProfileCreateFailed,
+      "Profilul de manager nu a putut fi creat.",
+      500
     );
   }
 
@@ -548,10 +528,10 @@ export async function POST(request: NextRequest): Promise<Response> {
 
     if (permissionError) {
       await admin.auth.admin.deleteUser(userId);
-
-      return NextResponse.json(
-        { error: "Permisiunea de facturare nu a putut fi acordată." },
-        { status: 500 }
+      return apiError(
+        PLATFORM_OPERATOR_ACCESS_CODES.accountingPermissionGrantFailed,
+        "Permisiunea de facturare nu a putut fi acordată.",
+        500
       );
     }
   }
@@ -561,18 +541,16 @@ export async function POST(request: NextRequest): Promise<Response> {
     firstName,
     lastName,
     managerType,
+    locale,
     actionLink: linkData.properties.action_link,
   });
 
   if (!emailResult.sent) {
     await admin.auth.admin.deleteUser(userId);
-
-    return NextResponse.json(
-      {
-        error:
-          emailResult.error ?? "E-mailul de invitație nu a putut fi trimis.",
-      },
-      { status: 500 }
+    return apiError(
+      PLATFORM_OPERATOR_ACCESS_CODES.managerInvitationEmailFailed,
+      emailResult.error ?? "E-mailul de invitație nu a putut fi trimis.",
+      500
     );
   }
 
@@ -590,13 +568,10 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   if (invitationError || !invitation) {
     console.error("Manager invitation record failed:", invitationError);
-
-    return NextResponse.json(
-      {
-        error:
-          "Invitația a fost trimisă, dar evidența internă nu a putut fi creată.",
-      },
-      { status: 500 }
+    return apiError(
+      PLATFORM_OPERATOR_ACCESS_CODES.managerInvitationRecordFailed,
+      "Invitația a fost trimisă, dar evidența internă nu a putut fi creată.",
+      500
     );
   }
 
@@ -608,39 +583,41 @@ export async function POST(request: NextRequest): Promise<Response> {
     metadata: {
       email,
       manager_type: managerType,
-      permissions: managerType === "accounting" ? ["accounting"] : [],
+      permissions:
+        managerType === "accounting" ? ["accounting"] : [],
+      invitation_locale: locale,
       email_delivery: "resend_custom_manager_invitation",
       acceptance_redirect: "/set-password",
     },
   });
 
-  return NextResponse.json(
+  return apiSuccess(
+    PLATFORM_OPERATOR_ACCESS_CODES.managerInvited,
+    "Invitația de manager a fost trimisă.",
     {
       success: true,
       invitation: {
         ...invitation,
-        permissions: managerType === "accounting" ? ["accounting"] : [],
+        permissions:
+          managerType === "accounting" ? ["accounting"] : [],
       },
     },
-    { status: 201 }
+    201
   );
 }
 
 export async function PATCH(request: NextRequest): Promise<Response> {
   const authorization = await requireAdminAal2Api();
-
-  if (authorization.response) {
-    return authorization.response;
-  }
+  if (authorization.response) return authorization.response;
 
   let body: ManagerActionBody;
-
   try {
     body = (await request.json()) as ManagerActionBody;
   } catch {
-    return NextResponse.json(
-      { error: "Datele trimise nu sunt valide." },
-      { status: 400 }
+    return apiError(
+      PLATFORM_OPERATOR_ACCESS_CODES.invalidRequestData,
+      "Datele trimise nu sunt valide.",
+      400
     );
   }
 
@@ -654,16 +631,18 @@ export async function PATCH(request: NextRequest): Promise<Response> {
     action === "revoke_accounting_permission"
   ) {
     if (!profileId) {
-      return NextResponse.json(
-        { error: "Managerul lipsește." },
-        { status: 400 }
+      return apiError(
+        PLATFORM_OPERATOR_ACCESS_CODES.managerIdRequired,
+        "Managerul lipsește.",
+        400
       );
     }
 
     if (profileId === authorization.profileId) {
-      return NextResponse.json(
-        { error: "Nu îți poți modifica propriile permisiuni din această pagină." },
-        { status: 409 }
+      return apiError(
+        PLATFORM_OPERATOR_ACCESS_CODES.selfPermissionChangeForbidden,
+        "Nu îți poți modifica propriile permisiuni din această pagină.",
+        409
       );
     }
 
@@ -675,43 +654,48 @@ export async function PATCH(request: NextRequest): Promise<Response> {
       .maybeSingle();
 
     if (managerError || !manager) {
-      return NextResponse.json(
-        { error: "Managerul nu a fost găsit." },
-        { status: 404 }
+      return apiError(
+        PLATFORM_OPERATOR_ACCESS_CODES.managerNotFound,
+        "Managerul nu a fost găsit.",
+        404
       );
     }
 
     const permissionError =
       action === "grant_accounting_permission"
-        ? await grantAccountingPermission(profileId, authorization.profileId)
+        ? await grantAccountingPermission(
+            profileId,
+            authorization.profileId
+          )
         : await revokeAccountingPermission(profileId);
 
     if (permissionError) {
-      return NextResponse.json(
-        { error: "Permisiunea de facturare nu a putut fi actualizată." },
-        { status: 500 }
+      return apiError(
+        PLATFORM_OPERATOR_ACCESS_CODES.accountingPermissionUpdateFailed,
+        "Permisiunea de facturare nu a putut fi actualizată.",
+        500
       );
     }
 
+    const granted = action === "grant_accounting_permission";
     await admin.from("manager_audit_events").insert({
       manager_profile_id: profileId,
       actor_profile_id: authorization.profileId,
-      event_type:
-        action === "grant_accounting_permission"
-          ? "accounting_permission_granted"
-          : "accounting_permission_revoked",
-      metadata: {
-        permission_key: "accounting",
-      },
+      event_type: granted
+        ? "accounting_permission_granted"
+        : "accounting_permission_revoked",
+      metadata: { permission_key: "accounting" },
     });
 
-    return NextResponse.json({
-      success: true,
-      message:
-        action === "grant_accounting_permission"
-          ? "Permisiunea Facturare a fost acordată."
-          : "Permisiunea Facturare a fost eliminată.",
-    });
+    return apiSuccess(
+      granted
+        ? PLATFORM_OPERATOR_ACCESS_CODES.accountingPermissionGranted
+        : PLATFORM_OPERATOR_ACCESS_CODES.accountingPermissionRevoked,
+      granted
+        ? "Permisiunea Facturare a fost acordată."
+        : "Permisiunea Facturare a fost eliminată.",
+      { success: true }
+    );
   }
 
   if (
@@ -720,49 +704,51 @@ export async function PATCH(request: NextRequest): Promise<Response> {
     action === "delete_manager"
   ) {
     if (!profileId) {
-      return NextResponse.json(
-        { error: "Managerul lipsește." },
-        { status: 400 }
+      return apiError(
+        PLATFORM_OPERATOR_ACCESS_CODES.managerIdRequired,
+        "Managerul lipsește.",
+        400
       );
     }
 
     if (profileId === authorization.profileId) {
-      return NextResponse.json(
-        { error: "Nu îți poți modifica propriul cont din această pagină." },
-        { status: 409 }
+      return apiError(
+        PLATFORM_OPERATOR_ACCESS_CODES.selfManagerAccountChangeForbidden,
+        "Nu îți poți modifica propriul cont din această pagină.",
+        409
       );
     }
 
     if (action === "delete_manager") {
-      const { data: existingManager, error: existingManagerError } = await admin
-        .from("profiles")
-        .select("id, role, account_status, first_name, last_name")
-        .eq("id", profileId)
-        .eq("role", "manager")
-        .maybeSingle();
+      const { data: existingManager, error: existingManagerError } =
+        await admin
+          .from("profiles")
+          .select("id, role, account_status, first_name, last_name")
+          .eq("id", profileId)
+          .eq("role", "manager")
+          .maybeSingle();
 
       if (existingManagerError || !existingManager) {
-        return NextResponse.json(
-          { error: "Managerul nu a fost găsit." },
-          { status: 404 }
+        return apiError(
+          PLATFORM_OPERATOR_ACCESS_CODES.managerNotFound,
+          "Managerul nu a fost găsit.",
+          404
         );
       }
 
       const { data: removedManager, error: removeError } = await admin
         .from("profiles")
-        .update({
-          role: "patient",
-          account_status: "blocked",
-        })
+        .update({ role: "patient", account_status: "blocked" })
         .eq("id", profileId)
         .eq("role", "manager")
         .select("id, role, account_status")
         .maybeSingle();
 
       if (removeError || !removedManager) {
-        return NextResponse.json(
-          { error: "Managerul nu a putut fi șters." },
-          { status: 500 }
+        return apiError(
+          PLATFORM_OPERATOR_ACCESS_CODES.managerDeleteFailed,
+          "Managerul nu a putut fi șters.",
+          500
         );
       }
 
@@ -794,16 +780,15 @@ export async function PATCH(request: NextRequest): Promise<Response> {
         },
       });
 
-      return NextResponse.json({
-        success: true,
-        manager: removedManager,
-        message:
-          "Managerul a fost șters din lista de manageri și accesul operațional a fost blocat.",
-      });
+      return apiSuccess(
+        PLATFORM_OPERATOR_ACCESS_CODES.managerDeleted,
+        "Managerul a fost șters din lista de manageri și accesul operațional a fost blocat.",
+        { success: true, manager: removedManager }
+      );
     }
 
-    const nextStatus = action === "suspend_manager" ? "blocked" : "active";
-
+    const nextStatus =
+      action === "suspend_manager" ? "blocked" : "active";
     const { data: manager, error } = await admin
       .from("profiles")
       .update({ account_status: nextStatus })
@@ -813,26 +798,37 @@ export async function PATCH(request: NextRequest): Promise<Response> {
       .maybeSingle();
 
     if (error || !manager) {
-      return NextResponse.json(
-        { error: "Managerul nu a putut fi actualizat." },
-        { status: 404 }
+      return apiError(
+        PLATFORM_OPERATOR_ACCESS_CODES.managerUpdateFailed,
+        "Managerul nu a putut fi actualizat.",
+        404
       );
     }
 
+    const activated = nextStatus === "active";
     await admin.from("manager_audit_events").insert({
       manager_profile_id: profileId,
       actor_profile_id: authorization.profileId,
-      event_type: nextStatus === "active" ? "activated" : "suspended",
+      event_type: activated ? "activated" : "suspended",
     });
 
-    return NextResponse.json({ success: true, manager });
+    return apiSuccess(
+      activated
+        ? PLATFORM_OPERATOR_ACCESS_CODES.managerActivated
+        : PLATFORM_OPERATOR_ACCESS_CODES.managerSuspended,
+      activated
+        ? "Managerul a fost activat."
+        : "Managerul a fost suspendat.",
+      { success: true, manager }
+    );
   }
 
   if (action === "revoke_invitation") {
     if (!invitationId) {
-      return NextResponse.json(
-        { error: "Invitația lipsește." },
-        { status: 400 }
+      return apiError(
+        PLATFORM_OPERATOR_ACCESS_CODES.invitationIdRequired,
+        "Invitația lipsește.",
+        400
       );
     }
 
@@ -848,9 +844,10 @@ export async function PATCH(request: NextRequest): Promise<Response> {
       .maybeSingle();
 
     if (error || !invitation) {
-      return NextResponse.json(
-        { error: "Invitația nu a putut fi revocată." },
-        { status: 404 }
+      return apiError(
+        PLATFORM_OPERATOR_ACCESS_CODES.invitationRevokeFailed,
+        "Invitația nu a putut fi revocată.",
+        404
       );
     }
 
@@ -875,11 +872,16 @@ export async function PATCH(request: NextRequest): Promise<Response> {
       event_type: "invitation_revoked",
     });
 
-    return NextResponse.json({ success: true, invitation });
+    return apiSuccess(
+      PLATFORM_OPERATOR_ACCESS_CODES.invitationRevoked,
+      "Invitația a fost revocată.",
+      { success: true, invitation }
+    );
   }
 
-  return NextResponse.json(
-    { error: "Acțiunea solicitată nu este validă." },
-    { status: 400 }
+  return apiError(
+    PLATFORM_OPERATOR_ACCESS_CODES.invalidManagerAction,
+    "Acțiunea solicitată nu este validă.",
+    400
   );
 }

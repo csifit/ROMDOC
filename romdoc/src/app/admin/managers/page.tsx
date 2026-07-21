@@ -1,68 +1,56 @@
 import { redirect } from "next/navigation";
 
 import ManagersManagement from "@/components/admin/managers-management";
+import { getPlatformOperatorAccess } from "@/lib/i18n/platform-operator-access";
+import { getStoredAppLocale } from "@/lib/i18n/server-app-locale";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AdminManagersPage() {
-  const supabase =
-    await createClient();
-
+  const locale = await getStoredAppLocale();
+  const copy = getPlatformOperatorAccess(locale);
+  const supabase = await createClient();
   const {
     data: { user },
-  } =
-    await supabase.auth.getUser();
+    error: userError,
+  } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect(
-      "/login?next=/admin/managers"
-    );
+  if (userError || !user) {
+    const parameters = new URLSearchParams({
+      locale,
+      next: "/admin/managers",
+    });
+    redirect(`/login?${parameters.toString()}`);
   }
 
-  const {
-    data: profile,
-  } =
-    await supabase
-      .from("profiles")
-      .select(`
-        role,
-        account_status
-      `)
-      .eq(
-        "id",
-        user.id
-      )
-      .maybeSingle();
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role, account_status")
+    .eq("id", user.id)
+    .maybeSingle();
 
   if (
-    !profile ||
-    profile.role !==
-      "admin" ||
-    profile.account_status !==
-      "active"
+    profileError ||
+    profile?.role !== "admin" ||
+    profile.account_status !== "active"
   ) {
     redirect("/admin");
   }
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="space-y-[34px]">
       <header>
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#036661]">
-          Administrare acces
+          {copy.common.accessAdministration}
         </p>
-
-        <h1 className="mt-3 text-3xl font-bold text-gray-900">
-          Manageri RomDoc
+        <h1 className="mt-[13px] text-3xl font-bold text-gray-900">
+          {copy.managers.page.title}
         </h1>
-
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Invită manageri operaționali și controlează accesul lor.
-          Managerii nu pot invita alți manageri și nu pot șterge medici.
+        <p className="mt-[13px] max-w-3xl text-sm leading-6 text-gray-600">
+          {copy.managers.page.description}
         </p>
       </header>
 
-      <div className="mt-8">
-        <ManagersManagement />
-      </div>
-    </main>
+      <ManagersManagement />
+    </div>
   );
 }

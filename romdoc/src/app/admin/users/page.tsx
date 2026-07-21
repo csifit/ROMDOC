@@ -1,14 +1,13 @@
-import {
-  redirect,
-} from "next/navigation";
+import { redirect } from "next/navigation";
 
 import UsersManagement from "@/components/admin/users-management";
 import {
-  createAdminClient,
-} from "@/lib/supabase/admin";
-import {
-  createClient,
-} from "@/lib/supabase/server";
+  getPlatformOperatorAccess,
+  PLATFORM_OPERATOR_LOCALE_TAGS,
+} from "@/lib/i18n/platform-operator-access";
+import { getStoredAppLocale } from "@/lib/i18n/server-app-locale";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 type ClosureRequestProfile = {
   id: string;
@@ -17,234 +16,157 @@ type ClosureRequestProfile = {
   account_closure_requested_at: string;
 };
 
-function formatDate(
-  value: string
+function replaceTokens(
+  template: string,
+  values: Record<string, string | number>
 ) {
-  return new Intl.DateTimeFormat(
-    "ro-RO",
-    {
-      dateStyle: "medium",
-      timeStyle: "short",
-      timeZone:
-        "Europe/Bucharest",
-    }
-  ).format(
-    new Date(value)
+  return Object.entries(values).reduce(
+    (result, [key, value]) =>
+      result.replaceAll(`{${key}}`, String(value)),
+    template
   );
 }
 
 export default async function AdminUsersPage() {
-  const supabase =
-    await createClient();
-
+  const locale = await getStoredAppLocale();
+  const copy = getPlatformOperatorAccess(locale);
+  const supabase = await createClient();
   const {
     data: { user },
     error: userError,
-  } =
-    await supabase.auth.getUser();
+  } = await supabase.auth.getUser();
 
-  if (
-    userError ||
-    !user
-  ) {
-    redirect(
-      "/login?next=/admin/users"
-    );
+  if (userError || !user) {
+    const parameters = new URLSearchParams({
+      locale,
+      next: "/admin/users",
+    });
+    redirect(`/login?${parameters.toString()}`);
   }
 
-  const {
-    data: profile,
-    error: profileError,
-  } =
-    await supabase
-      .from("profiles")
-      .select(`
-        role,
-        account_status
-      `)
-      .eq(
-        "id",
-        user.id
-      )
-      .maybeSingle();
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role, account_status")
+    .eq("id", user.id)
+    .maybeSingle();
 
   if (
     profileError ||
-    profile?.role !==
-      "admin" ||
-    profile.account_status !==
-      "active"
+    profile?.role !== "admin" ||
+    profile.account_status !== "active"
   ) {
-    redirect(
-      "/dashboard"
-    );
+    redirect("/dashboard");
   }
 
-  const admin =
-    createAdminClient();
-
+  const admin = createAdminClient();
   const {
-    data:
-      closureRequestProfiles,
-    error:
-      closureRequestError,
-  } =
-    await admin
-      .from("profiles")
-      .select(`
-        id,
-        first_name,
-        last_name,
-        account_closure_requested_at
-      `)
-      .eq(
-        "role",
-        "patient"
-      )
-      .eq(
-        "account_status",
-        "active"
-      )
-      .not(
-        "account_closure_requested_at",
-        "is",
-        null
-      )
-      .order(
-        "account_closure_requested_at",
-        {
-          ascending:
-            true,
-        }
-      );
+    data: closureRequestProfiles,
+    error: closureRequestError,
+  } = await admin
+    .from("profiles")
+    .select(
+      "id, first_name, last_name, account_closure_requested_at"
+    )
+    .eq("role", "patient")
+    .eq("account_status", "active")
+    .not("account_closure_requested_at", "is", null)
+    .order("account_closure_requested_at", { ascending: true });
 
-  if (
-    closureRequestError
-  ) {
+  if (closureRequestError) {
     console.error(
       "Account closure request list failed:",
       closureRequestError
     );
   }
 
-  const requests =
-    (
-      closureRequestProfiles ??
-      []
-    ) as ClosureRequestProfile[];
+  const requests = (closureRequestProfiles ?? []) as ClosureRequestProfile[];
+  const requestsWithEmail = await Promise.all(
+    requests.map(async (requestProfile) => {
+      const { data: authUserResult } =
+        await admin.auth.admin.getUserById(requestProfile.id);
 
-  const requestsWithEmail =
-    await Promise.all(
-      requests.map(
-        async (
-          requestProfile
-        ) => {
-          const {
-            data:
-              authUserResult,
-          } =
-            await admin.auth.admin
-              .getUserById(
-                requestProfile.id
-              );
+      return {
+        ...requestProfile,
+        email: authUserResult.user?.email ?? null,
+      };
+    })
+  );
 
-          return {
-            ...requestProfile,
-            email:
-              authUserResult.user
-                ?.email ??
-              null,
-          };
-        }
-      )
-    );
+  const formatDate = (value: string) =>
+    new Intl.DateTimeFormat(PLATFORM_OPERATOR_LOCALE_TAGS[locale], {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "Europe/Bucharest",
+    }).format(new Date(value));
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-[34px]">
       <header>
         <p className="text-sm font-semibold text-[#036661]">
-          Administrare
+          {copy.common.administration}
         </p>
-
-        <h1 className="mt-2 text-3xl font-bold text-gray-900">
-          Utilizatori
+        <h1 className="mt-[8px] text-3xl font-bold text-gray-900">
+          {copy.users.page.title}
         </h1>
-
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Vezi conturile înregistrate, filtrează utilizatorii după rol și gestionează accesul prin acțiunile existente.
+        <p className="mt-[13px] max-w-3xl text-sm leading-6 text-gray-600">
+          {copy.users.page.adminDescription}
         </p>
       </header>
 
-      {requestsWithEmail.length >
-        0 && (
-        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:p-6">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-amber-950">
-                Închideri de cont solicitate
-              </h2>
-
-              <p className="mt-1 text-sm text-amber-900">
-                Folosește acțiunea existentă de blocare din tabelul Utilizatori.
-              </p>
+      {requestsWithEmail.length > 0 && (
+        <details className="rounded-[13px] border border-amber-200 bg-amber-50 shadow-sm">
+          <summary className="romdoc-focus-ring cursor-pointer list-none rounded-[13px] p-[21px] marker:hidden">
+            <div className="flex items-center justify-between gap-[13px]">
+              <div>
+                <h2 className="text-lg font-bold text-amber-950">
+                  {copy.users.closure.title}
+                </h2>
+                <p className="mt-[5px] text-sm text-amber-900">
+                  {copy.users.closure.description}
+                </p>
+              </div>
+              <span className="rounded-full bg-amber-200 px-[8px] py-[5px] text-sm font-semibold text-amber-950">
+                {requestsWithEmail.length}
+              </span>
             </div>
+          </summary>
 
-            <span className="w-fit rounded-full bg-amber-200 px-3 py-1 text-sm font-semibold text-amber-950">
-              {requestsWithEmail.length}
-            </span>
-          </div>
+          <div className="divide-y divide-amber-200 border-t border-amber-200 px-[21px]">
+            {requestsWithEmail.map((requestProfile) => {
+              const name =
+                [requestProfile.first_name, requestProfile.last_name]
+                  .filter(Boolean)
+                  .join(" ")
+                  .trim() || copy.users.closure.patientFallback;
 
-          <div className="mt-5 divide-y divide-amber-200">
-            {requestsWithEmail.map(
-              (
-                requestProfile
-              ) => {
-                const name =
-                  [
-                    requestProfile.first_name,
-                    requestProfile.last_name,
-                  ]
-                    .filter(
-                      Boolean
-                    )
-                    .join(" ")
-                    .trim() ||
-                  "Pacient";
-
-                return (
-                  <div
-                    key={
-                      requestProfile.id
-                    }
-                    className="grid gap-2 py-4 first:pt-0 last:pb-0 sm:grid-cols-[1fr_1fr_auto] sm:items-center"
-                  >
-                    <div>
-                      <p className="font-semibold text-amber-950">
-                        {name}
-                      </p>
-
-                      <p className="mt-1 text-sm text-amber-900">
-                        {requestProfile.email ??
-                          "E-mail indisponibil"}
-                      </p>
-                    </div>
-
-                    <p className="text-sm text-amber-900">
-                      Solicitată:{" "}
-                      {formatDate(
-                        requestProfile.account_closure_requested_at
-                      )}
+              return (
+                <div
+                  key={requestProfile.id}
+                  className="grid gap-[8px] py-[13px] sm:grid-cols-[1fr_1fr_auto] sm:items-center"
+                >
+                  <div>
+                    <p className="font-semibold text-amber-950">
+                      {name}
                     </p>
-
-                    <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-amber-900">
-                      Închidere solicitată
-                    </span>
+                    <p className="mt-[5px] text-sm text-amber-900">
+                      {requestProfile.email ?? copy.common.emailUnavailable}
+                    </p>
                   </div>
-                );
-              }
-            )}
+                  <p className="text-sm text-amber-900">
+                    {replaceTokens(copy.users.closure.requestedAt, {
+                      date: formatDate(
+                        requestProfile.account_closure_requested_at
+                      ),
+                    })}
+                  </p>
+                  <span className="w-fit rounded-full bg-white px-[8px] py-[5px] text-xs font-semibold text-amber-900">
+                    {copy.users.closure.requested}
+                  </span>
+                </div>
+              );
+            })}
           </div>
-        </section>
+        </details>
       )}
 
       <UsersManagement />
