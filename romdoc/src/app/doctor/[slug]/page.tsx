@@ -814,30 +814,14 @@ export default async function DoctorPage({
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
           <div className="space-y-8">
-            <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#036661]">
-                {profileCopy.servicesEyebrow}
-              </p>
-
-              <h2 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
-                {profileCopy.servicesEyebrow} și tarife
-              </h2>
-
-              <p className="mt-3 text-sm leading-6 text-gray-600">
-                {profileCopy.servicesDescription}
-              </p>
-
-              <div className="mt-6">
-                <PublicDoctorServices
-                  doctorId={
-                    doctor.id
-                  }
-                  locale={
-                    locale
-                  }
-                />
-              </div>
-            </section>
+            <PublicDoctorServices
+              doctorId={
+                doctor.id
+              }
+              locale={
+                locale
+              }
+            />
 
             <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
               <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#036661]">
