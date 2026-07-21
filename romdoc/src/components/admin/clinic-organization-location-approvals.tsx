@@ -1,18 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocale } from "next-intl";
 
 import Button from "@/components/ui/button";
-
-type ClinicTranslation = {
-  locale: string;
-  name: string;
-};
-
-type CityTranslation = {
-  locale: string;
-  name: string;
-};
+import type { PlatformOperatorClinicApiPayload } from "@/lib/api/platform-operator-clinic-codes";
+import {
+  normalizeAppLocale,
+  selectTranslation,
+} from "@/lib/i18n/app-locale";
+import {
+  getPlatformClinicApiMessage,
+  getPlatformOperatorClinics,
+  PLATFORM_OPERATOR_CLINIC_LOCALE_TAGS,
+} from "@/lib/i18n/platform-operator-clinics";
 
 type ClinicOrganization = {
   id: string;
@@ -20,11 +21,6 @@ type ClinicOrganization = {
   status: string;
   contact_email: string | null;
   contact_phone: string | null;
-};
-
-type ClinicCity = {
-  slug: string | null;
-  city_translations: CityTranslation[] | null;
 };
 
 type Clinic = {
@@ -35,192 +31,154 @@ type Clinic = {
   google_maps_uri: string | null;
   latitude: number | string | null;
   longitude: number | string | null;
-  clinic_translations: ClinicTranslation[] | null;
-  cities: ClinicCity | null;
+  clinic_translations: Array<{ locale: string; name: string }> | null;
+  cities:
+    | {
+        slug: string | null;
+        city_translations: Array<{ locale: string; name: string }> | null;
+      }
+    | null;
 };
 
 type ClinicOrganizationLocation = {
   id: string;
   organization_id: string;
   clinic_id: string;
-  status: string;
+  status: LocationStatus;
   created_at: string;
   approved_at: string | null;
   clinic_organizations: ClinicOrganization | null;
   clinics: Clinic | null;
 };
 
-type LocationsResponse = {
-  locations?: ClinicOrganizationLocation[];
-  error?: string;
-};
-
-type ActionResponse = {
-  message?: string;
-  error?: string;
-};
-
 type LocationStatus = "pending" | "active" | "removed";
-
 type LocationAction = "approve" | "reject";
+type StatusCounts = Record<LocationStatus, number>;
 
-const statusFilters: Array<{ value: LocationStatus; label: string }> = [
-  {
-    value: "pending",
-    label: "În verificare",
-  },
-  {
-    value: "active",
-    label: "Aprobate",
-  },
-  {
-    value: "removed",
-    label: "Respinse / eliminate",
-  },
-];
+type LocationsResponse = PlatformOperatorClinicApiPayload & {
+  locations?: ClinicOrganizationLocation[];
+  statusCounts?: Partial<StatusCounts>;
+};
 
-function getRomanianName(translations: ClinicTranslation[] | CityTranslation[] | null) {
-  return (
-    translations?.find((translation) => translation.locale === "ro")?.name ??
-    translations?.[0]?.name ??
-    null
-  );
-}
+const EMPTY_COUNTS: StatusCounts = {
+  pending: 0,
+  active: 0,
+  removed: 0,
+};
 
-function getClinicName(location: ClinicOrganizationLocation) {
-  const clinic = location.clinics;
-
-  if (!clinic) {
-    return "Locație indisponibilă";
-  }
-
-  return getRomanianName(clinic.clinic_translations) ?? clinic.slug;
-}
-
-function getCityName(location: ClinicOrganizationLocation) {
-  const city = location.clinics?.cities;
-
-  if (!city) {
-    return "Oraș indisponibil";
-  }
-
-  return getRomanianName(city.city_translations) ?? city.slug ?? "Oraș indisponibil";
-}
-
-function getLocationStatusLabel(status: string) {
-  switch (status) {
-    case "active":
-      return "Aprobată pentru organizație";
-
-    case "removed":
-      return "Respinsă / eliminată";
-
-    default:
-      return "În verificare";
-  }
-}
-
-function getClinicPublicStatusLabel(status: string) {
-  switch (status) {
-    case "approved":
-      return "Apare pe hartă";
-
-    case "blocked":
-      return "Blocată";
-
-    case "rejected":
-      return "Respinsă";
-
-    default:
-      return "Nu apare încă pe hartă";
-  }
-}
-
-function getStatusClasses(status: string) {
+function statusClasses(status: string) {
   switch (status) {
     case "active":
     case "approved":
       return "bg-green-100 text-green-800";
-
     case "removed":
     case "rejected":
     case "blocked":
       return "bg-red-100 text-red-800";
-
     default:
       return "bg-amber-100 text-amber-900";
   }
 }
 
-function formatDate(value: string | null) {
-  if (!value) {
-    return "—";
-  }
-
-  return new Intl.DateTimeFormat("ro-RO", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
-
-function normalizeForSearch(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("ro-RO")
-    .trim();
-}
-
 export default function ClinicOrganizationLocationApprovals() {
+  const locale = normalizeAppLocale(useLocale());
+  const localeTag = PLATFORM_OPERATOR_CLINIC_LOCALE_TAGS[locale];
+  const copy = getPlatformOperatorClinics(locale);
+
   const [selectedStatus, setSelectedStatus] =
     useState<LocationStatus>("pending");
   const [locations, setLocations] = useState<ClinicOrganizationLocation[]>([]);
+  const [statusCounts, setStatusCounts] = useState<StatusCounts>(EMPTY_COUNTS);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLocationId, setActionLocationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
+  const clinicName = useCallback(
+    (location: ClinicOrganizationLocation) => {
+      const clinic = location.clinics;
+      if (!clinic) return copy.common.addressUnavailable;
+      return (
+        selectTranslation(clinic.clinic_translations, locale)?.name ??
+        clinic.slug
+      );
+    },
+    [copy.common.addressUnavailable, locale]
+  );
+
+  const cityName = useCallback(
+    (location: ClinicOrganizationLocation) => {
+      const city = location.clinics?.cities;
+      return (
+        selectTranslation(city?.city_translations, locale)?.name ??
+        city?.slug ??
+        copy.common.unknownCity
+      );
+    },
+    [copy.common.unknownCity, locale]
+  );
+
+  const formatDate = useCallback(
+    (value: string | null) => {
+      if (!value) return copy.common.none;
+      return new Intl.DateTimeFormat(localeTag, {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "Europe/Bucharest",
+      }).format(new Date(value));
+    },
+    [copy.common.none, localeTag]
+  );
+
+  const normalize = useCallback(
+    (value: string) =>
+      value
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLocaleLowerCase(localeTag)
+        .trim(),
+    [localeTag]
+  );
+
   const loadLocations = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-
-      const query = new URLSearchParams({
-        status: selectedStatus,
-      });
-
+      const query = new URLSearchParams({ status: selectedStatus });
       const response = await fetch(
         `/api/admin/clinic-organization-locations?${query.toString()}`,
-        {
-          method: "GET",
-          cache: "no-store",
-        }
+        { method: "GET", cache: "no-store" }
       );
-
       const result = (await response.json()) as LocationsResponse;
 
       if (!response.ok) {
         throw new Error(
-          result.error ?? "Locațiile organizațiilor nu au putut fi încărcate."
+          getPlatformClinicApiMessage(
+            locale,
+            result.code,
+            result.error ?? copy.locations.states.loadFailed
+          )
         );
       }
 
       setLocations(result.locations ?? []);
+      setStatusCounts({
+        pending: result.statusCounts?.pending ?? 0,
+        active: result.statusCounts?.active ?? 0,
+        removed: result.statusCounts?.removed ?? 0,
+      });
     } catch (loadError) {
+      setLocations([]);
       setError(
         loadError instanceof Error
           ? loadError.message
-          : "Locațiile organizațiilor nu au putut fi încărcate."
+          : copy.locations.states.loadFailed
       );
-      setLocations([]);
     } finally {
       setIsLoading(false);
     }
-  }, [selectedStatus]);
+  }, [copy.locations.states.loadFailed, locale, selectedStatus]);
 
   useEffect(() => {
     void loadLocations();
@@ -230,48 +188,49 @@ export default function ClinicOrganizationLocationApprovals() {
     organizationClinicId: string,
     action: LocationAction
   ) {
-    if (actionLocationId) {
-      return;
-    }
+    if (actionLocationId) return;
 
     const confirmation =
       action === "approve"
-        ? "Aprobi această locație pentru organizația clinicii? Clinica va deveni eligibilă pentru harta publică dacă are coordonate valide."
-        : "Respinge această locație pentru organizația clinicii?";
+        ? copy.locations.confirmations.approve
+        : copy.locations.confirmations.reject;
 
-    if (!window.confirm(confirmation)) {
-      return;
-    }
+    if (!window.confirm(confirmation)) return;
 
     try {
       setActionLocationId(organizationClinicId);
       setError(null);
       setSuccess(null);
-
       const response = await fetch("/api/admin/clinic-organization-locations", {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          organizationClinicId,
-          action,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ organizationClinicId, action }),
       });
-
-      const result = (await response.json()) as ActionResponse;
+      const result = (await response.json()) as LocationsResponse;
 
       if (!response.ok) {
-        throw new Error(result.error ?? "Acțiunea nu a putut fi finalizată.");
+        throw new Error(
+          getPlatformClinicApiMessage(
+            locale,
+            result.code,
+            result.error ?? copy.locations.states.actionFailed
+          )
+        );
       }
 
-      setSuccess(result.message ?? "Acțiunea a fost finalizată.");
+      setSuccess(
+        getPlatformClinicApiMessage(
+          locale,
+          result.code,
+          result.message ?? copy.locations.states.success
+        )
+      );
       await loadLocations();
     } catch (actionError) {
       setError(
         actionError instanceof Error
           ? actionError.message
-          : "Acțiunea nu a putut fi finalizată."
+          : copy.locations.states.actionFailed
       );
     } finally {
       setActionLocationId(null);
@@ -279,218 +238,226 @@ export default function ClinicOrganizationLocationApprovals() {
   }
 
   const visibleLocations = useMemo(() => {
-    const normalizedSearch = normalizeForSearch(search);
+    const query = normalize(search);
+    if (!query) return locations;
 
-    if (!normalizedSearch) {
-      return locations;
-    }
+    return locations.filter((location) =>
+      [
+        clinicName(location),
+        location.clinic_organizations?.name ?? "",
+        cityName(location),
+        location.clinics?.formatted_address ?? "",
+      ].some((value) => normalize(value).includes(query))
+    );
+  }, [cityName, clinicName, locations, normalize, search]);
 
-    return locations.filter((location) => {
-      const clinicName = getClinicName(location);
-      const organizationName = location.clinic_organizations?.name ?? "";
-      const cityName = getCityName(location);
-      const address = location.clinics?.formatted_address ?? "";
+  const statusFilters = [
+    { value: "pending" as const, label: copy.locations.metrics.pending },
+    { value: "active" as const, label: copy.locations.metrics.active },
+    { value: "removed" as const, label: copy.locations.metrics.removed },
+  ];
 
-      return [clinicName, organizationName, cityName, address]
-        .map(normalizeForSearch)
-        .some((value) => value.includes(normalizedSearch));
-    });
-  }, [locations, search]);
+  const locationStatusLabel = (status: LocationStatus) =>
+    status === "active"
+      ? copy.locations.labels.approvedForOrganization
+      : status === "removed"
+        ? copy.locations.labels.removed
+        : copy.locations.labels.underReview;
+
+  const publicStatusLabel = (status: string) =>
+    status === "approved"
+      ? copy.locations.labels.appearsOnMap
+      : status === "blocked"
+        ? copy.common.statusBlocked
+        : status === "rejected"
+          ? copy.common.statusRejected
+          : copy.locations.labels.notOnMap;
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">
-            Locații organizații clinică
-          </h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-            Aprobă punctele de lucru cerute de Clinic Manager. După aprobare,
-            locația aparține organizației, poate fi folosită la asocierea
-            medicilor clinicii și devine eligibilă pentru afișarea pe harta
-            publică RomDoc.
-          </p>
-        </div>
-
-        <span className="rounded-full bg-[#F0EEE9] px-3 py-1 text-sm font-semibold text-gray-700">
-          {locations.length} locații
-        </span>
+    <section className="rounded-2xl border border-gray-200 bg-white p-[21px] shadow-sm">
+      <div>
+        <h2 className="text-xl font-bold text-gray-900">{copy.locations.title}</h2>
+        <p className="mt-[8px] max-w-3xl text-sm leading-6 text-gray-600">
+          {copy.locations.description}
+        </p>
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-        <label className="block">
-          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Caută
-          </span>
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Caută clinică, organizație, oraș sau adresă"
-            className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900"
-          />
-        </label>
-
-        <div className="flex flex-wrap gap-2">
-          {statusFilters.map((filter) => (
-            <button
-              key={filter.value}
-              type="button"
-              onClick={() => setSelectedStatus(filter.value)}
-              className={`romdoc-focus-ring rounded-full px-4 py-2 text-sm font-semibold transition ${
-                selectedStatus === filter.value
-                  ? "bg-[#036661] text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
+      <div className="mt-[21px] grid gap-[13px] sm:grid-cols-3">
+        {statusFilters.map((filter) => (
+          <button
+            key={filter.value}
+            type="button"
+            onClick={() => setSelectedStatus(filter.value)}
+            className={`romdoc-focus-ring rounded-2xl border p-[13px] text-left transition ${
+              selectedStatus === filter.value
+                ? "border-[#036661] bg-emerald-50"
+                : "border-gray-200 bg-[#F0EEE9] hover:border-gray-300"
+            }`}
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
               {filter.label}
-            </button>
-          ))}
-        </div>
+            </p>
+            <p className="mt-[8px] text-2xl font-bold text-gray-900">
+              {statusCounts[filter.value]}
+            </p>
+          </button>
+        ))}
       </div>
 
-      {error && (
-        <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+      <label className="mt-[21px] block">
+        <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+          {copy.locations.search}
+        </span>
+        <input
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder={copy.locations.searchPlaceholder}
+          className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 bg-white px-[13px] py-[13px] text-sm text-gray-900"
+        />
+      </label>
+
+      {error ? (
+        <div className="mt-[21px] rounded-xl border border-red-200 bg-red-50 p-[13px] text-sm text-red-800">
           {error}
         </div>
-      )}
-
-      {success && (
-        <div className="mt-5 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+      ) : null}
+      {success ? (
+        <div className="mt-[21px] rounded-xl border border-green-200 bg-green-50 p-[13px] text-sm text-green-800">
           {success}
         </div>
-      )}
+      ) : null}
 
       {isLoading ? (
-        <div className="mt-6 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-6 text-sm text-gray-600">
-          Se încarcă locațiile...
+        <div className="mt-[21px] rounded-xl border border-dashed border-gray-300 bg-gray-50 p-[21px] text-sm text-gray-600">
+          {copy.locations.states.loading}
         </div>
       ) : visibleLocations.length === 0 ? (
-        <div className="mt-6 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-6 text-sm leading-6 text-gray-600">
-          Nu există locații în această categorie.
+        <div className="mt-[21px] rounded-xl border border-dashed border-gray-300 bg-gray-50 p-[21px] text-sm text-gray-600">
+          {copy.locations.states.empty}
         </div>
       ) : (
-        <div className="mt-6 overflow-hidden rounded-xl border border-gray-200">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                <tr>
-                  <th className="px-4 py-3">Locație</th>
-                  <th className="px-4 py-3">Organizație</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Hartă publică</th>
-                  <th className="px-4 py-3">Cerută</th>
-                  <th className="px-4 py-3 text-right">Acțiuni</th>
-                </tr>
-              </thead>
+        <div className="mt-[21px] space-y-[13px]">
+          {visibleLocations.map((location) => {
+            const clinic = location.clinics;
+            const organization = location.clinic_organizations;
+            const isRunning = actionLocationId === location.id;
+            const hasCoordinates = Boolean(
+              clinic && clinic.latitude !== null && clinic.longitude !== null
+            );
 
-              <tbody className="divide-y divide-gray-200 bg-white">
-                {visibleLocations.map((location) => {
-                  const clinic = location.clinics;
-                  const organization = location.clinic_organizations;
-                  const isActionRunning = actionLocationId === location.id;
-                  const clinicCoordinates = Boolean(
-                    clinic && clinic.latitude !== null && clinic.longitude !== null
-                  );
+            return (
+              <details
+                key={location.id}
+                className="group overflow-hidden rounded-2xl border border-gray-200 bg-white"
+              >
+                <summary className="romdoc-focus-ring flex cursor-pointer list-none items-center justify-between gap-[13px] px-[21px] py-[13px] hover:bg-gray-50 [&::-webkit-details-marker]:hidden">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-[8px]">
+                      <h3 className="font-bold text-gray-900">
+                        {clinicName(location)}
+                      </h3>
+                      <span
+                        className={`rounded-full px-[8px] py-[5px] text-xs font-semibold ${statusClasses(
+                          location.status
+                        )}`}
+                      >
+                        {locationStatusLabel(location.status)}
+                      </span>
+                    </div>
+                    <p className="mt-[5px] text-sm text-gray-600">
+                      {organization?.name ?? copy.common.organizationUnavailable} · {cityName(location)}
+                    </p>
+                  </div>
+                  <span className="text-xl text-gray-500 transition-transform group-open:rotate-180">
+                    ⌄
+                  </span>
+                </summary>
 
-                  return (
-                    <tr key={location.id}>
-                      <td className="px-4 py-4 align-top">
-                        <p className="font-semibold text-gray-900">
-                          {getClinicName(location)}
-                        </p>
-                        <p className="mt-1 text-gray-600">{getCityName(location)}</p>
-                        <p className="mt-1 max-w-xs text-xs leading-5 text-gray-500">
-                          {clinic?.formatted_address ?? "Adresă indisponibilă"}
-                        </p>
-                        {clinic?.google_maps_uri && (
-                          <a
-                            href={clinic.google_maps_uri}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-2 inline-flex text-xs font-semibold text-[#036661] hover:underline"
-                          >
-                            Deschide în Google Maps
-                          </a>
-                        )}
-                      </td>
-
-                      <td className="px-4 py-4 align-top">
-                        <p className="font-medium text-gray-900">
-                          {organization?.name ?? "Organizație indisponibilă"}
-                        </p>
-                        <p className="mt-1 text-xs text-gray-500">
-                          {organization?.contact_email ?? "E-mail indisponibil"}
-                        </p>
-                        <p className="mt-1 text-xs text-gray-500">
-                          {organization?.contact_phone ?? "Telefon indisponibil"}
-                        </p>
-                      </td>
-
-                      <td className="px-4 py-4 align-top">
-                        <span
-                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClasses(
-                            location.status
-                          )}`}
-                        >
-                          {getLocationStatusLabel(location.status)}
-                        </span>
-                        <p className="mt-2 text-xs text-gray-500">
-                          Aprobată: {formatDate(location.approved_at)}
-                        </p>
-                      </td>
-
-                      <td className="px-4 py-4 align-top">
-                        <span
-                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClasses(
-                            clinic?.status ?? "pending"
-                          )}`}
-                        >
-                          {getClinicPublicStatusLabel(clinic?.status ?? "pending")}
-                        </span>
-                        <p className="mt-2 text-xs text-gray-500">
-                          {clinicCoordinates
-                            ? "Coordonate disponibile"
-                            : "Coordonate lipsă"}
-                        </p>
-                      </td>
-
-                      <td className="px-4 py-4 align-top text-gray-700">
+                <div className="border-t border-gray-200 p-[21px]">
+                  <div className="grid gap-[13px] sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="rounded-xl bg-gray-50 p-[13px]">
+                      <p className="text-xs font-semibold uppercase text-gray-500">
+                        {copy.locations.labels.location}
+                      </p>
+                      <p className="mt-[5px] text-sm text-gray-900">
+                        {clinic?.formatted_address ?? copy.common.addressUnavailable}
+                      </p>
+                    </div>
+                    <div className="rounded-xl bg-gray-50 p-[13px]">
+                      <p className="text-xs font-semibold uppercase text-gray-500">
+                        {copy.locations.labels.organization}
+                      </p>
+                      <p className="mt-[5px] text-sm font-medium text-gray-900">
+                        {organization?.name ?? copy.common.organizationUnavailable}
+                      </p>
+                      <p className="mt-[5px] text-xs text-gray-500">
+                        {organization?.contact_email ?? copy.common.emailUnavailable}
+                      </p>
+                    </div>
+                    <div className="rounded-xl bg-gray-50 p-[13px]">
+                      <p className="text-xs font-semibold uppercase text-gray-500">
+                        {copy.locations.labels.publicMap}
+                      </p>
+                      <p className="mt-[5px] text-sm text-gray-900">
+                        {publicStatusLabel(clinic?.status ?? "pending")}
+                      </p>
+                      <p className="mt-[5px] text-xs text-gray-500">
+                        {hasCoordinates
+                          ? copy.locations.labels.coordinatesAvailable
+                          : copy.locations.labels.coordinatesMissing}
+                      </p>
+                    </div>
+                    <div className="rounded-xl bg-gray-50 p-[13px]">
+                      <p className="text-xs font-semibold uppercase text-gray-500">
+                        {copy.locations.labels.requested}
+                      </p>
+                      <p className="mt-[5px] text-sm text-gray-900">
                         {formatDate(location.created_at)}
-                      </td>
+                      </p>
+                    </div>
+                  </div>
 
-                      <td className="px-4 py-4 align-top">
-                        {location.status === "pending" ? (
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              type="button"
-                              onClick={() => handleAction(location.id, "reject")}
-                              disabled={Boolean(actionLocationId)}
-                              variant="secondary"
-                              className="border-red-200 text-red-700 hover:bg-red-50"
-                            >
-                              {isActionRunning ? "Se procesează..." : "Respinge"}
-                            </Button>
-                            <Button
-                              type="button"
-                              onClick={() => handleAction(location.id, "approve")}
-                              disabled={Boolean(actionLocationId)}
-                            >
-                              {isActionRunning ? "Se procesează..." : "Aprobă"}
-                            </Button>
-                          </div>
-                        ) : (
-                          <p className="text-right text-xs text-gray-500">
-                            Fără acțiuni
-                          </p>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  {clinic?.google_maps_uri ? (
+                    <a
+                      href={clinic.google_maps_uri}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="romdoc-focus-ring mt-[13px] inline-flex rounded-xl border border-gray-300 px-[13px] py-[8px] text-sm font-semibold text-[#036661] hover:bg-gray-50"
+                    >
+                      {copy.common.openGoogleMaps}
+                    </a>
+                  ) : null}
+
+                  {location.status === "pending" ? (
+                    <div className="mt-[21px] flex flex-wrap justify-end gap-[8px] border-t border-gray-200 pt-[21px]">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="danger-outline"
+                        onClick={() => void handleAction(location.id, "reject")}
+                        disabled={Boolean(actionLocationId)}
+                      >
+                        {isRunning
+                          ? copy.locations.actions.processing
+                          : copy.locations.actions.reject}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => void handleAction(location.id, "approve")}
+                        disabled={Boolean(actionLocationId)}
+                      >
+                        {isRunning
+                          ? copy.locations.actions.processing
+                          : copy.locations.actions.approve}
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+              </details>
+            );
+          })}
         </div>
       )}
     </section>

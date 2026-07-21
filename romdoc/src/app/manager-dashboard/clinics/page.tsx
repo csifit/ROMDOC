@@ -1,37 +1,41 @@
 import ClinicManagementActions from "@/components/admin/clinic-management-actions";
 import ClinicEditingPanel from "@/components/clinic/clinic-editing-panel";
 import AdminAccordion from "@/components/ui/admin-accordion";
+import { getPlatformOperatorClinics } from "@/lib/i18n/platform-operator-clinics";
+import { getStoredAppLocale } from "@/lib/i18n/server-app-locale";
 
-export default function ManagerClinicsPage() {
+export default async function ManagerClinicsPage() {
+  const locale = await getStoredAppLocale();
+  const copy = getPlatformOperatorClinics(locale);
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-[34px]">
       <header>
         <p className="text-sm font-semibold text-[#036661]">
-          Management operațional
+          {copy.common.operationalManagement}
         </p>
 
-        <h1 className="mt-2 text-3xl font-bold text-gray-900">
-          Clinici
+        <h1 className="mt-[8px] text-3xl font-bold text-gray-900">
+          {copy.pages.manager.title}
         </h1>
 
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Verifică și gestionează clinicile propuse de medici. Acțiunile
-          rezervate administratorului rămân protejate de API.
+        <p className="mt-[13px] max-w-3xl text-sm leading-6 text-gray-600">
+          {copy.pages.manager.description}
         </p>
       </header>
 
+      <ClinicManagementActions />
+
       <AdminAccordion
-        title="Editează clinici"
-        description="Managerii pot modifica datele publice ale clinicilor, fără acțiunile rezervate exclusiv administratorului."
+        title={copy.accordions.editingTitle}
+        description={copy.accordions.editingDescription}
       >
         <ClinicEditingPanel
-          title="Toate clinicile"
-          description="Editează datele de contact, descrierea și adresa verificată a clinicilor din RomDoc. Modificările se aplică tuturor medicilor asociați acelei clinici."
-          emptyMessage="Nu există încă clinici în platformă."
+          title={copy.editing.title}
+          description={copy.editing.descriptionManager}
+          emptyMessage={copy.editing.empty}
         />
       </AdminAccordion>
-
-      <ClinicManagementActions />
     </div>
   );
 }

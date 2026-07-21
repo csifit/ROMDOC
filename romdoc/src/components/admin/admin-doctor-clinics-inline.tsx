@@ -1,38 +1,38 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useTransition,
-} from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useLocale } from "next-intl";
 
 import Button from "@/components/ui/button";
-
-type ClinicTranslation = {
-  locale: string;
-  name: string;
-};
-
-type CityTranslation = {
-  locale: string;
-  name: string;
-};
-
-type City = {
-  id: string;
-  slug: string;
-  city_translations: CityTranslation[] | null;
-};
+import type { PlatformOperatorClinicApiPayload } from "@/lib/api/platform-operator-clinic-codes";
+import {
+  normalizeAppLocale,
+  selectTranslation,
+} from "@/lib/i18n/app-locale";
+import {
+  getPlatformClinicApiMessage,
+  getPlatformOperatorClinics,
+  PLATFORM_OPERATOR_CLINIC_LOCALE_TAGS,
+} from "@/lib/i18n/platform-operator-clinics";
 
 type Clinic = {
   id: string;
   slug: string;
   status: string;
   formatted_address: string | null;
-  clinic_translations: ClinicTranslation[] | null;
-  cities: City | City[] | null;
+  clinic_translations: Array<{ locale: string; name: string }> | null;
+  cities:
+    | {
+        id: string;
+        slug: string;
+        city_translations: Array<{ locale: string; name: string }> | null;
+      }
+    | Array<{
+        id: string;
+        slug: string;
+        city_translations: Array<{ locale: string; name: string }> | null;
+      }>
+    | null;
 };
 
 type DoctorClinicLink = {
@@ -40,54 +40,25 @@ type DoctorClinicLink = {
   clinic_id: string;
 };
 
-type AssociationResponse = {
+type AssociationResponse = PlatformOperatorClinicApiPayload & {
   clinics?: Clinic[];
   links?: DoctorClinicLink[];
-  message?: string;
-  error?: string;
 };
 
 type Props = {
   doctorId: string;
 };
 
-function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+function first<T>(value: T | T[] | null | undefined): T | null {
   if (!value) return null;
   return Array.isArray(value) ? value[0] ?? null : value;
 }
 
-function getClinicName(clinic: Clinic) {
-  return (
-    clinic.clinic_translations?.find(
-      (translation) => translation.locale === "ro"
-    )?.name ??
-    clinic.clinic_translations?.[0]?.name ??
-    clinic.slug
-  );
-}
-
-function getCityName(clinic: Clinic) {
-  const city = firstRelation(clinic.cities);
-
-  return (
-    city?.city_translations?.find(
-      (translation) => translation.locale === "ro"
-    )?.name ??
-    city?.city_translations?.[0]?.name ??
-    city?.slug ??
-    "Oraș necunoscut"
-  );
-}
-
-function normalizeSearch(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("ro-RO")
-    .trim();
-}
-
 export default function AdminDoctorClinicsInline({ doctorId }: Props) {
+  const locale = normalizeAppLocale(useLocale());
+  const localeTag = PLATFORM_OPERATOR_CLINIC_LOCALE_TAGS[locale];
+  const copy = getPlatformOperatorClinics(locale);
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, startTransition] = useTransition();
   const [clinics, setClinics] = useState<Clinic[]>([]);
@@ -95,39 +66,77 @@ export default function AdminDoctorClinicsInline({ doctorId }: Props) {
   const [selectedClinicId, setSelectedClinicId] = useState("");
   const [clinicSearch, setClinicSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [adminOnly, setAdminOnly] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [removingClinicId, setRemovingClinicId] = useState<string | null>(null);
+
+  const clinicName = useCallback(
+    (clinic: Clinic) =>
+      selectTranslation(clinic.clinic_translations, locale)?.name ??
+      clinic.slug,
+    [locale]
+  );
+
+  const cityName = useCallback(
+    (clinic: Clinic) => {
+      const city = first(clinic.cities);
+      return (
+        selectTranslation(city?.city_translations, locale)?.name ??
+        city?.slug ??
+        copy.common.unknownCity
+      );
+    },
+    [copy.common.unknownCity, locale]
+  );
+
+  const normalize = useCallback(
+    (value: string) =>
+      value
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLocaleLowerCase(localeTag)
+        .trim(),
+    [localeTag]
+  );
 
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-
       const response = await fetch("/api/admin/doctor-clinics", {
         method: "GET",
         cache: "no-store",
       });
-
       const result = (await response.json()) as AssociationResponse;
+
+      if (!response.ok && result.code === "admin_required") {
+        setAdminOnly(true);
+        setClinics([]);
+        setLinks([]);
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(
-          result.error ?? "Clinicile medicului nu au putut fi încărcate."
+          getPlatformClinicApiMessage(
+            locale,
+            result.code,
+            result.error ?? copy.inline.loadFailed
+          )
         );
       }
 
+      setAdminOnly(false);
       setClinics(result.clinics ?? []);
       setLinks(result.links ?? []);
     } catch (loadError) {
       setError(
-        loadError instanceof Error
-          ? loadError.message
-          : "Clinicile medicului nu au putut fi încărcate."
+        loadError instanceof Error ? loadError.message : copy.inline.loadFailed
       );
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [copy.inline.loadFailed, locale]);
 
   useEffect(() => {
     void loadData();
@@ -140,47 +149,38 @@ export default function AdminDoctorClinicsInline({ doctorId }: Props) {
           .filter((link) => link.doctor_id === doctorId)
           .map((link) => link.clinic_id)
       ),
-    [links, doctorId]
+    [doctorId, links]
   );
 
   const associatedClinics = useMemo(
     () =>
       clinics
         .filter((clinic) => linkedClinicIds.has(clinic.id))
-        .sort((a, b) =>
-          getClinicName(a).localeCompare(getClinicName(b), "ro")
-        ),
-    [clinics, linkedClinicIds]
+        .sort((a, b) => clinicName(a).localeCompare(clinicName(b), localeTag)),
+    [clinicName, clinics, linkedClinicIds, localeTag]
   );
 
   const availableClinics = useMemo(() => {
-    const query = normalizeSearch(clinicSearch);
+    const query = normalize(clinicSearch);
 
     return clinics.filter((clinic) => {
       if (linkedClinicIds.has(clinic.id)) return false;
       if (!query) return true;
 
-      const haystack = normalizeSearch(
-        [
-          getClinicName(clinic),
-          getCityName(clinic),
-          clinic.formatted_address,
-          clinic.slug,
-        ]
+      return normalize(
+        [clinicName(clinic), cityName(clinic), clinic.formatted_address, clinic.slug]
           .filter(Boolean)
           .join(" ")
-      );
-
-      return haystack.includes(query);
+      ).includes(query);
     });
-  }, [clinics, clinicSearch, linkedClinicIds]);
+  }, [cityName, clinicName, clinicSearch, clinics, linkedClinicIds, normalize]);
 
   function addClinic() {
     setError(null);
     setSuccess(null);
 
     if (!selectedClinicId) {
-      setError("Selectează o clinică.");
+      setError(copy.inline.selectRequired);
       return;
     }
 
@@ -188,40 +188,36 @@ export default function AdminDoctorClinicsInline({ doctorId }: Props) {
       try {
         const response = await fetch("/api/admin/doctor-clinics", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            doctorId,
-            clinicId: selectedClinicId,
-          }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ doctorId, clinicId: selectedClinicId }),
         });
-
         const result = (await response.json()) as AssociationResponse;
 
         if (!response.ok) {
           throw new Error(
-            result.error ?? "Clinica nu a putut fi asociată."
+            getPlatformClinicApiMessage(
+              locale,
+              result.code,
+              result.error ?? copy.inline.addFailed
+            )
           );
         }
 
         setLinks((current) => [
           ...current,
-          {
-            doctor_id: doctorId,
-            clinic_id: selectedClinicId,
-          },
+          { doctor_id: doctorId, clinic_id: selectedClinicId },
         ]);
-
         setSelectedClinicId("");
         setSuccess(
-          result.message ?? "Clinica a fost asociată medicului."
+          getPlatformClinicApiMessage(
+            locale,
+            result.code,
+            result.message ?? copy.inline.added
+          )
         );
       } catch (saveError) {
         setError(
-          saveError instanceof Error
-            ? saveError.message
-            : "Clinica nu a putut fi asociată."
+          saveError instanceof Error ? saveError.message : copy.inline.addFailed
         );
       }
     });
@@ -235,39 +231,39 @@ export default function AdminDoctorClinicsInline({ doctorId }: Props) {
     try {
       const response = await fetch("/api/admin/doctor-clinics", {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          doctorId,
-          clinicId,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ doctorId, clinicId }),
       });
-
       const result = (await response.json()) as AssociationResponse;
 
       if (!response.ok) {
         throw new Error(
-          result.error ?? "Asocierea nu a putut fi eliminată."
+          getPlatformClinicApiMessage(
+            locale,
+            result.code,
+            result.error ?? copy.inline.removeFailed
+          )
         );
       }
 
       setLinks((current) =>
         current.filter(
           (link) =>
-            !(
-              link.doctor_id === doctorId &&
-              link.clinic_id === clinicId
-            )
+            !(link.doctor_id === doctorId && link.clinic_id === clinicId)
         )
       );
-
-      setSuccess(result.message ?? "Asocierea a fost eliminată.");
+      setSuccess(
+        getPlatformClinicApiMessage(
+          locale,
+          result.code,
+          result.message ?? copy.inline.removed
+        )
+      );
     } catch (removeError) {
       setError(
         removeError instanceof Error
           ? removeError.message
-          : "Asocierea nu a putut fi eliminată."
+          : copy.inline.removeFailed
       );
     } finally {
       setRemovingClinicId(null);
@@ -275,102 +271,95 @@ export default function AdminDoctorClinicsInline({ doctorId }: Props) {
   }
 
   return (
-    <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-5">
-      <h3 className="font-semibold text-gray-900">
-        Clinici asociate
-      </h3>
-
-      <p className="mt-2 text-sm leading-6 text-gray-600">
-        Adaugă sau elimină clinicile acestui medic. Sunt disponibile numai clinicile aprobate.
+    <div className="mt-[21px] rounded-xl border border-gray-200 bg-gray-50 p-[21px]">
+      <h3 className="font-semibold text-gray-900">{copy.inline.title}</h3>
+      <p className="mt-[8px] text-sm leading-6 text-gray-600">
+        {copy.inline.description}
       </p>
 
       {error ? (
-        <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="mt-[13px] rounded-lg border border-red-200 bg-red-50 px-[13px] py-[8px] text-sm text-red-700">
           {error}
         </p>
       ) : null}
-
+      {adminOnly ? (
+        <p className="mt-[13px] rounded-lg border border-blue-200 bg-blue-50 px-[13px] py-[8px] text-sm text-blue-800">
+          {copy.inline.adminOnly}
+        </p>
+      ) : null}
       {success ? (
-        <p className="mt-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+        <p className="mt-[13px] rounded-lg border border-green-200 bg-green-50 px-[13px] py-[8px] text-sm text-green-800">
           {success}
         </p>
       ) : null}
 
-      {isLoading ? (
-        <p className="mt-4 text-sm text-gray-600">
-          Se încarcă clinicile...
-        </p>
+      {adminOnly ? null : isLoading ? (
+        <p className="mt-[13px] text-sm text-gray-600">{copy.inline.loading}</p>
       ) : (
         <>
-          <div className="mt-5 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+          <div className="mt-[21px] grid gap-[13px] md:grid-cols-[1fr_1fr_auto]">
             <input
               type="search"
               value={clinicSearch}
               onChange={(event) => setClinicSearch(event.target.value)}
-              className="romdoc-focus-ring rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm"
-              placeholder="Caută clinică, oraș sau adresă"
+              placeholder={copy.inline.search}
+              className="romdoc-focus-ring rounded-xl border border-gray-300 bg-white px-[13px] py-[13px] text-sm"
             />
-
             <select
               value={selectedClinicId}
               onChange={(event) => setSelectedClinicId(event.target.value)}
-              className="romdoc-focus-ring rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm"
+              className="romdoc-focus-ring rounded-xl border border-gray-300 bg-white px-[13px] py-[13px] text-sm"
             >
-              <option value="">Selectează clinica</option>
-
+              <option value="">{copy.inline.select}</option>
               {availableClinics.map((clinic) => (
                 <option key={clinic.id} value={clinic.id}>
-                  {getClinicName(clinic)} — {getCityName(clinic)}
+                  {clinicName(clinic)} — {cityName(clinic)}
                 </option>
               ))}
             </select>
-
             <Button
               type="button"
               size="sm"
               onClick={addClinic}
               disabled={isSaving || !selectedClinicId}
             >
-              {isSaving ? "Se adaugă..." : "Adaugă"}
+              {isSaving ? copy.inline.adding : copy.inline.add}
             </Button>
           </div>
 
-          <div className="mt-5 space-y-3">
+          <div className="mt-[21px] space-y-[13px]">
             {associatedClinics.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-gray-300 bg-white px-4 py-4 text-sm text-gray-600">
-                Medicul nu este asociat încă niciunei clinici.
+              <p className="rounded-lg border border-dashed border-gray-300 bg-white px-[13px] py-[13px] text-sm text-gray-600">
+                {copy.inline.empty}
               </p>
             ) : (
               associatedClinics.map((clinic) => (
                 <div
                   key={clinic.id}
-                  className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 sm:flex-row sm:items-start sm:justify-between"
+                  className="flex flex-col gap-[13px] rounded-lg border border-gray-200 bg-white p-[13px] sm:flex-row sm:items-start sm:justify-between"
                 >
                   <div>
                     <p className="font-semibold text-gray-900">
-                      {getClinicName(clinic)}
+                      {clinicName(clinic)}
                     </p>
-
-                    <p className="mt-1 text-sm text-gray-600">
-                      {getCityName(clinic)}
+                    <p className="mt-[5px] text-sm text-gray-600">
+                      {cityName(clinic)}
                     </p>
-
                     {clinic.formatted_address ? (
-                      <p className="mt-1 text-xs text-gray-500">
+                      <p className="mt-[5px] text-xs text-gray-500">
                         {clinic.formatted_address}
                       </p>
                     ) : null}
                   </div>
-
                   <button
                     type="button"
                     onClick={() => void removeClinic(clinic.id)}
                     disabled={removingClinicId === clinic.id}
-                    className="romdoc-focus-ring rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                    className="romdoc-focus-ring rounded-lg border border-red-200 px-[13px] py-[8px] text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
                   >
                     {removingClinicId === clinic.id
-                      ? "Se elimină..."
-                      : "Elimină"}
+                      ? copy.inline.removing
+                      : copy.inline.remove}
                   </button>
                 </div>
               ))

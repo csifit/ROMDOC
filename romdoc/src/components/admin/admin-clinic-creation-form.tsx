@@ -1,14 +1,21 @@
 "use client";
 
 import { type FormEvent, useCallback, useState, useTransition } from "react";
+import { useLocale } from "next-intl";
 
-import GooglePlaceAutocomplete from "@/components/clinic/google-place-autocomplete";
+import GooglePlaceAutocomplete, {
+  type GooglePlaceAutocompleteCopy,
+} from "@/components/clinic/google-place-autocomplete";
 import Button from "@/components/ui/button";
+import type { PlatformOperatorClinicApiPayload } from "@/lib/api/platform-operator-clinic-codes";
+import { normalizeAppLocale } from "@/lib/i18n/app-locale";
+import {
+  getPlatformClinicApiMessage,
+  getPlatformOperatorClinics,
+} from "@/lib/i18n/platform-operator-clinics";
 import type { GoogleClinicAddress } from "@/lib/locations/google-address";
 
-type CreateClinicResponse = {
-  message?: string;
-  error?: string;
+type CreateClinicResponse = PlatformOperatorClinicApiPayload & {
   clinic?: {
     id: string;
     slug: string;
@@ -20,9 +27,14 @@ type CreateClinicResponse = {
 };
 
 export default function AdminClinicCreationForm() {
+  const locale = normalizeAppLocale(useLocale());
+  const copy = getPlatformOperatorClinics(locale);
+  const googleCopy = copy.google as GooglePlaceAutocompleteCopy;
+
   const [isSubmitting, startTransition] = useTransition();
   const [name, setName] = useState("");
-  const [selectedAddress, setSelectedAddress] = useState<GoogleClinicAddress | null>(null);
+  const [selectedAddress, setSelectedAddress] =
+    useState<GoogleClinicAddress | null>(null);
   const [addressLine2, setAddressLine2] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -54,12 +66,12 @@ export default function AdminClinicCreationForm() {
     setCreatedClinicSlug(null);
 
     if (name.trim().length < 2) {
-      setError("Introdu numele clinicii.");
+      setError(copy.creation.messages.nameRequired);
       return;
     }
 
     if (!selectedAddress) {
-      setError("Selectează adresa clinicii din lista Google.");
+      setError(copy.creation.messages.addressRequired);
       return;
     }
 
@@ -78,39 +90,55 @@ export default function AdminClinicCreationForm() {
             description: description.trim(),
           }),
         });
-
         const result = (await response.json()) as CreateClinicResponse;
+
         if (!response.ok) {
-          throw new Error(result.error ?? "Clinica nu a putut fi creată.");
+          throw new Error(
+            getPlatformClinicApiMessage(
+              locale,
+              result.code,
+              result.error ?? copy.creation.messages.failed
+            )
+          );
         }
 
-        setSuccess(result.message ?? "Clinica a fost creată și aprobată.");
+        setSuccess(
+          getPlatformClinicApiMessage(
+            locale,
+            result.code,
+            result.message ?? copy.creation.messages.success
+          )
+        );
         setCreatedClinicSlug(result.clinic?.slug ?? null);
         resetForm();
       } catch (submitError) {
         setError(
           submitError instanceof Error
             ? submitError.message
-            : "Clinica nu a putut fi creată."
+            : copy.creation.messages.failed
         );
       }
     });
   }
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+    <section className="rounded-2xl border border-gray-200 bg-white p-[21px] shadow-sm sm:p-[34px]">
       <div>
-        <p className="text-sm font-semibold text-[#9A4F35]">Creare directă</p>
-        <h2 className="mt-2 text-2xl font-bold text-gray-900">Adaugă o clinică</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Clinica creată de administrator este aprobată imediat și devine disponibilă ca entitate comună RomDoc. Nu este asociată automat unui medic.
+        <p className="text-sm font-semibold text-[#9A4F35]">
+          {copy.creation.eyebrow}
+        </p>
+        <h2 className="mt-[8px] text-2xl font-bold text-gray-900">
+          {copy.creation.title}
+        </h2>
+        <p className="mt-[13px] max-w-3xl text-sm leading-6 text-gray-600">
+          {copy.creation.description}
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="mt-7 grid gap-5 lg:grid-cols-2">
+      <form onSubmit={handleSubmit} className="mt-[21px] grid gap-[21px] lg:grid-cols-2">
         <div className="lg:col-span-2">
           <label htmlFor="admin-clinic-name" className="text-sm font-medium text-gray-900">
-            Numele clinicii
+            {copy.creation.fields.name}
           </label>
           <input
             id="admin-clinic-name"
@@ -119,30 +147,37 @@ export default function AdminClinicCreationForm() {
             maxLength={200}
             value={name}
             onChange={(event) => setName(event.target.value)}
-            className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-950"
-            placeholder="Exemplu: Clinica Medicală Central"
+            placeholder={copy.creation.placeholders.name}
+            className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 px-[13px] py-[13px] text-gray-950"
           />
         </div>
 
         <div className="lg:col-span-2">
-          <p className="text-sm font-medium text-gray-900">Adresa verificată prin Google</p>
-          <div className="mt-2">
+          <p className="text-sm font-medium text-gray-900">
+            {copy.creation.fields.address}
+          </p>
+          <div className="mt-[8px]">
             <GooglePlaceAutocomplete
               onAddressSelected={handleAddressSelected}
               disabled={isSubmitting}
+              locale={locale}
+              copy={googleCopy}
             />
           </div>
           {selectedAddress ? (
-            <div className="mt-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-              <p className="font-semibold">Adresă selectată</p>
-              <p className="mt-1">{selectedAddress.formattedAddress}</p>
+            <div className="mt-[13px] rounded-xl border border-green-200 bg-green-50 px-[13px] py-[13px] text-sm text-green-800">
+              <p className="font-semibold">{copy.common.selectedAddress}</p>
+              <p className="mt-[5px]">{selectedAddress.formattedAddress}</p>
             </div>
           ) : null}
         </div>
 
         <div className="lg:col-span-2">
-          <label htmlFor="admin-clinic-address-line-2" className="text-sm font-medium text-gray-900">
-            Detalii suplimentare adresă
+          <label
+            htmlFor="admin-clinic-address-line-2"
+            className="text-sm font-medium text-gray-900"
+          >
+            {copy.creation.fields.addressLine2}
           </label>
           <input
             id="admin-clinic-address-line-2"
@@ -150,87 +185,108 @@ export default function AdminClinicCreationForm() {
             maxLength={300}
             value={addressLine2}
             onChange={(event) => setAddressLine2(event.target.value)}
-            className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-950"
-            placeholder="Etaj, cabinet, corp de clădire"
+            placeholder={copy.creation.placeholders.addressLine2}
+            className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 px-[13px] py-[13px] text-gray-950"
           />
         </div>
 
         <div>
-          <label htmlFor="admin-clinic-phone" className="text-sm font-medium text-gray-900">Telefon</label>
+          <label htmlFor="admin-clinic-phone" className="text-sm font-medium text-gray-900">
+            {copy.creation.fields.phone}
+          </label>
           <input
             id="admin-clinic-phone"
             type="tel"
             maxLength={50}
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
-            className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-950"
+            className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 px-[13px] py-[13px] text-gray-950"
           />
         </div>
 
         <div>
-          <label htmlFor="admin-clinic-email" className="text-sm font-medium text-gray-900">E-mail</label>
+          <label htmlFor="admin-clinic-email" className="text-sm font-medium text-gray-900">
+            {copy.creation.fields.email}
+          </label>
           <input
             id="admin-clinic-email"
             type="email"
             maxLength={320}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-950"
+            className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 px-[13px] py-[13px] text-gray-950"
           />
         </div>
 
         <div className="lg:col-span-2">
-          <label htmlFor="admin-clinic-website" className="text-sm font-medium text-gray-900">Website</label>
+          <label htmlFor="admin-clinic-website" className="text-sm font-medium text-gray-900">
+            {copy.creation.fields.website}
+          </label>
           <input
             id="admin-clinic-website"
             type="url"
             maxLength={500}
             value={website}
             onChange={(event) => setWebsite(event.target.value)}
-            className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-950"
-            placeholder="https://"
+            placeholder={copy.creation.placeholders.website}
+            className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 px-[13px] py-[13px] text-gray-950"
           />
         </div>
 
         <div className="lg:col-span-2">
-          <label htmlFor="admin-clinic-description" className="text-sm font-medium text-gray-900">Descriere</label>
+          <label
+            htmlFor="admin-clinic-description"
+            className="text-sm font-medium text-gray-900"
+          >
+            {copy.creation.fields.description}
+          </label>
           <textarea
             id="admin-clinic-description"
             rows={5}
             maxLength={3000}
             value={description}
             onChange={(event) => setDescription(event.target.value)}
-            className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-950"
+            className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 px-[13px] py-[13px] text-gray-950"
           />
         </div>
 
         {error ? (
-          <p role="alert" className="lg:col-span-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <p
+            role="alert"
+            className="lg:col-span-2 rounded-xl border border-red-200 bg-red-50 px-[13px] py-[13px] text-sm text-red-700"
+          >
             {error}
           </p>
         ) : null}
 
         {success ? (
-          <div role="status" className="lg:col-span-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+          <div
+            role="status"
+            className="lg:col-span-2 rounded-xl border border-green-200 bg-green-50 px-[13px] py-[13px] text-sm text-green-800"
+          >
             <p className="font-semibold">{success}</p>
             {createdClinicSlug ? (
-              <p className="mt-1">Slug: <code>{createdClinicSlug}</code></p>
+              <p className="mt-[5px]">
+                Slug: <code>{createdClinicSlug}</code>
+              </p>
             ) : null}
-            <p className="mt-2">Clinica apare în fila „Aprobate” din lista de mai jos.</p>
+            <p className="mt-[8px]">{copy.creation.messages.successDetail}</p>
           </div>
         ) : null}
 
-        <div className="lg:col-span-2 flex flex-wrap gap-3">
+        <div className="lg:col-span-2 flex flex-wrap gap-[13px]">
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Se creează..." : "Creează și aprobă clinica"}
+            {isSubmitting
+              ? copy.creation.actions.creating
+              : copy.creation.actions.create}
           </Button>
           <button
             type="button"
             onClick={resetForm}
             disabled={isSubmitting}
-            className="romdoc-focus-ring rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="romdoc-focus-ring rounded-xl border border-gray-300 bg-white px-[21px] py-[13px] text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Golește formularul
+            {copy.creation.actions.clear}
           </button>
         </div>
       </form>

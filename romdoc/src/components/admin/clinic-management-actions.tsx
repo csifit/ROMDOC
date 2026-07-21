@@ -1,13 +1,20 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocale } from "next-intl";
 
 import Button from "@/components/ui/button";
+import type { PlatformOperatorClinicApiPayload } from "@/lib/api/platform-operator-clinic-codes";
+import {
+  normalizeAppLocale,
+  selectTranslation,
+} from "@/lib/i18n/app-locale";
+import {
+  getPlatformClinicApiMessage,
+  getPlatformOperatorClinics,
+  interpolatePlatformClinicCopy,
+  PLATFORM_OPERATOR_CLINIC_LOCALE_TAGS,
+} from "@/lib/i18n/platform-operator-clinics";
 
 type ClinicTranslation = {
   locale: string;
@@ -23,9 +30,7 @@ type CityTranslation = {
 type CityRelation = {
   id: string;
   slug: string;
-  city_translations:
-    | CityTranslation[]
-    | null;
+  city_translations: CityTranslation[] | null;
 };
 
 type ClinicProposer = {
@@ -39,7 +44,7 @@ type ClinicProposer = {
 type Clinic = {
   id: string;
   slug: string;
-  status: string;
+  status: ClinicStatus;
   email: string | null;
   phone: string | null;
   website: string | null;
@@ -62,16 +67,9 @@ type Clinic = {
   blocked_reason: string | null;
   created_at: string;
   updated_at: string;
-  clinic_translations:
-    | ClinicTranslation[]
-    | null;
-  cities:
-    | CityRelation
-    | CityRelation[]
-    | null;
-  proposer:
-    | ClinicProposer
-    | null;
+  clinic_translations: ClinicTranslation[] | null;
+  cities: CityRelation | CityRelation[] | null;
+  proposer: ClinicProposer | null;
 };
 
 type ClinicCapabilities = {
@@ -80,468 +78,258 @@ type ClinicCapabilities = {
   canBlockClinics: boolean;
 };
 
-type ClinicsResponse = {
+type StatusCounts = Record<ClinicStatus, number>;
+
+type ClinicsResponse = PlatformOperatorClinicApiPayload & {
   clinics?: Clinic[];
-  capabilities?:
-    Partial<ClinicCapabilities>;
-  message?: string;
-  error?: string;
+  capabilities?: Partial<ClinicCapabilities>;
+  statusCounts?: Partial<StatusCounts>;
 };
 
-type ClinicStatus =
-  | "pending"
-  | "approved"
-  | "rejected"
-  | "blocked";
+type ClinicStatus = "pending" | "approved" | "rejected" | "blocked";
+type ClinicAction = "approve" | "reject" | "block" | "unblock";
 
-type ClinicAction =
-  | "approve"
-  | "reject"
-  | "block"
-  | "unblock";
+const EMPTY_COUNTS: StatusCounts = {
+  pending: 0,
+  approved: 0,
+  rejected: 0,
+  blocked: 0,
+};
 
-function getFirstRelation<T>(
-  relation:
-    | T
-    | T[]
-    | null
-    | undefined
-) {
-  if (!relation) {
-    return null;
-  }
-
-  if (Array.isArray(relation)) {
-    return relation[0] ?? null;
-  }
-
-  return relation;
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) return null;
+  return Array.isArray(value) ? value[0] ?? null : value;
 }
 
-function getClinicName(
-  clinic: Clinic
-) {
-  return (
-    clinic.clinic_translations
-      ?.find(
-        (translation) =>
-          translation.locale ===
-          "ro"
-      )?.name ??
-    clinic.clinic_translations?.[0]
-      ?.name ??
-    clinic.slug
-  );
-}
-
-function getClinicDescription(
-  clinic: Clinic
-) {
-  return (
-    clinic.clinic_translations
-      ?.find(
-        (translation) =>
-          translation.locale ===
-          "ro"
-      )?.description ??
-    clinic.clinic_translations?.[0]
-      ?.description ??
-    null
-  );
-}
-
-function getCityName(
-  clinic: Clinic
-) {
-  const city =
-    getFirstRelation(
-      clinic.cities
-    );
-
-  return (
-    city?.city_translations
-      ?.find(
-        (translation) =>
-          translation.locale ===
-          "ro"
-      )?.name ??
-    city?.city_translations?.[0]
-      ?.name ??
-    city?.slug ??
-    "Oraș necunoscut"
-  );
-}
-
-function getProposerName(
-  clinic: Clinic
-) {
-  const fullName = [
-    clinic.proposer?.first_name,
-    clinic.proposer?.last_name,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
-
-  if (fullName) {
-    return fullName;
-  }
-
-  if (
-    clinic.proposer
-      ?.doctor_slug
-  ) {
-    return clinic.proposer
-      .doctor_slug
-      .split("-")
-      .map(
-        (part) =>
-          part
-            .charAt(0)
-            .toUpperCase() +
-          part.slice(1)
-      )
-      .join(" ");
-  }
-
-  return "Medic necunoscut";
-}
-
-function getStatusLabel(
-  status: string
-) {
-  switch (status) {
-    case "approved":
-      return "Aprobată";
-
-    case "rejected":
-      return "Respinsă";
-
-    case "blocked":
-      return "Blocată";
-
-    default:
-      return "În așteptare";
-  }
-}
-
-function getStatusClasses(
-  status: string
-) {
+function statusClasses(status: ClinicStatus) {
   switch (status) {
     case "approved":
       return "bg-green-100 text-green-800";
-
     case "rejected":
       return "bg-red-100 text-red-800";
-
     case "blocked":
       return "bg-slate-200 text-slate-900";
-
     default:
       return "bg-amber-100 text-amber-900";
   }
 }
 
-function formatDate(
-  value: string | null
-) {
-  if (!value) {
-    return "—";
-  }
-
-  return new Intl.DateTimeFormat(
-    "ro-RO",
-    {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }
-  ).format(
-    new Date(value)
-  );
-}
-
-function normalizeForSearch(
-  value: string
-) {
+function normalizeSearch(value: string, localeTag: string) {
   return value
     .normalize("NFD")
-    .replace(
-      /[\u0300-\u036f]/g,
-      ""
-    )
-    .toLocaleLowerCase(
-      "ro-RO"
-    )
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase(localeTag)
     .trim();
 }
 
-const statusFilters = [
-  {
-    value:
-      "pending",
-    label:
-      "În așteptare",
-  },
-  {
-    value:
-      "approved",
-    label:
-      "Aprobate",
-  },
-  {
-    value:
-      "rejected",
-    label:
-      "Respinse",
-  },
-  {
-    value:
-      "blocked",
-    label:
-      "Blocate",
-  },
-] as const;
-
 export default function ClinicManagementActions() {
-  const [
-    selectedStatus,
-    setSelectedStatus,
-  ] =
-    useState<ClinicStatus>(
-      "pending"
-    );
+  const locale = normalizeAppLocale(useLocale());
+  const localeTag = PLATFORM_OPERATOR_CLINIC_LOCALE_TAGS[locale];
+  const copy = getPlatformOperatorClinics(locale);
 
-  const [
-    clinics,
-    setClinics,
-  ] =
-    useState<Clinic[]>([]);
+  const [selectedStatus, setSelectedStatus] =
+    useState<ClinicStatus>("pending");
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [statusCounts, setStatusCounts] = useState<StatusCounts>(EMPTY_COUNTS);
+  const [isLoading, setIsLoading] = useState(true);
+  const [actionClinicId, setActionClinicId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [cityFilter, setCityFilter] = useState("");
+  const [capabilities, setCapabilities] = useState<ClinicCapabilities>({
+    canManageClinics: true,
+    canDeleteClinics: false,
+    canBlockClinics: false,
+  });
 
-  const [
-    isLoading,
-    setIsLoading,
-  ] =
-    useState(true);
+  const statusFilters = useMemo(
+    () => [
+      { value: "pending" as const, label: copy.moderation.filters.pending },
+      { value: "approved" as const, label: copy.moderation.filters.approved },
+      { value: "rejected" as const, label: copy.moderation.filters.rejected },
+      { value: "blocked" as const, label: copy.moderation.filters.blocked },
+    ],
+    [copy]
+  );
 
-  const [
-    actionClinicId,
-    setActionClinicId,
-  ] =
-    useState<
-      string | null
-    >(null);
+  const getClinicName = useCallback(
+    (clinic: Clinic) =>
+      selectTranslation(clinic.clinic_translations, locale)?.name ??
+      clinic.slug,
+    [locale]
+  );
 
-  const [
-    error,
-    setError,
-  ] =
-    useState<
-      string | null
-    >(null);
+  const getClinicDescription = useCallback(
+    (clinic: Clinic) =>
+      selectTranslation(clinic.clinic_translations, locale)?.description ??
+      null,
+    [locale]
+  );
 
-  const [
-    success,
-    setSuccess,
-  ] =
-    useState<
-      string | null
-    >(null);
+  const getCityName = useCallback(
+    (clinic: Clinic) => {
+      const city = firstRelation(clinic.cities);
+      return (
+        selectTranslation(city?.city_translations, locale)?.name ??
+        city?.slug ??
+        copy.common.unknownCity
+      );
+    },
+    [copy.common.unknownCity, locale]
+  );
 
-  const [
-    nameFilter,
-    setNameFilter,
-  ] =
-    useState("");
+  const getProposerName = useCallback(
+    (clinic: Clinic) => {
+      const fullName = [
+        clinic.proposer?.first_name,
+        clinic.proposer?.last_name,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
 
-  const [
-    cityFilter,
-    setCityFilter,
-  ] =
-    useState("");
+      if (fullName) return fullName;
 
-  const [
-    capabilities,
-    setCapabilities,
-  ] =
-    useState<ClinicCapabilities>({
-      canManageClinics:
-        true,
-      canDeleteClinics:
-        false,
-      canBlockClinics:
-        false,
-    });
-
-  const loadClinics =
-    useCallback(async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        const query =
-          new URLSearchParams({
-            status:
-              selectedStatus,
-          });
-
-        const response =
-          await fetch(
-            `/api/admin/clinics?${query.toString()}`,
-            {
-              method: "GET",
-              cache: "no-store",
-            }
-          );
-
-        const result =
-          (await response.json()) as
-            ClinicsResponse;
-
-        if (!response.ok) {
-          throw new Error(
-            result.error ??
-              "Clinicile nu au putut fi încărcate."
-          );
-        }
-
-        setClinics(
-          result.clinics ??
-            []
-        );
-
-        setCapabilities({
-          canManageClinics:
-            result.capabilities
-              ?.canManageClinics ??
-            true,
-
-          canDeleteClinics:
-            result.capabilities
-              ?.canDeleteClinics ??
-            false,
-
-          canBlockClinics:
-            result.capabilities
-              ?.canBlockClinics ??
-            false,
-        });
-      } catch (loadError) {
-        setError(
-          loadError instanceof
-            Error
-            ? loadError.message
-            : "Clinicile nu au putut fi încărcate."
-        );
-
-        setClinics([]);
-      } finally {
-        setIsLoading(false);
+      if (clinic.proposer?.doctor_slug) {
+        return clinic.proposer.doctor_slug
+          .split("-")
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(" ");
       }
-    }, [selectedStatus]);
+
+      return copy.common.unknownDoctor;
+    },
+    [copy.common.unknownDoctor]
+  );
+
+  const getStatusLabel = useCallback(
+    (status: ClinicStatus) => {
+      switch (status) {
+        case "approved":
+          return copy.common.statusApproved;
+        case "rejected":
+          return copy.common.statusRejected;
+        case "blocked":
+          return copy.common.statusBlocked;
+        default:
+          return copy.common.statusPending;
+      }
+    },
+    [copy]
+  );
+
+  const formatDate = useCallback(
+    (value: string | null) => {
+      if (!value) return copy.common.none;
+      return new Intl.DateTimeFormat(localeTag, {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "Europe/Bucharest",
+      }).format(new Date(value));
+    },
+    [copy.common.none, localeTag]
+  );
+
+  const loadClinics = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const query = new URLSearchParams({ status: selectedStatus });
+      const response = await fetch(`/api/admin/clinics?${query.toString()}`, {
+        method: "GET",
+        cache: "no-store",
+      });
+      const result = (await response.json()) as ClinicsResponse;
+
+      if (!response.ok) {
+        throw new Error(
+          getPlatformClinicApiMessage(
+            locale,
+            result.code,
+            result.error ?? copy.moderation.states.loadFailed
+          )
+        );
+      }
+
+      setClinics(result.clinics ?? []);
+      setStatusCounts({
+        pending: result.statusCounts?.pending ?? 0,
+        approved: result.statusCounts?.approved ?? 0,
+        rejected: result.statusCounts?.rejected ?? 0,
+        blocked: result.statusCounts?.blocked ?? 0,
+      });
+      setCapabilities({
+        canManageClinics: result.capabilities?.canManageClinics ?? true,
+        canDeleteClinics: result.capabilities?.canDeleteClinics ?? false,
+        canBlockClinics: result.capabilities?.canBlockClinics ?? false,
+      });
+    } catch (loadError) {
+      setClinics([]);
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : copy.moderation.states.loadFailed
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [copy.moderation.states.loadFailed, locale, selectedStatus]);
 
   useEffect(() => {
     void loadClinics();
   }, [loadClinics]);
 
   useEffect(() => {
-    if (
-      selectedStatus !==
-      "approved"
-    ) {
-      setNameFilter("");
-      setCityFilter("");
-    }
+    setSearch("");
+    setCityFilter("");
   }, [selectedStatus]);
 
-  const cityOptions =
-    useMemo(() => {
-      const uniqueCities =
-        new Set(
-          clinics.map(
-            (clinic) =>
-              getCityName(
-                clinic
-              )
-          )
-        );
+  const cityOptions = useMemo(() => {
+    const values = Array.from(new Set(clinics.map(getCityName)));
+    return values.sort((a, b) => a.localeCompare(b, localeTag));
+  }, [clinics, getCityName, localeTag]);
 
-      return Array.from(
-        uniqueCities
-      ).sort(
-        (first, second) =>
-          first.localeCompare(
-            second,
-            "ro"
-          )
-      );
-    }, [clinics]);
+  const visibleClinics = useMemo(() => {
+    const query = normalizeSearch(search, localeTag);
 
-  const visibleClinics =
-    useMemo(() => {
-      if (
-        selectedStatus !==
-        "approved"
-      ) {
-        return clinics;
-      }
+    return clinics.filter((clinic) => {
+      if (cityFilter && getCityName(clinic) !== cityFilter) return false;
+      if (!query) return true;
 
-      const normalizedName =
-        normalizeForSearch(
-          nameFilter
-        );
+      const haystack = [
+        getClinicName(clinic),
+        getCityName(clinic),
+        getProposerName(clinic),
+        clinic.formatted_address,
+        clinic.street_address,
+        clinic.email,
+        clinic.phone,
+        clinic.slug,
+      ]
+        .filter(Boolean)
+        .join(" ");
 
-      return clinics.filter(
-        (clinic) => {
-          const nameMatches =
-            !normalizedName ||
-            normalizeForSearch(
-              getClinicName(
-                clinic
-              )
-            ).includes(
-              normalizedName
-            );
+      return normalizeSearch(haystack, localeTag).includes(query);
+    });
+  }, [
+    cityFilter,
+    clinics,
+    getCityName,
+    getClinicName,
+    getProposerName,
+    localeTag,
+    search,
+  ]);
 
-          const cityMatches =
-            !cityFilter ||
-            getCityName(
-              clinic
-            ) === cityFilter;
+  const totalClinics = Object.values(statusCounts).reduce(
+    (total, count) => total + count,
+    0
+  );
+  const filtersActive = Boolean(search.trim() || cityFilter);
 
-          return (
-            nameMatches &&
-            cityMatches
-          );
-        }
-      );
-    }, [
-      cityFilter,
-      clinics,
-      nameFilter,
-      selectedStatus,
-    ]);
-
-  const hasApprovedFilters =
-    selectedStatus ===
-      "approved" &&
-    Boolean(
-      nameFilter.trim() ||
-      cityFilter
-    );
-
-  function resetApprovedFilters() {
-    setNameFilter("");
-    setCityFilter("");
-  }
-
-  async function updateClinic(
-    clinicId: string,
-    action: ClinicAction
-  ) {
+  async function updateClinic(clinic: Clinic, action: ClinicAction) {
     setError(null);
     setSuccess(null);
 
@@ -549,667 +337,423 @@ export default function ClinicManagementActions() {
     let blockReason = "";
 
     if (action === "reject") {
-      const enteredReason =
-        window.prompt(
-          "Introdu motivul respingerii:"
-        );
-
-      if (
-        !enteredReason ||
-        enteredReason.trim()
-          .length < 3
-      ) {
-        return;
-      }
-
-      rejectionReason =
-        enteredReason.trim();
+      const enteredReason = window.prompt(copy.moderation.prompts.reject);
+      if (!enteredReason || enteredReason.trim().length < 3) return;
+      rejectionReason = enteredReason.trim();
     }
 
     if (action === "block") {
-      const enteredReason =
-        window.prompt(
-          "Introdu motivul blocării clinicii:"
-        );
-
-      if (
-        !enteredReason ||
-        enteredReason.trim()
-          .length < 3
-      ) {
-        return;
-      }
-
-      const confirmed =
-        window.confirm(
-          "Blochezi această clinică? Nu va mai apărea în zonele publice RomDoc."
-        );
-
-      if (!confirmed) {
-        return;
-      }
-
-      blockReason =
-        enteredReason.trim();
+      const enteredReason = window.prompt(copy.moderation.prompts.block);
+      if (!enteredReason || enteredReason.trim().length < 3) return;
+      if (!window.confirm(copy.moderation.confirmations.block)) return;
+      blockReason = enteredReason.trim();
     }
 
     if (
-      action === "approve"
+      action === "approve" &&
+      !window.confirm(copy.moderation.confirmations.approve)
     ) {
-      const confirmed =
-        window.confirm(
-          "Aprobi această clinică și o asociezi medicului care a propus-o?"
-        );
-
-      if (!confirmed) {
-        return;
-      }
+      return;
     }
 
     if (
-      action === "unblock"
+      action === "unblock" &&
+      !window.confirm(copy.moderation.confirmations.unblock)
     ) {
-      const confirmed =
-        window.confirm(
-          "Reactivezi această clinică? Va reveni la statutul Aprobată."
-        );
-
-      if (!confirmed) {
-        return;
-      }
+      return;
     }
 
-    setActionClinicId(
-      clinicId
-    );
+    setActionClinicId(clinic.id);
 
     try {
-      const response =
-        await fetch(
-          "/api/admin/clinics",
-          {
-            method: "PATCH",
-
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-
-            body:
-              JSON.stringify({
-                clinicId,
-                action,
-                rejectionReason,
-                blockReason,
-              }),
-          }
-        );
-
-      const result =
-        (await response.json()) as
-          ClinicsResponse;
+      const response = await fetch("/api/admin/clinics", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clinicId: clinic.id,
+          action,
+          rejectionReason,
+          blockReason,
+        }),
+      });
+      const result = (await response.json()) as ClinicsResponse;
 
       if (!response.ok) {
         throw new Error(
-          result.error ??
-            "Clinica nu a putut fi actualizată."
+          getPlatformClinicApiMessage(
+            locale,
+            result.code,
+            result.error ?? copy.moderation.states.updateFailed
+          )
         );
       }
 
       setSuccess(
-        result.message ??
-          "Clinica a fost actualizată."
+        getPlatformClinicApiMessage(
+          locale,
+          result.code,
+          result.message ?? copy.moderation.states.updateFailed
+        )
       );
-
       await loadClinics();
     } catch (actionError) {
       setError(
-        actionError instanceof
-          Error
+        actionError instanceof Error
           ? actionError.message
-          : "Clinica nu a putut fi actualizată."
+          : copy.moderation.states.updateFailed
       );
     } finally {
-      setActionClinicId(
-        null
-      );
+      setActionClinicId(null);
     }
   }
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="flex flex-wrap gap-3">
-          {statusFilters.map(
-            (filter) => (
-              <button
-                key={
-                  filter.value
-                }
-                type="button"
-                onClick={() =>
-                  setSelectedStatus(
-                    filter.value
-                  )
-                }
-                className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                  selectedStatus ===
-                  filter.value
-                    ? "bg-[#D97757] text-white"
-                    : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                {filter.label}
-              </button>
-            )
-          )}
-        </div>
-
-        {selectedStatus ===
-          "approved" && (
-          <div className="mt-5 grid gap-3 border-t border-gray-200 pt-5 md:grid-cols-[minmax(0,1fr)_minmax(13rem,18rem)_auto] md:items-end">
-            <label className="block">
-              <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Numele clinicii
-              </span>
-
-              <input
-                type="search"
-                value={
-                  nameFilter
-                }
-                onChange={(
-                  event
-                ) =>
-                  setNameFilter(
-                    event.target
-                      .value
-                  )
-                }
-                placeholder="Caută după nume"
-                className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900"
-              />
-            </label>
-
-            <label className="block">
-              <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Oraș
-              </span>
-
-              <select
-                value={
-                  cityFilter
-                }
-                onChange={(
-                  event
-                ) =>
-                  setCityFilter(
-                    event.target
-                      .value
-                  )
-                }
-                className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900"
-              >
-                <option value="">
-                  Toate orașele
-                </option>
-
-                {cityOptions.map(
-                  (city) => (
-                    <option
-                      key={city}
-                      value={city}
-                    >
-                      {city}
-                    </option>
-                  )
-                )}
-              </select>
-            </label>
-
-            <button
-              type="button"
-              onClick={
-                resetApprovedFilters
-              }
-              disabled={
-                !hasApprovedFilters
-              }
-              className="romdoc-focus-ring min-h-11 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Resetează
-            </button>
-          </div>
-        )}
-
-        <p className="mt-4 text-sm text-gray-500">
-          {isLoading
-            ? "Se încarcă..."
-            : `${visibleClinics.length} ${
-                visibleClinics.length ===
-                1
-                  ? "clinică"
-                  : "clinici"
-              } afișate`}
-        </p>
-      </section>
-
-      {error && (
-        <div
-          role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
-        >
-          {error}
-        </div>
-      )}
-
-      {success && (
-        <div
-          role="status"
-          className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800"
-        >
-          {success}
-        </div>
-      )}
-
-      {isLoading ? (
-        <section className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-          <p className="text-sm text-gray-600">
-            Se încarcă clinicile...
-          </p>
-        </section>
-      ) : clinics.length ===
-        0 ? (
-        <section className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-          <p className="text-sm text-gray-600">
-            Nu există clinici în această categorie.
-          </p>
-        </section>
-      ) : visibleClinics.length ===
-        0 ? (
-        <section className="rounded-2xl border border-dashed border-gray-300 bg-white p-8 text-center shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Nu am găsit clinici
+    <section className="space-y-[21px]">
+      <div className="rounded-2xl border border-gray-200 bg-white p-[21px] shadow-sm">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">
+            {copy.moderation.title}
           </h2>
-
-          <p className="mt-2 text-sm text-gray-600">
-            Modifică numele căutat sau selectează alt oraș.
+          <p className="mt-[8px] max-w-3xl text-sm leading-6 text-gray-600">
+            {copy.moderation.description}
           </p>
+        </div>
+
+        <div className="mt-[21px] grid gap-[13px] sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            [copy.moderation.metrics.total, totalClinics],
+            [copy.moderation.metrics.pending, statusCounts.pending],
+            [copy.moderation.metrics.approved, statusCounts.approved],
+            [copy.moderation.metrics.blocked, statusCounts.blocked],
+          ].map(([label, value]) => (
+            <div
+              key={String(label)}
+              className="rounded-2xl border border-gray-200 bg-[#F0EEE9] p-[13px]"
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {label}
+              </p>
+              <p className="mt-[8px] text-2xl font-bold text-gray-900">
+                {value}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-[21px] flex flex-wrap gap-[8px] border-t border-gray-200 pt-[21px]">
+          {statusFilters.map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              onClick={() => setSelectedStatus(filter.value)}
+              className={`romdoc-focus-ring rounded-xl px-[13px] py-[8px] text-sm font-semibold transition ${
+                selectedStatus === filter.value
+                  ? "bg-[#D97757] text-white"
+                  : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              {filter.label} ({statusCounts[filter.value]})
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-[21px] grid gap-[13px] md:grid-cols-[minmax(0,1fr)_minmax(13rem,18rem)_auto] md:items-end">
+          <label>
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              {copy.moderation.filters.search}
+            </span>
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={copy.moderation.filters.searchPlaceholder}
+              className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 bg-white px-[13px] py-[8px] text-sm text-gray-900"
+            />
+          </label>
+
+          <label>
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              {copy.moderation.filters.city}
+            </span>
+            <select
+              value={cityFilter}
+              onChange={(event) => setCityFilter(event.target.value)}
+              className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 bg-white px-[13px] py-[8px] text-sm text-gray-900"
+            >
+              <option value="">{copy.moderation.filters.allCities}</option>
+              {cityOptions.map((city) => (
+                <option key={city} value={city}>
+                  {city}
+                </option>
+              ))}
+            </select>
+          </label>
 
           <button
             type="button"
-            onClick={
-              resetApprovedFilters
-            }
-            className="romdoc-focus-ring mt-4 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            disabled={!filtersActive}
+            onClick={() => {
+              setSearch("");
+              setCityFilter("");
+            }}
+            className="romdoc-focus-ring min-h-[42px] rounded-xl border border-gray-300 bg-white px-[13px] py-[8px] text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Șterge filtrele
+            {copy.common.reset}
           </button>
-        </section>
+        </div>
+
+        <p className="mt-[13px] text-sm text-gray-500">
+          {isLoading
+            ? copy.common.loading
+            : interpolatePlatformClinicCopy(copy.common.showing, {
+                filtered: visibleClinics.length,
+                total: clinics.length,
+              })}
+        </p>
+      </div>
+
+      {error ? (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 p-[13px] text-sm text-red-800"
+        >
+          {error}
+        </div>
+      ) : null}
+
+      {success ? (
+        <div
+          role="status"
+          className="rounded-xl border border-green-200 bg-green-50 p-[13px] text-sm text-green-800"
+        >
+          {success}
+        </div>
+      ) : null}
+
+      {isLoading ? (
+        <div className="rounded-2xl border border-gray-200 bg-white p-[34px] text-sm text-gray-600 shadow-sm">
+          {copy.moderation.states.loading}
+        </div>
+      ) : clinics.length === 0 ? (
+        <div className="rounded-2xl border border-gray-200 bg-white p-[34px] text-sm text-gray-600 shadow-sm">
+          {copy.moderation.states.empty}
+        </div>
+      ) : visibleClinics.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-[34px] text-center shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-900">
+            {copy.moderation.states.noResultsTitle}
+          </h3>
+          <p className="mt-[8px] text-sm text-gray-600">
+            {copy.moderation.states.noResultsDescription}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setSearch("");
+              setCityFilter("");
+            }}
+            className="romdoc-focus-ring mt-[13px] rounded-xl border border-gray-300 bg-white px-[13px] py-[8px] text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            {copy.common.clearFilters}
+          </button>
+        </div>
       ) : (
-        <div className="space-y-4">
-          {visibleClinics.map(
-            (clinic) => {
-              const description =
-                getClinicDescription(
-                  clinic
-                );
+        <div className="space-y-[13px]">
+          {visibleClinics.map((clinic) => {
+            const clinicName = getClinicName(clinic);
+            const cityName = getCityName(clinic);
+            const description = getClinicDescription(clinic);
+            const isUpdating = actionClinicId === clinic.id;
 
-              const clinicName =
-                getClinicName(
-                  clinic
-                );
+            return (
+              <details
+                key={clinic.id}
+                className="group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
+              >
+                <summary className="romdoc-focus-ring flex cursor-pointer list-none items-center justify-between gap-[13px] px-[21px] py-[13px] transition hover:bg-gray-50 [&::-webkit-details-marker]:hidden">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-[8px]">
+                      <h3 className="truncate text-lg font-bold text-gray-900">
+                        {clinicName}
+                      </h3>
+                      <span
+                        className={`rounded-full px-[8px] py-[5px] text-xs font-semibold ${statusClasses(
+                          clinic.status
+                        )}`}
+                      >
+                        {getStatusLabel(clinic.status)}
+                      </span>
+                    </div>
+                    <p className="mt-[5px] truncate text-sm text-gray-600">
+                      {cityName} · {clinic.formatted_address ?? clinic.street_address ?? copy.common.addressUnavailable}
+                    </p>
+                  </div>
+                  <span
+                    aria-hidden="true"
+                    className="text-xl text-gray-500 transition-transform group-open:rotate-180"
+                  >
+                    ⌄
+                  </span>
+                </summary>
 
-              const cityName =
-                getCityName(
-                  clinic
-                );
-
-              const isUpdating =
-                actionClinicId ===
-                clinic.id;
-
-              return (
-                <details
-                  key={clinic.id}
-                  className="group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
-                >
-                  <summary className="romdoc-focus-ring flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 transition hover:bg-gray-50 sm:px-6 [&::-webkit-details-marker]:hidden">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="truncate text-base font-bold text-gray-900 sm:text-lg">
-                          {
-                            clinicName
-                          }
-                        </h2>
-
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClasses(
-                            clinic.status
-                          )}`}
-                        >
-                          {getStatusLabel(
-                            clinic.status
-                          )}
+                <div className="border-t border-gray-200 px-[21px] py-[21px]">
+                  <div className="flex flex-wrap items-start justify-between gap-[13px]">
+                    <div>
+                      <p className="text-sm text-gray-600">
+                        {copy.moderation.labels.proposer}{" "}
+                        <span className="font-semibold text-gray-900">
+                          {getProposerName(clinic)}
                         </span>
-                      </div>
-
-                      <p className="mt-1 truncate text-sm text-gray-600">
-                        {cityName}
-                        {" · "}
-                        {clinic.formatted_address ??
-                          clinic.street_address ??
-                          "Adresă indisponibilă"}
+                      </p>
+                      <p className="mt-[5px] text-xs text-gray-500">
+                        {interpolatePlatformClinicCopy(copy.common.submittedAt, {
+                          date: formatDate(clinic.created_at),
+                        })}
                       </p>
                     </div>
 
-                    <svg
-                      viewBox="0 0 20 20"
-                      fill="none"
-                      aria-hidden="true"
-                      className="h-5 w-5 shrink-0 text-gray-500 transition-transform group-open:rotate-180"
-                    >
-                      <path
-                        d="m5 7.5 5 5 5-5"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </summary>
+                    {clinic.approved_at ? (
+                      <p className="text-xs text-gray-500">
+                        {interpolatePlatformClinicCopy(copy.common.approvedAt, {
+                          date: formatDate(clinic.approved_at),
+                        })}
+                      </p>
+                    ) : null}
+                  </div>
 
-                  <div className="border-t border-gray-200 px-5 py-5 sm:px-6">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div>
-                        <p className="text-sm text-gray-600">
-                          Propusă de{" "}
-                          <span className="font-semibold text-gray-900">
-                            {getProposerName(
-                              clinic
-                            )}
-                          </span>
-                        </p>
-
-                        <p className="mt-1 text-xs text-gray-500">
-                          Trimisă la{" "}
-                          {formatDate(
-                            clinic.created_at
-                          )}
-                        </p>
-                      </div>
-
-                      {clinic.status ===
-                        "approved" &&
-                        clinic.approved_at && (
-                        <p className="text-xs text-gray-500">
-                          Aprobată la{" "}
-                          {formatDate(
-                            clinic.approved_at
-                          )}
-                        </p>
-                      )}
-                    </div>
-
-                    <dl className="mt-6 grid gap-5 text-sm sm:grid-cols-2 lg:grid-cols-3">
-                      <div className="sm:col-span-2">
-                        <dt className="font-semibold text-gray-500">
-                          Adresă verificată
+                  <dl className="mt-[21px] grid gap-[13px] text-sm sm:grid-cols-2 lg:grid-cols-3">
+                    {[
+                      [copy.moderation.labels.verifiedAddress, clinic.formatted_address ?? clinic.street_address ?? copy.common.addressUnavailable],
+                      [copy.moderation.labels.internalCity, cityName],
+                      [copy.moderation.labels.county, clinic.county_name ?? copy.common.none],
+                      [copy.moderation.labels.postalCode, clinic.postal_code ?? copy.common.none],
+                      [copy.moderation.labels.phone, clinic.phone ?? copy.common.none],
+                      [copy.moderation.labels.email, clinic.email ?? copy.common.none],
+                      [copy.moderation.labels.addressVerifiedAt, formatDate(clinic.address_verified_at)],
+                    ].map(([label, value]) => (
+                      <div key={String(label)} className="rounded-xl bg-gray-50 p-[13px]">
+                        <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          {label}
                         </dt>
-
-                        <dd className="mt-1 text-gray-900">
-                          {clinic.formatted_address ??
-                            clinic.street_address ??
-                            "Adresă indisponibilă"}
-                        </dd>
-
-                        {clinic.address_line_2 && (
-                          <dd className="mt-1 text-gray-600">
-                            {
-                              clinic.address_line_2
-                            }
-                          </dd>
-                        )}
+                        <dd className="mt-[5px] break-words text-gray-900">{value}</dd>
                       </div>
+                    ))}
+                  </dl>
 
-                      <div>
-                        <dt className="font-semibold text-gray-500">
-                          Oraș intern RomDoc
-                        </dt>
+                  {description ? (
+                    <p className="mt-[21px] rounded-xl bg-gray-50 p-[13px] text-sm leading-6 text-gray-700">
+                      {description}
+                    </p>
+                  ) : null}
 
-                        <dd className="mt-1 text-gray-900">
-                          {cityName}
-                        </dd>
-                      </div>
-
-                      <div>
-                        <dt className="font-semibold text-gray-500">
-                          Județ
-                        </dt>
-
-                        <dd className="mt-1 text-gray-900">
-                          {clinic.county_name ??
-                            "—"}
-                        </dd>
-                      </div>
-
-                      <div>
-                        <dt className="font-semibold text-gray-500">
-                          Cod poștal
-                        </dt>
-
-                        <dd className="mt-1 text-gray-900">
-                          {clinic.postal_code ??
-                            "—"}
-                        </dd>
-                      </div>
-
-                      <div>
-                        <dt className="font-semibold text-gray-500">
-                          Telefon
-                        </dt>
-
-                        <dd className="mt-1 text-gray-900">
-                          {clinic.phone ??
-                            "—"}
-                        </dd>
-                      </div>
-
-                      <div>
-                        <dt className="font-semibold text-gray-500">
-                          E-mail
-                        </dt>
-
-                        <dd className="mt-1 break-all text-gray-900">
-                          {clinic.email ??
-                            "—"}
-                        </dd>
-                      </div>
-
-                      <div>
-                        <dt className="font-semibold text-gray-500">
-                          Website
-                        </dt>
-
-                        <dd className="mt-1 break-all text-gray-900">
-                          {clinic.website ? (
-                            <a
-                              href={
-                                clinic.website
-                              }
-                              target="_blank"
-                              rel="noreferrer"
-                              className="font-semibold text-[#9A4F35] hover:underline"
-                            >
-                              Deschide website
-                            </a>
-                          ) : (
-                            "—"
-                          )}
-                        </dd>
-                      </div>
-
-                      <div>
-                        <dt className="font-semibold text-gray-500">
-                          Adresă verificată la
-                        </dt>
-
-                        <dd className="mt-1 text-gray-900">
-                          {formatDate(
-                            clinic.address_verified_at
-                          )}
-                        </dd>
-                      </div>
-                    </dl>
-
-                    {description && (
-                      <div className="mt-6 rounded-xl bg-gray-50 p-4 text-sm leading-6 text-gray-700">
-                        {description}
-                      </div>
-                    )}
-
-                    {clinic.google_maps_uri && (
+                  <div className="mt-[13px] flex flex-wrap gap-[8px]">
+                    {clinic.website ? (
                       <a
-                        href={
-                          clinic.google_maps_uri
-                        }
+                        href={clinic.website}
                         target="_blank"
                         rel="noreferrer"
-                        className="mt-5 inline-flex rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50"
+                        className="romdoc-focus-ring rounded-xl border border-gray-300 bg-white px-[13px] py-[8px] text-sm font-semibold text-gray-800 hover:bg-gray-50"
                       >
-                        Deschide în Google Maps
+                        {copy.common.openWebsite}
                       </a>
-                    )}
-
-                    {clinic.status ===
-                      "rejected" &&
-                      clinic.rejection_reason && (
-                      <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-                        <span className="font-semibold">
-                          Motivul respingerii:
-                        </span>{" "}
-                        {
-                          clinic.rejection_reason
-                        }
-                      </div>
-                    )}
-
-                    {clinic.status ===
-                      "blocked" && (
-                      <div className="mt-5 rounded-xl border border-slate-300 bg-slate-100 p-4 text-sm text-slate-900">
-                        <p>
-                          <span className="font-semibold">
-                            Motivul blocării:
-                          </span>{" "}
-                          {clinic.blocked_reason ??
-                            "Motiv indisponibil"}
-                        </p>
-
-                        <p className="mt-2 text-xs text-slate-600">
-                          Blocată la{" "}
-                          {formatDate(
-                            clinic.blocked_at
-                          )}
-                        </p>
-                      </div>
-                    )}
-
-                    {clinic.status ===
-                      "pending" &&
-                      capabilities.canManageClinics && (
-                      <div className="mt-6 flex flex-wrap gap-3 border-t border-gray-200 pt-5">
-                        <Button
-                          type="button"
-                          disabled={
-                            isUpdating
-                          }
-                          onClick={() =>
-                            void updateClinic(
-                              clinic.id,
-                              "approve"
-                            )
-                          }
-                          size="sm"
-                        >
-                          {isUpdating
-                            ? "Se actualizează..."
-                            : "Aprobă clinica"}
-                        </Button>
-
-                        <Button
-                          type="button"
-                          disabled={
-                            isUpdating
-                          }
-                          onClick={() =>
-                            void updateClinic(
-                              clinic.id,
-                              "reject"
-                            )
-                          }
-                          variant="danger-outline"
-                          size="sm"
-                        >
-                          Respinge
-                        </Button>
-                      </div>
-                    )}
-
-                    {clinic.status ===
-                      "approved" &&
-                      capabilities.canBlockClinics && (
-                      <div className="mt-6 flex flex-wrap gap-3 border-t border-gray-200 pt-5">
-                        <Button
-                          type="button"
-                          disabled={
-                            isUpdating
-                          }
-                          onClick={() =>
-                            void updateClinic(
-                              clinic.id,
-                              "block"
-                            )
-                          }
-                          variant="danger-outline"
-                          size="sm"
-                        >
-                          {isUpdating
-                            ? "Se blochează..."
-                            : "Blochează clinica"}
-                        </Button>
-                      </div>
-                    )}
-
-                    {clinic.status ===
-                      "blocked" &&
-                      capabilities.canBlockClinics && (
-                      <div className="mt-6 flex flex-wrap gap-3 border-t border-gray-200 pt-5">
-                        <Button
-                          type="button"
-                          disabled={
-                            isUpdating
-                          }
-                          onClick={() =>
-                            void updateClinic(
-                              clinic.id,
-                              "unblock"
-                            )
-                          }
-                          size="sm"
-                        >
-                          {isUpdating
-                            ? "Se reactivează..."
-                            : "Reactivează clinica"}
-                        </Button>
-                      </div>
-                    )}
+                    ) : null}
+                    {clinic.google_maps_uri ? (
+                      <a
+                        href={clinic.google_maps_uri}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="romdoc-focus-ring rounded-xl border border-gray-300 bg-white px-[13px] py-[8px] text-sm font-semibold text-gray-800 hover:bg-gray-50"
+                      >
+                        {copy.common.openGoogleMaps}
+                      </a>
+                    ) : null}
                   </div>
-                </details>
-              );
-            }
-          )}
+
+                  {clinic.status === "rejected" && clinic.rejection_reason ? (
+                    <div className="mt-[21px] rounded-xl border border-red-200 bg-red-50 p-[13px] text-sm text-red-800">
+                      <span className="font-semibold">
+                        {copy.moderation.labels.rejectionReason}:
+                      </span>{" "}
+                      {clinic.rejection_reason}
+                    </div>
+                  ) : null}
+
+                  {clinic.status === "blocked" ? (
+                    <div className="mt-[21px] rounded-xl border border-slate-300 bg-slate-100 p-[13px] text-sm text-slate-900">
+                      <p>
+                        <span className="font-semibold">
+                          {copy.moderation.labels.blockReason}:
+                        </span>{" "}
+                        {clinic.blocked_reason ?? copy.common.none}
+                      </p>
+                      <p className="mt-[8px] text-xs text-slate-600">
+                        {interpolatePlatformClinicCopy(copy.common.blockedAt, {
+                          date: formatDate(clinic.blocked_at),
+                        })}
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {clinic.status === "pending" && capabilities.canManageClinics ? (
+                    <div className="mt-[21px] flex flex-wrap gap-[8px] border-t border-gray-200 pt-[21px]">
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={isUpdating}
+                        onClick={() => void updateClinic(clinic, "approve")}
+                      >
+                        {isUpdating
+                          ? copy.moderation.actions.updating
+                          : copy.moderation.actions.approve}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="danger-outline"
+                        disabled={isUpdating}
+                        onClick={() => void updateClinic(clinic, "reject")}
+                      >
+                        {copy.moderation.actions.reject}
+                      </Button>
+                    </div>
+                  ) : null}
+
+                  {clinic.status === "approved" && capabilities.canBlockClinics ? (
+                    <div className="mt-[21px] border-t border-gray-200 pt-[21px]">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="danger-outline"
+                        disabled={isUpdating}
+                        onClick={() => void updateClinic(clinic, "block")}
+                      >
+                        {isUpdating
+                          ? copy.moderation.actions.blocking
+                          : copy.moderation.actions.block}
+                      </Button>
+                    </div>
+                  ) : null}
+
+                  {clinic.status === "blocked" && capabilities.canBlockClinics ? (
+                    <div className="mt-[21px] border-t border-gray-200 pt-[21px]">
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={isUpdating}
+                        onClick={() => void updateClinic(clinic, "unblock")}
+                      >
+                        {isUpdating
+                          ? copy.moderation.actions.unblocking
+                          : copy.moderation.actions.unblock}
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+              </details>
+            );
+          })}
         </div>
       )}
-    </div>
+    </section>
   );
 }

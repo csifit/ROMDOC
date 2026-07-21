@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { PLATFORM_OPERATOR_CLINIC_CODES } from "@/lib/api/platform-operator-clinic-codes";
 import {
   requireAdministratorCapability,
   requirePlatformOperatorAal2Api,
@@ -11,6 +12,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
+
 type CreateAdminClinicBody = {
   name?: unknown;
   placeId?: unknown;
@@ -20,6 +23,15 @@ type CreateAdminClinicBody = {
   website?: unknown;
   description?: unknown;
 };
+
+class ClinicInputError extends Error {
+  code: string;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.code = code;
+  }
+}
 
 function normalizeOptionalString(value: unknown, maximumLength: number) {
   if (typeof value !== "string") return null;
@@ -31,21 +43,30 @@ function normalizeEmail(value: unknown) {
   const normalized = normalizeOptionalString(value, 320);
   if (!normalized) return null;
   const email = normalized.toLowerCase();
+
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new Error("Adresa de e-mail a clinicii nu este validă.");
+    throw new ClinicInputError(
+      PLATFORM_OPERATOR_CLINIC_CODES.clinicEmailInvalid,
+      "Adresa de e-mail a clinicii nu este validă."
+    );
   }
+
   return email;
 }
 
 function normalizeWebsite(value: unknown) {
   const normalized = normalizeOptionalString(value, 500);
   if (!normalized) return null;
+
   try {
     const url = new URL(normalized);
     if (!["http:", "https:"].includes(url.protocol)) throw new Error();
     return url.toString();
   } catch {
-    throw new Error("Adresa website-ului clinicii nu este validă.");
+    throw new ClinicInputError(
+      PLATFORM_OPERATOR_CLINIC_CODES.clinicWebsiteInvalid,
+      "Adresa website-ului clinicii nu este validă."
+    );
   }
 }
 
@@ -62,11 +83,18 @@ async function createUniqueClinicSlug(clinicName: string, citySlug: string) {
       .eq("slug", candidate)
       .maybeSingle();
 
-    if (error) throw new Error(`Clinic slug lookup failed: ${error.message}`);
+    if (error) throw error;
     if (!data) return candidate;
     candidate = `${baseSlug}-${suffix}`;
     suffix += 1;
   }
+}
+
+function json(body: Record<string, unknown>, status = 200) {
+  return NextResponse.json(body, {
+    status,
+    headers: NO_STORE_HEADERS,
+  });
 }
 
 export async function POST(request: NextRequest): Promise<Response> {
@@ -83,22 +111,34 @@ export async function POST(request: NextRequest): Promise<Response> {
   try {
     body = (await request.json()) as CreateAdminClinicBody;
   } catch {
-    return NextResponse.json(
-      { error: "Cererea nu conține date JSON valide." },
-      { status: 400 }
+    return json(
+      {
+        code: PLATFORM_OPERATOR_CLINIC_CODES.invalidJson,
+        error: "Cererea nu conține date JSON valide.",
+      },
+      400
     );
   }
 
   const clinicName = normalizeOptionalString(body.name, 200);
   if (!clinicName || clinicName.length < 2) {
-    return NextResponse.json({ error: "Introdu numele clinicii." }, { status: 400 });
+    return json(
+      {
+        code: PLATFORM_OPERATOR_CLINIC_CODES.clinicNameRequired,
+        error: "Introdu numele clinicii.",
+      },
+      400
+    );
   }
 
   const placeId = normalizeOptionalString(body.placeId, 500);
   if (!placeId) {
-    return NextResponse.json(
-      { error: "Selectează adresa clinicii din lista Google." },
-      { status: 400 }
+    return json(
+      {
+        code: PLATFORM_OPERATOR_CLINIC_CODES.clinicAddressRequired,
+        error: "Selectează adresa clinicii din lista Google.",
+      },
+      400
     );
   }
 
@@ -124,40 +164,36 @@ export async function POST(request: NextRequest): Promise<Response> {
         id,
         slug,
         status,
-        clinic_translations (
-          locale,
-          name
-        )
+        clinic_translations (locale, name)
       `)
       .eq("google_place_id", googleAddress.placeId)
       .maybeSingle();
 
-    if (existingClinicError) {
-      throw new Error(`Existing clinic lookup failed: ${existingClinicError.message}`);
-    }
+    if (existingClinicError) throw existingClinicError;
 
     if (existingClinic) {
       const translations = Array.isArray(existingClinic.clinic_translations)
         ? existingClinic.clinic_translations
         : [];
       const existingName =
-        translations.find((translation) => translation.locale === "ro")?.name ??
+        translations.find((translation: { locale: string; name: string }) => translation.locale === "ro")?.name ??
         translations[0]?.name ??
         existingClinic.slug;
 
-      return NextResponse.json(
+      return json(
         {
+          code: PLATFORM_OPERATOR_CLINIC_CODES.clinicDuplicatePlace,
           error: `Locația Google este deja înregistrată ca „${existingName}” cu statusul „${existingClinic.status}”.`,
           existingClinicId: existingClinic.id,
           existingStatus: existingClinic.status,
+          existingClinicName: existingName,
         },
-        { status: 409 }
+        409
       );
     }
 
     const clinicSlug = await createUniqueClinicSlug(clinicName, city.slug);
     const now = new Date().toISOString();
-
     const { data: clinic, error: clinicInsertError } = await admin
       .from("clinics")
       .insert({
@@ -192,17 +228,25 @@ export async function POST(request: NextRequest): Promise<Response> {
       .single();
 
     if (clinicInsertError || !clinic) {
-      throw new Error(
-        `Admin clinic creation failed: ${clinicInsertError?.message ?? "No clinic returned"}`
-      );
+      throw clinicInsertError ?? new Error("No clinic returned");
     }
 
     const { error: translationError } = await admin
       .from("clinic_translations")
       .upsert(
         [
-          { clinic_id: clinic.id, locale: "ro", name: clinicName, description },
-          { clinic_id: clinic.id, locale: "en", name: clinicName, description },
+          {
+            clinic_id: clinic.id,
+            locale: "ro",
+            name: clinicName,
+            description,
+          },
+          {
+            clinic_id: clinic.id,
+            locale: "en",
+            name: clinicName,
+            description,
+          },
         ],
         { onConflict: "clinic_id,locale" }
       );
@@ -213,13 +257,17 @@ export async function POST(request: NextRequest): Promise<Response> {
         .delete()
         .eq("id", clinic.id);
       if (cleanupError) {
-        console.error("Clinic cleanup after translation failure failed:", cleanupError);
+        console.error(
+          "Clinic cleanup after translation failure failed:",
+          cleanupError
+        );
       }
-      throw new Error(`Clinic translations creation failed: ${translationError.message}`);
+      throw translationError;
     }
 
-    return NextResponse.json(
+    return json(
       {
+        code: PLATFORM_OPERATOR_CLINIC_CODES.clinicCreated,
         message: "Clinica a fost creată și aprobată.",
         clinic: {
           id: clinic.id,
@@ -230,16 +278,24 @@ export async function POST(request: NextRequest): Promise<Response> {
           cityId: city.id,
         },
       },
-      { status: 201, headers: { "Cache-Control": "no-store" } }
+      201
     );
   } catch (error) {
     console.error("Admin clinic creation failed:", error);
-    return NextResponse.json(
+
+    if (error instanceof ClinicInputError) {
+      return json({ code: error.code, error: error.message }, 400);
+    }
+
+    return json(
       {
+        code: PLATFORM_OPERATOR_CLINIC_CODES.clinicCreateFailed,
         error:
-          error instanceof Error ? error.message : "Clinica nu a putut fi creată.",
+          error instanceof Error
+            ? error.message
+            : "Clinica nu a putut fi creată.",
       },
-      { status: 500 }
+      500
     );
   }
 }

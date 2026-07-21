@@ -1,17 +1,15 @@
-import {
-  NextRequest,
-  NextResponse,
-} from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-import {
-  requirePlatformOperatorAal2Api,
-} from "@/lib/auth/require-platform-operator-aal2-api";
+import { PLATFORM_OPERATOR_CLINIC_CODES } from "@/lib/api/platform-operator-clinic-codes";
+import { requirePlatformOperatorAal2Api } from "@/lib/auth/require-platform-operator-aal2-api";
 import { getGooglePlaceDetails } from "@/lib/google-maps/get-place-details";
 import { matchOrCreateCity } from "@/lib/locations/match-or-create-city";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
+
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 
 type EditableClinicBody = {
   clinicId?: unknown;
@@ -68,20 +66,25 @@ const clinicSelect = `
   address_verified_at,
   status,
   updated_at,
-  clinic_translations (
-    locale,
-    name,
-    description
-  ),
-  cities (
-    id,
-    slug,
-    city_translations (
-      locale,
-      name
-    )
-  )
+  clinic_translations (locale, name, description),
+  cities (id, slug, city_translations (locale, name))
 `;
+
+class ClinicInputError extends Error {
+  code: string;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
+function json(body: Record<string, unknown>, status = 200) {
+  return NextResponse.json(body, {
+    status,
+    headers: NO_STORE_HEADERS,
+  });
+}
 
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -89,42 +92,26 @@ function isUuid(value: string) {
   );
 }
 
-function normalizeOptionalString(
-  value: unknown,
-  maximumLength: number
-) {
-  if (typeof value !== "string") {
-    return null;
-  }
-
+function normalizeOptionalString(value: unknown, maximumLength: number) {
+  if (typeof value !== "string") return null;
   const normalized = value.trim();
-  return normalized
-    ? normalized.slice(0, maximumLength)
-    : null;
+  return normalized ? normalized.slice(0, maximumLength) : null;
 }
 
-function normalizeRequiredString(
-  value: unknown,
-  maximumLength: number
-) {
-  if (typeof value !== "string") {
-    return "";
-  }
-
-  return value.trim().slice(0, maximumLength);
+function normalizeRequiredString(value: unknown, maximumLength: number) {
+  return typeof value === "string" ? value.trim().slice(0, maximumLength) : "";
 }
 
 function normalizeEmail(value: unknown) {
   const normalized = normalizeOptionalString(value, 320);
-
-  if (!normalized) {
-    return null;
-  }
-
+  if (!normalized) return null;
   const email = normalized.toLowerCase();
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new Error("Adresa de e-mail a clinicii nu este validă.");
+    throw new ClinicInputError(
+      PLATFORM_OPERATOR_CLINIC_CODES.clinicEmailInvalid,
+      "Adresa de e-mail a clinicii nu este validă."
+    );
   }
 
   return email;
@@ -132,27 +119,22 @@ function normalizeEmail(value: unknown) {
 
 function normalizeWebsite(value: unknown) {
   const normalized = normalizeOptionalString(value, 500);
-
-  if (!normalized) {
-    return null;
-  }
+  if (!normalized) return null;
 
   try {
     const url = new URL(normalized);
-
-    if (!["http:", "https:"].includes(url.protocol)) {
-      throw new Error("Invalid protocol");
-    }
-
+    if (!["http:", "https:"].includes(url.protocol)) throw new Error();
     return url.toString();
   } catch {
-    throw new Error("Adresa website-ului clinicii nu este validă.");
+    throw new ClinicInputError(
+      PLATFORM_OPERATOR_CLINIC_CODES.clinicWebsiteInvalid,
+      "Adresa website-ului clinicii nu este validă."
+    );
   }
 }
 
 async function requireEditableClinicAccess(): Promise<UserAccess> {
   const supabase = await createClient();
-
   const {
     data: { user },
     error: userError,
@@ -164,9 +146,12 @@ async function requireEditableClinicAccess(): Promise<UserAccess> {
       profileId: null,
       role: null,
       doctorId: null,
-      response: NextResponse.json(
-        { error: "Trebuie să fii autentificat." },
-        { status: 401 }
+      response: json(
+        {
+          code: "authentication_required",
+          error: "Trebuie să fii autentificat.",
+        },
+        401
       ),
     };
   }
@@ -187,19 +172,15 @@ async function requireEditableClinicAccess(): Promise<UserAccess> {
       profileId: null,
       role: null,
       doctorId: null,
-      response: NextResponse.json(
-        { error: "Contul nu are permisiunea necesară." },
-        { status: 403 }
+      response: json(
+        { code: "access_denied", error: "Contul nu are permisiunea necesară." },
+        403
       ),
     };
   }
 
-  if (
-    profile.role === "admin" ||
-    profile.role === "manager"
-  ) {
+  if (profile.role === "admin" || profile.role === "manager") {
     const authorization = await requirePlatformOperatorAal2Api();
-
     if (authorization.response) {
       return {
         mode: null,
@@ -221,7 +202,6 @@ async function requireEditableClinicAccess(): Promise<UserAccess> {
 
   if (profile.role === "doctor") {
     const admin = createAdminClient();
-
     const { data: doctor, error: doctorError } = await admin
       .from("doctors")
       .select("id")
@@ -234,9 +214,12 @@ async function requireEditableClinicAccess(): Promise<UserAccess> {
         profileId: null,
         role: null,
         doctorId: null,
-        response: NextResponse.json(
-          { error: "Contul de medic nu este asociat unui profil de medic." },
-          { status: 403 }
+        response: json(
+          {
+            code: PLATFORM_OPERATOR_CLINIC_CODES.doctorProfileMissing,
+            error: "Contul de medic nu este asociat unui profil de medic.",
+          },
+          403
         ),
       };
     }
@@ -255,23 +238,23 @@ async function requireEditableClinicAccess(): Promise<UserAccess> {
     profileId: null,
     role: null,
     doctorId: null,
-    response: NextResponse.json(
-      { error: "Nu ai permisiunea de a edita clinici." },
-      { status: 403 }
+    response: json(
+      {
+        code: PLATFORM_OPERATOR_CLINIC_CODES.clinicEditRoleDenied,
+        error: "Nu ai permisiunea de a edita clinici.",
+      },
+      403
     ),
   };
 }
 
 async function userCanEditClinic(
-  access: Exclude<UserAccess, { response: NextResponse }>,
+  access: Exclude<UserAccess, { mode: null }>,
   clinicId: string
 ) {
-  if (access.mode === "platform") {
-    return true;
-  }
+  if (access.mode === "platform") return true;
 
   const admin = createAdminClient();
-
   const { data, error } = await admin
     .from("doctor_clinics")
     .select("doctor_id")
@@ -284,26 +267,19 @@ async function userCanEditClinic(
 
 async function loadClinic(clinicId: string) {
   const admin = createAdminClient();
-
   const { data, error } = await admin
     .from("clinics")
     .select(clinicSelect)
     .eq("id", clinicId)
     .maybeSingle();
 
-  if (error) {
-    throw new Error(error.message);
-  }
-
+  if (error) throw error;
   return data;
 }
 
 export async function GET(): Promise<Response> {
   const access = await requireEditableClinicAccess();
-
-  if (access.response) {
-    return access.response;
-  }
+  if (access.response) return access.response;
 
   const admin = createAdminClient();
 
@@ -315,24 +291,20 @@ export async function GET(): Promise<Response> {
 
     if (error) {
       console.error("Editable clinics platform query failed:", error);
-
-      return NextResponse.json(
-        { error: "Clinicile nu au putut fi încărcate." },
-        { status: 500 }
+      return json(
+        {
+          code: PLATFORM_OPERATOR_CLINIC_CODES.editableClinicsLoadFailed,
+          error: "Clinicile nu au putut fi încărcate.",
+        },
+        500
       );
     }
 
-    return NextResponse.json(
-      {
-        clinics: data ?? [],
-        role: access.role,
-      },
-      {
-        headers: {
-          "Cache-Control": "no-store",
-        },
-      }
-    );
+    return json({
+      code: PLATFORM_OPERATOR_CLINIC_CODES.editableClinicsLoaded,
+      clinics: data ?? [],
+      role: access.role,
+    });
   }
 
   const { data: relations, error: relationsError } = await admin
@@ -342,29 +314,25 @@ export async function GET(): Promise<Response> {
 
   if (relationsError) {
     console.error("Editable doctor clinics relation query failed:", relationsError);
-
-    return NextResponse.json(
-      { error: "Clinicile medicului nu au putut fi încărcate." },
-      { status: 500 }
+    return json(
+      {
+        code: PLATFORM_OPERATOR_CLINIC_CODES.doctorEditableClinicsLoadFailed,
+        error: "Clinicile medicului nu au putut fi încărcate.",
+      },
+      500
     );
   }
 
   const clinicIds = Array.from(
-    new Set((relations ?? []).map((relation) => relation.clinic_id))
+    new Set((relations ?? []).map((relation: { clinic_id: string }) => relation.clinic_id))
   );
 
-  if (clinicIds.length === 0) {
-    return NextResponse.json(
-      {
-        clinics: [],
-        role: access.role,
-      },
-      {
-        headers: {
-          "Cache-Control": "no-store",
-        },
-      }
-    );
+  if (!clinicIds.length) {
+    return json({
+      code: PLATFORM_OPERATOR_CLINIC_CODES.editableClinicsLoaded,
+      clinics: [],
+      role: access.role,
+    });
   }
 
   const { data, error } = await admin
@@ -375,70 +343,69 @@ export async function GET(): Promise<Response> {
 
   if (error) {
     console.error("Editable doctor clinics query failed:", error);
-
-    return NextResponse.json(
-      { error: "Clinicile medicului nu au putut fi încărcate." },
-      { status: 500 }
+    return json(
+      {
+        code: PLATFORM_OPERATOR_CLINIC_CODES.doctorEditableClinicsLoadFailed,
+        error: "Clinicile medicului nu au putut fi încărcate.",
+      },
+      500
     );
   }
 
-  return NextResponse.json(
-    {
-      clinics: data ?? [],
-      role: access.role,
-    },
-    {
-      headers: {
-        "Cache-Control": "no-store",
-      },
-    }
-  );
+  return json({
+    code: PLATFORM_OPERATOR_CLINIC_CODES.editableClinicsLoaded,
+    clinics: data ?? [],
+    role: access.role,
+  });
 }
 
-export async function PATCH(
-  request: NextRequest
-): Promise<Response> {
+export async function PATCH(request: NextRequest): Promise<Response> {
   const access = await requireEditableClinicAccess();
-
-  if (access.response) {
-    return access.response;
-  }
+  if (access.response) return access.response;
 
   let body: EditableClinicBody;
-
   try {
     body = (await request.json()) as EditableClinicBody;
   } catch {
-    return NextResponse.json(
-      { error: "Cererea nu conține date JSON valide." },
-      { status: 400 }
+    return json(
+      {
+        code: PLATFORM_OPERATOR_CLINIC_CODES.invalidJson,
+        error: "Cererea nu conține date JSON valide.",
+      },
+      400
     );
   }
 
   const clinicId = normalizeRequiredString(body.clinicId, 100);
-
   if (!clinicId || !isUuid(clinicId)) {
-    return NextResponse.json(
-      { error: "Clinica selectată nu este validă." },
-      { status: 400 }
+    return json(
+      {
+        code: PLATFORM_OPERATOR_CLINIC_CODES.clinicInvalid,
+        error: "Clinica selectată nu este validă.",
+      },
+      400
     );
   }
 
   const canEdit = await userCanEditClinic(access, clinicId);
-
   if (!canEdit) {
-    return NextResponse.json(
-      { error: "Nu ai permisiunea de a edita această clinică." },
-      { status: 403 }
+    return json(
+      {
+        code: PLATFORM_OPERATOR_CLINIC_CODES.clinicEditAccessDenied,
+        error: "Nu ai permisiunea de a edita această clinică.",
+      },
+      403
     );
   }
 
   const name = normalizeRequiredString(body.name, 200);
-
   if (name.length < 2) {
-    return NextResponse.json(
-      { error: "Introdu numele clinicii." },
-      { status: 400 }
+    return json(
+      {
+        code: PLATFORM_OPERATOR_CLINIC_CODES.clinicNameRequired,
+        error: "Introdu numele clinicii.",
+      },
+      400
     );
   }
 
@@ -461,7 +428,6 @@ export async function PATCH(
 
     if (placeId) {
       const googleAddress = await getGooglePlaceDetails(placeId);
-
       const city = await matchOrCreateCity(admin, {
         cityName: googleAddress.cityName,
         countryCode: googleAddress.countryCode,
@@ -469,18 +435,20 @@ export async function PATCH(
         longitude: googleAddress.longitude,
       });
 
-      clinicUpdate.city_id = city.id;
-      clinicUpdate.street_address = googleAddress.addressLine1;
-      clinicUpdate.formatted_address = googleAddress.formattedAddress;
-      clinicUpdate.address_line_1 = googleAddress.addressLine1;
-      clinicUpdate.postal_code = googleAddress.postalCode;
-      clinicUpdate.county_name = googleAddress.countyName;
-      clinicUpdate.country_code = googleAddress.countryCode;
-      clinicUpdate.latitude = googleAddress.latitude;
-      clinicUpdate.longitude = googleAddress.longitude;
-      clinicUpdate.google_place_id = googleAddress.placeId;
-      clinicUpdate.google_maps_uri = googleAddress.googleMapsUri;
-      clinicUpdate.address_verified_at = new Date().toISOString();
+      Object.assign(clinicUpdate, {
+        city_id: city.id,
+        street_address: googleAddress.addressLine1,
+        formatted_address: googleAddress.formattedAddress,
+        address_line_1: googleAddress.addressLine1,
+        postal_code: googleAddress.postalCode,
+        county_name: googleAddress.countyName,
+        country_code: googleAddress.countryCode,
+        latitude: googleAddress.latitude,
+        longitude: googleAddress.longitude,
+        google_place_id: googleAddress.placeId,
+        google_maps_uri: googleAddress.googleMapsUri,
+        address_verified_at: new Date().toISOString(),
+      });
     }
 
     const { data: updatedClinic, error: updateError } = await admin
@@ -492,10 +460,12 @@ export async function PATCH(
 
     if (updateError || !updatedClinic) {
       console.error("Clinic update failed:", updateError);
-
-      return NextResponse.json(
-        { error: "Clinica nu a putut fi actualizată." },
-        { status: 500 }
+      return json(
+        {
+          code: PLATFORM_OPERATOR_CLINIC_CODES.clinicUpdateFailed,
+          error: "Clinica nu a putut fi actualizată.",
+        },
+        500
       );
     }
 
@@ -503,57 +473,45 @@ export async function PATCH(
       .from("clinic_translations")
       .upsert(
         [
-          {
-            clinic_id: clinicId,
-            locale: "ro",
-            name,
-            description,
-          },
-          {
-            clinic_id: clinicId,
-            locale: "en",
-            name,
-            description,
-          },
+          { clinic_id: clinicId, locale: "ro", name, description },
+          { clinic_id: clinicId, locale: "en", name, description },
         ],
-        {
-          onConflict: "clinic_id,locale",
-        }
+        { onConflict: "clinic_id,locale" }
       );
 
     if (translationError) {
       console.error("Clinic translation update failed:", translationError);
-
-      return NextResponse.json(
-        { error: "Traducerile clinicii nu au putut fi actualizate." },
-        { status: 500 }
+      return json(
+        {
+          code: PLATFORM_OPERATOR_CLINIC_CODES.clinicTranslationUpdateFailed,
+          error: "Traducerile clinicii nu au putut fi actualizate.",
+        },
+        500
       );
     }
 
     const clinic = await loadClinic(clinicId);
-
-    return NextResponse.json(
-      {
-        message: "Clinica a fost actualizată.",
-        clinic,
-      },
-      {
-        headers: {
-          "Cache-Control": "no-store",
-        },
-      }
-    );
+    return json({
+      code: PLATFORM_OPERATOR_CLINIC_CODES.clinicUpdated,
+      message: "Clinica a fost actualizată.",
+      clinic,
+    });
   } catch (error) {
     console.error("Editable clinic update failed:", error);
 
-    return NextResponse.json(
+    if (error instanceof ClinicInputError) {
+      return json({ code: error.code, error: error.message }, 400);
+    }
+
+    return json(
       {
+        code: PLATFORM_OPERATOR_CLINIC_CODES.clinicUpdateFailed,
         error:
           error instanceof Error
             ? error.message
             : "Clinica nu a putut fi actualizată.",
       },
-      { status: 500 }
+      500
     );
   }
 }

@@ -7,8 +7,22 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useLocale } from "next-intl";
 
-import GooglePlaceAutocomplete from "@/components/clinic/google-place-autocomplete";
+import GooglePlaceAutocomplete, {
+  type GooglePlaceAutocompleteCopy,
+} from "@/components/clinic/google-place-autocomplete";
+import type { PlatformOperatorClinicApiPayload } from "@/lib/api/platform-operator-clinic-codes";
+import {
+  normalizeAppLocale,
+  selectTranslation,
+} from "@/lib/i18n/app-locale";
+import {
+  getPlatformClinicApiMessage,
+  getPlatformOperatorClinics,
+  interpolatePlatformClinicCopy,
+  PLATFORM_OPERATOR_CLINIC_LOCALE_TAGS,
+} from "@/lib/i18n/platform-operator-clinics";
 import type { GoogleClinicAddress } from "@/lib/locations/google-address";
 
 type ClinicTranslation = {
@@ -47,11 +61,10 @@ type Clinic = {
   cities: CityRelation | CityRelation[] | null;
 };
 
-type EditableClinicsResponse = {
+type EditableClinicsResponse = PlatformOperatorClinicApiPayload & {
   clinics?: Clinic[];
   clinic?: Clinic;
-  message?: string;
-  error?: string;
+  role?: string;
 };
 
 type Draft = {
@@ -69,104 +82,24 @@ type ClinicEditingPanelProps = {
   emptyMessage: string;
 };
 
-function getFirstRelation<T>(
-  relation: T | T[] | null | undefined
-) {
-  if (!relation) {
-    return null;
-  }
-
-  return Array.isArray(relation)
-    ? relation[0] ?? null
-    : relation;
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) return null;
+  return Array.isArray(value) ? value[0] ?? null : value;
 }
 
-function getRomanianTranslation(clinic: Clinic) {
-  return (
-    clinic.clinic_translations?.find(
-      (translation) => translation.locale === "ro"
-    ) ??
-    clinic.clinic_translations?.[0] ??
-    null
-  );
-}
-
-function getClinicName(clinic: Clinic) {
-  return getRomanianTranslation(clinic)?.name ?? clinic.slug;
-}
-
-function getClinicDescription(clinic: Clinic) {
-  return getRomanianTranslation(clinic)?.description ?? "";
-}
-
-function getCityName(clinic: Clinic) {
-  const city = getFirstRelation(clinic.cities);
-
-  return (
-    city?.city_translations?.find(
-      (translation) => translation.locale === "ro"
-    )?.name ??
-    city?.city_translations?.[0]?.name ??
-    city?.slug ??
-    "Oraș necunoscut"
-  );
-}
-
-function getStatusLabel(status: string) {
-  switch (status) {
-    case "approved":
-      return "Aprobată";
-
-    case "pending":
-      return "În așteptare";
-
-    case "rejected":
-      return "Respinsă";
-
-    case "blocked":
-      return "Blocată";
-
-    default:
-      return status;
-  }
-}
-
-function getStatusClasses(status: string) {
+function statusClasses(status: string) {
   switch (status) {
     case "approved":
       return "bg-green-100 text-green-800";
-
     case "pending":
       return "bg-amber-100 text-amber-900";
-
     case "rejected":
       return "bg-red-100 text-red-800";
-
     case "blocked":
       return "bg-slate-200 text-slate-900";
-
     default:
       return "bg-gray-100 text-gray-800";
   }
-}
-
-function createDraft(clinic: Clinic): Draft {
-  return {
-    name: getClinicName(clinic),
-    description: getClinicDescription(clinic),
-    phone: clinic.phone ?? "",
-    email: clinic.email ?? "",
-    website: clinic.website ?? "",
-    addressLine2: clinic.address_line_2 ?? "",
-  };
-}
-
-function normalizeForSearch(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("ro-RO")
-    .trim();
 }
 
 export default function ClinicEditingPanel({
@@ -174,16 +107,77 @@ export default function ClinicEditingPanel({
   description,
   emptyMessage,
 }: ClinicEditingPanelProps) {
+  const locale = normalizeAppLocale(useLocale());
+  const localeTag = PLATFORM_OPERATOR_CLINIC_LOCALE_TAGS[locale];
+  const copy = getPlatformOperatorClinics(locale);
+  const googleCopy = copy.google as GooglePlaceAutocompleteCopy;
+
   const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [role, setRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [editingClinicId, setEditingClinicId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [selectedAddress, setSelectedAddress] =
     useState<GoogleClinicAddress | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  const getClinicName = useCallback(
+    (clinic: Clinic) =>
+      selectTranslation(clinic.clinic_translations, locale)?.name ??
+      clinic.slug,
+    [locale]
+  );
+
+  const getClinicDescription = useCallback(
+    (clinic: Clinic) =>
+      selectTranslation(clinic.clinic_translations, locale)?.description ??
+      "",
+    [locale]
+  );
+
+  const getCityName = useCallback(
+    (clinic: Clinic) => {
+      const city = firstRelation(clinic.cities);
+      return (
+        selectTranslation(city?.city_translations, locale)?.name ??
+        city?.slug ??
+        copy.common.unknownCity
+      );
+    },
+    [copy.common.unknownCity, locale]
+  );
+
+  const getStatusLabel = useCallback(
+    (status: string) => {
+      switch (status) {
+        case "approved":
+          return copy.common.statusApproved;
+        case "pending":
+          return copy.common.statusPending;
+        case "rejected":
+          return copy.common.statusRejected;
+        case "blocked":
+          return copy.common.statusBlocked;
+        default:
+          return status;
+      }
+    },
+    [copy]
+  );
+
+  const normalizeSearch = useCallback(
+    (value: string) =>
+      value
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLocaleLowerCase(localeTag)
+        .trim(),
+    [localeTag]
+  );
 
   const loadClinics = useCallback(async () => {
     setIsLoading(true);
@@ -194,57 +188,75 @@ export default function ClinicEditingPanel({
         method: "GET",
         cache: "no-store",
       });
-
       const result = (await response.json()) as EditableClinicsResponse;
 
       if (!response.ok) {
         throw new Error(
-          result.error ?? "Clinicile nu au putut fi încărcate."
+          getPlatformClinicApiMessage(
+            locale,
+            result.code,
+            result.error ?? copy.editing.states.loadFailed
+          )
         );
       }
 
       setClinics(result.clinics ?? []);
+      setRole(result.role ?? null);
     } catch (loadError) {
+      setClinics([]);
       setError(
         loadError instanceof Error
           ? loadError.message
-          : "Clinicile nu au putut fi încărcate."
+          : copy.editing.states.loadFailed
       );
-      setClinics([]);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [copy.editing.states.loadFailed, locale]);
 
   useEffect(() => {
     void loadClinics();
   }, [loadClinics]);
 
   const visibleClinics = useMemo(() => {
-    const normalizedSearch = normalizeForSearch(search);
-
-    if (!normalizedSearch) {
-      return clinics;
-    }
+    const query = normalizeSearch(search);
 
     return clinics.filter((clinic) => {
+      if (statusFilter !== "all" && clinic.status !== statusFilter) return false;
+      if (!query) return true;
+
       const haystack = [
         getClinicName(clinic),
         getCityName(clinic),
-        clinic.formatted_address ?? "",
-        clinic.phone ?? "",
-        clinic.email ?? "",
+        clinic.formatted_address,
+        clinic.phone,
+        clinic.email,
+        clinic.slug,
       ]
-        .map(normalizeForSearch)
+        .filter(Boolean)
         .join(" ");
 
-      return haystack.includes(normalizedSearch);
+      return normalizeSearch(haystack).includes(query);
     });
-  }, [clinics, search]);
+  }, [
+    clinics,
+    getCityName,
+    getClinicName,
+    normalizeSearch,
+    search,
+    statusFilter,
+  ]);
 
   function startEditing(clinic: Clinic) {
     setEditingClinicId(clinic.id);
-    setDraft(createDraft(clinic));
+    setDraft({
+      name: getClinicName(clinic),
+      description: getClinicDescription(clinic),
+      phone: clinic.phone ?? "",
+      email: clinic.email ?? "",
+      website: clinic.website ?? "",
+      addressLine2: clinic.address_line_2 ?? "",
+    });
     setSelectedAddress(null);
     setError("");
     setSuccess("");
@@ -257,24 +269,12 @@ export default function ClinicEditingPanel({
   }
 
   function updateDraft(field: keyof Draft, value: string) {
-    setDraft((currentDraft) => {
-      if (!currentDraft) {
-        return currentDraft;
-      }
-
-      return {
-        ...currentDraft,
-        [field]: value,
-      };
-    });
+    setDraft((current) => (current ? { ...current, [field]: value } : current));
   }
 
   async function submitEdit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    if (!editingClinicId || !draft) {
-      return;
-    }
+    if (!editingClinicId || !draft) return;
 
     setIsSaving(true);
     setError("");
@@ -283,9 +283,7 @@ export default function ClinicEditingPanel({
     try {
       const response = await fetch("/api/clinics/editable", {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           clinicId: editingClinicId,
           name: draft.name,
@@ -297,46 +295,61 @@ export default function ClinicEditingPanel({
           placeId: selectedAddress?.placeId ?? null,
         }),
       });
-
       const result = (await response.json()) as EditableClinicsResponse;
 
       if (!response.ok || !result.clinic) {
-        throw new Error(result.error ?? "Clinica nu a putut fi salvată.");
+        throw new Error(
+          getPlatformClinicApiMessage(
+            locale,
+            result.code,
+            result.error ?? copy.editing.states.saveFailed
+          )
+        );
       }
 
-      setClinics((currentClinics) =>
-        currentClinics.map((clinic) =>
+      setClinics((current) =>
+        current.map((clinic) =>
           clinic.id === result.clinic?.id ? result.clinic : clinic
         )
       );
-
-      setSuccess(result.message ?? "Clinica a fost actualizată.");
+      setSuccess(
+        getPlatformClinicApiMessage(
+          locale,
+          result.code,
+          result.message ?? copy.editing.states.updated
+        )
+      );
       stopEditing();
     } catch (saveError) {
       setError(
         saveError instanceof Error
           ? saveError.message
-          : "Clinica nu a putut fi salvată."
+          : copy.editing.states.saveFailed
       );
     } finally {
       setIsSaving(false);
     }
   }
 
+  const effectiveDescription =
+    role === "admin"
+      ? copy.editing.descriptionAdmin
+      : role === "manager"
+        ? copy.editing.descriptionManager
+        : description || copy.editing.descriptionDefault;
+
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-      <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
+    <section className="rounded-2xl border border-gray-200 bg-white p-[21px] shadow-sm sm:p-[34px]">
+      <div className="flex flex-col justify-between gap-[13px] lg:flex-row lg:items-start">
         <div>
           <p className="text-sm font-semibold text-[#036661]">
-            Editare clinici
+            {copy.editing.eyebrow}
           </p>
-
-          <h2 className="mt-2 text-2xl font-bold text-gray-900">
-            {title}
+          <h2 className="mt-[8px] text-2xl font-bold text-gray-900">
+            {title || copy.editing.title}
           </h2>
-
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-            {description}
+          <p className="mt-[13px] max-w-3xl text-sm leading-6 text-gray-600">
+            {effectiveDescription}
           </p>
         </div>
 
@@ -344,34 +357,67 @@ export default function ClinicEditingPanel({
           type="button"
           onClick={() => void loadClinics()}
           disabled={isLoading || isSaving}
-          className="romdoc-focus-ring w-fit rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+          className="romdoc-focus-ring w-fit rounded-xl border border-gray-300 bg-white px-[13px] py-[8px] text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Reîncarcă
+          {copy.common.reload}
         </button>
       </div>
 
-      <div className="mt-6">
-        <label
-          htmlFor="clinic-editor-search"
-          className="text-sm font-medium text-gray-900"
-        >
-          Caută clinică
+      <div className="mt-[21px] grid gap-[13px] md:grid-cols-[minmax(0,1fr)_14rem_auto] md:items-end">
+        <label>
+          <span className="text-sm font-medium text-gray-900">
+            {copy.editing.search}
+          </span>
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={copy.editing.searchPlaceholder}
+            className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 px-[13px] py-[13px] text-gray-950"
+          />
         </label>
 
-        <input
-          id="clinic-editor-search"
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Nume, oraș, adresă, telefon sau e-mail"
-          className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-950"
-        />
+        <label>
+          <span className="text-sm font-medium text-gray-900">
+            {copy.editing.status}
+          </span>
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+            className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 bg-white px-[13px] py-[13px] text-gray-950"
+          >
+            <option value="all">{copy.editing.allStatuses}</option>
+            <option value="approved">{copy.common.statusApproved}</option>
+            <option value="pending">{copy.common.statusPending}</option>
+            <option value="rejected">{copy.common.statusRejected}</option>
+            <option value="blocked">{copy.common.statusBlocked}</option>
+          </select>
+        </label>
+
+        <button
+          type="button"
+          disabled={!search && statusFilter === "all"}
+          onClick={() => {
+            setSearch("");
+            setStatusFilter("all");
+          }}
+          className="romdoc-focus-ring min-h-[47px] rounded-xl border border-gray-300 bg-white px-[13px] py-[8px] text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+        >
+          {copy.common.reset}
+        </button>
       </div>
+
+      <p className="mt-[13px] text-sm text-gray-500">
+        {interpolatePlatformClinicCopy(copy.common.showing, {
+          filtered: visibleClinics.length,
+          total: clinics.length,
+        })}
+      </p>
 
       {error ? (
         <div
           role="alert"
-          className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="mt-[21px] rounded-xl border border-red-200 bg-red-50 px-[13px] py-[13px] text-sm text-red-700"
         >
           {error}
         </div>
@@ -380,24 +426,22 @@ export default function ClinicEditingPanel({
       {success ? (
         <div
           role="status"
-          className="mt-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
+          className="mt-[21px] rounded-xl border border-green-200 bg-green-50 px-[13px] py-[13px] text-sm text-green-800"
         >
           {success}
         </div>
       ) : null}
 
       {isLoading ? (
-        <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-5 text-sm text-gray-600">
-          Se încarcă clinicile...
+        <div className="mt-[21px] rounded-xl border border-gray-200 bg-gray-50 p-[21px] text-sm text-gray-600">
+          {copy.editing.states.loading}
         </div>
       ) : visibleClinics.length === 0 ? (
-        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">
-          {clinics.length === 0
-            ? emptyMessage
-            : "Nu există clinici care corespund căutării."}
+        <div className="mt-[21px] rounded-xl border border-amber-200 bg-amber-50 p-[21px] text-sm leading-6 text-amber-900">
+          {clinics.length === 0 ? emptyMessage : copy.editing.states.noResults}
         </div>
       ) : (
-        <div className="mt-6 space-y-4">
+        <div className="mt-[21px] space-y-[13px]">
           {visibleClinics.map((clinic) => {
             const isEditing = editingClinicId === clinic.id;
 
@@ -406,23 +450,21 @@ export default function ClinicEditingPanel({
                 key={clinic.id}
                 className="overflow-hidden rounded-2xl border border-gray-200"
               >
-                <div className="flex flex-col justify-between gap-4 bg-gray-50 px-5 py-4 lg:flex-row lg:items-start">
+                <div className="flex flex-col justify-between gap-[13px] bg-gray-50 px-[21px] py-[13px] lg:flex-row lg:items-start">
                   <div>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-[8px]">
                       <h3 className="text-lg font-bold text-gray-900">
                         {getClinicName(clinic)}
                       </h3>
-
                       <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusClasses(
+                        className={`rounded-full px-[8px] py-[5px] text-xs font-semibold ${statusClasses(
                           clinic.status
                         )}`}
                       >
                         {getStatusLabel(clinic.status)}
                       </span>
                     </div>
-
-                    <p className="mt-1 text-sm text-gray-600">
+                    <p className="mt-[5px] text-sm text-gray-600">
                       {getCityName(clinic)}
                       {clinic.formatted_address
                         ? ` — ${clinic.formatted_address}`
@@ -432,191 +474,129 @@ export default function ClinicEditingPanel({
 
                   <button
                     type="button"
-                    onClick={() =>
-                      isEditing ? stopEditing() : startEditing(clinic)
-                    }
+                    onClick={() => (isEditing ? stopEditing() : startEditing(clinic))}
                     disabled={isSaving}
-                    className="romdoc-focus-ring w-fit rounded-xl bg-[#036661] px-4 py-2 text-sm font-semibold text-white hover:bg-[#02534f] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="romdoc-focus-ring w-fit rounded-xl bg-[#036661] px-[13px] py-[8px] text-sm font-semibold text-white hover:bg-[#02534f] disabled:opacity-60"
                   >
-                    {isEditing ? "Închide" : "Editează"}
+                    {isEditing ? copy.editing.actions.close : copy.editing.actions.edit}
                   </button>
                 </div>
 
-                <div className="grid gap-4 px-5 py-4 text-sm text-gray-700 sm:grid-cols-2 lg:grid-cols-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Telefon
-                    </p>
-                    <p className="mt-1">{clinic.phone || "—"}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      E-mail
-                    </p>
-                    <p className="mt-1 break-all">{clinic.email || "—"}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Website
-                    </p>
-                    <p className="mt-1 break-all">{clinic.website || "—"}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Detalii adresă
-                    </p>
-                    <p className="mt-1">{clinic.address_line_2 || "—"}</p>
-                  </div>
+                <div className="grid gap-[13px] px-[21px] py-[13px] text-sm text-gray-700 sm:grid-cols-2 lg:grid-cols-4">
+                  {[
+                    [copy.editing.fields.phone, clinic.phone || copy.common.none],
+                    [copy.editing.fields.email, clinic.email || copy.common.none],
+                    [copy.editing.fields.website, clinic.website || copy.common.none],
+                    [copy.editing.fields.addressLine2, clinic.address_line_2 || copy.common.none],
+                  ].map(([label, value]) => (
+                    <div key={String(label)}>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        {label}
+                      </p>
+                      <p className="mt-[5px] break-all">{value}</p>
+                    </div>
+                  ))}
                 </div>
 
                 {isEditing && draft ? (
                   <form
                     onSubmit={submitEdit}
-                    className="border-t border-gray-200 bg-white px-5 py-5"
+                    className="border-t border-gray-200 bg-white px-[21px] py-[21px]"
                   >
-                    <div className="grid gap-5 lg:grid-cols-2">
+                    <div className="grid gap-[21px] lg:grid-cols-2">
                       <div className="lg:col-span-2">
-                        <label
-                          htmlFor={`clinic-name-${clinic.id}`}
-                          className="text-sm font-medium text-gray-900"
-                        >
-                          Numele clinicii
+                        <label className="text-sm font-medium text-gray-900">
+                          {copy.editing.fields.name}
                         </label>
                         <input
-                          id={`clinic-name-${clinic.id}`}
                           type="text"
                           required
                           maxLength={200}
                           value={draft.name}
-                          onChange={(event) =>
-                            updateDraft("name", event.target.value)
-                          }
+                          onChange={(event) => updateDraft("name", event.target.value)}
                           disabled={isSaving}
-                          className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-950 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 px-[13px] py-[13px] text-gray-950 disabled:opacity-60"
                         />
                       </div>
 
-                      <div>
-                        <label
-                          htmlFor={`clinic-phone-${clinic.id}`}
-                          className="text-sm font-medium text-gray-900"
-                        >
-                          Telefon
-                        </label>
-                        <input
-                          id={`clinic-phone-${clinic.id}`}
-                          type="tel"
-                          maxLength={50}
-                          value={draft.phone}
-                          onChange={(event) =>
-                            updateDraft("phone", event.target.value)
-                          }
-                          disabled={isSaving}
-                          className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-950 disabled:cursor-not-allowed disabled:opacity-60"
-                        />
-                      </div>
-
-                      <div>
-                        <label
-                          htmlFor={`clinic-email-${clinic.id}`}
-                          className="text-sm font-medium text-gray-900"
-                        >
-                          E-mail
-                        </label>
-                        <input
-                          id={`clinic-email-${clinic.id}`}
-                          type="email"
-                          maxLength={320}
-                          value={draft.email}
-                          onChange={(event) =>
-                            updateDraft("email", event.target.value)
-                          }
-                          disabled={isSaving}
-                          className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-950 disabled:cursor-not-allowed disabled:opacity-60"
-                        />
-                      </div>
+                      {(["phone", "email"] as const).map((field) => (
+                        <div key={field}>
+                          <label className="text-sm font-medium text-gray-900">
+                            {copy.editing.fields[field]}
+                          </label>
+                          <input
+                            type={field === "email" ? "email" : "tel"}
+                            maxLength={field === "email" ? 320 : 50}
+                            value={draft[field]}
+                            onChange={(event) => updateDraft(field, event.target.value)}
+                            disabled={isSaving}
+                            className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 px-[13px] py-[13px] text-gray-950 disabled:opacity-60"
+                          />
+                        </div>
+                      ))}
 
                       <div className="lg:col-span-2">
-                        <label
-                          htmlFor={`clinic-website-${clinic.id}`}
-                          className="text-sm font-medium text-gray-900"
-                        >
-                          Website
+                        <label className="text-sm font-medium text-gray-900">
+                          {copy.editing.fields.website}
                         </label>
                         <input
-                          id={`clinic-website-${clinic.id}`}
                           type="url"
                           maxLength={500}
                           value={draft.website}
-                          onChange={(event) =>
-                            updateDraft("website", event.target.value)
-                          }
+                          onChange={(event) => updateDraft("website", event.target.value)}
                           placeholder="https://"
                           disabled={isSaving}
-                          className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-950 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 px-[13px] py-[13px] text-gray-950 disabled:opacity-60"
                         />
                       </div>
 
                       <div className="lg:col-span-2">
-                        <label
-                          htmlFor={`clinic-address-line-2-${clinic.id}`}
-                          className="text-sm font-medium text-gray-900"
-                        >
-                          Detalii suplimentare adresă
+                        <label className="text-sm font-medium text-gray-900">
+                          {copy.editing.fields.addressLine2}
                         </label>
                         <input
-                          id={`clinic-address-line-2-${clinic.id}`}
                           type="text"
                           maxLength={300}
                           value={draft.addressLine2}
-                          onChange={(event) =>
-                            updateDraft("addressLine2", event.target.value)
-                          }
-                          placeholder="Etaj, cabinet, corp de clădire"
+                          onChange={(event) => updateDraft("addressLine2", event.target.value)}
                           disabled={isSaving}
-                          className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-950 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 px-[13px] py-[13px] text-gray-950 disabled:opacity-60"
                         />
                       </div>
 
                       <div className="lg:col-span-2">
                         <p className="text-sm font-medium text-gray-900">
-                          Schimbă adresa verificată prin Google — opțional
+                          {copy.editing.fields.newAddress}
                         </p>
-                        <div className="mt-2">
+                        <div className="mt-[8px]">
                           <GooglePlaceAutocomplete
-                            onAddressSelected={(address) =>
-                              setSelectedAddress(address)
-                            }
+                            onAddressSelected={setSelectedAddress}
                             disabled={isSaving}
+                            locale={locale}
+                            copy={googleCopy}
                           />
                         </div>
-
                         {selectedAddress ? (
-                          <div className="mt-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-                            <p className="font-semibold">Adresă nouă selectată</p>
-                            <p className="mt-1">
+                          <div className="mt-[13px] rounded-xl border border-green-200 bg-green-50 px-[13px] py-[13px] text-sm text-green-800">
+                            <p className="font-semibold">
+                              {copy.editing.fields.newAddressSelected}
+                            </p>
+                            <p className="mt-[5px]">
                               {selectedAddress.formattedAddress}
                             </p>
                           </div>
                         ) : (
-                          <p className="mt-2 text-xs leading-5 text-gray-500">
-                            Lasă acest câmp gol dacă adresa principală rămâne neschimbată.
+                          <p className="mt-[8px] text-xs leading-5 text-gray-500">
+                            {copy.editing.fields.newAddressHelp}
                           </p>
                         )}
                       </div>
 
                       <div className="lg:col-span-2">
-                        <label
-                          htmlFor={`clinic-description-${clinic.id}`}
-                          className="text-sm font-medium text-gray-900"
-                        >
-                          Descriere
+                        <label className="text-sm font-medium text-gray-900">
+                          {copy.editing.fields.description}
                         </label>
                         <textarea
-                          id={`clinic-description-${clinic.id}`}
                           rows={5}
                           maxLength={3000}
                           value={draft.description}
@@ -624,27 +604,28 @@ export default function ClinicEditingPanel({
                             updateDraft("description", event.target.value)
                           }
                           disabled={isSaving}
-                          className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-950 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="romdoc-focus-ring mt-[8px] w-full rounded-xl border border-gray-300 px-[13px] py-[13px] text-gray-950 disabled:opacity-60"
                         />
                       </div>
                     </div>
 
-                    <div className="mt-5 flex flex-wrap gap-3">
+                    <div className="mt-[21px] flex flex-wrap gap-[13px]">
                       <button
                         type="submit"
                         disabled={isSaving}
-                        className="romdoc-focus-ring rounded-xl bg-[#036661] px-5 py-3 text-sm font-semibold text-white hover:bg-[#02534f] disabled:cursor-not-allowed disabled:opacity-60"
+                        className="romdoc-focus-ring rounded-xl bg-[#036661] px-[21px] py-[13px] text-sm font-semibold text-white hover:bg-[#02534f] disabled:opacity-60"
                       >
-                        {isSaving ? "Se salvează..." : "Salvează clinica"}
+                        {isSaving
+                          ? copy.editing.actions.saving
+                          : copy.editing.actions.save}
                       </button>
-
                       <button
                         type="button"
                         onClick={stopEditing}
                         disabled={isSaving}
-                        className="romdoc-focus-ring rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="romdoc-focus-ring rounded-xl border border-gray-300 bg-white px-[21px] py-[13px] text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
                       >
-                        Anulează
+                        {copy.editing.actions.cancel}
                       </button>
                     </div>
                   </form>

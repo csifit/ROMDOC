@@ -1,7 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useLocale } from "next-intl";
+
 import Button from "@/components/ui/button";
+import type { PlatformOperatorClinicApiPayload } from "@/lib/api/platform-operator-clinic-codes";
+import {
+  normalizeAppLocale,
+  selectTranslation,
+} from "@/lib/i18n/app-locale";
+import {
+  getPlatformClinicApiMessage,
+  getPlatformOperatorClinics,
+  PLATFORM_OPERATOR_CLINIC_LOCALE_TAGS,
+} from "@/lib/i18n/platform-operator-clinics";
 
 type Profile = {
   first_name: string | null;
@@ -15,7 +27,10 @@ type Doctor = {
   status: string;
   email: string | null;
   profile: Profile | Profile[] | null;
-  doctor_translations: { locale: string; title: string | null }[] | null;
+  doctor_translations: Array<{
+    locale: string;
+    title: string | null;
+  }> | null;
 };
 
 type Clinic = {
@@ -23,81 +38,45 @@ type Clinic = {
   slug: string;
   status: string;
   formatted_address: string | null;
-  clinic_translations: { locale: string; name: string }[] | null;
+  clinic_translations: Array<{
+    locale: string;
+    name: string;
+  }> | null;
   cities:
     | {
         slug: string;
-        city_translations: { locale: string; name: string }[] | null;
+        city_translations: Array<{ locale: string; name: string }> | null;
       }
-    | {
+    | Array<{
         slug: string;
-        city_translations: { locale: string; name: string }[] | null;
-      }[]
+        city_translations: Array<{ locale: string; name: string }> | null;
+      }>
     | null;
 };
 
-type Link = { doctor_id: string; clinic_id: string };
+type DoctorClinicLink = {
+  doctor_id: string;
+  clinic_id: string;
+};
 
-type ApiResponse = {
+type ApiResponse = PlatformOperatorClinicApiPayload & {
   doctors?: Doctor[];
   clinics?: Clinic[];
-  links?: Link[];
-  message?: string;
-  error?: string;
+  links?: DoctorClinicLink[];
 };
 
 function first<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? value[0] ?? null : value ?? null;
 }
 
-function doctorName(doctor: Doctor) {
-  const profile = first(doctor.profile);
-  const fullName = [profile?.first_name, profile?.last_name]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
-
-  return fullName || doctor.slug;
-}
-
-function doctorTitle(doctor: Doctor) {
-  return (
-    doctor.doctor_translations?.find((item) => item.locale === "ro")?.title ??
-    doctor.doctor_translations?.[0]?.title ??
-    "Medic"
-  );
-}
-
-function clinicName(clinic: Clinic) {
-  return (
-    clinic.clinic_translations?.find((item) => item.locale === "ro")?.name ??
-    clinic.clinic_translations?.[0]?.name ??
-    clinic.slug
-  );
-}
-
-function cityName(clinic: Clinic) {
-  const city = first(clinic.cities);
-  return (
-    city?.city_translations?.find((item) => item.locale === "ro")?.name ??
-    city?.city_translations?.[0]?.name ??
-    city?.slug ??
-    "Oraș necunoscut"
-  );
-}
-
-function normalize(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("ro-RO")
-    .trim();
-}
-
 export default function AdminDoctorClinicAssociations() {
+  const locale = normalizeAppLocale(useLocale());
+  const localeTag = PLATFORM_OPERATOR_CLINIC_LOCALE_TAGS[locale];
+  const copy = getPlatformOperatorClinics(locale);
+
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [clinics, setClinics] = useState<Clinic[]>([]);
-  const [links, setLinks] = useState<Link[]>([]);
+  const [links, setLinks] = useState<DoctorClinicLink[]>([]);
   const [doctorId, setDoctorId] = useState("");
   const [clinicId, setClinicId] = useState("");
   const [doctorSearch, setDoctorSearch] = useState("");
@@ -108,6 +87,51 @@ export default function AdminDoctorClinicAssociations() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  const doctorName = useCallback((doctor: Doctor) => {
+    const profile = first(doctor.profile);
+    const name = [profile?.first_name, profile?.last_name]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    return name || doctor.slug;
+  }, []);
+
+  const doctorTitle = useCallback(
+    (doctor: Doctor) =>
+      selectTranslation(doctor.doctor_translations, locale)?.title ??
+      copy.common.unknownDoctor,
+    [copy.common.unknownDoctor, locale]
+  );
+
+  const clinicName = useCallback(
+    (clinic: Clinic) =>
+      selectTranslation(clinic.clinic_translations, locale)?.name ??
+      clinic.slug,
+    [locale]
+  );
+
+  const cityName = useCallback(
+    (clinic: Clinic) => {
+      const city = first(clinic.cities);
+      return (
+        selectTranslation(city?.city_translations, locale)?.name ??
+        city?.slug ??
+        copy.common.unknownCity
+      );
+    },
+    [copy.common.unknownCity, locale]
+  );
+
+  const normalize = useCallback(
+    (value: string) =>
+      value
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLocaleLowerCase(localeTag)
+        .trim(),
+    [localeTag]
+  );
+
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -117,16 +141,30 @@ export default function AdminDoctorClinicAssociations() {
         cache: "no-store",
       });
       const result = (await response.json()) as ApiResponse;
-      if (!response.ok) throw new Error(result.error ?? "Datele nu au putut fi încărcate.");
+
+      if (!response.ok) {
+        throw new Error(
+          getPlatformClinicApiMessage(
+            locale,
+            result.code,
+            result.error ?? copy.associations.states.loadFailed
+          )
+        );
+      }
+
       setDoctors(result.doctors ?? []);
       setClinics(result.clinics ?? []);
       setLinks(result.links ?? []);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Datele nu au putut fi încărcate.");
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : copy.associations.states.loadFailed
+      );
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [copy.associations.states.loadFailed, locale]);
 
   useEffect(() => {
     void loadData();
@@ -135,24 +173,40 @@ export default function AdminDoctorClinicAssociations() {
   const filteredDoctors = useMemo(() => {
     const query = normalize(doctorSearch);
     if (!query) return doctors;
+
     return doctors.filter((doctor) =>
-      normalize([doctorName(doctor), doctorTitle(doctor), doctor.email, doctor.slug].filter(Boolean).join(" ")).includes(query)
+      normalize(
+        [doctorName(doctor), doctorTitle(doctor), doctor.email, doctor.slug]
+          .filter(Boolean)
+          .join(" ")
+      ).includes(query)
     );
-  }, [doctorSearch, doctors]);
+  }, [doctorName, doctorSearch, doctorTitle, doctors, normalize]);
 
   const linkedClinicIds = useMemo(
-    () => new Set(links.filter((link) => link.doctor_id === doctorId).map((link) => link.clinic_id)),
+    () =>
+      new Set(
+        links
+          .filter((link) => link.doctor_id === doctorId)
+          .map((link) => link.clinic_id)
+      ),
     [doctorId, links]
   );
 
   const availableClinics = useMemo(() => {
     const query = normalize(clinicSearch);
+
     return clinics.filter((clinic) => {
       if (linkedClinicIds.has(clinic.id)) return false;
       if (!query) return true;
-      return normalize([clinicName(clinic), cityName(clinic), clinic.formatted_address, clinic.slug].filter(Boolean).join(" ")).includes(query);
+
+      return normalize(
+        [clinicName(clinic), cityName(clinic), clinic.formatted_address, clinic.slug]
+          .filter(Boolean)
+          .join(" ")
+      ).includes(query);
     });
-  }, [clinicSearch, clinics, linkedClinicIds]);
+  }, [cityName, clinicName, clinicSearch, clinics, linkedClinicIds, normalize]);
 
   const associatedClinics = useMemo(
     () => clinics.filter((clinic) => linkedClinicIds.has(clinic.id)),
@@ -164,7 +218,7 @@ export default function AdminDoctorClinicAssociations() {
     setSuccess(null);
 
     if (!doctorId || !clinicId) {
-      setError("Selectează un medic și o clinică.");
+      setError(copy.associations.selectionRequired);
       return;
     }
 
@@ -176,16 +230,39 @@ export default function AdminDoctorClinicAssociations() {
           body: JSON.stringify({ doctorId, clinicId }),
         });
         const result = (await response.json()) as ApiResponse;
-        if (!response.ok) throw new Error(result.error ?? "Asocierea nu a putut fi salvată.");
+
+        if (!response.ok) {
+          throw new Error(
+            getPlatformClinicApiMessage(
+              locale,
+              result.code,
+              result.error ?? copy.associations.states.saveFailed
+            )
+          );
+        }
+
         setLinks((current) =>
-          current.some((link) => link.doctor_id === doctorId && link.clinic_id === clinicId)
+          current.some(
+            (link) =>
+              link.doctor_id === doctorId && link.clinic_id === clinicId
+          )
             ? current
             : [...current, { doctor_id: doctorId, clinic_id: clinicId }]
         );
         setClinicId("");
-        setSuccess(result.message ?? "Medicul a fost asociat clinicii.");
+        setSuccess(
+          getPlatformClinicApiMessage(
+            locale,
+            result.code,
+            result.message ?? copy.associations.states.associated
+          )
+        );
       } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Asocierea nu a putut fi salvată.");
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : copy.associations.states.saveFailed
+        );
       }
     });
   }
@@ -202,40 +279,77 @@ export default function AdminDoctorClinicAssociations() {
         body: JSON.stringify({ doctorId, clinicId: clinicIdToRemove }),
       });
       const result = (await response.json()) as ApiResponse;
-      if (!response.ok) throw new Error(result.error ?? "Asocierea nu a putut fi eliminată.");
+
+      if (!response.ok) {
+        throw new Error(
+          getPlatformClinicApiMessage(
+            locale,
+            result.code,
+            result.error ?? copy.associations.states.removeFailed
+          )
+        );
+      }
+
       setLinks((current) =>
-        current.filter((link) => !(link.doctor_id === doctorId && link.clinic_id === clinicIdToRemove))
+        current.filter(
+          (link) =>
+            !(link.doctor_id === doctorId && link.clinic_id === clinicIdToRemove)
+        )
       );
-      setSuccess(result.message ?? "Asocierea a fost eliminată.");
+      setSuccess(
+        getPlatformClinicApiMessage(
+          locale,
+          result.code,
+          result.message ?? copy.associations.states.removed
+        )
+      );
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Asocierea nu a putut fi eliminată.");
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : copy.associations.states.removeFailed
+      );
     } finally {
       setRemoving(null);
     }
   }
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-      <p className="text-sm font-semibold text-[#9A4F35]">Asocieri</p>
-      <h2 className="mt-2 text-2xl font-bold text-gray-900">Asociază medici cu clinici</h2>
-      <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-        Un medic poate lucra în mai multe clinici, iar o clinică poate avea mai mulți medici.
+    <section className="rounded-2xl border border-gray-200 bg-white p-[21px] shadow-sm sm:p-[34px]">
+      <p className="text-sm font-semibold text-[#9A4F35]">
+        {copy.associations.eyebrow}
+      </p>
+      <h2 className="mt-[8px] text-2xl font-bold text-gray-900">
+        {copy.associations.title}
+      </h2>
+      <p className="mt-[13px] max-w-3xl text-sm leading-6 text-gray-600">
+        {copy.associations.description}
       </p>
 
-      {error ? <p className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
-      {success ? <p className="mt-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{success}</p> : null}
+      {error ? (
+        <p className="mt-[21px] rounded-xl border border-red-200 bg-red-50 px-[13px] py-[13px] text-sm text-red-700">
+          {error}
+        </p>
+      ) : null}
+      {success ? (
+        <p className="mt-[21px] rounded-xl border border-green-200 bg-green-50 px-[13px] py-[13px] text-sm text-green-800">
+          {success}
+        </p>
+      ) : null}
 
       {isLoading ? (
-        <p className="mt-6 text-sm text-gray-600">Se încarcă...</p>
+        <p className="mt-[21px] text-sm text-gray-600">
+          {copy.associations.states.loading}
+        </p>
       ) : (
-        <div className="mt-7 grid gap-7 xl:grid-cols-2">
-          <div className="space-y-5">
+        <div className="mt-[21px] grid gap-[34px] xl:grid-cols-2">
+          <div className="space-y-[13px]">
             <input
               type="search"
               value={doctorSearch}
               onChange={(event) => setDoctorSearch(event.target.value)}
-              placeholder="Caută medicul"
-              className="romdoc-focus-ring w-full rounded-xl border border-gray-300 px-4 py-3"
+              placeholder={copy.associations.doctorSearch}
+              className="romdoc-focus-ring w-full rounded-xl border border-gray-300 px-[13px] py-[13px]"
             />
 
             <select
@@ -244,9 +358,9 @@ export default function AdminDoctorClinicAssociations() {
                 setDoctorId(event.target.value);
                 setClinicId("");
               }}
-              className="romdoc-focus-ring w-full rounded-xl border border-gray-300 bg-white px-4 py-3"
+              className="romdoc-focus-ring w-full rounded-xl border border-gray-300 bg-white px-[13px] py-[13px]"
             >
-              <option value="">Selectează medicul</option>
+              <option value="">{copy.associations.selectDoctor}</option>
               {filteredDoctors.map((doctor) => (
                 <option key={doctor.id} value={doctor.id}>
                   {doctorName(doctor)} — {doctorTitle(doctor)}
@@ -258,17 +372,21 @@ export default function AdminDoctorClinicAssociations() {
               type="search"
               value={clinicSearch}
               onChange={(event) => setClinicSearch(event.target.value)}
-              placeholder="Caută clinica după nume, oraș sau adresă"
-              className="romdoc-focus-ring w-full rounded-xl border border-gray-300 px-4 py-3"
+              placeholder={copy.associations.clinicSearch}
+              className="romdoc-focus-ring w-full rounded-xl border border-gray-300 px-[13px] py-[13px]"
             />
 
             <select
               value={clinicId}
               onChange={(event) => setClinicId(event.target.value)}
               disabled={!doctorId}
-              className="romdoc-focus-ring w-full rounded-xl border border-gray-300 bg-white px-4 py-3 disabled:bg-gray-100"
+              className="romdoc-focus-ring w-full rounded-xl border border-gray-300 bg-white px-[13px] py-[13px] disabled:bg-gray-100"
             >
-              <option value="">{doctorId ? "Selectează clinica" : "Selectează mai întâi medicul"}</option>
+              <option value="">
+                {doctorId
+                  ? copy.associations.selectClinic
+                  : copy.associations.selectDoctorFirst}
+              </option>
               {availableClinics.map((clinic) => (
                 <option key={clinic.id} value={clinic.id}>
                   {clinicName(clinic)} — {cityName(clinic)}
@@ -276,31 +394,58 @@ export default function AdminDoctorClinicAssociations() {
               ))}
             </select>
 
-            <Button type="button" onClick={associate} disabled={isSaving || !doctorId || !clinicId}>
-              {isSaving ? "Se asociază..." : "Asociază medicul cu clinica"}
+            <Button
+              type="button"
+              onClick={associate}
+              disabled={isSaving || !doctorId || !clinicId}
+            >
+              {isSaving
+                ? copy.associations.actions.associating
+                : copy.associations.actions.associate}
             </Button>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
-            <h3 className="text-lg font-bold text-gray-900">Clinici asociate</h3>
-            {!doctorId ? <p className="mt-3 text-sm text-gray-600">Selectează un medic.</p> : null}
+          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-[21px]">
+            <h3 className="text-lg font-bold text-gray-900">
+              {copy.associations.associated}
+            </h3>
+            {!doctorId ? (
+              <p className="mt-[13px] text-sm text-gray-600">
+                {copy.associations.selectDoctorHint}
+              </p>
+            ) : null}
             {doctorId && associatedClinics.length === 0 ? (
-              <p className="mt-3 text-sm text-gray-600">Medicul nu are clinici asociate.</p>
+              <p className="mt-[13px] text-sm text-gray-600">
+                {copy.associations.noClinics}
+              </p>
             ) : null}
 
-            <div className="mt-4 space-y-3">
+            <div className="mt-[13px] space-y-[13px]">
               {associatedClinics.map((clinic) => (
-                <div key={clinic.id} className="rounded-xl border border-gray-200 bg-white p-4">
-                  <p className="font-semibold text-gray-900">{clinicName(clinic)}</p>
-                  <p className="mt-1 text-sm text-gray-600">{cityName(clinic)}</p>
-                  {clinic.formatted_address ? <p className="mt-1 text-xs text-gray-500">{clinic.formatted_address}</p> : null}
+                <div
+                  key={clinic.id}
+                  className="rounded-xl border border-gray-200 bg-white p-[13px]"
+                >
+                  <p className="font-semibold text-gray-900">
+                    {clinicName(clinic)}
+                  </p>
+                  <p className="mt-[5px] text-sm text-gray-600">
+                    {cityName(clinic)}
+                  </p>
+                  {clinic.formatted_address ? (
+                    <p className="mt-[5px] text-xs text-gray-500">
+                      {clinic.formatted_address}
+                    </p>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => void remove(clinic.id)}
                     disabled={removing === clinic.id}
-                    className="romdoc-focus-ring mt-3 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                    className="romdoc-focus-ring mt-[13px] rounded-lg border border-red-200 px-[13px] py-[8px] text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
                   >
-                    {removing === clinic.id ? "Se elimină..." : "Elimină asocierea"}
+                    {removing === clinic.id
+                      ? copy.associations.actions.removing
+                      : copy.associations.actions.remove}
                   </button>
                 </div>
               ))}

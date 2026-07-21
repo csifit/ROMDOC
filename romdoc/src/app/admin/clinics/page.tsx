@@ -1,7 +1,5 @@
 import Link from "next/link";
-import {
-  redirect,
-} from "next/navigation";
+import { redirect } from "next/navigation";
 
 import AdminClinicCreationForm from "@/components/admin/admin-clinic-creation-form";
 import AdminDoctorClinicAssociations from "@/components/admin/admin-doctor-clinic-associations";
@@ -10,67 +8,57 @@ import ClinicOrganizationLocationApprovals from "@/components/admin/clinic-organ
 import ClinicOrganizationsOverview from "@/components/admin/clinic-organizations-overview";
 import ClinicEditingPanel from "@/components/clinic/clinic-editing-panel";
 import AdminAccordion from "@/components/ui/admin-accordion";
-import {
-  createClient,
-} from "@/lib/supabase/server";
+import { getPlatformOperatorClinics } from "@/lib/i18n/platform-operator-clinics";
+import { getStoredAppLocale } from "@/lib/i18n/server-app-locale";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function AdminClinicsPage() {
-  const supabase =
-    await createClient();
+  const locale = await getStoredAppLocale();
+  const copy = getPlatformOperatorClinics(locale);
+  const supabase = await createClient();
 
   const {
     data: { user },
     error: userError,
-  } =
-    await supabase.auth.getUser();
+  } = await supabase.auth.getUser();
 
-  if (
-    userError ||
-    !user
-  ) {
-    redirect(
-      "/login?next=/admin/clinics"
-    );
+  if (userError || !user) {
+    const parameters = new URLSearchParams({
+      locale,
+      next: "/admin/clinics",
+    });
+
+    redirect(`/login?${parameters.toString()}`);
   }
 
-  const {
-    data: profile,
-    error: profileError,
-  } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select(`
-      role,
-      account_status
-    `)
+    .select("role, account_status")
     .eq("id", user.id)
     .maybeSingle();
 
   if (
     profileError ||
     profile?.role !== "admin" ||
-    profile.account_status !==
-      "active"
+    profile.account_status !== "active"
   ) {
     redirect("/dashboard");
   }
 
   return (
-    <div className="space-y-8">
-      <header className="flex flex-wrap items-start justify-between gap-5">
+    <div className="space-y-[34px]">
+      <header className="flex flex-wrap items-start justify-between gap-[21px]">
         <div>
           <p className="text-sm font-semibold text-[#9A4F35]">
-            Administrare
+            {copy.common.administration}
           </p>
 
-          <h1 className="mt-2 text-3xl font-bold text-gray-900">
-            Clinici
+          <h1 className="mt-[8px] text-3xl font-bold text-gray-900">
+            {copy.pages.admin.title}
           </h1>
 
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-            Creează clinici aprobate, asociază medicii existenți cu locațiile lor,
-            verifică propunerile trimise de medici și aprobă punctele de lucru ale
-            organizațiilor de clinică. Locațiile aprobate devin eligibile pentru
-            harta publică RomDoc.
+          <p className="mt-[13px] max-w-3xl text-sm leading-6 text-gray-600">
+            {copy.pages.admin.description}
           </p>
         </div>
 
@@ -78,48 +66,53 @@ export default async function AdminClinicsPage() {
           href="/admin/clinics/clinic-billing"
           target="_blank"
           rel="noopener noreferrer"
-          className="romdoc-focus-ring inline-flex rounded-xl border border-[#036661] bg-white px-4 py-2.5 text-sm font-semibold text-[#036661] transition hover:bg-[#036661]/10"
+          className="romdoc-focus-ring inline-flex min-h-[42px] items-center rounded-xl border border-[#036661] bg-white px-[13px] py-[8px] text-sm font-semibold text-[#036661] transition hover:bg-[#036661]/10"
         >
-          Tarife clinică ↗
+          {copy.pages.admin.billing}
         </Link>
       </header>
 
-      <ClinicOrganizationsOverview />
+      <ClinicManagementActions />
 
       <AdminAccordion
-        title="Aprobă locații organizații"
-        description="Verifică punctele de lucru cerute de Clinic Manager. Aprobarea activează locația pentru organizație și o face eligibilă pentru harta publică."
+        title={copy.accordions.organizationsTitle}
+        description={copy.accordions.organizationsDescription}
+      >
+        <ClinicOrganizationsOverview locale={locale} />
+      </AdminAccordion>
+
+      <AdminAccordion
+        title={copy.accordions.locationsTitle}
+        description={copy.accordions.locationsDescription}
         defaultOpen
       >
         <ClinicOrganizationLocationApprovals />
       </AdminAccordion>
 
       <AdminAccordion
-        title="Adaugă clinică"
-        description="Creează direct o clinică aprobată folosind o adresă verificată prin Google."
+        title={copy.accordions.createTitle}
+        description={copy.accordions.createDescription}
       >
         <AdminClinicCreationForm />
       </AdminAccordion>
 
       <AdminAccordion
-        title="Asociază medic cu clinică"
-        description="Gestionează relațiile dintre medicii existenți și clinicile aprobate."
+        title={copy.accordions.associationsTitle}
+        description={copy.accordions.associationsDescription}
       >
         <AdminDoctorClinicAssociations />
       </AdminAccordion>
 
       <AdminAccordion
-        title="Editează clinici"
-        description="Administratorii pot modifica toate clinicile din platformă: date de contact, descriere și adresă verificată."
+        title={copy.accordions.editingTitle}
+        description={copy.accordions.editingDescription}
       >
         <ClinicEditingPanel
-          title="Toate clinicile"
-          description="Editează datele publice ale oricărei clinici din RomDoc. Modificările se aplică tuturor medicilor asociați acelei clinici."
-          emptyMessage="Nu există încă clinici în platformă."
+          title={copy.editing.title}
+          description={copy.editing.descriptionAdmin}
+          emptyMessage={copy.editing.empty}
         />
       </AdminAccordion>
-
-      <ClinicManagementActions />
     </div>
   );
 }
