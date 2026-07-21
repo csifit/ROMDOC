@@ -1,11 +1,24 @@
 import Link from "next/link";
-import { getLocale } from "next-intl/server";
+import {
+  getTranslations,
+} from "next-intl/server";
 
-import { type AppLocale } from "@/i18n/routing";
-import { createClient } from "@/lib/supabase/server";
+import {
+  type AppLocale,
+  selectTranslation,
+} from "@/lib/i18n/app-locale";
+import {
+  getStoredAppLocale,
+} from "@/lib/i18n/server-app-locale";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
 type BillingPageProps = {
-  searchParams: Promise<{ month?: string }>;
+  searchParams:
+    Promise<{
+      month?: string;
+    }>;
 };
 
 type OrganizationMember = {
@@ -15,36 +28,58 @@ type OrganizationMember = {
 type OrganizationSummary = {
   monthStart: string;
   monthEndExclusive: string;
+
   organization: {
     id: string;
     name: string;
     status: string;
-    contact_email: string | null;
-    contact_phone: string | null;
+
+    contact_email:
+      | string
+      | null;
+
+    contact_phone:
+      | string
+      | null;
   } | null;
+
   billingProfile: {
     company_name: string;
     tax_id: string;
-    trade_register_number: string | null;
+
+    trade_register_number:
+      | string
+      | null;
+
     billing_address: string;
     billing_city: string;
     billing_county: string;
     billing_country: string;
     billing_email: string;
     is_vat_payer: boolean;
-    vat_number: string | null;
+
+    vat_number:
+      | string
+      | null;
+
     updated_at: string;
   } | null;
+
   locations: Array<{
     id: string;
     name: string;
-    formattedAddress: string | null;
+
+    formattedAddress:
+      | string
+      | null;
   }>;
+
   prices: {
     clinicDoctorMonthlyPriceRon: number;
     smsUnitPriceRon: number;
     vatRate: number;
   };
+
   totals: {
     activeDoctorCount: number;
     subscriptionSubtotalRon: number;
@@ -56,17 +91,47 @@ type OrganizationSummary = {
     estimatedVatRon: number;
     estimatedTotalRon: number;
   };
+
   doctors: Array<{
     relationshipId: string;
-    doctorId: string | null;
+
+    doctorId:
+      | string
+      | null;
+
+    profileId:
+      | string
+      | null;
+
+    clinicId:
+      | string
+      | null;
+
     doctorName: string;
-    email: string | null;
+
+    email:
+      | string
+      | null;
+
     invitationStatus: string;
     coverageStatus: string;
-    acceptedAt: string | null;
-    coverageStartedAt: string | null;
-    clinicName: string | null;
-    clinicAddress: string | null;
+
+    acceptedAt:
+      | string
+      | null;
+
+    coverageStartedAt:
+      | string
+      | null;
+
+    clinicName:
+      | string
+      | null;
+
+    clinicAddress:
+      | string
+      | null;
+
     subscriptionBillable: boolean;
     subscriptionCostRon: number;
     confirmationSmsCount: number;
@@ -77,503 +142,1980 @@ type OrganizationSummary = {
   }>;
 };
 
-type Copy = {
-  title: string;
-  description: string;
-  auditNotice: string;
-  previousMonth: string;
-  nextMonth: string;
-  currentMonth: string;
-  organizationSummary: string;
-  coveredDoctors: string;
-  subscriptions: string;
-  sentSms: string;
-  estimatedTotal: string;
-  locations: string;
-  noLocations: string;
-  billingDetails: string;
-  costBreakdown: string;
-  doctorSubscriptions: string;
-  confirmationSms: string;
-  reminderSms: string;
-  smsSubtotal: string;
-  subtotalBeforeVat: string;
-  estimatedVat: string;
-  totalWithVat: string;
-  doctorsTitle: string;
-  doctorsHelper: string;
-  subscription: string;
-  accountEmail: string;
-  coverageStart: string;
-  assignedLocation: string;
-  unitPrices: string;
-  doctorUnitPrice: string;
-  smsUnitPrice: string;
-  noOrganizations: string;
-  noOrganizationsHelper: string;
-  noDoctors: string;
-  notInvoice: string;
-  unavailable: string;
+type DoctorTranslation = {
+  doctor_id: string;
+  locale: string;
+
+  title:
+    | string
+    | null;
 };
 
-const COPY: Record<AppLocale, Copy> = {
-  ro: {
-    title: "Costuri și acoperire",
-    description:
-      "Prezentare lunară a abonamentelor medicilor invitați și a SMS-urilor trimise pacienților.",
-    auditNotice:
-      "Această pagină este exclusiv pentru vizualizare și audit. Nu generează facturi și nu confirmă sume finale de plată.",
-    previousMonth: "Luna precedentă",
-    nextMonth: "Luna următoare",
-    currentMonth: "Luna curentă",
-    organizationSummary: "Sumar organizații",
-    coveredDoctors: "Medici acoperiți",
-    subscriptions: "Abonamente medici",
-    sentSms: "SMS trimise",
-    estimatedTotal: "Total estimat",
-    locations: "Locații aprobate",
-    noLocations: "Nu există locații aprobate asociate.",
-    billingDetails: "Date de facturare",
-    costBreakdown: "Defalcare costuri",
-    doctorSubscriptions: "Abonamente medici",
-    confirmationSms: "SMS confirmare",
-    reminderSms: "SMS reminder 24h",
-    smsSubtotal: "Subtotal SMS",
-    subtotalBeforeVat: "Subtotal înainte de TVA",
-    estimatedVat: "TVA estimat",
-    totalWithVat: "Total estimat cu TVA",
-    doctorsTitle: "Costuri pe medic",
-    doctorsHelper:
-      "Deschide un medic pentru a vedea abonamentul, mesajele SMS și locația asociată.",
-    subscription: "Abonament",
-    accountEmail: "E-mail cont",
-    coverageStart: "Început acoperire",
-    assignedLocation: "Locație asociată",
-    unitPrices: "Tarife utilizate",
-    doctorUnitPrice: "Abonament medic / lună",
-    smsUnitPrice: "Preț / SMS trimis",
-    noOrganizations: "Nu există organizații asociate",
-    noOrganizationsHelper:
-      "După asocierea contului cu o organizație de clinică, sumarul va apărea aici.",
-    noDoctors: "Nu există medici invitați pentru această organizație.",
-    notInvoice: "Estimare de audit — nu reprezintă factură",
-    unavailable: "Indisponibil",
-  },
-  en: {
-    title: "Costs and coverage",
-    description:
-      "Monthly overview of clinic-invited doctor subscriptions and SMS messages sent to patients.",
-    auditNotice:
-      "This page is for viewing and audit only. It does not generate invoices or confirm final payable amounts.",
-    previousMonth: "Previous month",
-    nextMonth: "Next month",
-    currentMonth: "Current month",
-    organizationSummary: "Organization summary",
-    coveredDoctors: "Covered doctors",
-    subscriptions: "Doctor subscriptions",
-    sentSms: "SMS sent",
-    estimatedTotal: "Estimated total",
-    locations: "Approved locations",
-    noLocations: "No approved locations are associated.",
-    billingDetails: "Billing details",
-    costBreakdown: "Cost breakdown",
-    doctorSubscriptions: "Doctor subscriptions",
-    confirmationSms: "Confirmation SMS",
-    reminderSms: "24h reminder SMS",
-    smsSubtotal: "SMS subtotal",
-    subtotalBeforeVat: "Subtotal before VAT",
-    estimatedVat: "Estimated VAT",
-    totalWithVat: "Estimated total with VAT",
-    doctorsTitle: "Cost by doctor",
-    doctorsHelper:
-      "Open a doctor to view subscription, SMS usage and assigned location.",
-    subscription: "Subscription",
-    accountEmail: "Account email",
-    coverageStart: "Coverage start",
-    assignedLocation: "Assigned location",
-    unitPrices: "Prices used",
-    doctorUnitPrice: "Doctor subscription / month",
-    smsUnitPrice: "Price / sent SMS",
-    noOrganizations: "No associated organizations",
-    noOrganizationsHelper:
-      "The summary will appear after this account is linked to a clinic organization.",
-    noDoctors: "No invited doctors for this organization.",
-    notInvoice: "Audit estimate — not an invoice",
-    unavailable: "Unavailable",
-  },
-  de: {
-    title: "Kosten und Abdeckung",
-    description:
-      "Monatliche Übersicht über Abonnements eingeladener Ärzte und an Patienten gesendete SMS.",
-    auditNotice:
-      "Diese Seite dient ausschließlich der Übersicht und Prüfung. Sie erstellt keine Rechnungen und bestätigt keine endgültigen Zahlungsbeträge.",
-    previousMonth: "Vorheriger Monat",
-    nextMonth: "Nächster Monat",
-    currentMonth: "Aktueller Monat",
-    organizationSummary: "Organisationsübersicht",
-    coveredDoctors: "Abgedeckte Ärzte",
-    subscriptions: "Arztabonnements",
-    sentSms: "Gesendete SMS",
-    estimatedTotal: "Geschätzter Gesamtbetrag",
-    locations: "Genehmigte Standorte",
-    noLocations: "Keine genehmigten Standorte zugeordnet.",
-    billingDetails: "Rechnungsdaten",
-    costBreakdown: "Kostenaufstellung",
-    doctorSubscriptions: "Arztabonnements",
-    confirmationSms: "Bestätigungs-SMS",
-    reminderSms: "24-Stunden-Erinnerungs-SMS",
-    smsSubtotal: "SMS-Zwischensumme",
-    subtotalBeforeVat: "Zwischensumme vor MwSt.",
-    estimatedVat: "Geschätzte MwSt.",
-    totalWithVat: "Geschätzter Gesamtbetrag inkl. MwSt.",
-    doctorsTitle: "Kosten pro Arzt",
-    doctorsHelper:
-      "Öffnen Sie einen Arzt, um Abonnement, SMS-Nutzung und Standort zu sehen.",
-    subscription: "Abonnement",
-    accountEmail: "Konto-E-Mail",
-    coverageStart: "Beginn der Abdeckung",
-    assignedLocation: "Zugewiesener Standort",
-    unitPrices: "Verwendete Preise",
-    doctorUnitPrice: "Arztabonnement / Monat",
-    smsUnitPrice: "Preis / gesendete SMS",
-    noOrganizations: "Keine zugeordneten Organisationen",
-    noOrganizationsHelper:
-      "Die Übersicht erscheint, sobald dieses Konto einer Klinikorganisation zugeordnet ist.",
-    noDoctors: "Keine eingeladenen Ärzte für diese Organisation.",
-    notInvoice: "Prüfschätzung — keine Rechnung",
-    unavailable: "Nicht verfügbar",
-  },
+type ClinicTranslation = {
+  clinic_id: string;
+  locale: string;
+
+  name:
+    | string
+    | null;
 };
 
-function normalizeMonth(value?: string) {
-  if (value && /^\d{4}-\d{2}$/.test(value)) {
-    const month = Number(value.slice(5, 7));
-    if (month >= 1 && month <= 12) return value;
+const INTL_LOCALE:
+  Record<
+    AppLocale,
+    string
+  > = {
+    ro:
+      "ro-RO",
+    en:
+      "en-GB",
+    de:
+      "de-DE",
+  };
+
+function normalizeMonth(
+  value?:
+    string
+) {
+  if (
+    value &&
+    /^\d{4}-\d{2}$/.test(
+      value
+    )
+  ) {
+    const month =
+      Number(
+        value.slice(
+          5,
+          7
+        )
+      );
+
+    if (
+      month >=
+        1 &&
+      month <=
+        12
+    ) {
+      return value;
+    }
   }
 
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Bucharest",
-    year: "numeric",
-    month: "2-digit",
-  }).formatToParts(new Date());
+  const parts =
+    new Intl
+      .DateTimeFormat(
+        "en-CA",
+        {
+          timeZone:
+            "Europe/Bucharest",
 
-  const year = parts.find((part) => part.type === "year")?.value;
-  const month = parts.find((part) => part.type === "month")?.value;
+          year:
+            "numeric",
+
+          month:
+            "2-digit",
+        }
+      )
+      .formatToParts(
+        new Date()
+      );
+
+  const year =
+    parts.find(
+      (
+        part
+      ) =>
+        part.type ===
+        "year"
+    )?.value;
+
+  const month =
+    parts.find(
+      (
+        part
+      ) =>
+        part.type ===
+        "month"
+    )?.value;
+
   return `${year}-${month}`;
 }
 
-function shiftMonth(value: string, offset: number) {
-  const [year, month] = value.split("-").map(Number);
-  const date = new Date(Date.UTC(year, month - 1 + offset, 1));
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+function shiftMonth(
+  value:
+    string,
+  offset:
+    number
+) {
+  const [
+    year,
+    month,
+  ] =
+    value
+      .split(
+        "-"
+      )
+      .map(
+        Number
+      );
+
+  const date =
+    new Date(
+      Date.UTC(
+        year,
+        month -
+          1 +
+          offset,
+        1
+      )
+    );
+
+  return `${date.getUTCFullYear()}-${String(
+    date.getUTCMonth() +
+      1
+  ).padStart(
+    2,
+    "0"
+  )}`;
 }
 
-function intlLocale(locale: AppLocale) {
-  if (locale === "ro") return "ro-RO";
-  if (locale === "de") return "de-DE";
-  return "en-US";
+function formatCurrency(
+  value:
+    number,
+  locale:
+    AppLocale
+) {
+  return new Intl
+    .NumberFormat(
+      INTL_LOCALE[
+        locale
+      ],
+      {
+        style:
+          "currency",
+
+        currency:
+          "RON",
+
+        maximumFractionDigits:
+          2,
+      }
+    )
+    .format(
+      Number(
+        value ??
+          0
+      )
+    );
 }
 
-function formatCurrency(value: number, locale: AppLocale) {
-  return new Intl.NumberFormat(intlLocale(locale), {
-    style: "currency",
-    currency: "RON",
-    maximumFractionDigits: 2,
-  }).format(Number(value ?? 0));
+function formatPercent(
+  value:
+    number,
+  locale:
+    AppLocale
+) {
+  return new Intl
+    .NumberFormat(
+      INTL_LOCALE[
+        locale
+      ],
+      {
+        style:
+          "percent",
+
+        maximumFractionDigits:
+          2,
+      }
+    )
+    .format(
+      Number(
+        value ??
+          0
+      )
+    );
 }
 
-function formatMonth(value: string, locale: AppLocale) {
-  const [year, month] = value.split("-").map(Number);
-  return new Intl.DateTimeFormat(intlLocale(locale), {
-    month: "long",
-    year: "numeric",
-    timeZone: "Europe/Bucharest",
-  }).format(new Date(Date.UTC(year, month - 1, 15)));
+function formatMonth(
+  value:
+    string,
+  locale:
+    AppLocale
+) {
+  const [
+    year,
+    month,
+  ] =
+    value
+      .split(
+        "-"
+      )
+      .map(
+        Number
+      );
+
+  return new Intl
+    .DateTimeFormat(
+      INTL_LOCALE[
+        locale
+      ],
+      {
+        month:
+          "long",
+
+        year:
+          "numeric",
+
+        timeZone:
+          "UTC",
+      }
+    )
+    .format(
+      new Date(
+        Date.UTC(
+          year,
+          month -
+            1,
+          15
+        )
+      )
+    );
 }
 
-function formatDate(value: string | null, locale: AppLocale) {
-  if (!value) return "—";
-  return new Intl.DateTimeFormat(intlLocale(locale), {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "Europe/Bucharest",
-  }).format(new Date(value));
+function formatDate(
+  value:
+    | string
+    | null,
+  locale:
+    AppLocale
+) {
+  if (
+    !value
+  ) {
+    return "—";
+  }
+
+  const date =
+    new Date(
+      value
+    );
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return "—";
+  }
+
+  return new Intl
+    .DateTimeFormat(
+      INTL_LOCALE[
+        locale
+      ],
+      {
+        day:
+          "2-digit",
+
+        month:
+          "short",
+
+        year:
+          "numeric",
+
+        timeZone:
+          "Europe/Bucharest",
+      }
+    )
+    .format(
+      date
+    );
 }
 
-function SummaryCard({ label, value, helper }: {
+function statusClasses(
+  status:
+    string
+) {
+  switch (
+    status
+  ) {
+    case "active":
+    case "accepted":
+      return "border-green-200 bg-green-50 text-green-800";
+
+    case "pending":
+    case "none":
+      return "border-amber-200 bg-amber-50 text-amber-900";
+
+    case "paused":
+    case "suspended":
+      return "border-orange-200 bg-orange-50 text-orange-900";
+
+    case "declined":
+    case "expired":
+    case "cancelled":
+    case "ended":
+    case "rejected":
+      return "border-red-200 bg-red-50 text-red-800";
+
+    case "archived":
+      return "border-gray-300 bg-gray-100 text-gray-700";
+
+    default:
+      return "border-gray-200 bg-gray-50 text-gray-700";
+  }
+}
+
+function SummaryCard({
+  label,
+  value,
+  helper,
+}: {
   label: string;
-  value: string | number;
+
+  value:
+    | string
+    | number;
+
   helper: string;
 }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</p>
-      <p className="mt-3 text-3xl font-bold text-gray-900">{value}</p>
-      <p className="mt-2 text-sm leading-6 text-gray-600">{helper}</p>
+    <div className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+        {label}
+      </p>
+
+      <p className="mt-[13px] text-3xl font-bold text-gray-900">
+        {value}
+      </p>
+
+      <p className="mt-[8px] text-sm leading-6 text-gray-600">
+        {helper}
+      </p>
     </div>
   );
 }
 
-function CostLine({ label, value, strong = false }: {
+function CostLine({
+  label,
+  value,
+  strong = false,
+}: {
   label: string;
   value: string;
   strong?: boolean;
 }) {
   return (
-    <div className={`flex items-center justify-between gap-4 ${strong ? "border-t border-gray-200 pt-3" : ""}`}>
-      <dt className={strong ? "font-semibold text-gray-900" : "text-gray-600"}>{label}</dt>
-      <dd className={strong ? "font-bold text-gray-900" : "font-semibold text-gray-900"}>{value}</dd>
+    <div
+      className={`flex items-start justify-between gap-[13px] ${
+        strong
+          ? "border-t border-gray-200 pt-[13px]"
+          : ""
+      }`}
+    >
+      <dt
+        className={
+          strong
+            ? "font-semibold text-gray-900"
+            : "text-gray-600"
+        }
+      >
+        {label}
+      </dt>
+
+      <dd
+        className={`shrink-0 text-right ${
+          strong
+            ? "font-bold text-gray-900"
+            : "font-semibold text-gray-900"
+        }`}
+      >
+        {value}
+      </dd>
     </div>
   );
 }
 
-export default async function ClinicManagerBillingPage({ searchParams }: BillingPageProps) {
-  const parameters = await searchParams;
-  const selectedMonth = normalizeMonth(parameters.month);
-  const currentMonth = normalizeMonth();
-  const previousMonth = shiftMonth(selectedMonth, -1);
-  const nextMonth = shiftMonth(selectedMonth, 1);
-  const locale = (await getLocale()) as AppLocale;
-  const text = COPY[locale] ?? COPY.ro;
-  const supabase = await createClient();
+function StatusBadge({
+  status,
+  label,
+}: {
+  status: string;
+  label: string;
+}) {
+  return (
+    <span
+      className={`inline-flex rounded-full border px-[8px] py-[5px] text-xs font-semibold ${statusClasses(
+        status
+      )}`}
+    >
+      {label}
+    </span>
+  );
+}
 
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: memberships } = user
-    ? await supabase
-        .from("clinic_organization_members")
-        .select("organization_id")
-        .eq("profile_id", user.id)
-        .eq("status", "active")
-    : { data: [] };
+export default async function ClinicManagerBillingPage({
+  searchParams,
+}: BillingPageProps) {
+  const parameters =
+    await searchParams;
 
-  const summaries: OrganizationSummary[] = [];
-  for (const membership of (memberships ?? []) as OrganizationMember[]) {
-    const { data, error } = await supabase.rpc(
-      "get_clinic_manager_monthly_coverage_summary",
+  const selectedMonth =
+    normalizeMonth(
+      parameters.month
+    );
+
+  const currentMonth =
+    normalizeMonth();
+
+  const previousMonth =
+    shiftMonth(
+      selectedMonth,
+      -1
+    );
+
+  const nextMonth =
+    shiftMonth(
+      selectedMonth,
+      1
+    );
+
+  const locale =
+    await getStoredAppLocale();
+
+  const t =
+    await getTranslations({
+      locale,
+      namespace:
+        "ClinicOrganisationDashboard.billing",
+    });
+
+  const supabase =
+    await createClient();
+
+  const {
+    data: {
+      user,
+    },
+  } =
+    await supabase.auth
+      .getUser();
+
+  const {
+    data:
+      memberships,
+    error:
+      membershipsError,
+  } =
+    user
+      ? await supabase
+          .from(
+            "clinic_organization_members"
+          )
+          .select(
+            "organization_id"
+          )
+          .eq(
+            "profile_id",
+            user.id
+          )
+          .eq(
+            "status",
+            "active"
+          )
+      : {
+          data:
+            [],
+          error:
+            null,
+        };
+
+  const activeMemberships =
+    (
+      memberships ??
+      []
+    ) as
+      OrganizationMember[];
+
+  const summaryResults =
+    await Promise.all(
+      activeMemberships.map(
+        async (
+          membership
+        ) => {
+          const {
+            data,
+            error,
+          } =
+            await supabase.rpc(
+              "get_clinic_manager_monthly_coverage_summary",
+              {
+                target_organization_id:
+                  membership.organization_id,
+
+                target_month:
+                  `${selectedMonth}-01`,
+              }
+            );
+
+          if (
+            error
+          ) {
+            console.error(
+              "Clinic coverage summary failed:",
+              error
+            );
+
+            return {
+              summary:
+                null,
+
+              failed:
+                true,
+            };
+          }
+
+          return {
+            summary:
+              data
+                ? data as
+                    OrganizationSummary
+                : null,
+
+            failed:
+              !data,
+          };
+        }
+      )
+    );
+
+  const summaries =
+    summaryResults
+      .map(
+        (
+          result
+        ) =>
+          result.summary
+      )
+      .filter(
+        (
+          summary
+        ):
+          summary is
+            OrganizationSummary =>
+          Boolean(
+            summary
+          )
+      );
+
+  const hasSummaryError =
+    Boolean(
+      membershipsError
+    ) ||
+    summaryResults.some(
+      (
+        result
+      ) =>
+        result.failed
+    );
+
+  const doctorIds =
+    Array.from(
+      new Set(
+        summaries.flatMap(
+          (
+            summary
+          ) =>
+            summary.doctors
+              .map(
+                (
+                  doctor
+                ) =>
+                  doctor.doctorId
+              )
+              .filter(
+                (
+                  doctorId
+                ):
+                  doctorId is
+                    string =>
+                  Boolean(
+                    doctorId
+                  )
+              )
+        )
+      )
+    );
+
+  const clinicIds =
+    Array.from(
+      new Set(
+        summaries.flatMap(
+          (
+            summary
+          ) => [
+            ...summary.locations.map(
+              (
+                location
+              ) =>
+                location.id
+            ),
+
+            ...summary.doctors
+              .map(
+                (
+                  doctor
+                ) =>
+                  doctor.clinicId
+              )
+              .filter(
+                (
+                  clinicId
+                ):
+                  clinicId is
+                    string =>
+                  Boolean(
+                    clinicId
+                  )
+              ),
+          ]
+        )
+      )
+    );
+
+  let doctorTranslations:
+    DoctorTranslation[] =
+    [];
+
+  let clinicTranslations:
+    ClinicTranslation[] =
+    [];
+
+  if (
+    doctorIds.length >
+      0 ||
+    clinicIds.length >
+      0
+  ) {
+    const [
+      doctorTranslationsResult,
+      clinicTranslationsResult,
+    ] =
+      await Promise.all([
+        doctorIds.length >
+        0
+          ? supabase
+              .from(
+                "doctor_translations"
+              )
+              .select(
+                "doctor_id, locale, title"
+              )
+              .in(
+                "doctor_id",
+                doctorIds
+              )
+          : Promise.resolve({
+              data:
+                [],
+              error:
+                null,
+            }),
+
+        clinicIds.length >
+        0
+          ? supabase
+              .from(
+                "clinic_translations"
+              )
+              .select(
+                "clinic_id, locale, name"
+              )
+              .in(
+                "clinic_id",
+                clinicIds
+              )
+          : Promise.resolve({
+              data:
+                [],
+              error:
+                null,
+            }),
+      ]);
+
+    if (
+      doctorTranslationsResult.error
+    ) {
+      console.error(
+        "Billing Doctor translations query failed:",
+        doctorTranslationsResult.error
+      );
+    } else {
+      doctorTranslations =
+        (
+          doctorTranslationsResult.data ??
+          []
+        ) as
+          DoctorTranslation[];
+    }
+
+    if (
+      clinicTranslationsResult.error
+    ) {
+      console.error(
+        "Billing clinic translations query failed:",
+        clinicTranslationsResult.error
+      );
+    } else {
+      clinicTranslations =
+        (
+          clinicTranslationsResult.data ??
+          []
+        ) as
+          ClinicTranslation[];
+    }
+  }
+
+  const doctorTranslationsById =
+    new Map<
+      string,
+      DoctorTranslation[]
+    >();
+
+  for (
+    const translation of
+      doctorTranslations
+  ) {
+    const current =
+      doctorTranslationsById.get(
+        translation.doctor_id
+      ) ??
+      [];
+
+    current.push(
+      translation
+    );
+
+    doctorTranslationsById.set(
+      translation.doctor_id,
+      current
+    );
+  }
+
+  const clinicTranslationsById =
+    new Map<
+      string,
+      ClinicTranslation[]
+    >();
+
+  for (
+    const translation of
+      clinicTranslations
+  ) {
+    const current =
+      clinicTranslationsById.get(
+        translation.clinic_id
+      ) ??
+      [];
+
+    current.push(
+      translation
+    );
+
+    clinicTranslationsById.set(
+      translation.clinic_id,
+      current
+    );
+  }
+
+  function localizedDoctorName(
+    doctor:
+      OrganizationSummary[
+        "doctors"
+      ][number]
+  ) {
+    if (
+      doctor.doctorId
+    ) {
+      const translated =
+        selectTranslation(
+          doctorTranslationsById.get(
+            doctor.doctorId
+          ),
+          locale
+        )?.title;
+
+      if (
+        translated
+      ) {
+        return translated;
+      }
+    }
+
+    return (
+      doctor.doctorName ||
+      doctor.email ||
+      t(
+        "fallbackDoctor"
+      )
+    );
+  }
+
+  function localizedClinicName(
+    clinicId:
+      | string
+      | null,
+    fallback:
+      | string
+      | null
+  ) {
+    if (
+      clinicId
+    ) {
+      const translated =
+        selectTranslation(
+          clinicTranslationsById.get(
+            clinicId
+          ),
+          locale
+        )?.name;
+
+      if (
+        translated
+      ) {
+        return translated;
+      }
+    }
+
+    return (
+      fallback ||
+      t(
+        "fallbackLocation"
+      )
+    );
+  }
+
+  function organizationStatusLabel(
+    status:
+      string
+  ) {
+    const normalized =
+      [
+        "active",
+        "suspended",
+        "rejected",
+        "archived",
+      ].includes(
+        status
+      )
+        ? status
+        : "pending";
+
+    return t(
+      `statuses.organization.${normalized}`
+    );
+  }
+
+  function invitationStatusLabel(
+    status:
+      string
+  ) {
+    const normalized =
+      [
+        "pending",
+        "accepted",
+        "declined",
+        "expired",
+        "cancelled",
+      ].includes(
+        status
+      )
+        ? status
+        : "pending";
+
+    return t(
+      `statuses.invitation.${normalized}`
+    );
+  }
+
+  function coverageStatusLabel(
+    status:
+      string
+  ) {
+    const normalized =
+      [
+        "active",
+        "paused",
+        "cancelled",
+        "ended",
+        "none",
+      ].includes(
+        status
+      )
+        ? status
+        : "pending";
+
+    return t(
+      `statuses.coverage.${normalized}`
+    );
+  }
+
+  const totals =
+    summaries.reduce(
+      (
+        accumulator,
+        summary
+      ) => ({
+        doctors:
+          accumulator.doctors +
+          Number(
+            summary.totals
+              .activeDoctorCount
+          ),
+
+        subscriptions:
+          accumulator.subscriptions +
+          Number(
+            summary.totals
+              .subscriptionSubtotalRon
+          ),
+
+        sms:
+          accumulator.sms +
+          Number(
+            summary.totals
+              .totalSmsCount
+          ),
+
+        total:
+          accumulator.total +
+          Number(
+            summary.totals
+              .estimatedTotalRon
+          ),
+      }),
       {
-        target_organization_id: membership.organization_id,
-        target_month: `${selectedMonth}-01`,
+        doctors:
+          0,
+
+        subscriptions:
+          0,
+
+        sms:
+          0,
+
+        total:
+          0,
       }
     );
 
-    if (error) {
-      console.error("Clinic coverage summary failed:", error);
-      continue;
-    }
+  const noMemberships =
+    !membershipsError &&
+    activeMemberships.length ===
+      0;
 
-    if (data) summaries.push(data as OrganizationSummary);
-  }
-
-  const totals = summaries.reduce(
-    (acc, summary) => ({
-      doctors: acc.doctors + summary.totals.activeDoctorCount,
-      subscriptions: acc.subscriptions + Number(summary.totals.subscriptionSubtotalRon),
-      sms: acc.sms + summary.totals.totalSmsCount,
-      total: acc.total + Number(summary.totals.estimatedTotalRon),
-    }),
-    { doctors: 0, subscriptions: 0, sms: 0, total: 0 }
-  );
+  const allSummariesUnavailable =
+    activeMemberships.length >
+      0 &&
+    summaries.length ===
+      0 &&
+    hasSummaryError;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-[34px]">
       <header>
-        <p className="text-sm font-semibold text-[#9A4F35]">Clinic Manager</p>
-        <h1 className="mt-2 text-3xl font-bold text-gray-900">{text.title}</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">{text.description}</p>
-        <p className="mt-4 max-w-4xl rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium leading-6 text-amber-950">
-          {text.auditNotice}
+        <p className="text-sm font-semibold text-[#9A4F35]">
+          {t(
+            "eyebrow"
+          )}
+        </p>
+
+        <h1 className="mt-[8px] text-3xl font-bold text-gray-900">
+          {t(
+            "title"
+          )}
+        </h1>
+
+        <p className="mt-[13px] max-w-3xl text-sm leading-6 text-gray-600">
+          {t(
+            "description"
+          )}
+        </p>
+
+        <p className="mt-[13px] max-w-4xl rounded-[13px] border border-amber-200 bg-amber-50 p-[13px] text-sm font-medium leading-6 text-amber-950">
+          {t(
+            "auditNotice"
+          )}
         </p>
       </header>
 
-      <nav className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-        <Link href={`/clinic-manager-dashboard/billing?month=${previousMonth}`} className="romdoc-focus-ring rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-          ← {text.previousMonth}
+      <nav
+        aria-label={t(
+          "period"
+        )}
+        className="flex flex-col gap-[13px] rounded-[21px] border border-gray-200 bg-white p-[13px] shadow-sm sm:flex-row sm:items-center sm:justify-between"
+      >
+        <Link
+          href={`/clinic-manager-dashboard/billing?month=${previousMonth}`}
+          className="romdoc-focus-ring inline-flex min-h-[44px] items-center justify-center rounded-[13px] border border-gray-300 px-[13px] py-[8px] text-sm font-semibold text-gray-700 hover:bg-gray-50"
+        >
+          ←{" "}
+          {t(
+            "previousMonth"
+          )}
         </Link>
+
         <div className="text-center">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-            {selectedMonth === currentMonth ? text.currentMonth : text.title}
+            {selectedMonth ===
+            currentMonth
+              ? t(
+                  "currentMonth"
+                )
+              : t(
+                  "period"
+                )}
           </p>
-          <p className="mt-1 text-lg font-bold capitalize text-gray-900">{formatMonth(selectedMonth, locale)}</p>
+
+          <p className="mt-[5px] text-lg font-bold capitalize text-gray-900">
+            {formatMonth(
+              selectedMonth,
+              locale
+            )}
+          </p>
+
+          {selectedMonth !==
+            currentMonth && (
+            <Link
+              href={`/clinic-manager-dashboard/billing?month=${currentMonth}`}
+              className="romdoc-focus-ring mt-[5px] inline-flex rounded-[8px] text-xs font-semibold text-[#036661] underline-offset-4 hover:underline"
+            >
+              {t(
+                "returnCurrentMonth"
+              )}
+            </Link>
+          )}
         </div>
-        {nextMonth <= currentMonth ? (
-          <Link href={`/clinic-manager-dashboard/billing?month=${nextMonth}`} className="romdoc-focus-ring rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-            {text.nextMonth} →
+
+        {nextMonth <=
+        currentMonth ? (
+          <Link
+            href={`/clinic-manager-dashboard/billing?month=${nextMonth}`}
+            className="romdoc-focus-ring inline-flex min-h-[44px] items-center justify-center rounded-[13px] border border-gray-300 px-[13px] py-[8px] text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            {t(
+              "nextMonth"
+            )}{" "}
+            →
           </Link>
         ) : (
-          <span className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-400">{text.nextMonth} →</span>
+          <span className="inline-flex min-h-[44px] items-center justify-center rounded-[13px] border border-gray-200 px-[13px] py-[8px] text-sm font-semibold text-gray-400">
+            {t(
+              "nextMonth"
+            )}{" "}
+            →
+          </span>
         )}
       </nav>
 
-      {summaries.length === 0 ? (
-        <section className="rounded-2xl border border-dashed border-gray-300 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900">{text.noOrganizations}</h2>
-          <p className="mt-2 text-sm leading-6 text-gray-600">{text.noOrganizationsHelper}</p>
+      {hasSummaryError &&
+        summaries.length >
+          0 && (
+          <section
+            role="alert"
+            className="rounded-[21px] border border-amber-200 bg-amber-50 p-[21px] text-sm leading-6 text-amber-950 shadow-sm"
+          >
+            <h2 className="font-semibold">
+              {t(
+                "partialDataTitle"
+              )}
+            </h2>
+
+            <p className="mt-[8px]">
+              {t(
+                "partialDataDescription"
+              )}
+            </p>
+          </section>
+        )}
+
+      {!noMemberships &&
+        !allSummariesUnavailable && (
+          <div className="grid gap-[13px] sm:grid-cols-2 xl:grid-cols-4">
+            <SummaryCard
+              label={t(
+                "summary.coveredDoctors"
+              )}
+              value={
+                totals.doctors
+              }
+              helper={t(
+                "summary.coveredDoctorsHelper"
+              )}
+            />
+
+            <SummaryCard
+              label={t(
+                "summary.subscriptions"
+              )}
+              value={formatCurrency(
+                totals.subscriptions,
+                locale
+              )}
+              helper={t(
+                "summary.subscriptionsHelper"
+              )}
+            />
+
+            <SummaryCard
+              label={t(
+                "summary.sentSms"
+              )}
+              value={
+                totals.sms
+              }
+              helper={t(
+                "summary.sentSmsHelper"
+              )}
+            />
+
+            <SummaryCard
+              label={t(
+                "summary.estimatedTotal"
+              )}
+              value={formatCurrency(
+                totals.total,
+                locale
+              )}
+              helper={t(
+                "summary.estimatedTotalHelper"
+              )}
+            />
+          </div>
+        )}
+
+      {noMemberships ? (
+        <section className="rounded-[21px] border border-dashed border-gray-300 bg-white p-[21px] shadow-sm">
+          <h2 className="text-lg font-semibold text-gray-900">
+            {t(
+              "noOrganizations"
+            )}
+          </h2>
+
+          <p className="mt-[8px] text-sm leading-6 text-gray-600">
+            {t(
+              "noOrganizationsHelper"
+            )}
+          </p>
+        </section>
+      ) : allSummariesUnavailable ? (
+        <section
+          role="alert"
+          className="rounded-[21px] border border-red-200 bg-red-50 p-[21px] text-sm leading-6 text-red-800 shadow-sm"
+        >
+          <h2 className="font-semibold">
+            {t(
+              "unavailableTitle"
+            )}
+          </h2>
+
+          <p className="mt-[8px]">
+            {t(
+              "unavailableDescription"
+            )}
+          </p>
         </section>
       ) : (
-        <div className="space-y-6">
-          {summaries.map((summary) => {
-            const organization = summary.organization;
-            if (!organization) return null;
-            const billing = summary.billingProfile;
+        <div className="space-y-[21px]">
+          {summaries.map(
+            (
+              summary
+            ) => {
+              const organization =
+                summary.organization;
 
-            return (
-              <details
-                key={organization.id}
-                className="group rounded-2xl border border-gray-200 bg-white shadow-sm"
-              >
-                <summary className="cursor-pointer list-none p-5 sm:p-6">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-[#9A4F35]">
-                        {text.organizationSummary}
-                      </p>
-                      <h2 className="mt-2 text-xl font-bold text-gray-900">
-                        {organization.name}
-                      </h2>
-                      <p className="mt-2 text-sm text-gray-600">
-                        {summary.totals.activeDoctorCount} {text.coveredDoctors.toLowerCase()} ·{" "}
-                        {formatCurrency(summary.totals.estimatedTotalRon, locale)}
-                      </p>
-                    </div>
+              if (
+                !organization
+              ) {
+                return null;
+              }
 
-                    <span className="text-2xl text-gray-400 transition group-open:rotate-45">
-                      +
-                    </span>
-                  </div>
-                </summary>
+              const billing =
+                summary.billingProfile;
 
-                <div className="space-y-5 border-t border-gray-200 p-5 sm:p-6">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">{organization.name}</h2>
-                    <p className="mt-2 text-sm text-gray-600">
-                      {organization.contact_email ?? text.unavailable}
-                      {organization.contact_phone ? ` · ${organization.contact_phone}` : ""}
-                    </p>
-                    <div className="mt-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{text.locations}</p>
-                      <p className="mt-1 text-sm leading-6 text-gray-600">
-                        {summary.locations.length > 0
-                          ? summary.locations.map((location) => location.name).join(" · ")
-                          : text.noLocations}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="rounded-full bg-[#036661]/10 px-3 py-1.5 text-xs font-semibold text-[#036661]">{text.notInvoice}</span>
-                </div>
+              const localizedLocations =
+                summary.locations.map(
+                  (
+                    location
+                  ) => ({
+                    ...location,
 
-                <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
-                  <div className="rounded-2xl border border-gray-200 p-5">
-                    <h3 className="text-lg font-semibold text-gray-900">{text.billingDetails}</h3>
-                    {billing ? (
-                      <dl className="mt-5 grid gap-4 sm:grid-cols-2 text-sm">
-                        <div><dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Company</dt><dd className="mt-1">{billing.company_name}</dd></div>
-                        <div><dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">CUI</dt><dd className="mt-1">{billing.tax_id}</dd></div>
-                        <div><dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">E-mail</dt><dd className="mt-1">{billing.billing_email}</dd></div>
-                        <div><dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">TVA</dt><dd className="mt-1">{billing.is_vat_payer ? "Da" : "Nu"}</dd></div>
-                        <div className="sm:col-span-2"><dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Address</dt><dd className="mt-1">{[billing.billing_address, billing.billing_city, billing.billing_county, billing.billing_country].filter(Boolean).join(", ")}</dd></div>
-                      </dl>
-                    ) : (
-                      <p className="mt-3 text-sm text-gray-600">{text.unavailable}</p>
-                    )}
-                  </div>
+                    localizedName:
+                      localizedClinicName(
+                        location.id,
+                        location.name
+                      ),
+                  })
+                );
 
-                  <aside className="rounded-2xl border border-gray-200 p-5">
-                    <h3 className="text-lg font-semibold text-gray-900">{text.costBreakdown}</h3>
-                    <dl className="mt-5 space-y-3 text-sm">
-                      <CostLine label={text.doctorSubscriptions} value={formatCurrency(summary.totals.subscriptionSubtotalRon, locale)} />
-                      <CostLine label={`${text.confirmationSms} (${summary.totals.confirmationSmsCount})`} value={formatCurrency(summary.totals.confirmationSmsCount * summary.prices.smsUnitPriceRon, locale)} />
-                      <CostLine label={`${text.reminderSms} (${summary.totals.reminder24hSmsCount})`} value={formatCurrency(summary.totals.reminder24hSmsCount * summary.prices.smsUnitPriceRon, locale)} />
-                      <CostLine label={text.smsSubtotal} value={formatCurrency(summary.totals.smsSubtotalRon, locale)} />
-                      <CostLine label={text.subtotalBeforeVat} value={formatCurrency(summary.totals.subtotalBeforeVatRon, locale)} />
-                      <CostLine label={text.estimatedVat} value={formatCurrency(summary.totals.estimatedVatRon, locale)} />
-                      <CostLine label={text.totalWithVat} value={formatCurrency(summary.totals.estimatedTotalRon, locale)} strong />
-                    </dl>
-                    <div className="mt-5 rounded-xl bg-gray-50 p-3 text-xs leading-5 text-gray-600">
-                      <p className="font-semibold text-gray-800">{text.unitPrices}</p>
-                      <p className="mt-1">{text.doctorUnitPrice}: {formatCurrency(summary.prices.clinicDoctorMonthlyPriceRon, locale)}</p>
-                      <p>{text.smsUnitPrice}: {formatCurrency(summary.prices.smsUnitPriceRon, locale)}</p>
-                    </div>
-                  </aside>
-                </div>
-
-                <details className="group rounded-2xl border border-gray-200">
-                  <summary className="cursor-pointer list-none p-5 sm:p-6">
-                    <div className="flex items-center justify-between gap-4">
+              return (
+                <details
+                  key={
+                    organization.id
+                  }
+                  className="group rounded-[21px] border border-gray-200 bg-white shadow-sm"
+                >
+                  <summary className="romdoc-focus-ring cursor-pointer list-none rounded-[21px] p-[21px]">
+                    <div className="flex flex-wrap items-start justify-between gap-[13px]">
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900">{text.doctorsTitle}</h3>
-                        <p className="mt-1 text-sm leading-6 text-gray-600">{text.doctorsHelper}</p>
+                        <div className="flex flex-wrap items-center gap-[8px]">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-[#9A4F35]">
+                            {t(
+                              "organizationSummary"
+                            )}
+                          </p>
+
+                          <StatusBadge
+                            status={
+                              organization.status
+                            }
+                            label={organizationStatusLabel(
+                              organization.status
+                            )}
+                          />
+                        </div>
+
+                        <h2 className="mt-[8px] text-xl font-bold text-gray-900">
+                          {
+                            organization.name
+                          }
+                        </h2>
+
+                        <p className="mt-[8px] text-sm text-gray-600">
+                          {t(
+                            "coveredDoctorsCount",
+                            {
+                              count:
+                                Number(
+                                  summary.totals
+                                    .activeDoctorCount
+                                ),
+                            }
+                          )}
+                          {" · "}
+                          {formatCurrency(
+                            Number(
+                              summary.totals
+                                .estimatedTotalRon
+                            ),
+                            locale
+                          )}
+                        </p>
                       </div>
-                      <span className="text-2xl text-gray-400 transition group-open:rotate-45">+</span>
+
+                      <span
+                        aria-hidden="true"
+                        className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-gray-100 text-xl text-gray-500 transition group-open:rotate-45"
+                      >
+                        +
+                      </span>
                     </div>
                   </summary>
-                  <div className="border-t border-gray-200 p-5 sm:p-6">
-                    {summary.doctors.length === 0 ? (
-                      <p className="text-sm text-gray-600">{text.noDoctors}</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {summary.doctors.map((doctor) => (
-                          <details key={doctor.relationshipId} className="group rounded-xl border border-gray-200 bg-gray-50">
-                            <summary className="cursor-pointer list-none p-4">
-                              <div className="grid items-center gap-3 md:grid-cols-[minmax(0,1.5fr)_minmax(7rem,0.7fr)_minmax(7rem,0.6fr)_minmax(8rem,0.8fr)]">
-                                <div>
-                                  <p className="font-semibold text-gray-900">{doctor.doctorName}</p>
-                                  <p className="mt-1 text-xs text-gray-500">{doctor.email ?? text.unavailable}</p>
-                                </div>
-                                <p className="text-sm text-gray-700">{doctor.coverageStatus}</p>
-                                <p className="text-sm text-gray-700">{doctor.totalSmsCount} SMS</p>
-                                <p className="text-sm font-bold text-gray-900">{formatCurrency(doctor.estimatedDoctorSubtotalRon, locale)}</p>
-                              </div>
-                            </summary>
-                            <div className="border-t border-gray-200 bg-white p-4">
-                              <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 text-sm">
-                                <div><dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{text.accountEmail}</dt><dd className="mt-1">{doctor.email ?? "—"}</dd></div>
-                                <div><dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{text.coverageStart}</dt><dd className="mt-1">{formatDate(doctor.coverageStartedAt ?? doctor.acceptedAt, locale)}</dd></div>
-                                <div><dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{text.assignedLocation}</dt><dd className="mt-1">{doctor.clinicName ?? "—"}</dd><p className="mt-1 text-xs text-gray-500">{doctor.clinicAddress}</p></div>
-                                <div><dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{text.subscription}</dt><dd className="mt-1 font-bold">{formatCurrency(doctor.subscriptionCostRon, locale)}</dd></div>
-                              </dl>
-                              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                                <SummaryCard label={text.confirmationSms} value={doctor.confirmationSmsCount} helper={formatCurrency(doctor.confirmationSmsCount * summary.prices.smsUnitPriceRon, locale)} />
-                                <SummaryCard label={text.reminderSms} value={doctor.reminder24hSmsCount} helper={formatCurrency(doctor.reminder24hSmsCount * summary.prices.smsUnitPriceRon, locale)} />
-                                <SummaryCard label={text.smsSubtotal} value={formatCurrency(doctor.smsCostRon, locale)} helper={`${doctor.totalSmsCount} SMS`} />
-                              </div>
-                            </div>
-                          </details>
-                        ))}
+
+                  <div className="space-y-[21px] border-t border-gray-200 p-[21px]">
+                    <div className="flex flex-wrap items-start justify-between gap-[21px]">
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900">
+                          {
+                            organization.name
+                          }
+                        </h3>
+
+                        <p className="mt-[8px] text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          {t(
+                            "organizationContact"
+                          )}
+                        </p>
+
+                        <p className="mt-[5px] text-sm leading-6 text-gray-600">
+                          {organization.contact_email ??
+                            t(
+                              "emailUnavailable"
+                            )}
+                          {" · "}
+                          {organization.contact_phone ??
+                            t(
+                              "phoneUnavailable"
+                            )}
+                        </p>
                       </div>
-                    )}
+
+                      <span className="rounded-full bg-[#036661]/10 px-[13px] py-[5px] text-xs font-semibold text-[#036661]">
+                        {t(
+                          "notInvoice"
+                        )}
+                      </span>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        {t(
+                          "approvedLocations"
+                        )}
+                      </p>
+
+                      {localizedLocations.length >
+                      0 ? (
+                        <div className="mt-[8px] flex flex-wrap gap-[8px]">
+                          {localizedLocations.map(
+                            (
+                              location
+                            ) => (
+                              <span
+                                key={
+                                  location.id
+                                }
+                                title={
+                                  location.formattedAddress ??
+                                  undefined
+                                }
+                                className="rounded-full border border-gray-200 bg-[#F0EEE9] px-[13px] py-[5px] text-sm text-gray-700"
+                              >
+                                {
+                                  location.localizedName
+                                }
+                              </span>
+                            )
+                          )}
+                        </div>
+                      ) : (
+                        <p className="mt-[8px] text-sm text-gray-600">
+                          {t(
+                            "noLocations"
+                          )}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="grid gap-[21px] lg:grid-cols-[minmax(0,1fr)_minmax(20rem,24rem)]">
+                      <section className="rounded-[21px] border border-gray-200 p-[21px]">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {t(
+                            "billingDetails"
+                          )}
+                        </h3>
+
+                        {billing ? (
+                          <dl className="mt-[21px] grid gap-[13px] text-sm sm:grid-cols-2">
+                            <div>
+                              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                {t(
+                                  "company"
+                                )}
+                              </dt>
+
+                              <dd className="mt-[5px] text-gray-900">
+                                {
+                                  billing.company_name
+                                }
+                              </dd>
+                            </div>
+
+                            <div>
+                              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                {t(
+                                  "taxId"
+                                )}
+                              </dt>
+
+                              <dd className="mt-[5px] text-gray-900">
+                                {
+                                  billing.tax_id
+                                }
+                              </dd>
+                            </div>
+
+                            <div>
+                              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                {t(
+                                  "tradeRegister"
+                                )}
+                              </dt>
+
+                              <dd className="mt-[5px] text-gray-900">
+                                {billing.trade_register_number ??
+                                  "—"}
+                              </dd>
+                            </div>
+
+                            <div>
+                              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                {t(
+                                  "billingEmail"
+                                )}
+                              </dt>
+
+                              <dd className="mt-[5px] break-all text-gray-900">
+                                {
+                                  billing.billing_email
+                                }
+                              </dd>
+                            </div>
+
+                            <div>
+                              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                {t(
+                                  "vatStatus"
+                                )}
+                              </dt>
+
+                              <dd className="mt-[5px] text-gray-900">
+                                {billing.is_vat_payer
+                                  ? t(
+                                      "vatPayer"
+                                    )
+                                  : t(
+                                      "notVatPayer"
+                                    )}
+                              </dd>
+                            </div>
+
+                            <div>
+                              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                {t(
+                                  "vatNumber"
+                                )}
+                              </dt>
+
+                              <dd className="mt-[5px] text-gray-900">
+                                {billing.vat_number ??
+                                  "—"}
+                              </dd>
+                            </div>
+
+                            <div className="sm:col-span-2">
+                              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                {t(
+                                  "billingAddress"
+                                )}
+                              </dt>
+
+                              <dd className="mt-[5px] text-gray-900">
+                                {[
+                                  billing.billing_address,
+                                  billing.billing_city,
+                                  billing.billing_county,
+                                  billing.billing_country,
+                                ]
+                                  .filter(
+                                    Boolean
+                                  )
+                                  .join(
+                                    ", "
+                                  )}
+                              </dd>
+                            </div>
+
+                            <div className="sm:col-span-2">
+                              <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                {t(
+                                  "updatedAt"
+                                )}
+                              </dt>
+
+                              <dd className="mt-[5px] text-gray-900">
+                                {formatDate(
+                                  billing.updated_at,
+                                  locale
+                                )}
+                              </dd>
+                            </div>
+                          </dl>
+                        ) : (
+                          <p className="mt-[13px] text-sm leading-6 text-gray-600">
+                            {t(
+                              "billingUnavailable"
+                            )}
+                          </p>
+                        )}
+                      </section>
+
+                      <aside className="rounded-[21px] border border-gray-200 p-[21px]">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {t(
+                            "costBreakdown"
+                          )}
+                        </h3>
+
+                        <dl className="mt-[21px] space-y-[13px] text-sm">
+                          <CostLine
+                            label={t(
+                              "doctorSubscriptions"
+                            )}
+                            value={formatCurrency(
+                              Number(
+                                summary.totals
+                                  .subscriptionSubtotalRon
+                              ),
+                              locale
+                            )}
+                          />
+
+                          <CostLine
+                            label={`${t(
+                              "confirmationSms"
+                            )} (${summary.totals.confirmationSmsCount})`}
+                            value={formatCurrency(
+                              Number(
+                                summary.totals
+                                  .confirmationSmsCount
+                              ) *
+                                Number(
+                                  summary.prices
+                                    .smsUnitPriceRon
+                                ),
+                              locale
+                            )}
+                          />
+
+                          <CostLine
+                            label={`${t(
+                              "reminderSms"
+                            )} (${summary.totals.reminder24hSmsCount})`}
+                            value={formatCurrency(
+                              Number(
+                                summary.totals
+                                  .reminder24hSmsCount
+                              ) *
+                                Number(
+                                  summary.prices
+                                    .smsUnitPriceRon
+                                ),
+                              locale
+                            )}
+                          />
+
+                          <CostLine
+                            label={t(
+                              "smsSubtotal"
+                            )}
+                            value={formatCurrency(
+                              Number(
+                                summary.totals
+                                  .smsSubtotalRon
+                              ),
+                              locale
+                            )}
+                          />
+
+                          <CostLine
+                            label={t(
+                              "subtotalBeforeVat"
+                            )}
+                            value={formatCurrency(
+                              Number(
+                                summary.totals
+                                  .subtotalBeforeVatRon
+                              ),
+                              locale
+                            )}
+                          />
+
+                          <CostLine
+                            label={t(
+                              "estimatedVat"
+                            )}
+                            value={formatCurrency(
+                              Number(
+                                summary.totals
+                                  .estimatedVatRon
+                              ),
+                              locale
+                            )}
+                          />
+
+                          <CostLine
+                            label={t(
+                              "totalWithVat"
+                            )}
+                            value={formatCurrency(
+                              Number(
+                                summary.totals
+                                  .estimatedTotalRon
+                              ),
+                              locale
+                            )}
+                            strong
+                          />
+                        </dl>
+
+                        <div className="mt-[21px] rounded-[13px] bg-gray-50 p-[13px] text-xs leading-5 text-gray-600">
+                          <p className="font-semibold text-gray-800">
+                            {t(
+                              "unitPrices"
+                            )}
+                          </p>
+
+                          <p className="mt-[5px]">
+                            {t(
+                              "doctorUnitPrice"
+                            )}
+                            :{" "}
+                            {formatCurrency(
+                              Number(
+                                summary.prices
+                                  .clinicDoctorMonthlyPriceRon
+                              ),
+                              locale
+                            )}
+                          </p>
+
+                          <p>
+                            {t(
+                              "smsUnitPrice"
+                            )}
+                            :{" "}
+                            {formatCurrency(
+                              Number(
+                                summary.prices
+                                  .smsUnitPriceRon
+                              ),
+                              locale
+                            )}
+                          </p>
+
+                          <p>
+                            {t(
+                              "vatRate"
+                            )}
+                            :{" "}
+                            {formatPercent(
+                              Number(
+                                summary.prices
+                                  .vatRate
+                              ),
+                              locale
+                            )}
+                          </p>
+                        </div>
+                      </aside>
+                    </div>
+
+                    <details className="group rounded-[21px] border border-gray-200">
+                      <summary className="romdoc-focus-ring cursor-pointer list-none rounded-[21px] p-[21px]">
+                        <div className="flex flex-wrap items-center justify-between gap-[13px]">
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {t(
+                                "doctorsTitle"
+                              )}
+                            </h3>
+
+                            <p className="mt-[5px] text-sm leading-6 text-gray-600">
+                              {t(
+                                "doctorsHelper"
+                              )}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-[8px]">
+                            <span className="rounded-full bg-[#F0EEE9] px-[13px] py-[5px] text-sm font-semibold text-gray-700">
+                              {t(
+                                "doctorCount",
+                                {
+                                  count:
+                                    summary.doctors.length,
+                                }
+                              )}
+                            </span>
+
+                            <span
+                              aria-hidden="true"
+                              className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-gray-100 text-xl text-gray-500 transition group-open:rotate-45"
+                            >
+                              +
+                            </span>
+                          </div>
+                        </div>
+                      </summary>
+
+                      <div className="border-t border-gray-200 p-[21px]">
+                        {summary.doctors.length ===
+                        0 ? (
+                          <p className="text-sm text-gray-600">
+                            {t(
+                              "noDoctors"
+                            )}
+                          </p>
+                        ) : (
+                          <div className="space-y-[13px]">
+                            {summary.doctors.map(
+                              (
+                                doctor
+                              ) => {
+                                const doctorName =
+                                  localizedDoctorName(
+                                    doctor
+                                  );
+
+                                const clinicName =
+                                  doctor.clinicId ||
+                                  doctor.clinicName
+                                    ? localizedClinicName(
+                                        doctor.clinicId,
+                                        doctor.clinicName
+                                      )
+                                    : t(
+                                        "locationUnavailable"
+                                      );
+
+                                return (
+                                  <details
+                                    key={
+                                      doctor.relationshipId
+                                    }
+                                    className="group rounded-[13px] border border-gray-200 bg-gray-50"
+                                  >
+                                    <summary className="romdoc-focus-ring cursor-pointer list-none rounded-[13px] p-[13px]">
+                                      <div className="grid items-center gap-[13px] md:grid-cols-[minmax(0,1.5fr)_minmax(7rem,0.7fr)_minmax(7rem,0.6fr)_minmax(8rem,0.8fr)_auto]">
+                                        <div className="min-w-0">
+                                          <p className="truncate font-semibold text-gray-900">
+                                            {
+                                              doctorName
+                                            }
+                                          </p>
+
+                                          <p className="mt-[5px] truncate text-xs text-gray-500">
+                                            {doctor.email ??
+                                              t(
+                                                "emailUnavailable"
+                                              )}
+                                          </p>
+                                        </div>
+
+                                        <StatusBadge
+                                          status={
+                                            doctor.coverageStatus
+                                          }
+                                          label={coverageStatusLabel(
+                                            doctor.coverageStatus
+                                          )}
+                                        />
+
+                                        <p className="text-sm text-gray-700">
+                                          {
+                                            doctor.totalSmsCount
+                                          }{" "}
+                                          SMS
+                                        </p>
+
+                                        <p className="text-sm font-bold text-gray-900">
+                                          {formatCurrency(
+                                            Number(
+                                              doctor.estimatedDoctorSubtotalRon
+                                            ),
+                                            locale
+                                          )}
+                                        </p>
+
+                                        <span
+                                          aria-hidden="true"
+                                          className="justify-self-end text-lg text-gray-500 transition group-open:rotate-45"
+                                        >
+                                          +
+                                        </span>
+                                      </div>
+                                    </summary>
+
+                                    <div className="border-t border-gray-200 bg-white p-[13px]">
+                                      <dl className="grid gap-[13px] text-sm sm:grid-cols-2 lg:grid-cols-4">
+                                        <div>
+                                          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            {t(
+                                              "accountEmail"
+                                            )}
+                                          </dt>
+
+                                          <dd className="mt-[5px] break-all text-gray-900">
+                                            {doctor.email ??
+                                              "—"}
+                                          </dd>
+                                        </div>
+
+                                        <div>
+                                          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            {t(
+                                              "invitation"
+                                            )}
+                                          </dt>
+
+                                          <dd className="mt-[5px]">
+                                            <StatusBadge
+                                              status={
+                                                doctor.invitationStatus
+                                              }
+                                              label={invitationStatusLabel(
+                                                doctor.invitationStatus
+                                              )}
+                                            />
+                                          </dd>
+                                        </div>
+
+                                        <div>
+                                          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            {t(
+                                              "coverageStart"
+                                            )}
+                                          </dt>
+
+                                          <dd className="mt-[5px] text-gray-900">
+                                            {formatDate(
+                                              doctor.coverageStartedAt ??
+                                                doctor.acceptedAt,
+                                              locale
+                                            )}
+                                          </dd>
+                                        </div>
+
+                                        <div>
+                                          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            {t(
+                                              "subscription"
+                                            )}
+                                          </dt>
+
+                                          <dd className="mt-[5px] font-bold text-gray-900">
+                                            {formatCurrency(
+                                              Number(
+                                                doctor.subscriptionCostRon
+                                              ),
+                                              locale
+                                            )}
+                                          </dd>
+                                        </div>
+
+                                        <div className="sm:col-span-2">
+                                          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            {t(
+                                              "assignedLocation"
+                                            )}
+                                          </dt>
+
+                                          <dd className="mt-[5px] text-gray-900">
+                                            {
+                                              clinicName
+                                            }
+                                          </dd>
+
+                                          {doctor.clinicAddress && (
+                                            <p className="mt-[5px] text-xs leading-5 text-gray-500">
+                                              {
+                                                doctor.clinicAddress
+                                              }
+                                            </p>
+                                          )}
+                                        </div>
+
+                                        <div>
+                                          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            {t(
+                                              "totalSms"
+                                            )}
+                                          </dt>
+
+                                          <dd className="mt-[5px] text-gray-900">
+                                            {
+                                              doctor.totalSmsCount
+                                            }
+                                          </dd>
+                                        </div>
+
+                                        <div>
+                                          <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            {t(
+                                              "doctorSubtotal"
+                                            )}
+                                          </dt>
+
+                                          <dd className="mt-[5px] font-bold text-gray-900">
+                                            {formatCurrency(
+                                              Number(
+                                                doctor.estimatedDoctorSubtotalRon
+                                              ),
+                                              locale
+                                            )}
+                                          </dd>
+                                        </div>
+                                      </dl>
+
+                                      <div className="mt-[13px] grid gap-[13px] sm:grid-cols-3">
+                                        <SummaryCard
+                                          label={t(
+                                            "confirmationSms"
+                                          )}
+                                          value={
+                                            doctor.confirmationSmsCount
+                                          }
+                                          helper={formatCurrency(
+                                            Number(
+                                              doctor.confirmationSmsCount
+                                            ) *
+                                              Number(
+                                                summary.prices
+                                                  .smsUnitPriceRon
+                                              ),
+                                            locale
+                                          )}
+                                        />
+
+                                        <SummaryCard
+                                          label={t(
+                                            "reminderSms"
+                                          )}
+                                          value={
+                                            doctor.reminder24hSmsCount
+                                          }
+                                          helper={formatCurrency(
+                                            Number(
+                                              doctor.reminder24hSmsCount
+                                            ) *
+                                              Number(
+                                                summary.prices
+                                                  .smsUnitPriceRon
+                                              ),
+                                            locale
+                                          )}
+                                        />
+
+                                        <SummaryCard
+                                          label={t(
+                                            "smsSubtotal"
+                                          )}
+                                          value={formatCurrency(
+                                            Number(
+                                              doctor.smsCostRon
+                                            ),
+                                            locale
+                                          )}
+                                          helper={`${doctor.totalSmsCount} SMS`}
+                                        />
+                                      </div>
+                                    </div>
+                                  </details>
+                                );
+                              }
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </details>
                   </div>
                 </details>
-                </div>
-              </details>
-            );
-          })}
+              );
+            }
+          )}
         </div>
       )}
-
-      <div className="grid gap-4 md:grid-cols-4">
-        <SummaryCard
-          label={text.coveredDoctors}
-          value={totals.doctors}
-          helper={text.notInvoice}
-        />
-        <SummaryCard
-          label={text.subscriptions}
-          value={formatCurrency(totals.subscriptions, locale)}
-          helper={text.notInvoice}
-        />
-        <SummaryCard
-          label={text.sentSms}
-          value={totals.sms}
-          helper={text.notInvoice}
-        />
-        <SummaryCard
-          label={text.estimatedTotal}
-          value={formatCurrency(totals.total, locale)}
-          helper={text.notInvoice}
-        />
-      </div>
     </div>
   );
 }
