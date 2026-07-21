@@ -2,6 +2,21 @@ import type { AppLocale } from "@/lib/i18n/app-locale";
 import { selectTranslation } from "@/lib/i18n/app-locale";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+export type PlatformBillingCurrency = "RON" | "EUR";
+
+export type PlatformVatTreatment =
+  | "domestic"
+  | "reverse_charge"
+  | "outside_scope"
+  | "exempt"
+  | "custom";
+
+export type PlatformVatValidationStatus =
+  | "not_checked"
+  | "valid"
+  | "invalid"
+  | "unavailable";
+
 export type PlatformBillingRates = {
   subscriptionPriceRon: number;
   smsPriceRon: number;
@@ -16,6 +31,7 @@ export type PlatformBillingDetails = {
   tradeRegisterNumber: string | null;
   billingEmail: string | null;
   billingAddress: string | null;
+  country: string | null;
   vatNumber: string | null;
   vatPayer: boolean | null;
 };
@@ -23,6 +39,45 @@ export type PlatformBillingDetails = {
 export type PlatformInvoiceClientType =
   | "independent_doctor"
   | "clinic_organization";
+
+export type PlatformClientBillingTerms = {
+  id: string;
+  clientType: PlatformInvoiceClientType;
+  clientId: string;
+  subscriptionUnitPrice: number | null;
+  smsUnitPrice: number | null;
+  currency: PlatformBillingCurrency;
+  vatRate: number | null;
+  vatTreatment: PlatformVatTreatment;
+  vatReason: string | null;
+  vatNumber: string | null;
+  vatValidatedAt: string | null;
+  vatValidationStatus: PlatformVatValidationStatus | null;
+  effectiveFrom: string | null;
+  effectiveUntil: string | null;
+  updatedAt: string;
+};
+
+export type PlatformClientInvoiceRecord = {
+  id: string;
+  invoiceNumber: string;
+  issuedOn: string;
+  estimatedAmount: number | null;
+  amount: number;
+  currency: PlatformBillingCurrency;
+  status: "invoiced" | "paid";
+  paidOn: string | null;
+  paymentReference: string | null;
+  notes: string | null;
+};
+
+export type PlatformBillingClientOption = {
+  id: string;
+  clientType: PlatformInvoiceClientType;
+  name: string;
+  accountEmail: string | null;
+  terms: PlatformClientBillingTerms | null;
+};
 
 export type PlatformInvoiceAmountRow = {
   id: string;
@@ -32,13 +87,22 @@ export type PlatformInvoiceAmountRow = {
   subscriptionCount: number;
   confirmationSmsCount: number;
   reminder24hSmsCount: number;
+  otherSmsCount: number;
   totalSmsCount: number;
-  subscriptionAmountRon: number;
-  smsAmountRon: number;
-  subtotalRon: number;
-  vatRon: number;
-  totalRon: number;
+  subscriptionUnitPrice: number;
+  smsUnitPrice: number;
+  currency: PlatformBillingCurrency;
+  vatRate: number;
+  vatTreatment: PlatformVatTreatment;
+  vatReason: string | null;
+  billingTermsSource: "client" | "global";
+  subscriptionAmount: number;
+  smsAmount: number;
+  subtotal: number;
+  vatAmount: number;
+  total: number;
   billingDetails: PlatformBillingDetails | null;
+  invoiceRecord: PlatformClientInvoiceRecord | null;
 };
 
 export type PlatformMonthRange = {
@@ -58,6 +122,9 @@ export type PlatformInvoicingData = {
   independentDoctors: PlatformInvoiceAmountRow[];
   clinicOrganizations: PlatformInvoiceAmountRow[];
   rows: PlatformInvoiceAmountRow[];
+  pricingClients: PlatformBillingClientOption[];
+  historyMonths: string[];
+  previousCalendarMonth: string;
   hasPartialError: boolean;
 };
 
@@ -159,6 +226,43 @@ type SmsLogRow = {
   created_at: string;
 };
 
+type ClientBillingTermsRow = {
+  id: string;
+  client_type: PlatformInvoiceClientType;
+  doctor_id: string | null;
+  clinic_organization_id: string | null;
+  subscription_unit_price: number | string | null;
+  sms_unit_price: number | string | null;
+  currency: PlatformBillingCurrency;
+  vat_rate: number | string | null;
+  vat_treatment: PlatformVatTreatment;
+  vat_reason: string | null;
+  vat_number: string | null;
+  vat_validated_at: string | null;
+  vat_validation_status: PlatformVatValidationStatus | null;
+  effective_from: string | null;
+  effective_until: string | null;
+  updated_at: string;
+};
+
+type ClientInvoiceRow = {
+  id: string;
+  client_type: PlatformInvoiceClientType;
+  doctor_id: string | null;
+  clinic_organization_id: string | null;
+  billing_period_start: string;
+  billing_period_end: string;
+  invoice_number: string;
+  issued_on: string;
+  estimated_amount: number | string | null;
+  amount: number | string;
+  currency: PlatformBillingCurrency;
+  status: "invoiced" | "paid";
+  paid_on: string | null;
+  payment_reference: string | null;
+  notes: string | null;
+};
+
 const DEFAULT_RATES: PlatformBillingRates = {
   subscriptionPriceRon: 60,
   smsPriceRon: 0.3,
@@ -181,9 +285,18 @@ const BILLABLE_COVERAGE_STATUSES = new Set([
   "ended",
 ]);
 
-function toNumber(value: number | string | null | undefined, fallback: number) {
+function toNumber(
+  value: number | string | null | undefined,
+  fallback: number
+) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function nullableNumber(value: number | string | null | undefined) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 function roundMoney(value: number) {
@@ -203,7 +316,10 @@ function bucharestYearMonth(date = new Date()) {
   return { year, month };
 }
 
-function normalizeMonth(value: string | undefined, fallback: "current" | "previous") {
+function normalizeMonth(
+  value: string | undefined,
+  fallback: "current" | "previous"
+) {
   if (/^\d{4}-\d{2}$/.test(value ?? "")) {
     const month = Number(value?.slice(5, 7));
     if (month >= 1 && month <= 12) return value as string;
@@ -211,16 +327,26 @@ function normalizeMonth(value: string | undefined, fallback: "current" | "previo
 
   const current = bucharestYearMonth();
   const date = new Date(
-    Date.UTC(current.year, current.month - 1 + (fallback === "previous" ? -1 : 0), 1)
+    Date.UTC(
+      current.year,
+      current.month - 1 + (fallback === "previous" ? -1 : 0),
+      1
+    )
   );
 
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(
+    2,
+    "0"
+  )}`;
 }
 
-function shiftMonth(value: string, offset: number) {
+export function shiftPlatformBillingMonth(value: string, offset: number) {
   const [year, month] = value.split("-").map(Number);
   const date = new Date(Date.UTC(year, month - 1 + offset, 1));
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(
+    2,
+    "0"
+  )}`;
 }
 
 export function getPlatformMonthRange(
@@ -240,10 +366,17 @@ export function getPlatformMonthRange(
     endExclusiveIso: end.toISOString(),
     startDate: start.toISOString().slice(0, 10),
     endDate: inclusiveEnd.toISOString().slice(0, 10),
-    previousMonth: shiftMonth(normalized, -1),
-    nextMonth: shiftMonth(normalized, 1),
+    previousMonth: shiftPlatformBillingMonth(normalized, -1),
+    nextMonth: shiftPlatformBillingMonth(normalized, 1),
     currentMonth: current,
   };
+}
+
+export function getPlatformBillingHistoryMonths(count = 6) {
+  const current = normalizeMonth(undefined, "current");
+  return Array.from({ length: Math.max(1, count) }, (_, index) =>
+    shiftPlatformBillingMonth(current, -index)
+  );
 }
 
 export function formatPlatformBillingMonth(month: string, locale: AppLocale) {
@@ -254,15 +387,22 @@ export function formatPlatformBillingMonth(month: string, locale: AppLocale) {
   ).format(new Date(Date.UTC(year, monthNumber - 1, 15)));
 }
 
-export function formatPlatformBillingCurrency(value: number, locale: AppLocale) {
+export function formatPlatformBillingCurrency(
+  value: number,
+  locale: AppLocale,
+  currency: PlatformBillingCurrency = "RON"
+) {
   return new Intl.NumberFormat(
     locale === "ro" ? "ro-RO" : locale === "de" ? "de-DE" : "en-GB",
-    { style: "currency", currency: "RON", maximumFractionDigits: 2 }
+    { style: "currency", currency, maximumFractionDigits: 2 }
   ).format(value);
 }
 
 function fullName(profile: ProfileRow | undefined) {
-  return [profile?.first_name, profile?.last_name].filter(Boolean).join(" ").trim();
+  return [profile?.first_name, profile?.last_name]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
 }
 
 function doctorBillingAddress(profile: DoctorBillingProfileRow) {
@@ -292,30 +432,114 @@ function isDateBefore(value: string | null | undefined, boundary: string) {
   return !value || new Date(value).getTime() < new Date(boundary).getTime();
 }
 
-function isDateAfterOrEqual(value: string | null | undefined, boundary: string) {
+function isDateAfterOrEqual(
+  value: string | null | undefined,
+  boundary: string
+) {
   return !value || new Date(value).getTime() >= new Date(boundary).getTime();
 }
 
-function buildAmounts(
-  subscriptionCount: number,
-  totalSmsCount: number,
-  rates: PlatformBillingRates
+function termAppliesToRange(
+  terms: PlatformClientBillingTerms | null,
+  range: PlatformMonthRange
 ) {
-  const subscriptionAmountRon = roundMoney(
-    subscriptionCount * rates.subscriptionPriceRon
+  if (!terms) return false;
+
+  return (
+    (!terms.effectiveFrom || terms.effectiveFrom <= range.endDate) &&
+    (!terms.effectiveUntil || terms.effectiveUntil >= range.startDate)
   );
-  const smsAmountRon = roundMoney(totalSmsCount * rates.smsPriceRon);
-  const subtotalRon = roundMoney(subscriptionAmountRon + smsAmountRon);
-  const vatRon = roundMoney(subtotalRon * rates.vatRate);
-  const totalRon = roundMoney(subtotalRon + vatRon);
+}
+
+function buildAmounts({
+  subscriptionCount,
+  totalSmsCount,
+  terms,
+  rates,
+}: {
+  subscriptionCount: number;
+  totalSmsCount: number;
+  terms: PlatformClientBillingTerms | null;
+  rates: PlatformBillingRates;
+}) {
+  const subscriptionUnitPrice =
+    terms?.subscriptionUnitPrice ?? rates.subscriptionPriceRon;
+  const smsUnitPrice = terms?.smsUnitPrice ?? rates.smsPriceRon;
+  const currency = terms?.currency ?? "RON";
+  const vatRate = terms?.vatRate ?? rates.vatRate;
+  const vatTreatment = terms?.vatTreatment ?? "domestic";
+  const vatReason = terms?.vatReason ?? null;
+  const subscriptionAmount = roundMoney(
+    subscriptionCount * subscriptionUnitPrice
+  );
+  const smsAmount = roundMoney(totalSmsCount * smsUnitPrice);
+  const subtotal = roundMoney(subscriptionAmount + smsAmount);
+  const vatAmount = roundMoney(subtotal * vatRate);
+  const total = roundMoney(subtotal + vatAmount);
 
   return {
-    subscriptionAmountRon,
-    smsAmountRon,
-    subtotalRon,
-    vatRon,
-    totalRon,
+    subscriptionUnitPrice,
+    smsUnitPrice,
+    currency,
+    vatRate,
+    vatTreatment,
+    vatReason,
+    billingTermsSource: terms ? ("client" as const) : ("global" as const),
+    subscriptionAmount,
+    smsAmount,
+    subtotal,
+    vatAmount,
+    total,
   };
+}
+
+function normalizeTerms(row: ClientBillingTermsRow): PlatformClientBillingTerms {
+  const clientId =
+    row.client_type === "independent_doctor"
+      ? row.doctor_id
+      : row.clinic_organization_id;
+
+  if (!clientId) {
+    throw new Error("Client billing terms row has no client identifier.");
+  }
+
+  return {
+    id: row.id,
+    clientType: row.client_type,
+    clientId,
+    subscriptionUnitPrice: nullableNumber(row.subscription_unit_price),
+    smsUnitPrice: nullableNumber(row.sms_unit_price),
+    currency: row.currency,
+    vatRate: nullableNumber(row.vat_rate),
+    vatTreatment: row.vat_treatment,
+    vatReason: row.vat_reason,
+    vatNumber: row.vat_number,
+    vatValidatedAt: row.vat_validated_at,
+    vatValidationStatus: row.vat_validation_status,
+    effectiveFrom: row.effective_from,
+    effectiveUntil: row.effective_until,
+    updatedAt: row.updated_at,
+  };
+}
+
+function normalizeInvoice(row: ClientInvoiceRow): PlatformClientInvoiceRecord {
+  return {
+    id: row.id,
+    invoiceNumber: row.invoice_number,
+    issuedOn: row.issued_on,
+    estimatedAmount:
+      row.estimated_amount === null ? null : Number(row.estimated_amount),
+    amount: Number(row.amount),
+    currency: row.currency,
+    status: row.status,
+    paidOn: row.paid_on,
+    paymentReference: row.payment_reference,
+    notes: row.notes,
+  };
+}
+
+function clientKey(type: PlatformInvoiceClientType, id: string) {
+  return `${type}:${id}`;
 }
 
 export async function loadPlatformBillingRates(): Promise<{
@@ -346,10 +570,7 @@ export async function loadPlatformBillingRates(): Promise<{
         DEFAULT_RATES.subscriptionPriceRon
       ),
       smsPriceRon: toNumber(row.sms_unit_price_ron, DEFAULT_RATES.smsPriceRon),
-      vatRate: Math.min(
-        1,
-        toNumber(row.vat_rate, DEFAULT_RATES.vatRate)
-      ),
+      vatRate: Math.min(1, toNumber(row.vat_rate, DEFAULT_RATES.vatRate)),
       updatedAt: row.updated_at,
       updatedByProfileId: row.updated_by_profile_id,
     },
@@ -380,6 +601,8 @@ export async function loadPlatformInvoicingData({
     organizationBillingResult,
     relationshipsResult,
     smsResult,
+    termsResult,
+    invoicesResult,
   ] = await Promise.all([
     loadPlatformBillingRates(),
     admin
@@ -388,9 +611,7 @@ export async function loadPlatformInvoicingData({
       .eq("account_type", "independent")
       .order("slug", { ascending: true }),
     admin.from("profiles").select("id, first_name, last_name"),
-    admin
-      .from("doctor_translations")
-      .select("doctor_id, locale, title"),
+    admin.from("doctor_translations").select("doctor_id, locale, title"),
     admin
       .from("doctor_subscriptions")
       .select(
@@ -437,6 +658,45 @@ export async function loadPlatformInvoicingData({
       .gte("created_at", range.startIso)
       .lt("created_at", range.endExclusiveIso)
       .eq("status", "sent"),
+    admin.from("client_billing_terms").select(`
+      id,
+      client_type,
+      doctor_id,
+      clinic_organization_id,
+      subscription_unit_price,
+      sms_unit_price,
+      currency,
+      vat_rate,
+      vat_treatment,
+      vat_reason,
+      vat_number,
+      vat_validated_at,
+      vat_validation_status,
+      effective_from,
+      effective_until,
+      updated_at
+    `),
+    admin
+      .from("client_billing_invoice_records")
+      .select(`
+        id,
+        client_type,
+        doctor_id,
+        clinic_organization_id,
+        billing_period_start,
+        billing_period_end,
+        invoice_number,
+        issued_on,
+        estimated_amount,
+        amount,
+        currency,
+        status,
+        paid_on,
+        payment_reference,
+        notes
+      `)
+      .lte("billing_period_start", range.endDate)
+      .gte("billing_period_end", range.startDate),
   ]);
 
   const queryErrors = [
@@ -449,6 +709,8 @@ export async function loadPlatformInvoicingData({
     organizationBillingResult.error,
     relationshipsResult.error,
     smsResult.error,
+    termsResult.error,
+    invoicesResult.error,
   ];
 
   for (const error of queryErrors) {
@@ -460,11 +722,36 @@ export async function loadPlatformInvoicingData({
   const profiles = (profilesResult.data ?? []) as ProfileRow[];
   const translations = (translationsResult.data ?? []) as DoctorTranslationRow[];
   const subscriptions = (subscriptionsResult.data ?? []) as DoctorSubscriptionRow[];
-  const doctorBillingProfiles = (doctorBillingResult.data ?? []) as DoctorBillingProfileRow[];
+  const doctorBillingProfiles = (doctorBillingResult.data ??
+    []) as DoctorBillingProfileRow[];
   const organizations = (organizationsResult.data ?? []) as OrganizationRow[];
-  const organizationBillingProfiles = (organizationBillingResult.data ?? []) as OrganizationBillingProfileRow[];
-  const relationships = (relationshipsResult.data ?? []) as ClinicDoctorRelationshipRow[];
+  const organizationBillingProfiles = (organizationBillingResult.data ??
+    []) as OrganizationBillingProfileRow[];
+  const relationships = (relationshipsResult.data ??
+    []) as ClinicDoctorRelationshipRow[];
   const smsLogs = (smsResult.data ?? []) as SmsLogRow[];
+  const termRows = (termsResult.data ?? []) as ClientBillingTermsRow[];
+  const invoiceRows = (invoicesResult.data ?? []) as ClientInvoiceRow[];
+
+  const termsByClient = new Map<string, PlatformClientBillingTerms>();
+  for (const row of termRows) {
+    try {
+      const terms = normalizeTerms(row);
+      termsByClient.set(clientKey(terms.clientType, terms.clientId), terms);
+    } catch (error) {
+      console.error("Invalid client billing terms row:", error);
+    }
+  }
+
+  const invoiceByClient = new Map<string, PlatformClientInvoiceRecord>();
+  for (const invoice of invoiceRows) {
+    const id =
+      invoice.client_type === "independent_doctor"
+        ? invoice.doctor_id
+        : invoice.clinic_organization_id;
+    if (!id) continue;
+    invoiceByClient.set(clientKey(invoice.client_type, id), normalizeInvoice(invoice));
+  }
 
   const profilesById = new Map(profiles.map((profile) => [profile.id, profile]));
   const translationsByDoctorId = new Map<string, DoctorTranslationRow[]>();
@@ -477,15 +764,22 @@ export async function loadPlatformInvoicingData({
   const subscriptionsByDoctorId = new Map<string, DoctorSubscriptionRow>();
   const subscriptionsByProfileId = new Map<string, DoctorSubscriptionRow>();
   for (const subscription of subscriptions) {
-    if (subscription.doctor_id) subscriptionsByDoctorId.set(subscription.doctor_id, subscription);
-    if (subscription.profile_id) subscriptionsByProfileId.set(subscription.profile_id, subscription);
+    if (subscription.doctor_id) {
+      subscriptionsByDoctorId.set(subscription.doctor_id, subscription);
+    }
+    if (subscription.profile_id) {
+      subscriptionsByProfileId.set(subscription.profile_id, subscription);
+    }
   }
 
   const doctorBillingById = new Map(
     doctorBillingProfiles.map((profile) => [profile.doctor_id, profile])
   );
   const organizationBillingById = new Map(
-    organizationBillingProfiles.map((profile) => [profile.organization_id, profile])
+    organizationBillingProfiles.map((profile) => [
+      profile.organization_id,
+      profile,
+    ])
   );
 
   const billableRelationships = relationships.filter((relationship) => {
@@ -511,28 +805,41 @@ export async function loadPlatformInvoicingData({
 
   const organizationByDoctorId = new Map<string, string>();
   for (const relationship of billableRelationships) {
-    if (relationship.doctor_id && !organizationByDoctorId.has(relationship.doctor_id)) {
-      organizationByDoctorId.set(relationship.doctor_id, relationship.organization_id);
+    if (
+      relationship.doctor_id &&
+      !organizationByDoctorId.has(relationship.doctor_id)
+    ) {
+      organizationByDoctorId.set(
+        relationship.doctor_id,
+        relationship.organization_id
+      );
     }
   }
 
-  const doctorSmsCounts = new Map<
-    string,
-    { total: number; confirmations: number; reminders: number }
-  >();
-  const organizationSmsCounts = new Map<
-    string,
-    { total: number; confirmations: number; reminders: number }
-  >();
+  type SmsCounter = {
+    total: number;
+    confirmations: number;
+    reminders: number;
+    other: number;
+  };
+
+  const doctorSmsCounts = new Map<string, SmsCounter>();
+  const organizationSmsCounts = new Map<string, SmsCounter>();
 
   for (const log of smsLogs) {
     if (log.invoice_status === "not_billable") continue;
 
-    const increment = (map: typeof doctorSmsCounts, key: string) => {
-      const current = map.get(key) ?? { total: 0, confirmations: 0, reminders: 0 };
+    const increment = (map: Map<string, SmsCounter>, key: string) => {
+      const current = map.get(key) ?? {
+        total: 0,
+        confirmations: 0,
+        reminders: 0,
+        other: 0,
+      };
       current.total += 1;
       if (log.event === "confirmed") current.confirmations += 1;
-      if (log.event === "reminder_24_hours") current.reminders += 1;
+      else if (log.event === "reminder_24_hours") current.reminders += 1;
+      else current.other += 1;
       map.set(key, current);
     };
 
@@ -554,11 +861,15 @@ export async function loadPlatformInvoicingData({
     if (log.doctor_id) increment(doctorSmsCounts, log.doctor_id);
   }
 
+  const pricingClients: PlatformBillingClientOption[] = [];
+
   const independentDoctors = doctors
     .map((doctor): PlatformInvoiceAmountRow | null => {
       const subscription =
         subscriptionsByDoctorId.get(doctor.id) ??
-        (doctor.profile_id ? subscriptionsByProfileId.get(doctor.profile_id) : undefined);
+        (doctor.profile_id
+          ? subscriptionsByProfileId.get(doctor.profile_id)
+          : undefined);
 
       const subscriptionCount =
         subscription &&
@@ -572,9 +883,8 @@ export async function loadPlatformInvoicingData({
         total: 0,
         confirmations: 0,
         reminders: 0,
+        other: 0,
       };
-
-      if (subscriptionCount === 0 && sms.total === 0) return null;
 
       const translatedName = selectTranslation(
         translationsByDoctorId.get(doctor.id),
@@ -585,8 +895,26 @@ export async function loadPlatformInvoicingData({
         : undefined;
       const billing = doctorBillingById.get(doctor.id);
       const clientName = translatedName || fullName(profile) || doctor.slug;
+      const rawTerms =
+        termsByClient.get(clientKey("independent_doctor", doctor.id)) ?? null;
+      const applicableTerms = termAppliesToRange(rawTerms, range)
+        ? rawTerms
+        : null;
 
-      const amounts = buildAmounts(subscriptionCount, sms.total, rates);
+      pricingClients.push({
+        id: doctor.id,
+        clientType: "independent_doctor",
+        name: clientName,
+        accountEmail: doctor.email,
+        terms: rawTerms,
+      });
+
+      const invoiceRecord =
+        invoiceByClient.get(clientKey("independent_doctor", doctor.id)) ?? null;
+
+      if (subscriptionCount === 0 && sms.total === 0 && !invoiceRecord) {
+        return null;
+      }
 
       return {
         id: doctor.id,
@@ -596,8 +924,14 @@ export async function loadPlatformInvoicingData({
         subscriptionCount,
         confirmationSmsCount: sms.confirmations,
         reminder24hSmsCount: sms.reminders,
+        otherSmsCount: sms.other,
         totalSmsCount: sms.total,
-        ...amounts,
+        ...buildAmounts({
+          subscriptionCount,
+          totalSmsCount: sms.total,
+          terms: applicableTerms,
+          rates,
+        }),
         billingDetails: billing
           ? {
               legalName: billing.legal_name,
@@ -605,10 +939,12 @@ export async function loadPlatformInvoicingData({
               tradeRegisterNumber: billing.trade_registry_number,
               billingEmail: billing.billing_email,
               billingAddress: doctorBillingAddress(billing),
-              vatNumber: null,
+              country: billing.country,
+              vatNumber: applicableTerms?.vatNumber ?? null,
               vatPayer: billing.vat_payer,
             }
           : null,
+        invoiceRecord,
       };
     })
     .filter((row): row is PlatformInvoiceAmountRow => Boolean(row))
@@ -626,17 +962,38 @@ export async function loadPlatformInvoicingData({
 
   const clinicOrganizations = organizations
     .map((organization): PlatformInvoiceAmountRow | null => {
-      const subscriptionCount = subscriptionsByOrganization.get(organization.id) ?? 0;
+      const subscriptionCount =
+        subscriptionsByOrganization.get(organization.id) ?? 0;
       const sms = organizationSmsCounts.get(organization.id) ?? {
         total: 0,
         confirmations: 0,
         reminders: 0,
+        other: 0,
       };
-
-      if (subscriptionCount === 0 && sms.total === 0) return null;
-
       const billing = organizationBillingById.get(organization.id);
-      const amounts = buildAmounts(subscriptionCount, sms.total, rates);
+      const rawTerms =
+        termsByClient.get(
+          clientKey("clinic_organization", organization.id)
+        ) ?? null;
+      const applicableTerms = termAppliesToRange(rawTerms, range)
+        ? rawTerms
+        : null;
+
+      pricingClients.push({
+        id: organization.id,
+        clientType: "clinic_organization",
+        name: organization.name,
+        accountEmail: organization.contact_email,
+        terms: rawTerms,
+      });
+
+      const invoiceRecord =
+        invoiceByClient.get(clientKey("clinic_organization", organization.id)) ??
+        null;
+
+      if (subscriptionCount === 0 && sms.total === 0 && !invoiceRecord) {
+        return null;
+      }
 
       return {
         id: organization.id,
@@ -646,8 +1003,14 @@ export async function loadPlatformInvoicingData({
         subscriptionCount,
         confirmationSmsCount: sms.confirmations,
         reminder24hSmsCount: sms.reminders,
+        otherSmsCount: sms.other,
         totalSmsCount: sms.total,
-        ...amounts,
+        ...buildAmounts({
+          subscriptionCount,
+          totalSmsCount: sms.total,
+          terms: applicableTerms,
+          rates,
+        }),
         billingDetails: billing
           ? {
               legalName: billing.company_name,
@@ -655,10 +1018,12 @@ export async function loadPlatformInvoicingData({
               tradeRegisterNumber: billing.trade_register_number,
               billingEmail: billing.billing_email,
               billingAddress: organizationBillingAddress(billing),
-              vatNumber: billing.vat_number,
+              country: billing.billing_country,
+              vatNumber: applicableTerms?.vatNumber ?? billing.vat_number,
               vatPayer: billing.is_vat_payer,
             }
           : null,
+        invoiceRecord,
       };
     })
     .filter((row): row is PlatformInvoiceAmountRow => Boolean(row))
@@ -666,12 +1031,22 @@ export async function loadPlatformInvoicingData({
       first.clientName.localeCompare(second.clientName, locale)
     );
 
+  pricingClients.sort((first, second) => {
+    if (first.clientType !== second.clientType) {
+      return first.clientType === "independent_doctor" ? -1 : 1;
+    }
+    return first.name.localeCompare(second.name, locale);
+  });
+
   return {
     range,
     rates,
     independentDoctors,
     clinicOrganizations,
     rows: [...independentDoctors, ...clinicOrganizations],
+    pricingClients,
+    historyMonths: getPlatformBillingHistoryMonths(6),
+    previousCalendarMonth: shiftPlatformBillingMonth(range.currentMonth, -1),
     hasPartialError:
       ratesResult.error || queryErrors.some((error) => Boolean(error)),
   };

@@ -19,6 +19,7 @@
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.2",
     "@vercel/analytics": "^2.0.1",
+    "exceljs": "^4.4.0",
     "next": "^16.2.9",
     "next-intl": "^4.0.0",
     "pdfmake": "^0.2.20",

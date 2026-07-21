@@ -5,13 +5,11 @@ import type { AppLocale } from "@/lib/i18n/app-locale";
 import {
   formatPlatformBillingCurrency,
   formatPlatformBillingMonth,
+  type PlatformBillingCurrency,
   type PlatformInvoiceAmountRow,
   type PlatformInvoicingData,
 } from "@/lib/billing/platform-invoicing";
-import {
-  getPlatformOperatorBilling,
-  PLATFORM_OPERATOR_BILLING_LOCALE_TAGS,
-} from "@/lib/i18n/platform-operator-billing";
+import { getPlatformOperatorBilling } from "@/lib/i18n/platform-operator-billing";
 
 type PlatformSmsReportProps = {
   locale: AppLocale;
@@ -22,6 +20,8 @@ type PlatformSmsReportProps = {
     | "/manager-dashboard/clinic-sms";
 };
 
+type CurrencyTotals = Record<PlatformBillingCurrency, number>;
+
 function Metric({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
@@ -31,6 +31,21 @@ function Metric({ label, value }: { label: string; value: string | number }) {
       <p className="mt-[13px] text-2xl font-bold text-gray-900">{value}</p>
     </div>
   );
+}
+
+function formatCurrencyTotals(
+  totals: CurrencyTotals,
+  locale: AppLocale
+) {
+  const values = (["RON", "EUR"] as const)
+    .filter((currency) => totals[currency] !== 0)
+    .map((currency) =>
+      formatPlatformBillingCurrency(totals[currency], locale, currency)
+    );
+
+  return values.length > 0
+    ? values.join(" · ")
+    : formatPlatformBillingCurrency(0, locale, "RON");
 }
 
 function ClientDetails({
@@ -72,7 +87,7 @@ function ClientDetails({
           <div className="rounded-[13px] bg-[#036661]/5 p-[8px] text-center">
             <p className="text-xs text-gray-500">{copy.smsReport.total}</p>
             <p className="mt-[5px] font-bold text-[#036661]">
-              {formatPlatformBillingCurrency(row.totalRon, locale)}
+              {formatPlatformBillingCurrency(row.total, locale, row.currency)}
             </p>
           </div>
         </div>
@@ -86,9 +101,26 @@ function ClientDetails({
               [copy.smsReport.sms, String(row.totalSmsCount)],
               [copy.smsReport.confirmations, String(row.confirmationSmsCount)],
               [copy.smsReport.reminders, String(row.reminder24hSmsCount)],
-              [copy.smsReport.subtotal, formatPlatformBillingCurrency(row.subtotalRon, locale)],
-              [copy.smsReport.vat, formatPlatformBillingCurrency(row.vatRon, locale)],
-              [copy.smsReport.total, formatPlatformBillingCurrency(row.totalRon, locale)],
+              [
+                copy.smsReport.subtotal,
+                formatPlatformBillingCurrency(
+                  row.subtotal,
+                  locale,
+                  row.currency
+                ),
+              ],
+              [
+                copy.smsReport.vat,
+                formatPlatformBillingCurrency(
+                  row.vatAmount,
+                  locale,
+                  row.currency
+                ),
+              ],
+              [
+                copy.smsReport.total,
+                formatPlatformBillingCurrency(row.total, locale, row.currency),
+              ],
             ].map(([label, value], index) => (
               <div
                 key={String(label)}
@@ -141,14 +173,14 @@ function ClientDetails({
           </aside>
         </div>
 
-        {clientType === "clinic_organization" ? (
+        {clientType === "clinic_organization" && row.currency === "RON" ? (
           <div className="mt-[21px]">
             <CreateClinicInvoiceFromEstimateLink
               href="/manager-dashboard/invoices"
               organizationId={row.id}
               billingPeriodStart={data.range.startDate}
               billingPeriodEnd={data.range.endDate}
-              estimatedAmountRon={row.totalRon}
+              estimatedAmountRon={row.total}
               label={copy.invoiceWorkspace.add}
               className="romdoc-focus-ring inline-flex rounded-[13px] bg-[#036661] px-[21px] py-[13px] text-sm font-semibold text-white transition hover:bg-[#024d49]"
             />
@@ -174,9 +206,16 @@ export default function PlatformSmsReport({
     (result, row) => ({
       subscriptions: result.subscriptions + row.subscriptionCount,
       sms: result.sms + row.totalSmsCount,
-      amount: result.amount + row.totalRon,
+      amounts: {
+        ...result.amounts,
+        [row.currency]: result.amounts[row.currency] + row.total,
+      },
     }),
-    { subscriptions: 0, sms: 0, amount: 0 }
+    {
+      subscriptions: 0,
+      sms: 0,
+      amounts: { RON: 0, EUR: 0 } as CurrencyTotals,
+    }
   );
 
   const monthLabel = formatPlatformBillingMonth(data.range.month, locale);
@@ -231,7 +270,7 @@ export default function PlatformSmsReport({
         <Metric label={copy.smsReport.summarySent} value={totals.sms} />
         <Metric
           label={copy.smsReport.summaryCost}
-          value={formatPlatformBillingCurrency(totals.amount, locale)}
+          value={formatCurrencyTotals(totals.amounts, locale)}
         />
       </div>
 

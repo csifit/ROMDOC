@@ -1,26 +1,73 @@
 import { redirect } from "next/navigation";
 
-import AmountsToInvoice from "@/components/billing/amounts-to-invoice";
-import ClinicInvoicesWorkspace from "@/components/invoices/clinic-invoices-workspace";
+import AmountsToInvoice, {
+  type InitialClientInvoiceDraft,
+} from "@/components/billing/amounts-to-invoice";
 import { loadPlatformInvoicingData } from "@/lib/billing/platform-invoicing";
-import {
-  getClinicInvoiceInitialDraft,
-  type InvoiceSearchParameters,
-} from "@/lib/invoices/clinic-invoice-prefill";
-import { loadClinicInvoiceWorkspaceData } from "@/lib/invoices/load-clinic-invoice-workspace-data";
 import { requireClinicInvoiceAccess } from "@/lib/invoices/require-clinic-invoice-access";
 import { getPlatformOperatorBilling } from "@/lib/i18n/platform-operator-billing";
+import { getPlatformOperatorBillingHistory } from "@/lib/i18n/platform-operator-billing-history";
 import { getStoredAppLocale } from "@/lib/i18n/server-app-locale";
 
-type AdminInvoicesPageProps = {
-  searchParams?: Promise<InvoiceSearchParameters>;
+type InvoicePageSearchParameters = {
+  month?: string;
+  create?: string;
+  organizationId?: string;
+  billingPeriodStart?: string;
+  billingPeriodEnd?: string;
+  estimatedAmountRon?: string;
 };
+
+type AdminInvoicesPageProps = {
+  searchParams?: Promise<InvoicePageSearchParameters>;
+};
+
+function getRequestedMonth(parameters: InvoicePageSearchParameters) {
+  if (/^\d{4}-\d{2}$/.test(parameters.month ?? "")) {
+    return parameters.month;
+  }
+
+  if (
+    parameters.create === "1" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(parameters.billingPeriodStart ?? "")
+  ) {
+    return parameters.billingPeriodStart?.slice(0, 7);
+  }
+
+  return undefined;
+}
+
+function getInitialInvoiceDraft(
+  parameters: InvoicePageSearchParameters
+): InitialClientInvoiceDraft | null {
+  if (
+    parameters.create !== "1" ||
+    !parameters.organizationId ||
+    !/^[0-9a-f-]{36}$/i.test(parameters.organizationId)
+  ) {
+    return null;
+  }
+
+  const numericEstimate = Number(
+    (parameters.estimatedAmountRon ?? "").replace(",", ".")
+  );
+
+  return {
+    clientType: "clinic_organization",
+    clientId: parameters.organizationId,
+    estimatedAmount:
+      Number.isFinite(numericEstimate) && numericEstimate >= 0
+        ? numericEstimate
+        : undefined,
+  };
+}
 
 export default async function AdminInvoicesPage({
   searchParams,
 }: AdminInvoicesPageProps) {
   const locale = await getStoredAppLocale();
   const copy = getPlatformOperatorBilling(locale);
+  const historyCopy = getPlatformOperatorBillingHistory(locale);
   const access = await requireClinicInvoiceAccess();
 
   if (!access.ok) {
@@ -38,12 +85,12 @@ export default async function AdminInvoicesPage({
   if (access.actor.role !== "admin") redirect("/dashboard");
 
   const parameters = (await searchParams) ?? {};
-  const initialDraft = getClinicInvoiceInitialDraft(parameters);
-
-  const [{ organizations, invoices }, amounts] = await Promise.all([
-    loadClinicInvoiceWorkspaceData(),
-    loadPlatformInvoicingData({ locale, fallback: "previous" }),
-  ]);
+  const initialInvoiceDraft = getInitialInvoiceDraft(parameters);
+  const data = await loadPlatformInvoicingData({
+    locale,
+    month: getRequestedMonth(parameters),
+    fallback: "current",
+  });
 
   return (
     <div className="space-y-[34px]">
@@ -54,18 +101,16 @@ export default async function AdminInvoicesPage({
         <h1 className="mt-[8px] text-3xl font-bold text-gray-900">
           {copy.pages.invoicesAdmin.title}
         </h1>
-        <p className="mt-[13px] max-w-3xl text-sm leading-6 text-gray-600">
-          {copy.pages.invoicesAdmin.description}
+        <p className="mt-[13px] max-w-4xl text-sm leading-6 text-gray-600">
+          {historyCopy.pages.adminDescription}
         </p>
       </header>
 
-      <AmountsToInvoice locale={locale} data={amounts} role="admin" />
-
-      <ClinicInvoicesWorkspace
+      <AmountsToInvoice
         locale={locale}
-        invoices={invoices}
-        organizations={organizations}
-        initialDraft={initialDraft}
+        data={data}
+        role="admin"
+        initialInvoiceDraft={initialInvoiceDraft}
       />
     </div>
   );
