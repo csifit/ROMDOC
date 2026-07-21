@@ -6,6 +6,16 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useLocale } from "next-intl";
+
+import { normalizeAppLocale } from "@/lib/i18n/app-locale";
+import {
+  getPlatformDoctorApiMessage,
+  getPlatformOperatorDoctors,
+  interpolatePlatformDoctorCopy,
+  PLATFORM_OPERATOR_DOCTOR_LOCALE_TAGS,
+} from "@/lib/i18n/platform-operator-doctors";
+import type { PlatformOperatorDoctorApiPayload } from "@/lib/api/platform-operator-doctor-codes";
 
 type InvitationStatus =
   | "draft"
@@ -22,94 +32,32 @@ type DoctorInvitation = {
   first_name: string;
   last_name: string;
   locale: "ro" | "en";
-  personal_message:
-    | string
-    | null;
+  personal_message: string | null;
   complimentary_months: number;
   status: InvitationStatus;
   invited_by_profile_id: string;
-  auth_user_id:
-    | string
-    | null;
-  accepted_profile_id:
-    | string
-    | null;
-  doctor_id:
-    | string
-    | null;
-  sent_at:
-    | string
-    | null;
-  accepted_at:
-    | string
-    | null;
-  expires_at:
-    | string
-    | null;
-  cancelled_at:
-    | string
-    | null;
-  failure_code:
-    | string
-    | null;
-  failure_message:
-    | string
-    | null;
+  auth_user_id: string | null;
+  accepted_profile_id: string | null;
+  doctor_id: string | null;
+  sent_at: string | null;
+  accepted_at: string | null;
+  expires_at: string | null;
+  cancelled_at: string | null;
+  failure_code: string | null;
+  failure_message: string | null;
   created_at: string;
   updated_at: string;
 };
 
-type InvitationsResponse = {
+type InvitationsResponse = PlatformOperatorDoctorApiPayload & {
   invitations?: DoctorInvitation[];
-  error?: string;
 };
 
 type DoctorInvitationsListProps = {
   refreshKey: number;
 };
 
-function formatDateTime(
-  value:
-    | string
-    | null
-) {
-  if (!value) {
-    return "—";
-  }
-
-  return new Intl.DateTimeFormat(
-    "ro-RO",
-    {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }
-  ).format(
-    new Date(value)
-  );
-}
-
-function getStatusLabel(
-  status: InvitationStatus
-) {
-  switch (status) {
-    case "draft":
-      return "Ciornă";
-    case "sent":
-      return "Trimisă";
-    case "accepted":
-      return "Acceptată";
-    case "expired":
-      return "Expirată";
-    case "cancelled":
-      return "Anulată";
-    case "failed":
-      return "Eșuată";
-  }
-}
-
-function getStatusClasses(
-  status: InvitationStatus
-) {
+function getStatusClasses(status: InvitationStatus) {
   switch (status) {
     case "accepted":
       return "bg-green-100 text-green-800";
@@ -129,368 +77,315 @@ function getStatusClasses(
 export default function DoctorInvitationsList({
   refreshKey,
 }: DoctorInvitationsListProps) {
-  const [
-    invitations,
-    setInvitations,
-  ] = useState<
-    DoctorInvitation[]
-  >([]);
-  const [status, setStatus] =
-    useState<
-      "all" | InvitationStatus
-    >("all");
-  const [search, setSearch] =
-    useState("");
-  const [isLoading, setIsLoading] =
-    useState(true);
-  const [error, setError] =
-    useState<string | null>(
-      null
-    );
-  const [
-    expandedInvitationId,
-    setExpandedInvitationId,
-  ] = useState<
-    string | null
-  >(null);
+  const locale = normalizeAppLocale(useLocale());
+  const copy = getPlatformOperatorDoctors(locale);
+  const [invitations, setInvitations] = useState<DoctorInvitation[]>([]);
+  const [status, setStatus] = useState<"all" | InvitationStatus>("all");
+  const [search, setSearch] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [expandedInvitationId, setExpandedInvitationId] =
+    useState<string | null>(null);
 
-  const loadInvitations =
-    useCallback(async () => {
-      setIsLoading(true);
-      setError(null);
+  const formatDateTime = useCallback(
+    (value: string | null) => {
+      if (!value) {
+        return copy.common.none;
+      }
 
-      try {
-        const query =
-          status === "all"
-            ? ""
-            : `?status=${encodeURIComponent(
-                status
-              )}`;
-
-        const response =
-          await fetch(
-            `/api/admin/doctors/invitations${query}`,
-            {
-              cache:
-                "no-store",
-            }
-          );
-
-        const result =
-          (await response.json()) as
-            InvitationsResponse;
-
-        if (!response.ok) {
-          throw new Error(
-            result.error ??
-              "Invitațiile nu au putut fi încărcate."
-          );
+      return new Intl.DateTimeFormat(
+        PLATFORM_OPERATOR_DOCTOR_LOCALE_TAGS[locale],
+        {
+          dateStyle: "medium",
+          timeStyle: "short",
+          timeZone: "Europe/Bucharest",
         }
+      ).format(new Date(value));
+    },
+    [copy.common.none, locale]
+  );
 
-        setInvitations(
-          result.invitations ??
-            []
-        );
-      } catch (loadError) {
-        setError(
-          loadError instanceof
-            Error
-            ? loadError.message
-            : "Invitațiile nu au putut fi încărcate."
-        );
-      } finally {
-        setIsLoading(
-          false
+  const loadInvitations = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const query =
+        status === "all"
+          ? ""
+          : `?status=${encodeURIComponent(status)}`;
+
+      const response = await fetch(
+        `/api/admin/doctors/invitations${query}`,
+        {
+          cache: "no-store",
+        }
+      );
+
+      const result = (await response.json()) as InvitationsResponse;
+
+      if (!response.ok) {
+        throw new Error(
+          getPlatformDoctorApiMessage(
+            locale,
+            result.code,
+            result.error ?? copy.invitations.states.loadFailed
+          )
         );
       }
-    }, [status]);
+
+      setInvitations(result.invitations ?? []);
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : copy.invitations.states.loadFailed
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [
+    copy.invitations.states.loadFailed,
+    locale,
+    status,
+  ]);
 
   useEffect(() => {
     void loadInvitations();
-  }, [
-    loadInvitations,
-    refreshKey,
-  ]);
+  }, [loadInvitations, refreshKey]);
 
-  const filteredInvitations =
-    useMemo(() => {
-      const normalized =
-        search
-          .trim()
-          .toLowerCase();
+  const filteredInvitations = useMemo(() => {
+    const normalized = search.trim().toLowerCase();
 
-      if (!normalized) {
-        return invitations;
-      }
+    if (!normalized) {
+      return invitations;
+    }
 
-      return invitations.filter(
-        (invitation) =>
-          [
-            invitation.first_name,
-            invitation.last_name,
-            invitation.email,
-            invitation.personal_message,
-          ]
-            .filter(Boolean)
-            .some((value) =>
-              value
-                ?.toLowerCase()
-                .includes(
-                  normalized
-                )
-            )
-      );
-    }, [
-      invitations,
-      search,
-    ]);
+    return invitations.filter((invitation) =>
+      [
+        invitation.first_name,
+        invitation.last_name,
+        invitation.email,
+        invitation.personal_message,
+      ]
+        .filter(Boolean)
+        .some((value) =>
+          value?.toLowerCase().includes(normalized)
+        )
+    );
+  }, [invitations, search]);
+
+  const statusLabels = copy.invitations.statuses as Record<
+    InvitationStatus,
+    string
+  >;
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="border-b border-gray-200 p-5 sm:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-gray-950">
-              Istoric invitații
-            </h2>
-
-            <p className="mt-2 text-sm leading-6 text-gray-600">
-              Urmărește invitațiile trimise, acceptate, expirate sau eșuate.
-            </p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem] lg:w-[34rem]">
+    <section className="overflow-hidden rounded-[13px] border border-gray-200 bg-white">
+      <div className="border-b border-gray-200 p-[21px]">
+        <div className="grid gap-[13px] lg:grid-cols-[minmax(0,1fr)_13rem]">
+          <label>
+            <span className="sr-only">
+              {copy.invitations.filters.searchLabel}
+            </span>
             <input
               type="search"
               value={search}
-              onChange={(
-                event
-              ) =>
-                setSearch(
-                  event.target
-                    .value
-                )
+              onChange={(event: { target: { value: string } }) =>
+                setSearch(event.target.value)
               }
-              placeholder="Caută nume sau e-mail..."
-              className="romdoc-focus-ring rounded-xl border border-gray-300 px-4 py-3"
+              placeholder={copy.invitations.filters.searchPlaceholder}
+              className="romdoc-focus-ring w-full rounded-[13px] border border-gray-300 px-[13px] py-[13px]"
             />
+          </label>
 
+          <label>
+            <span className="sr-only">
+              {copy.invitations.filters.status}
+            </span>
             <select
               value={status}
-              onChange={(
-                event
-              ) =>
+              onChange={(event: { target: { value: string } }) =>
                 setStatus(
-                  event.target
-                    .value as
-                    | "all"
-                    | InvitationStatus
+                  event.target.value as "all" | InvitationStatus
                 )
               }
-              className="romdoc-focus-ring rounded-xl border border-gray-300 bg-white px-4 py-3"
+              className="romdoc-focus-ring w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px]"
             >
               <option value="all">
-                Toate
+                {copy.invitations.filters.all}
               </option>
-              <option value="sent">
-                Trimise
-              </option>
-              <option value="accepted">
-                Acceptate
-              </option>
-              <option value="failed">
-                Eșuate
-              </option>
-              <option value="expired">
-                Expirate
-              </option>
-              <option value="cancelled">
-                Anulate
-              </option>
-              <option value="draft">
-                Ciorne
-              </option>
+              {(Object.keys(statusLabels) as InvitationStatus[]).map(
+                (value) => (
+                  <option key={value} value={value}>
+                    {statusLabels[value]}
+                  </option>
+                )
+              )}
             </select>
-          </div>
+          </label>
         </div>
+
+        <p className="mt-[8px] text-xs text-gray-500">
+          {interpolatePlatformDoctorCopy(
+            copy.common.showing,
+            {
+              filtered: filteredInvitations.length,
+              total: invitations.length,
+            }
+          )}
+        </p>
       </div>
 
       {error ? (
-        <div className="border-b border-red-200 bg-red-50 p-4 text-sm text-red-800">
+        <div
+          role="alert"
+          className="border-b border-red-200 bg-red-50 p-[13px] text-sm text-red-800"
+        >
           {error}
         </div>
       ) : null}
 
       {isLoading ? (
-        <div className="p-8 text-sm text-gray-600">
-          Se încarcă invitațiile...
+        <div className="p-[21px] text-sm text-gray-600">
+          {copy.invitations.states.loading}
         </div>
-      ) : filteredInvitations.length ===
-        0 ? (
-        <div className="p-8 text-sm text-gray-600">
-          Nu există invitații care corespund filtrelor.
+      ) : filteredInvitations.length === 0 ? (
+        <div className="p-[21px] text-sm text-gray-600">
+          {copy.invitations.states.empty}
         </div>
       ) : (
         <div className="divide-y divide-gray-200">
-          {filteredInvitations.map(
-            (invitation) => {
-              const expanded =
-                expandedInvitationId ===
-                invitation.id;
+          {filteredInvitations.map((invitation) => {
+            const expanded =
+              expandedInvitationId === invitation.id;
 
-              return (
-                <article
-                  key={
-                    invitation.id
-                  }
-                  className="p-5 sm:p-6"
-                >
-                  <div className="grid gap-4 lg:grid-cols-[1.2fr_0.75fr_0.75fr_auto] lg:items-center">
-                    <div>
-                      <p className="font-semibold text-gray-950">
-                        {
-                          invitation.first_name
-                        }{" "}
-                        {
-                          invitation.last_name
-                        }
-                      </p>
-
-                      <p className="mt-1 text-sm text-gray-600">
-                        {
-                          invitation.email
-                        }
-                      </p>
-                    </div>
-
-                    <div>
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusClasses(
-                          invitation.status
-                        )}`}
-                      >
-                        {getStatusLabel(
-                          invitation.status
-                        )}
-                      </span>
-                    </div>
-
-                    <div className="text-sm text-gray-600">
-                      <p>
-                        {
-                          invitation.complimentary_months
-                        }{" "}
-                        luni gratuite
-                      </p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Creată{" "}
-                        {formatDateTime(
-                          invitation.created_at
-                        )}
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedInvitationId(
-                          expanded
-                            ? null
-                            : invitation.id
-                        )
-                      }
-                      className="romdoc-focus-ring rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-                    >
-                      {expanded
-                        ? "Ascunde"
-                        : "Detalii"}
-                    </button>
+            return (
+              <article key={invitation.id} className="p-[21px]">
+                <div className="grid gap-[13px] lg:grid-cols-[1.2fr_0.7fr_0.8fr_auto] lg:items-center">
+                  <div>
+                    <p className="font-semibold text-gray-950">
+                      {invitation.first_name} {invitation.last_name}
+                    </p>
+                    <p className="mt-[5px] text-sm text-gray-600">
+                      {invitation.email}
+                    </p>
                   </div>
 
-                  {expanded ? (
-                    <div className="mt-5 grid gap-5 rounded-2xl bg-[#F0EEE9] p-4 text-sm text-gray-700 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <p>
-                          <strong>
-                            Limba:
-                          </strong>{" "}
-                          {invitation.locale ===
-                          "en"
-                            ? "English"
-                            : "Română"}
-                        </p>
-                        <p>
-                          <strong>
-                            Trimisă:
-                          </strong>{" "}
-                          {formatDateTime(
-                            invitation.sent_at
-                          )}
-                        </p>
-                        <p>
-                          <strong>
-                            Expiră:
-                          </strong>{" "}
-                          {formatDateTime(
-                            invitation.expires_at
-                          )}
-                        </p>
-                        <p>
-                          <strong>
-                            Acceptată:
-                          </strong>{" "}
-                          {formatDateTime(
-                            invitation.accepted_at
-                          )}
-                        </p>
-                      </div>
+                  <span
+                    className={`w-fit rounded-full px-[13px] py-[5px] text-xs font-semibold ${getStatusClasses(
+                      invitation.status
+                    )}`}
+                  >
+                    {statusLabels[invitation.status]}
+                  </span>
 
-                      <div className="space-y-2">
-                        <p>
-                          <strong>
-                            Auth user:
-                          </strong>{" "}
-                          {invitation.auth_user_id ??
-                            "—"}
-                        </p>
-                        <p>
-                          <strong>
-                            Doctor:
-                          </strong>{" "}
-                          {invitation.doctor_id ??
-                            "—"}
-                        </p>
+                  <div className="text-sm text-gray-600">
+                    <p>
+                      {interpolatePlatformDoctorCopy(
+                        copy.common.monthsFree,
+                        {
+                          count: invitation.complimentary_months,
+                        }
+                      )}
+                    </p>
+                    <p className="mt-[5px] text-xs text-gray-500">
+                      {interpolatePlatformDoctorCopy(
+                        copy.common.createdAt,
+                        {
+                          date: formatDateTime(
+                            invitation.created_at
+                          ),
+                        }
+                      )}
+                    </p>
+                  </div>
 
-                        {invitation.failure_message ? (
-                          <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-red-800">
-                            <strong>
-                              Eroare:
-                            </strong>{" "}
-                            {
-                              invitation.failure_message
-                            }
-                          </p>
-                        ) : null}
-                      </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedInvitationId(
+                        expanded ? null : invitation.id
+                      )
+                    }
+                    className="romdoc-focus-ring rounded-[13px] border border-gray-300 px-[13px] py-[8px] text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                  >
+                    {expanded
+                      ? copy.common.hide
+                      : copy.common.details}
+                  </button>
+                </div>
 
-                      {invitation.personal_message ? (
-                        <div className="sm:col-span-2">
-                          <p className="font-semibold text-gray-900">
-                            Mesaj personalizat
-                          </p>
-                          <p className="mt-2 whitespace-pre-wrap leading-6">
-                            {
-                              invitation.personal_message
-                            }
-                          </p>
-                        </div>
+                {expanded ? (
+                  <div className="mt-[21px] grid gap-[21px] rounded-[13px] bg-[#F0EEE9] p-[21px] text-sm text-gray-700 sm:grid-cols-2">
+                    <div className="space-y-[8px]">
+                      <p>
+                        <strong>
+                          {copy.invitations.details.language}:
+                        </strong>{" "}
+                        {invitation.locale === "en"
+                          ? copy.common.languageEnglish
+                          : copy.common.languageRomanian}
+                      </p>
+                      <p>
+                        <strong>
+                          {copy.invitations.details.sent}:
+                        </strong>{" "}
+                        {formatDateTime(invitation.sent_at)}
+                      </p>
+                      <p>
+                        <strong>
+                          {copy.invitations.details.expires}:
+                        </strong>{" "}
+                        {formatDateTime(invitation.expires_at)}
+                      </p>
+                      <p>
+                        <strong>
+                          {copy.invitations.details.accepted}:
+                        </strong>{" "}
+                        {formatDateTime(invitation.accepted_at)}
+                      </p>
+                    </div>
+
+                    <div className="space-y-[8px]">
+                      <p className="break-all">
+                        <strong>
+                          {copy.invitations.details.authUser}:
+                        </strong>{" "}
+                        {invitation.auth_user_id ?? copy.common.none}
+                      </p>
+                      <p className="break-all">
+                        <strong>
+                          {copy.invitations.details.doctor}:
+                        </strong>{" "}
+                        {invitation.doctor_id ?? copy.common.none}
+                      </p>
+
+                      {invitation.failure_message ? (
+                        <p className="rounded-[13px] border border-red-200 bg-red-50 p-[13px] text-red-800">
+                          <strong>
+                            {copy.invitations.details.error}:
+                          </strong>{" "}
+                          {invitation.failure_message}
+                        </p>
                       ) : null}
                     </div>
-                  ) : null}
-                </article>
-              );
-            }
-          )}
+
+                    {invitation.personal_message ? (
+                      <div className="sm:col-span-2">
+                        <p className="font-semibold text-gray-900">
+                          {copy.invitations.details.personalMessage}
+                        </p>
+                        <p className="mt-[8px] whitespace-pre-wrap leading-6">
+                          {invitation.personal_message}
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </article>
+            );
+          })}
         </div>
       )}
     </section>

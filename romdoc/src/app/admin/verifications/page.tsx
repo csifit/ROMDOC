@@ -1,8 +1,13 @@
 import { redirect } from "next/navigation";
+
 import DoctorVerificationsManagement from "@/components/admin/doctor-verifications-management";
+import { getPlatformOperatorDoctors } from "@/lib/i18n/platform-operator-doctors";
+import { getStoredAppLocale } from "@/lib/i18n/server-app-locale";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AdminVerificationsPage() {
+  const locale = await getStoredAppLocale();
+  const copy = getPlatformOperatorDoctors(locale);
   const supabase = await createClient();
 
   const {
@@ -11,13 +16,15 @@ export default async function AdminVerificationsPage() {
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    redirect("/login?next=/admin/verifications");
+    const parameters = new URLSearchParams({
+      locale,
+      next: "/admin/verifications",
+    });
+
+    redirect(`/login?${parameters.toString()}`);
   }
 
-  const {
-    data: profile,
-    error: profileError,
-  } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("role, account_status")
     .eq("id", user.id)
@@ -32,19 +39,18 @@ export default async function AdminVerificationsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-[34px]">
       <header>
         <p className="text-sm font-semibold text-[#036661]">
-          Administrare
+          {copy.common.administration}
         </p>
 
-        <h1 className="mt-2 text-3xl font-bold text-gray-900">
-          Verificări profesionale
+        <h1 className="mt-[8px] text-3xl font-bold text-gray-900">
+          {copy.pages.adminVerifications.title}
         </h1>
 
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Examinează cererile și documentele medicilor, începe analiza,
-          aprobă sau respinge solicitările și păstrează observații interne.
+        <p className="mt-[13px] max-w-3xl text-sm leading-6 text-gray-600">
+          {copy.pages.adminVerifications.description}
         </p>
       </header>
 

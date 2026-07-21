@@ -1,20 +1,24 @@
 import DoctorsManagement from "@/components/admin/doctors-management";
+import { getPlatformOperatorDoctors } from "@/lib/i18n/platform-operator-doctors";
+import { getStoredAppLocale } from "@/lib/i18n/server-app-locale";
 
-export default function ManagerDoctorsPage() {
+export default async function ManagerDoctorsPage() {
+  const locale = await getStoredAppLocale();
+  const copy = getPlatformOperatorDoctors(locale);
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-[34px]">
       <header>
         <p className="text-sm font-semibold text-[#036661]">
-          Management operațional
+          {copy.common.operationalManagement}
         </p>
 
-        <h1 className="mt-2 text-3xl font-bold text-gray-900">
-          Medici
+        <h1 className="mt-[8px] text-3xl font-bold text-gray-900">
+          {copy.pages.managerDoctors.title}
         </h1>
 
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Caută și filtrează medicii și gestionează informațiile permise
-          rolului de manager.
+        <p className="mt-[13px] max-w-3xl text-sm leading-6 text-gray-600">
+          {copy.pages.managerDoctors.description}
         </p>
       </header>
 

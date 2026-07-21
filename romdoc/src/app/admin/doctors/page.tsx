@@ -2,9 +2,13 @@ import { redirect } from "next/navigation";
 
 import AdminDoctorInvitations from "@/components/admin/admin-doctor-invitations";
 import DoctorsManagement from "@/components/admin/doctors-management";
+import { getPlatformOperatorDoctors } from "@/lib/i18n/platform-operator-doctors";
+import { getStoredAppLocale } from "@/lib/i18n/server-app-locale";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AdminDoctorsPage() {
+  const locale = await getStoredAppLocale();
+  const copy = getPlatformOperatorDoctors(locale);
   const supabase = await createClient();
 
   const {
@@ -13,17 +17,17 @@ export default async function AdminDoctorsPage() {
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    redirect("/login?next=/admin/doctors");
+    const parameters = new URLSearchParams({
+      locale,
+      next: "/admin/doctors",
+    });
+
+    redirect(`/login?${parameters.toString()}`);
   }
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select(
-      `
-        role,
-        account_status
-      `
-    )
+    .select("role, account_status")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -36,16 +40,18 @@ export default async function AdminDoctorsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-[34px]">
       <header>
-        <p className="text-sm font-semibold text-[#036661]">Administrare</p>
+        <p className="text-sm font-semibold text-[#036661]">
+          {copy.common.administration}
+        </p>
 
-        <h1 className="mt-2 text-3xl font-bold text-gray-900">Medici</h1>
+        <h1 className="mt-[8px] text-3xl font-bold text-gray-900">
+          {copy.pages.adminDoctors.title}
+        </h1>
 
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          Doctorii nu așteaptă aprobare Admin pentru activarea normală a
-          contului. Adminul urmărește medicii, verifică profesional badge-ul
-          RomDoc și poate suspenda profiluri sau bloca abuzuri.
+        <p className="mt-[13px] max-w-3xl text-sm leading-6 text-gray-600">
+          {copy.pages.adminDoctors.description}
         </p>
       </header>
 

@@ -1,11 +1,19 @@
 "use client";
 
 import {
-  FormEvent,
+  type FormEvent,
   useEffect,
   useRef,
   useState,
 } from "react";
+import { useLocale } from "next-intl";
+
+import type { PlatformOperatorDoctorApiPayload } from "@/lib/api/platform-operator-doctor-codes";
+import { normalizeAppLocale } from "@/lib/i18n/app-locale";
+import {
+  getPlatformDoctorApiMessage,
+  getPlatformOperatorDoctors,
+} from "@/lib/i18n/platform-operator-doctors";
 
 type InviteDoctorDialogProps = {
   open: boolean;
@@ -13,85 +21,50 @@ type InviteDoctorDialogProps = {
   onCreated: () => void;
 };
 
-type ApiResult = {
-  error?: string;
-  message?: string;
-};
-
 export default function InviteDoctorDialog({
   open,
   onClose,
   onCreated,
 }: InviteDoctorDialogProps) {
-  const dialogRef =
-    useRef<HTMLDivElement | null>(
-      null
-    );
-
-  const [firstName, setFirstName] =
-    useState("");
-  const [lastName, setLastName] =
-    useState("");
-  const [email, setEmail] =
-    useState("");
-  const [locale, setLocale] =
-    useState<"ro" | "en">(
-      "ro"
-    );
-  const [
-    complimentaryMonths,
-    setComplimentaryMonths,
-  ] = useState(12);
-  const [
-    personalMessage,
-    setPersonalMessage,
-  ] = useState("");
-  const [error, setError] =
-    useState<string | null>(
-      null
-    );
-  const [
-    isSubmitting,
-    setIsSubmitting,
-  ] = useState(false);
+  const appLocale = normalizeAppLocale(useLocale());
+  const copy = getPlatformOperatorDoctors(appLocale);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [invitationLocale, setInvitationLocale] =
+    useState<"ro" | "en">(appLocale === "en" ? "en" : "ro");
+  const [complimentaryMonths, setComplimentaryMonths] = useState(12);
+  const [personalMessage, setPersonalMessage] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!open) {
       return;
     }
 
+    setInvitationLocale(appLocale === "en" ? "en" : "ro");
+
     const firstFocusable =
-      dialogRef.current?.querySelector<
-        HTMLInputElement
-      >(
+      dialogRef.current?.querySelector<HTMLInputElement>(
         "input, select, textarea, button"
       );
 
     firstFocusable?.focus();
 
-    function handleKeyDown(
-      event: KeyboardEvent
-    ) {
-      if (
-        event.key ===
-        "Escape"
-      ) {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
         onClose();
       }
     }
 
-    document.addEventListener(
-      "keydown",
-      handleKeyDown
-    );
+    document.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.removeEventListener(
-        "keydown",
-        handleKeyDown
-      );
+      document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open, onClose]);
+  }, [appLocale, onClose, open]);
 
   if (!open) {
     return null;
@@ -105,73 +78,62 @@ export default function InviteDoctorDialog({
     setIsSubmitting(true);
 
     try {
-      const response =
-        await fetch(
-          "/api/admin/doctors/invitations",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              firstName,
-              lastName,
-              email,
-              locale,
-              complimentaryMonths,
-              personalMessage,
-            }),
-          }
-        );
+      const response = await fetch(
+        "/api/admin/doctors/invitations",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            firstName,
+            lastName,
+            email,
+            locale: invitationLocale,
+            complimentaryMonths,
+            personalMessage,
+          }),
+        }
+      );
 
       const result =
-        (await response.json()) as
-          ApiResult;
+        (await response.json()) as PlatformOperatorDoctorApiPayload;
 
       if (!response.ok) {
         throw new Error(
-          result.error ??
-            "Invitația nu a putut fi trimisă."
+          getPlatformDoctorApiMessage(
+            appLocale,
+            result.code,
+            result.error ?? copy.invitations.states.sendFailed
+          )
         );
       }
 
       setFirstName("");
       setLastName("");
       setEmail("");
-      setLocale("ro");
-      setComplimentaryMonths(
-        12
-      );
+      setInvitationLocale(appLocale === "en" ? "en" : "ro");
+      setComplimentaryMonths(12);
       setPersonalMessage("");
-
       onCreated();
       onClose();
     } catch (submitError) {
       setError(
-        submitError instanceof
-          Error
+        submitError instanceof Error
           ? submitError.message
-          : "Invitația nu a putut fi trimisă."
+          : copy.invitations.states.sendFailed
       );
     } finally {
-      setIsSubmitting(
-        false
-      );
+      setIsSubmitting(false);
     }
   }
 
   return (
     <div
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 px-4 py-8"
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 px-[13px] py-[21px]"
       role="presentation"
-      onMouseDown={(
-        event
-      ) => {
-        if (
-          event.target ===
-          event.currentTarget
-        ) {
+      onMouseDown={(event: { target: EventTarget | null; currentTarget: EventTarget | null }) => {
+        if (event.target === event.currentTarget) {
           onClose();
         }
       }}
@@ -181,273 +143,184 @@ export default function InviteDoctorDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="invite-doctor-title"
-        className="max-h-full w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:p-8"
+        className="max-h-full w-full max-w-2xl overflow-y-auto rounded-[21px] bg-white p-[21px] shadow-2xl sm:p-[34px]"
       >
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start justify-between gap-[13px]">
           <div>
             <p className="text-sm font-semibold text-[#036661]">
-              Administrare
+              {copy.invitations.dialog.eyebrow}
             </p>
 
             <h2
               id="invite-doctor-title"
-              className="mt-2 text-2xl font-bold text-gray-950"
+              className="mt-[8px] text-2xl font-bold text-gray-950"
             >
-              Invită un medic
+              {copy.invitations.dialog.title}
             </h2>
 
-            <p className="mt-2 text-sm leading-6 text-gray-600">
-              Medicul va primi un e-mail securizat și acces gratuit pentru perioada selectată.
+            <p className="mt-[8px] text-sm leading-6 text-gray-600">
+              {copy.invitations.dialog.description}
             </p>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="romdoc-focus-ring rounded-lg px-3 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100"
+            className="romdoc-focus-ring rounded-[8px] px-[13px] py-[8px] text-sm font-semibold text-gray-600 hover:bg-gray-100"
           >
-            Închide
+            {copy.common.close}
           </button>
         </div>
 
         <form
-          onSubmit={
-            handleSubmit
-          }
-          className="mt-7 space-y-5"
+          onSubmit={handleSubmit}
+          className="mt-[21px] space-y-[21px]"
         >
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div>
-              <label
-                htmlFor="invite-first-name"
-                className="text-sm font-medium text-gray-900"
-              >
-                Prenume
-              </label>
-
+          <div className="grid gap-[13px] sm:grid-cols-2">
+            <label>
+              <span className="text-sm font-medium text-gray-900">
+                {copy.invitations.dialog.firstName}
+              </span>
               <input
-                id="invite-first-name"
                 required
                 maxLength={120}
-                value={
-                  firstName
+                value={firstName}
+                onChange={(event: { target: { value: string } }) =>
+                  setFirstName(event.target.value)
                 }
-                onChange={(
-                  event
-                ) =>
-                  setFirstName(
-                    event.target
-                      .value
-                  )
-                }
-                className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
+                className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 px-[13px] py-[13px]"
               />
-            </div>
-
-            <div>
-              <label
-                htmlFor="invite-last-name"
-                className="text-sm font-medium text-gray-900"
-              >
-                Nume
-              </label>
-
-              <input
-                id="invite-last-name"
-                required
-                maxLength={120}
-                value={
-                  lastName
-                }
-                onChange={(
-                  event
-                ) =>
-                  setLastName(
-                    event.target
-                      .value
-                  )
-                }
-                className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label
-              htmlFor="invite-email"
-              className="text-sm font-medium text-gray-900"
-            >
-              E-mail
             </label>
 
+            <label>
+              <span className="text-sm font-medium text-gray-900">
+                {copy.invitations.dialog.lastName}
+              </span>
+              <input
+                required
+                maxLength={120}
+                value={lastName}
+                onChange={(event: { target: { value: string } }) =>
+                  setLastName(event.target.value)
+                }
+                className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 px-[13px] py-[13px]"
+              />
+            </label>
+          </div>
+
+          <label>
+            <span className="text-sm font-medium text-gray-900">
+              {copy.invitations.dialog.email}
+            </span>
             <input
-              id="invite-email"
               type="email"
               required
               maxLength={320}
               value={email}
-              onChange={(
-                event
-              ) =>
-                setEmail(
-                  event.target
-                    .value
-                )
+              onChange={(event: { target: { value: string } }) =>
+                setEmail(event.target.value)
               }
-              className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
+              className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 px-[13px] py-[13px]"
             />
-          </div>
+          </label>
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div>
-              <label
-                htmlFor="invite-locale"
-                className="text-sm font-medium text-gray-900"
-              >
-                Limba invitației
-              </label>
-
+          <div className="grid gap-[13px] sm:grid-cols-2">
+            <label>
+              <span className="text-sm font-medium text-gray-900">
+                {copy.invitations.dialog.invitationLanguage}
+              </span>
               <select
-                id="invite-locale"
-                value={locale}
-                onChange={(
-                  event
-                ) =>
-                  setLocale(
-                    event.target
-                      .value ===
-                      "en"
-                      ? "en"
-                      : "ro"
+                value={invitationLocale}
+                onChange={(event: { target: { value: string } }) =>
+                  setInvitationLocale(
+                    event.target.value === "en" ? "en" : "ro"
                   )
                 }
-                className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3"
+                className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px]"
               >
                 <option value="ro">
-                  Română
+                  {copy.common.languageRomanian}
                 </option>
                 <option value="en">
-                  English
+                  {copy.common.languageEnglish}
                 </option>
               </select>
-            </div>
+              <span className="mt-[5px] block text-xs text-gray-500">
+                {copy.invitations.dialog.languageNote}
+              </span>
+            </label>
 
-            <div>
-              <label
-                htmlFor="invite-months"
-                className="text-sm font-medium text-gray-900"
-              >
-                Acces gratuit
-              </label>
-
+            <label>
+              <span className="text-sm font-medium text-gray-900">
+                {copy.invitations.dialog.freeAccess}
+              </span>
               <select
-                id="invite-months"
-                value={
-                  complimentaryMonths
+                value={complimentaryMonths}
+                onChange={(event: { target: { value: string } }) =>
+                  setComplimentaryMonths(Number(event.target.value))
                 }
-                onChange={(
-                  event
-                ) =>
-                  setComplimentaryMonths(
-                    Number(
-                      event.target
-                        .value
-                    )
-                  )
-                }
-                className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3"
+                className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px]"
               >
-                <option value={3}>
-                  3 luni
-                </option>
-                <option value={6}>
-                  6 luni
-                </option>
-                <option value={12}>
-                  12 luni
-                </option>
-                <option value={18}>
-                  18 luni
-                </option>
-                <option value={24}>
-                  24 luni
-                </option>
+                {[3, 6, 12, 18, 24].map((months) => (
+                  <option key={months} value={months}>
+                    {months}
+                  </option>
+                ))}
               </select>
-            </div>
+            </label>
           </div>
 
-          <div>
-            <div className="flex items-center justify-between gap-4">
-              <label
-                htmlFor="invite-message"
-                className="text-sm font-medium text-gray-900"
-              >
-                Mesaj personalizat
-              </label>
-
-              <span className="text-xs text-gray-500">
-                {
-                  personalMessage.length
-                }
-                /1000
+          <label>
+            <span className="flex items-center justify-between gap-[13px] text-sm font-medium text-gray-900">
+              <span>{copy.invitations.dialog.personalMessage}</span>
+              <span className="text-xs font-normal text-gray-500">
+                {personalMessage.length}/1000
               </span>
-            </div>
-
+            </span>
             <textarea
-              id="invite-message"
               rows={6}
               maxLength={1000}
-              value={
-                personalMessage
+              value={personalMessage}
+              onChange={(event: { target: { value: string } }) =>
+                setPersonalMessage(event.target.value)
               }
-              onChange={(
-                event
-              ) =>
-                setPersonalMessage(
-                  event.target
-                    .value
-                )
+              placeholder={
+                copy.invitations.dialog.messagePlaceholder
               }
-              placeholder="Exemplu: Dorim să vă invităm să vă alăturați platformei RomDoc..."
-              className="romdoc-focus-ring mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
+              className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 px-[13px] py-[13px]"
             />
-
-            <p className="mt-2 text-xs leading-5 text-gray-500">
-              Mesajul acceptă numai text simplu. Nu introduce HTML.
-            </p>
-          </div>
+            <span className="mt-[5px] block text-xs leading-5 text-gray-500">
+              {copy.invitations.dialog.plainText}
+            </span>
+          </label>
 
           {error ? (
             <p
               role="alert"
-              className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+              className="rounded-[13px] border border-red-200 bg-red-50 px-[13px] py-[13px] text-sm text-red-700"
             >
               {error}
             </p>
           ) : null}
 
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <div className="flex flex-col-reverse gap-[13px] sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={onClose}
-              disabled={
-                isSubmitting
-              }
-              className="romdoc-focus-ring rounded-xl border border-gray-300 px-5 py-3 font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+              disabled={isSubmitting}
+              className="romdoc-focus-ring rounded-[13px] border border-gray-300 px-[21px] py-[13px] font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
             >
-              Anulează
+              {copy.invitations.dialog.cancel}
             </button>
 
             <button
               type="submit"
-              disabled={
-                isSubmitting
-              }
-              className="romdoc-focus-ring rounded-xl bg-[#036661] px-5 py-3 font-semibold text-white transition-colors hover:bg-[#ff2800] disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isSubmitting}
+              className="romdoc-focus-ring rounded-[13px] bg-[#036661] px-[21px] py-[13px] font-semibold text-white transition-colors hover:bg-[#ff2800] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting
-                ? "Se trimite..."
-                : "Trimite invitația"}
+                ? copy.invitations.dialog.sending
+                : copy.invitations.dialog.send}
             </button>
           </div>
         </form>

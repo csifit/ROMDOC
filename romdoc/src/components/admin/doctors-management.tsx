@@ -1,10 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { useLocale } from "next-intl";
 
 import AdminDoctorClinicsInline from "@/components/admin/admin-doctor-clinics-inline";
 import Button from "@/components/ui/button";
+import type { PlatformOperatorDoctorApiPayload } from "@/lib/api/platform-operator-doctor-codes";
+import {
+  normalizeAppLocale,
+  selectTranslation,
+} from "@/lib/i18n/app-locale";
+import {
+  getPlatformDoctorApiMessage,
+  getPlatformOperatorDoctors,
+  interpolatePlatformDoctorCopy,
+  PLATFORM_OPERATOR_DOCTOR_LOCALE_TAGS,
+} from "@/lib/i18n/platform-operator-doctors";
 
 type Translation = {
   locale: string;
@@ -80,14 +97,21 @@ type Doctor = {
   active_staff_count: number;
 };
 
-type ApiResponse = {
+type ApiResponse = PlatformOperatorDoctorApiPayload & {
   doctors?: Doctor[];
-  message?: string;
-  error?: string;
 };
 
-type DoctorStatusFilter = "all" | "active" | "suspended";
-type AccountStatusFilter = "all" | "active" | "suspended" | "blocked";
+type DoctorStatusFilter =
+  | "all"
+  | "active"
+  | "suspended";
+
+type AccountStatusFilter =
+  | "all"
+  | "active"
+  | "suspended"
+  | "blocked";
+
 type SubscriptionFilter =
   | "all"
   | "active"
@@ -95,7 +119,12 @@ type SubscriptionFilter =
   | "past_due"
   | "canceled"
   | "none";
-type PayerFilter = "all" | "doctor" | "clinic";
+
+type PayerFilter =
+  | "all"
+  | "doctor"
+  | "clinic";
+
 type VerificationFilter =
   | "all"
   | "not_submitted"
@@ -104,20 +133,29 @@ type VerificationFilter =
   | "rejected"
   | "expired";
 
-function getFirstRelation<T>(relation: T | T[] | null | undefined) {
+function getFirstRelation<T>(
+  relation:
+    | T
+    | T[]
+    | null
+    | undefined
+) {
   if (!relation) {
     return null;
   }
 
-  if (Array.isArray(relation)) {
-    return relation[0] ?? null;
-  }
-
-  return relation;
+  return Array.isArray(relation)
+    ? relation[0] ?? null
+    : relation;
 }
 
-function getDoctorName(doctor: Doctor) {
-  const fullName = [doctor.profile?.first_name, doctor.profile?.last_name]
+function getDoctorName(
+  doctor: Doctor
+) {
+  const fullName = [
+    doctor.profile?.first_name,
+    doctor.profile?.last_name,
+  ]
     .filter(Boolean)
     .join(" ")
     .trim();
@@ -128,815 +166,2072 @@ function getDoctorName(doctor: Doctor) {
 
   return doctor.slug
     .split("-")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .map(
+      (part) =>
+        part.charAt(0).toUpperCase() +
+        part.slice(1)
+    )
     .join(" ");
 }
 
-function getRomanianTitle(doctor: Doctor) {
-  return (
-    doctor.doctor_translations?.find((translation) => translation.locale === "ro")
-      ?.title ??
-    doctor.doctor_translations?.[0]?.title ??
-    "Medic"
-  );
-}
-
-function getSpecialties(doctor: Doctor) {
-  return (doctor.doctor_specialties ?? [])
-    .map((relation) => {
-      const specialty = getFirstRelation(relation.specialties);
-
-      return (
-        specialty?.specialty_translations?.find(
-          (translation) => translation.locale === "ro"
-        )?.name ??
-        specialty?.specialty_translations?.[0]?.name ??
-        null
-      );
-    })
-    .filter((value): value is string => Boolean(value));
-}
-
-function formatDate(value: string | null) {
-  if (!value) {
-    return "—";
+function getStatusClasses(
+  status: string
+) {
+  if (
+    status === "active" ||
+    status === "verified"
+  ) {
+    return "bg-emerald-100 text-emerald-800";
   }
 
-  return new Intl.DateTimeFormat("ro-RO", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value));
-}
-
-function getDoctorStatusLabel(status: string) {
-  switch (status) {
-    case "active":
-      return "Activ";
-
-    case "suspended":
-      return "Suspendat";
-
-    default:
-      return "Activ";
-  }
-}
-
-function getAccountStatusLabel(status: string | null | undefined) {
-  switch (status) {
-    case "suspended":
-      return "Suspendat";
-
-    case "blocked":
-      return "Blocat";
-
-    case "active":
-    default:
-      return "Activ";
-  }
-}
-
-function getDoctorTypeLabel(doctor: Doctor) {
-  return doctor.account_type === "clinic_sub_account"
-    ? "Medic clinică"
-    : "Medic independent";
-}
-
-function getSubscriptionPayerLabel(doctor: Doctor) {
-  return doctor.subscription_payer === "clinic"
-    ? "Clinică"
-    : "Medic / Stripe";
-}
-
-function getVerificationLabel(status: string) {
-  switch (status) {
-    case "verified":
-      return "Verificat";
-
-    case "pending":
-      return "În verificare";
-
-    case "rejected":
-      return "Respins";
-
-    case "expired":
-      return "Expirat";
-
-    default:
-      return "Nedepus";
-  }
-}
-
-function getSubscriptionLabel(subscription: Subscription | null, doctor: Doctor) {
-  if (doctor.subscription_payer === "clinic") {
-    return "Plătit de clinică";
+  if (
+    status === "blocked" ||
+    status === "rejected" ||
+    status === "past_due"
+  ) {
+    return "bg-red-100 text-red-800";
   }
 
-  if (!subscription) {
-    return "Fără abonament";
+  if (
+    status === "suspended" ||
+    status === "expired" ||
+    status === "canceled"
+  ) {
+    return "bg-gray-200 text-gray-700";
   }
 
-  switch (subscription.status) {
-    case "active":
-      return "Activ";
-
-    case "trialing":
-      return "Perioadă de probă";
-
-    case "past_due":
-      return "Plată restantă";
-
-    case "canceled":
-      return "Anulat";
-
-    case "unpaid":
-      return "Neplătit";
-
-    case "paused":
-      return "Suspendat";
-
-    default:
-      return subscription.status;
-  }
+  return "bg-amber-100 text-amber-900";
 }
 
 export default function DoctorsManagement() {
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
-  const [search, setSearch] = useState("");
-  const [doctorStatus, setDoctorStatus] = useState<DoctorStatusFilter>("all");
-  const [accountStatus, setAccountStatus] = useState<AccountStatusFilter>("all");
-  const [subscriptionStatus, setSubscriptionStatus] =
-    useState<SubscriptionFilter>("all");
-  const [payerFilter, setPayerFilter] = useState<PayerFilter>("all");
-  const [verificationStatus, setVerificationStatus] =
-    useState<VerificationFilter>("all");
-  const [expandedDoctorId, setExpandedDoctorId] = useState<string | null>(null);
-  const [changingDoctorId, setChangingDoctorId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const locale =
+    normalizeAppLocale(
+      useLocale()
+    );
 
-  const loadDoctors = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
+  const copy =
+    getPlatformOperatorDoctors(
+      locale
+    );
 
-      const response = await fetch("/api/admin/doctors", {
-        cache: "no-store",
-      });
+  const [
+    doctors,
+    setDoctors,
+  ] =
+    useState<Doctor[]>([]);
 
-      const result = (await response.json()) as ApiResponse;
+  const [
+    search,
+    setSearch,
+  ] =
+    useState("");
 
-      if (!response.ok) {
-        throw new Error(result.error ?? "Medicii nu au putut fi încărcați.");
-      }
+  const [
+    doctorStatus,
+    setDoctorStatus,
+  ] =
+    useState<DoctorStatusFilter>(
+      "all"
+    );
 
-      setDoctors(result.doctors ?? []);
-    } catch (loadError) {
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : "Medicii nu au putut fi încărcați."
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const [
+    accountStatus,
+    setAccountStatus,
+  ] =
+    useState<AccountStatusFilter>(
+      "all"
+    );
+
+  const [
+    subscriptionStatus,
+    setSubscriptionStatus,
+  ] =
+    useState<SubscriptionFilter>(
+      "all"
+    );
+
+  const [
+    payerFilter,
+    setPayerFilter,
+  ] =
+    useState<PayerFilter>(
+      "all"
+    );
+
+  const [
+    verificationStatus,
+    setVerificationStatus,
+  ] =
+    useState<VerificationFilter>(
+      "all"
+    );
+
+  const [
+    expandedDoctorId,
+    setExpandedDoctorId,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  const [
+    changingDoctorId,
+    setChangingDoctorId,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  const [
+    isLoading,
+    setIsLoading,
+  ] =
+    useState(true);
+
+  const [
+    error,
+    setError,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  const [
+    success,
+    setSuccess,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  const formatDate =
+    useCallback(
+      (
+        value:
+          | string
+          | null
+      ) => {
+        if (!value) {
+          return copy.common.none;
+        }
+
+        return new Intl.DateTimeFormat(
+          PLATFORM_OPERATOR_DOCTOR_LOCALE_TAGS[
+            locale
+          ],
+          {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            timeZone:
+              "Europe/Bucharest",
+          }
+        ).format(
+          new Date(value)
+        );
+      },
+      [
+        copy.common.none,
+        locale,
+      ]
+    );
+
+  const getDoctorTitle =
+    useCallback(
+      (
+        doctor: Doctor
+      ) =>
+        selectTranslation(
+          doctor.doctor_translations,
+          locale
+        )?.title ??
+        copy.doctors.labels
+          .titleFallback,
+      [
+        copy.doctors.labels
+          .titleFallback,
+        locale,
+      ]
+    );
+
+  const getSpecialties =
+    useCallback(
+      (
+        doctor: Doctor
+      ) =>
+        (
+          doctor.doctor_specialties ??
+          []
+        )
+          .map(
+            (
+              relation
+            ) => {
+              const specialty =
+                getFirstRelation(
+                  relation.specialties
+                );
+
+              return (
+                selectTranslation(
+                  specialty
+                    ?.specialty_translations,
+                  locale
+                )?.name ??
+                null
+              );
+            }
+          )
+          .filter(
+            (
+              value
+            ): value is string =>
+              Boolean(
+                value
+              )
+          ),
+      [locale]
+    );
+
+  const loadDoctors =
+    useCallback(
+      async () => {
+        try {
+          setIsLoading(true);
+          setError(null);
+
+          const response =
+            await fetch(
+              "/api/admin/doctors",
+              {
+                cache:
+                  "no-store",
+              }
+            );
+
+          const result =
+            (await response.json()) as
+              ApiResponse;
+
+          if (
+            !response.ok
+          ) {
+            throw new Error(
+              getPlatformDoctorApiMessage(
+                locale,
+                result.code,
+                result.error ??
+                  copy.doctors
+                    .states
+                    .loadFailed
+              )
+            );
+          }
+
+          setDoctors(
+            result.doctors ??
+              []
+          );
+        } catch (
+          loadError
+        ) {
+          setError(
+            loadError instanceof
+              Error
+              ? loadError.message
+              : copy.doctors
+                  .states
+                  .loadFailed
+          );
+        } finally {
+          setIsLoading(
+            false
+          );
+        }
+      },
+      [
+        copy.doctors.states
+          .loadFailed,
+        locale,
+      ]
+    );
 
   useEffect(() => {
     void loadDoctors();
   }, [loadDoctors]);
 
-  const filteredDoctors = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
+  const filteredDoctors =
+    useMemo(() => {
+      const normalizedSearch =
+        search
+          .trim()
+          .toLowerCase();
 
-    return doctors.filter((doctor) => {
-      if (doctorStatus !== "all" && doctor.status !== doctorStatus) {
-        return false;
-      }
+      return doctors.filter(
+        (doctor) => {
+          if (
+            doctorStatus !==
+              "all" &&
+            doctor.status !==
+              doctorStatus
+          ) {
+            return false;
+          }
 
-      if (
-        accountStatus !== "all" &&
-        (doctor.profile?.account_status ?? "active") !== accountStatus
-      ) {
-        return false;
-      }
+          if (
+            accountStatus !==
+              "all" &&
+            (
+              doctor.profile
+                ?.account_status ??
+              "active"
+            ) !==
+              accountStatus
+          ) {
+            return false;
+          }
 
-      if (
-        payerFilter !== "all" &&
-        doctor.subscription_payer !== payerFilter
-      ) {
-        return false;
-      }
+          if (
+            payerFilter !==
+              "all" &&
+            doctor.subscription_payer !==
+              payerFilter
+          ) {
+            return false;
+          }
 
-      if (
-        verificationStatus !== "all" &&
-        doctor.verification_status !== verificationStatus
-      ) {
-        return false;
-      }
+          if (
+            verificationStatus !==
+              "all" &&
+            doctor.verification_status !==
+              verificationStatus
+          ) {
+            return false;
+          }
 
-      const subscription = doctor.subscription;
+          const subscription =
+            doctor.subscription;
 
-      if (subscriptionStatus === "none" && subscription) {
-        return false;
-      }
+          if (
+            subscriptionStatus ===
+              "none" &&
+            subscription
+          ) {
+            return false;
+          }
 
-      if (
-        subscriptionStatus !== "all" &&
-        subscriptionStatus !== "none" &&
-        subscription?.status !== subscriptionStatus
-      ) {
-        return false;
-      }
+          if (
+            subscriptionStatus !==
+              "all" &&
+            subscriptionStatus !==
+              "none" &&
+            subscription?.status !==
+              subscriptionStatus
+          ) {
+            return false;
+          }
 
-      if (!normalizedSearch) {
-        return true;
-      }
+          if (
+            !normalizedSearch
+          ) {
+            return true;
+          }
 
-      return [
-        getDoctorName(doctor),
-        doctor.slug,
-        doctor.auth_email,
-        doctor.phone,
-        doctor.clinic_organization_name,
-        getRomanianTitle(doctor),
-        ...getSpecialties(doctor),
-      ]
-        .filter(Boolean)
-        .some((value) => value?.toLowerCase().includes(normalizedSearch));
-    });
-  }, [
-    doctors,
-    search,
-    doctorStatus,
-    accountStatus,
-    subscriptionStatus,
-    payerFilter,
-    verificationStatus,
-  ]);
+          return [
+            getDoctorName(
+              doctor
+            ),
+            doctor.slug,
+            doctor.auth_email,
+            doctor.phone,
+            doctor
+              .clinic_organization_name,
+            getDoctorTitle(
+              doctor
+            ),
+            ...getSpecialties(
+              doctor
+            ),
+          ]
+            .filter(Boolean)
+            .some(
+              (
+                value
+              ) =>
+                value
+                  ?.toLowerCase()
+                  .includes(
+                    normalizedSearch
+                  )
+            );
+        }
+      );
+    }, [
+      accountStatus,
+      doctorStatus,
+      doctors,
+      getDoctorTitle,
+      getSpecialties,
+      payerFilter,
+      search,
+      subscriptionStatus,
+      verificationStatus,
+    ]);
 
-  async function updateDoctorStatus(doctor: Doctor, nextStatus: "active" | "suspended") {
-    const confirmed = window.confirm(
-      `Schimbi statutul medicului ${getDoctorName(doctor)} în „${getDoctorStatusLabel(
-        nextStatus
-      )}”?`
+  const activeCount =
+    doctors.filter(
+      (doctor) =>
+        doctor.status ===
+        "active"
+    ).length;
+
+  const suspendedCount =
+    doctors.filter(
+      (doctor) =>
+        doctor.status ===
+        "suspended"
+    ).length;
+
+  const verifiedCount =
+    doctors.filter(
+      (doctor) =>
+        doctor.verification_status ===
+        "verified"
+    ).length;
+
+  const attentionCount =
+    doctors.filter(
+      (doctor) =>
+        doctor.status !==
+          "active" ||
+        (
+          doctor.profile
+            ?.account_status ??
+          "active"
+        ) !== "active" ||
+        [
+          "pending",
+          "rejected",
+          "expired",
+        ].includes(
+          doctor.verification_status
+        ) ||
+        (
+          doctor.subscription_payer ===
+            "doctor" &&
+          doctor.subscription
+            ?.status ===
+            "past_due"
+        )
+    ).length;
+
+  const resolveActionMessage =
+    useCallback(
+      (
+        result:
+          PlatformOperatorDoctorApiPayload,
+        fallback: string
+      ) =>
+        getPlatformDoctorApiMessage(
+          locale,
+          result.code,
+          result.message ??
+            result.error ??
+            fallback
+        ),
+      [locale]
     );
+
+  async function updateDoctorStatus(
+    doctor: Doctor,
+    nextStatus:
+      | "active"
+      | "suspended"
+  ) {
+    const statusLabel =
+      copy.doctors
+        .doctorStatuses[
+          nextStatus
+        ];
+
+    const confirmed =
+      window.confirm(
+        interpolatePlatformDoctorCopy(
+          copy.doctors.actions
+            .statusConfirm,
+          {
+            name:
+              getDoctorName(
+                doctor
+              ),
+            status:
+              statusLabel,
+          }
+        )
+      );
 
     if (!confirmed) {
       return;
     }
 
-    setChangingDoctorId(doctor.id);
+    setChangingDoctorId(
+      doctor.id
+    );
+
     setError(null);
     setSuccess(null);
 
     try {
-      const response = await fetch("/api/admin/doctors", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          doctorId: doctor.id,
-          action: "set_status",
-          status: nextStatus,
-        }),
-      });
+      const response =
+        await fetch(
+          "/api/admin/doctors",
+          {
+            method:
+              "PATCH",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                doctorId:
+                  doctor.id,
+                action:
+                  "set_status",
+                status:
+                  nextStatus,
+              }),
+          }
+        );
 
-      const result = (await response.json()) as ApiResponse;
+      const result =
+        (await response.json()) as
+          ApiResponse;
 
-      if (!response.ok) {
+      const message =
+        resolveActionMessage(
+          result,
+          copy.doctors
+            .states
+            .actionFailed
+        );
+
+      if (
+        !response.ok
+      ) {
         throw new Error(
-          result.error ?? "Statutul medicului nu a putut fi actualizat."
+          message
         );
       }
 
-      setSuccess(result.message ?? "Statutul medicului a fost actualizat.");
+      setSuccess(
+        message
+      );
+
       await loadDoctors();
-    } catch (actionError) {
+    } catch (
+      actionError
+    ) {
       setError(
-        actionError instanceof Error
+        actionError instanceof
+          Error
           ? actionError.message
-          : "Statutul medicului nu a putut fi actualizat."
+          : copy.doctors
+              .states
+              .actionFailed
       );
     } finally {
-      setChangingDoctorId(null);
+      setChangingDoctorId(
+        null
+      );
     }
   }
 
   async function updateAccountStatus(
     doctor: Doctor,
-    nextStatus: "active" | "suspended" | "blocked"
+    nextStatus:
+      | "active"
+      | "suspended"
+      | "blocked"
   ) {
-    const confirmed = window.confirm(
-      `Schimbi statutul contului ${getDoctorName(doctor)} în „${getAccountStatusLabel(
-        nextStatus
-      )}”?`
-    );
+    const statusLabel =
+      copy.doctors
+        .accountStatuses[
+          nextStatus
+        ];
+
+    const confirmed =
+      window.confirm(
+        interpolatePlatformDoctorCopy(
+          copy.doctors.actions
+            .accountConfirm,
+          {
+            name:
+              getDoctorName(
+                doctor
+              ),
+            status:
+              statusLabel,
+          }
+        )
+      );
 
     if (!confirmed) {
       return;
     }
 
-    setChangingDoctorId(doctor.id);
+    setChangingDoctorId(
+      doctor.id
+    );
+
     setError(null);
     setSuccess(null);
 
     try {
-      const response = await fetch("/api/admin/doctors", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          doctorId: doctor.id,
-          action: "set_account_status",
-          accountStatus: nextStatus,
-        }),
-      });
+      const response =
+        await fetch(
+          "/api/admin/doctors",
+          {
+            method:
+              "PATCH",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                doctorId:
+                  doctor.id,
+                action:
+                  "set_account_status",
+                accountStatus:
+                  nextStatus,
+              }),
+          }
+        );
 
-      const result = (await response.json()) as ApiResponse;
+      const result =
+        (await response.json()) as
+          ApiResponse;
 
-      if (!response.ok) {
+      const message =
+        resolveActionMessage(
+          result,
+          copy.doctors
+            .states
+            .actionFailed
+        );
+
+      if (
+        !response.ok
+      ) {
         throw new Error(
-          result.error ?? "Statutul contului nu a putut fi actualizat."
+          message
         );
       }
 
-      setSuccess(result.message ?? "Statutul contului a fost actualizat.");
+      setSuccess(
+        message
+      );
+
       await loadDoctors();
-    } catch (actionError) {
+    } catch (
+      actionError
+    ) {
       setError(
-        actionError instanceof Error
+        actionError instanceof
+          Error
           ? actionError.message
-          : "Statutul contului nu a putut fi actualizat."
+          : copy.doctors
+              .states
+              .actionFailed
       );
     } finally {
-      setChangingDoctorId(null);
+      setChangingDoctorId(
+        null
+      );
     }
   }
 
-  async function verifyDoctor(doctor: Doctor) {
-    const registrationNumber = window.prompt(
-      "Introdu numărul de înregistrare profesională:",
-      doctor.professional_registration_number ?? ""
-    );
+  async function verifyDoctor(
+    doctor: Doctor
+  ) {
+    const registrationNumber =
+      window.prompt(
+        copy.doctors.actions
+          .registrationPrompt,
+        doctor
+          .professional_registration_number ??
+          ""
+      );
 
-    if (!registrationNumber || registrationNumber.trim().length < 2) {
+    if (
+      !registrationNumber ||
+      registrationNumber
+        .trim().length <
+        2
+    ) {
       return;
     }
 
-    const expiry = window.prompt(
-      "Data expirării verificării, în format YYYY-MM-DD. Lasă necompletat dacă nu expiră:",
-      doctor.verification_expires_at
-        ? doctor.verification_expires_at.slice(0, 10)
-        : ""
+    const expiry =
+      window.prompt(
+        copy.doctors.actions
+          .expiryPrompt,
+        doctor
+          .verification_expires_at
+          ? doctor
+              .verification_expires_at
+              .slice(0, 10)
+          : ""
+      );
+
+    setChangingDoctorId(
+      doctor.id
     );
 
-    setChangingDoctorId(doctor.id);
     setError(null);
     setSuccess(null);
 
     try {
-      const response = await fetch("/api/admin/doctors", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          doctorId: doctor.id,
-          action: "set_verification",
-          verificationStatus: "verified",
-          registrationNumber: registrationNumber.trim(),
-          verificationExpiresAt: expiry?.trim() ?? "",
-        }),
-      });
+      const response =
+        await fetch(
+          "/api/admin/doctors",
+          {
+            method:
+              "PATCH",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                doctorId:
+                  doctor.id,
+                action:
+                  "set_verification",
+                verificationStatus:
+                  "verified",
+                registrationNumber:
+                  registrationNumber.trim(),
+                verificationExpiresAt:
+                  expiry?.trim() ??
+                  "",
+              }),
+          }
+        );
 
-      const result = (await response.json()) as ApiResponse;
+      const result =
+        (await response.json()) as
+          ApiResponse;
 
-      if (!response.ok) {
-        throw new Error(result.error ?? "Medicul nu a putut fi verificat.");
+      const message =
+        resolveActionMessage(
+          result,
+          copy.doctors
+            .states
+            .actionFailed
+        );
+
+      if (
+        !response.ok
+      ) {
+        throw new Error(
+          message
+        );
       }
 
-      setSuccess(result.message ?? "Medicul a fost verificat.");
+      setSuccess(
+        message
+      );
+
       await loadDoctors();
-    } catch (actionError) {
+    } catch (
+      actionError
+    ) {
       setError(
-        actionError instanceof Error
+        actionError instanceof
+          Error
           ? actionError.message
-          : "Medicul nu a putut fi verificat."
+          : copy.doctors
+              .states
+              .actionFailed
       );
     } finally {
-      setChangingDoctorId(null);
+      setChangingDoctorId(
+        null
+      );
     }
   }
 
-  async function removeVerification(doctor: Doctor) {
-    const confirmed = window.confirm(
-      "Elimini verificarea profesională a acestui medic?"
-    );
-
-    if (!confirmed) {
+  async function removeVerification(
+    doctor: Doctor
+  ) {
+    if (
+      !window.confirm(
+        copy.doctors.actions
+          .removeVerificationConfirm
+      )
+    ) {
       return;
     }
 
-    setChangingDoctorId(doctor.id);
+    setChangingDoctorId(
+      doctor.id
+    );
+
+    setError(null);
+    setSuccess(null);
 
     try {
-      const response = await fetch("/api/admin/doctors", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          doctorId: doctor.id,
-          action: "set_verification",
-          verificationStatus: "not_submitted",
-        }),
-      });
+      const response =
+        await fetch(
+          "/api/admin/doctors",
+          {
+            method:
+              "PATCH",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                doctorId:
+                  doctor.id,
+                action:
+                  "set_verification",
+                verificationStatus:
+                  "not_submitted",
+              }),
+          }
+        );
 
-      const result = (await response.json()) as ApiResponse;
+      const result =
+        (await response.json()) as
+          ApiResponse;
 
-      if (!response.ok) {
-        throw new Error(result.error ?? "Verificarea nu a putut fi eliminată.");
+      const message =
+        resolveActionMessage(
+          result,
+          copy.doctors
+            .states
+            .actionFailed
+        );
+
+      if (
+        !response.ok
+      ) {
+        throw new Error(
+          message
+        );
       }
 
-      setSuccess(result.message ?? "Verificarea a fost eliminată.");
+      setSuccess(
+        message
+      );
+
       await loadDoctors();
-    } catch (actionError) {
+    } catch (
+      actionError
+    ) {
       setError(
-        actionError instanceof Error
+        actionError instanceof
+          Error
           ? actionError.message
-          : "Verificarea nu a putut fi eliminată."
+          : copy.doctors
+              .states
+              .actionFailed
       );
     } finally {
-      setChangingDoctorId(null);
+      setChangingDoctorId(
+        null
+      );
     }
   }
 
+  function resetFilters() {
+    setSearch("");
+    setDoctorStatus(
+      "all"
+    );
+    setAccountStatus(
+      "all"
+    );
+    setSubscriptionStatus(
+      "all"
+    );
+    setPayerFilter(
+      "all"
+    );
+    setVerificationStatus(
+      "all"
+    );
+  }
+
+  const getDoctorTypeLabel =
+    (
+      doctor: Doctor
+    ) =>
+      doctor.account_type ===
+      "clinic_sub_account"
+        ? copy.doctors
+            .accountTypes
+            .clinic
+        : copy.doctors
+            .accountTypes
+            .independent;
+
+  const getSubscriptionPayerLabel =
+    (
+      doctor: Doctor
+    ) =>
+      doctor.subscription_payer ===
+      "clinic"
+        ? copy.doctors.payers
+            .clinic
+        : copy.doctors.payers
+            .doctor;
+
+  const getVerificationLabel =
+    (
+      status: string
+    ) =>
+      (
+        copy.doctors
+          .verificationStatuses as
+          Record<
+            string,
+            string
+          >
+      )[status] ??
+      copy.common.unknown;
+
+  const getSubscriptionLabel =
+    (
+      subscription:
+        | Subscription
+        | null,
+      doctor: Doctor
+    ) => {
+      if (
+        doctor.subscription_payer ===
+        "clinic"
+      ) {
+        return copy.doctors
+          .subscriptionStatuses
+          .clinic;
+      }
+
+      if (!subscription) {
+        return copy.doctors
+          .subscriptionStatuses
+          .none;
+      }
+
+      return (
+        copy.doctors
+          .subscriptionStatuses as
+          Record<
+            string,
+            string
+          >
+      )[
+        subscription.status
+      ] ??
+      subscription.status;
+    };
+
   return (
-    <div className="space-y-6">
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <div className="grid gap-4 xl:grid-cols-[1fr_12rem_12rem_14rem_12rem_14rem]">
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Caută după nume, e-mail, specialitate, clinică sau slug..."
-            className="rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
-          />
-
-          <select
-            value={doctorStatus}
-            onChange={(event) =>
-              setDoctorStatus(event.target.value as DoctorStatusFilter)
-            }
-            className="rounded-xl border border-gray-300 bg-white px-4 py-3"
-          >
-            <option value="all">Toate profilurile</option>
-            <option value="active">Profil activ</option>
-            <option value="suspended">Profil suspendat</option>
-          </select>
-
-          <select
-            value={accountStatus}
-            onChange={(event) =>
-              setAccountStatus(event.target.value as AccountStatusFilter)
-            }
-            className="rounded-xl border border-gray-300 bg-white px-4 py-3"
-          >
-            <option value="all">Toate conturile</option>
-            <option value="active">Cont activ</option>
-            <option value="suspended">Cont suspendat</option>
-            <option value="blocked">Cont blocat</option>
-          </select>
-
-          <select
-            value={subscriptionStatus}
-            onChange={(event) =>
-              setSubscriptionStatus(event.target.value as SubscriptionFilter)
-            }
-            className="rounded-xl border border-gray-300 bg-white px-4 py-3"
-          >
-            <option value="all">Toate abonamentele</option>
-            <option value="active">Abonament activ</option>
-            <option value="trialing">Perioadă de probă</option>
-            <option value="past_due">Plată restantă</option>
-            <option value="canceled">Anulat</option>
-            <option value="none">Fără abonament</option>
-          </select>
-
-          <select
-            value={payerFilter}
-            onChange={(event) => setPayerFilter(event.target.value as PayerFilter)}
-            className="rounded-xl border border-gray-300 bg-white px-4 py-3"
-          >
-            <option value="all">Toți plătitorii</option>
-            <option value="doctor">Medic</option>
-            <option value="clinic">Clinică</option>
-          </select>
-
-          <select
-            value={verificationStatus}
-            onChange={(event) =>
-              setVerificationStatus(event.target.value as VerificationFilter)
-            }
-            className="rounded-xl border border-gray-300 bg-white px-4 py-3"
-          >
-            <option value="all">Toate verificările</option>
-            <option value="verified">Verificați</option>
-            <option value="pending">În verificare</option>
-            <option value="not_submitted">Nedepus</option>
-            <option value="rejected">Respinși</option>
-            <option value="expired">Expirați</option>
-          </select>
-        </div>
+    <div className="space-y-[21px]">
+      <section className="grid gap-[13px] sm:grid-cols-2 xl:grid-cols-5">
+        {[
+          {
+            label:
+              copy.doctors.metrics
+                .total,
+            value:
+              doctors.length,
+            className:
+              "text-gray-900",
+          },
+          {
+            label:
+              copy.doctors.metrics
+                .active,
+            value:
+              activeCount,
+            className:
+              "text-emerald-700",
+          },
+          {
+            label:
+              copy.doctors.metrics
+                .suspended,
+            value:
+              suspendedCount,
+            className:
+              "text-gray-700",
+          },
+          {
+            label:
+              copy.doctors.metrics
+                .verified,
+            value:
+              verifiedCount,
+            className:
+              "text-blue-700",
+          },
+          {
+            label:
+              copy.doctors.metrics
+                .attention,
+            value:
+              attentionCount,
+            className:
+              "text-amber-800",
+          },
+        ].map(
+          (
+            metric
+          ) => (
+            <div
+              key={
+                metric.label
+              }
+              className="rounded-[13px] border border-gray-200 bg-white p-[21px] shadow-sm"
+            >
+              <p className="text-sm font-semibold text-gray-500">
+                {
+                  metric.label
+                }
+              </p>
+              <p
+                className={`mt-[8px] text-3xl font-bold ${metric.className}`}
+              >
+                {
+                  metric.value
+                }
+              </p>
+            </div>
+          )
+        )}
       </section>
 
+      <details
+        open
+        className="group rounded-[13px] border border-gray-200 bg-white shadow-sm"
+      >
+        <summary className="romdoc-focus-ring flex cursor-pointer list-none items-center justify-between gap-[13px] rounded-[13px] p-[21px]">
+          <div>
+            <h2 className="text-lg font-bold text-gray-950">
+              {
+                copy.doctors.filters
+                  .title
+              }
+            </h2>
+            <p className="mt-[5px] text-sm text-gray-600">
+              {
+                copy.doctors.filters
+                  .description
+              }
+            </p>
+          </div>
+          <span
+            aria-hidden="true"
+            className="text-xl text-gray-500 transition group-open:rotate-180"
+          >
+            ⌄
+          </span>
+        </summary>
+
+        <div className="border-t border-gray-200 p-[21px]">
+          <div className="grid gap-[13px] xl:grid-cols-[minmax(15rem,1fr)_repeat(5,minmax(9rem,12rem))]">
+            <label>
+              <span className="sr-only">
+                {
+                  copy.doctors.filters
+                    .searchLabel
+                }
+              </span>
+              <input
+                type="search"
+                value={
+                  search
+                }
+                onChange={(
+                  event: { target: { value: string } }
+                ) =>
+                  setSearch(
+                    event.target
+                      .value
+                  )
+                }
+                placeholder={
+                  copy.doctors.filters
+                    .searchPlaceholder
+                }
+                className="romdoc-focus-ring w-full rounded-[13px] border border-gray-300 px-[13px] py-[13px]"
+              />
+            </label>
+
+            <label>
+              <span className="sr-only">
+                {
+                  copy.doctors.filters
+                    .doctorStatus
+                }
+              </span>
+              <select
+                value={
+                  doctorStatus
+                }
+                onChange={(
+                  event: { target: { value: string } }
+                ) =>
+                  setDoctorStatus(
+                    event.target
+                      .value as
+                      DoctorStatusFilter
+                  )
+                }
+                className="romdoc-focus-ring w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px]"
+              >
+                <option value="all">
+                  {
+                    copy.doctors.filters
+                      .allProfiles
+                  }
+                </option>
+                <option value="active">
+                  {
+                    copy.doctors.filters
+                      .profileActive
+                  }
+                </option>
+                <option value="suspended">
+                  {
+                    copy.doctors.filters
+                      .profileSuspended
+                  }
+                </option>
+              </select>
+            </label>
+
+            <label>
+              <span className="sr-only">
+                {
+                  copy.doctors.filters
+                    .accountStatus
+                }
+              </span>
+              <select
+                value={
+                  accountStatus
+                }
+                onChange={(
+                  event: { target: { value: string } }
+                ) =>
+                  setAccountStatus(
+                    event.target
+                      .value as
+                      AccountStatusFilter
+                  )
+                }
+                className="romdoc-focus-ring w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px]"
+              >
+                <option value="all">
+                  {
+                    copy.doctors.filters
+                      .allAccounts
+                  }
+                </option>
+                <option value="active">
+                  {
+                    copy.doctors.filters
+                      .accountActive
+                  }
+                </option>
+                <option value="suspended">
+                  {
+                    copy.doctors.filters
+                      .accountSuspended
+                  }
+                </option>
+                <option value="blocked">
+                  {
+                    copy.doctors.filters
+                      .accountBlocked
+                  }
+                </option>
+              </select>
+            </label>
+
+            <label>
+              <span className="sr-only">
+                {
+                  copy.doctors.filters
+                    .subscriptionStatus
+                }
+              </span>
+              <select
+                value={
+                  subscriptionStatus
+                }
+                onChange={(
+                  event: { target: { value: string } }
+                ) =>
+                  setSubscriptionStatus(
+                    event.target
+                      .value as
+                      SubscriptionFilter
+                  )
+                }
+                className="romdoc-focus-ring w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px]"
+              >
+                <option value="all">
+                  {
+                    copy.doctors.filters
+                      .allSubscriptions
+                  }
+                </option>
+                <option value="active">
+                  {
+                    copy.doctors.filters
+                      .subscriptionActive
+                  }
+                </option>
+                <option value="trialing">
+                  {
+                    copy.doctors.filters
+                      .subscriptionTrialing
+                  }
+                </option>
+                <option value="past_due">
+                  {
+                    copy.doctors.filters
+                      .subscriptionPastDue
+                  }
+                </option>
+                <option value="canceled">
+                  {
+                    copy.doctors.filters
+                      .subscriptionCanceled
+                  }
+                </option>
+                <option value="none">
+                  {
+                    copy.doctors.filters
+                      .subscriptionNone
+                  }
+                </option>
+              </select>
+            </label>
+
+            <label>
+              <span className="sr-only">
+                {
+                  copy.doctors.filters
+                    .payer
+                }
+              </span>
+              <select
+                value={
+                  payerFilter
+                }
+                onChange={(
+                  event: { target: { value: string } }
+                ) =>
+                  setPayerFilter(
+                    event.target
+                      .value as
+                      PayerFilter
+                  )
+                }
+                className="romdoc-focus-ring w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px]"
+              >
+                <option value="all">
+                  {
+                    copy.doctors.filters
+                      .allPayers
+                  }
+                </option>
+                <option value="doctor">
+                  {
+                    copy.doctors.filters
+                      .payerDoctor
+                  }
+                </option>
+                <option value="clinic">
+                  {
+                    copy.doctors.filters
+                      .payerClinic
+                  }
+                </option>
+              </select>
+            </label>
+
+            <label>
+              <span className="sr-only">
+                {
+                  copy.doctors.filters
+                    .verification
+                }
+              </span>
+              <select
+                value={
+                  verificationStatus
+                }
+                onChange={(
+                  event: { target: { value: string } }
+                ) =>
+                  setVerificationStatus(
+                    event.target
+                      .value as
+                      VerificationFilter
+                  )
+                }
+                className="romdoc-focus-ring w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px]"
+              >
+                <option value="all">
+                  {
+                    copy.doctors.filters
+                      .allVerifications
+                  }
+                </option>
+                <option value="verified">
+                  {
+                    copy.doctors.filters
+                      .verificationVerified
+                  }
+                </option>
+                <option value="pending">
+                  {
+                    copy.doctors.filters
+                      .verificationPending
+                  }
+                </option>
+                <option value="not_submitted">
+                  {
+                    copy.doctors.filters
+                      .verificationNotSubmitted
+                  }
+                </option>
+                <option value="rejected">
+                  {
+                    copy.doctors.filters
+                      .verificationRejected
+                  }
+                </option>
+                <option value="expired">
+                  {
+                    copy.doctors.filters
+                      .verificationExpired
+                  }
+                </option>
+              </select>
+            </label>
+          </div>
+
+          <div className="mt-[13px] flex flex-wrap items-center justify-between gap-[13px]">
+            <p className="text-xs text-gray-500">
+              {interpolatePlatformDoctorCopy(
+                copy.common.showing,
+                {
+                  filtered:
+                    filteredDoctors.length,
+                  total:
+                    doctors.length,
+                }
+              )}
+            </p>
+
+            <button
+              type="button"
+              onClick={
+                resetFilters
+              }
+              className="romdoc-focus-ring rounded-[8px] px-[13px] py-[8px] text-sm font-semibold text-[#036661] hover:bg-emerald-50"
+            >
+              {
+                copy.common
+                  .resetFilters
+              }
+            </button>
+          </div>
+        </div>
+      </details>
+
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+        <div
+          role="alert"
+          className="rounded-[13px] border border-red-200 bg-red-50 p-[13px] text-sm text-red-800"
+        >
           {error}
         </div>
       )}
 
       {success && (
-        <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+        <div
+          role="status"
+          className="rounded-[13px] border border-green-200 bg-green-50 p-[13px] text-sm text-green-800"
+        >
           {success}
         </div>
       )}
 
-      <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-[13px] border border-gray-200 bg-white shadow-sm">
         {isLoading ? (
-          <div className="p-8 text-sm text-gray-600">Se încarcă medicii...</div>
-        ) : filteredDoctors.length === 0 ? (
-          <div className="p-8 text-sm text-gray-600">
-            Nu există medici care corespund filtrelor.
+          <div className="p-[21px] text-sm text-gray-600">
+            {
+              copy.doctors.states
+                .loading
+            }
+          </div>
+        ) : filteredDoctors.length ===
+          0 ? (
+          <div className="p-[21px] text-sm text-gray-600">
+            {
+              copy.doctors.states
+                .empty
+            }
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {filteredDoctors.map((doctor) => {
-              const expanded = expandedDoctorId === doctor.id;
-              const changing = changingDoctorId === doctor.id;
-              const specialties = getSpecialties(doctor);
-              const profileAccountStatus = doctor.profile?.account_status ?? "active";
+            {filteredDoctors.map(
+              (
+                doctor
+              ) => {
+                const expanded =
+                  expandedDoctorId ===
+                  doctor.id;
 
-              return (
-                <article key={doctor.id} className="p-5 sm:p-6">
-                  <div className="grid gap-5 lg:grid-cols-[1.4fr_0.8fr_0.9fr_0.9fr_auto] lg:items-center">
-                    <div>
-                      <h2 className="text-lg font-bold text-gray-900">
-                        {getDoctorName(doctor)}
-                      </h2>
-                      <p className="mt-1 text-sm text-gray-600">
-                        {getRomanianTitle(doctor)}
-                      </p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        {doctor.auth_email ?? "E-mail indisponibil"}
-                      </p>
-                      <p className="mt-2 text-xs font-semibold text-[#036661]">
-                        {getDoctorTypeLabel(doctor)}
-                      </p>
-                      {doctor.clinic_organization_name && (
-                        <p className="mt-1 text-xs text-gray-600">
-                          Organizație: {doctor.clinic_organization_name}
+                const changing =
+                  changingDoctorId ===
+                  doctor.id;
+
+                const specialties =
+                  getSpecialties(
+                    doctor
+                  );
+
+                const profileAccountStatus =
+                  doctor.profile
+                    ?.account_status ??
+                  "active";
+
+                const doctorStatusLabel =
+                  (
+                    copy.doctors
+                      .doctorStatuses as
+                      Record<
+                        string,
+                        string
+                      >
+                  )[
+                    doctor.status
+                  ] ??
+                  copy.common
+                    .unknown;
+
+                const accountStatusLabel =
+                  (
+                    copy.doctors
+                      .accountStatuses as
+                      Record<
+                        string,
+                        string
+                      >
+                  )[
+                    profileAccountStatus
+                  ] ??
+                  copy.common
+                    .unknown;
+
+                return (
+                  <article
+                    key={
+                      doctor.id
+                    }
+                    className="p-[21px]"
+                  >
+                    <div className="grid gap-[13px] lg:grid-cols-[1.4fr_0.8fr_0.8fr_0.9fr_auto] lg:items-center">
+                      <div>
+                        <h2 className="text-lg font-bold text-gray-900">
+                          {getDoctorName(
+                            doctor
+                          )}
+                        </h2>
+
+                        <p className="mt-[5px] text-sm text-gray-600">
+                          {getDoctorTitle(
+                            doctor
+                          )}
                         </p>
-                      )}
-                      {specialties.length > 0 && (
-                        <p className="mt-2 text-xs text-gray-600">
-                          {specialties.join(", ")}
+
+                        <p className="mt-[5px] text-xs text-gray-500">
+                          {doctor.auth_email ??
+                            copy.doctors
+                              .labels
+                              .emailUnavailable}
                         </p>
-                      )}
-                    </div>
 
-                    <div>
-                      <p className="text-xs font-semibold uppercase text-gray-500">
-                        Profil medic
-                      </p>
-                      <p className="mt-1 font-semibold text-gray-900">
-                        {getDoctorStatusLabel(doctor.status)}
-                      </p>
-                    </div>
+                        <div className="mt-[8px] flex flex-wrap gap-[8px]">
+                          <span className="rounded-full bg-teal-50 px-[13px] py-[5px] text-xs font-semibold text-[#036661]">
+                            {getDoctorTypeLabel(
+                              doctor
+                            )}
+                          </span>
 
-                    <div>
-                      <p className="text-xs font-semibold uppercase text-gray-500">
-                        Cont utilizator
-                      </p>
-                      <p className="mt-1 font-semibold text-gray-900">
-                        {getAccountStatusLabel(profileAccountStatus)}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-xs font-semibold uppercase text-gray-500">
-                        Plătitor
-                      </p>
-                      <p className="mt-1 font-semibold text-gray-900">
-                        {getSubscriptionPayerLabel(doctor)}
-                      </p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        {getSubscriptionLabel(doctor.subscription, doctor)}
-                      </p>
-                    </div>
-
-                    <Button
-                      type="button"
-                      onClick={() =>
-                        setExpandedDoctorId(expanded ? null : doctor.id)
-                      }
-                      variant="secondary"
-                      size="sm"
-                    >
-                      {expanded ? "Închide" : "Detalii"}
-                    </Button>
-                  </div>
-
-                  {expanded && (
-                    <div className="mt-6 border-t border-gray-200 pt-6">
-                      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-                        <div>
-                          <p className="text-xs font-semibold uppercase text-gray-500">
-                            Verificare profesională
-                          </p>
-                          <p className="mt-1 font-semibold text-gray-900">
-                            {getVerificationLabel(doctor.verification_status)}
-                          </p>
-                          <p className="mt-1 text-xs text-gray-500">
-                            Număr: {doctor.professional_registration_number ?? "—"}
-                          </p>
-                          <p className="mt-1 text-xs text-gray-500">
-                            Expiră: {formatDate(doctor.verification_expires_at)}
-                          </p>
+                          {specialties.map(
+                            (
+                              specialty
+                            ) => (
+                              <span
+                                key={
+                                  specialty
+                                }
+                                className="rounded-full bg-gray-100 px-[13px] py-[5px] text-xs text-gray-700"
+                              >
+                                {
+                                  specialty
+                                }
+                              </span>
+                            )
+                          )}
                         </div>
 
-                        <div>
-                          <p className="text-xs font-semibold uppercase text-gray-500">
-                            Clinici
+                        {doctor
+                          .clinic_organization_name && (
+                          <p className="mt-[8px] text-xs text-gray-600">
+                            {
+                              copy.doctors
+                                .labels
+                                .organization
+                            }
+                            :{" "}
+                            {
+                              doctor
+                                .clinic_organization_name
+                            }
                           </p>
-                          <p className="mt-1 text-2xl font-bold text-gray-900">
-                            {doctor.clinic_count}
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="text-xs font-semibold uppercase text-gray-500">
-                            Personal activ
-                          </p>
-                          <p className="mt-1 text-2xl font-bold text-gray-900">
-                            {doctor.active_staff_count}
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="text-xs font-semibold uppercase text-gray-500">
-                            Rating
-                          </p>
-                          <p className="mt-1 font-semibold text-gray-900">
-                            {Number(doctor.average_rating).toFixed(1)} din 5
-                          </p>
-                          <p className="mt-1 text-xs text-gray-500">
-                            {doctor.review_count} recenzii
-                          </p>
-                        </div>
+                        )}
                       </div>
 
-                      <div className="mt-6 rounded-xl bg-gray-50 p-5">
-                        <h3 className="font-semibold text-gray-900">
-                          Detalii comerciale
-                        </h3>
-                        <dl className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                          <div>
-                            <dt className="text-xs text-gray-500">Tip cont</dt>
-                            <dd className="mt-1 font-medium">
-                              {getDoctorTypeLabel(doctor)}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs text-gray-500">Plătitor abonament</dt>
-                            <dd className="mt-1 font-medium">
-                              {getSubscriptionPayerLabel(doctor)}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs text-gray-500">Organizație clinică</dt>
-                            <dd className="mt-1 font-medium">
-                              {doctor.clinic_organization_name ?? "—"}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs text-gray-500">Plan</dt>
-                            <dd className="mt-1 font-medium">
-                              {doctor.subscription?.billing_interval === "yearly"
-                                ? "Anual"
-                                : doctor.subscription
-                                  ? "Lunar"
-                                  : doctor.subscription_payer === "clinic"
-                                    ? "Acoperit de clinică"
-                                    : "—"}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs text-gray-500">Status Stripe</dt>
-                            <dd className="mt-1 font-medium">
-                              {doctor.subscription_payer === "clinic"
-                                ? "N/A clinică"
-                                : doctor.subscription?.status ?? "—"}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs text-gray-500">Sfârșit perioadă</dt>
-                            <dd className="mt-1 font-medium">
-                              {formatDate(doctor.subscription?.current_period_end ?? null)}
-                            </dd>
-                          </div>
-                        </dl>
-                      </div>
-
-                      <div className="mt-6 rounded-xl border border-blue-100 bg-blue-50 p-5 text-sm leading-6 text-blue-900">
-                        Profilul public este responsabilitatea medicului. Completitudinea
-                        profilului este informațională și nu necesită aprobare Admin.
-                        Verificarea profesională controlează doar badge-ul RomDoc.
-                      </div>
-
-                      <AdminDoctorClinicsInline doctorId={doctor.id} />
-
-                      <div className="mt-6 flex flex-wrap gap-3">
-                        <Link
-                          href={`/doctor/${doctor.slug}`}
-                          target="_blank"
-                          className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold hover:bg-gray-50"
+                      <div>
+                        <p className="text-xs font-semibold uppercase text-gray-500">
+                          {
+                            copy.doctors
+                              .labels
+                              .doctorProfile
+                          }
+                        </p>
+                        <span
+                          className={`mt-[8px] inline-flex rounded-full px-[13px] py-[5px] text-xs font-semibold ${getStatusClasses(
+                            doctor.status
+                          )}`}
                         >
-                          Vezi profilul public
-                        </Link>
-
-                        {doctor.status === "active" ? (
-                          <Button
-                            type="button"
-                            disabled={changing}
-                            onClick={() => updateDoctorStatus(doctor, "suspended")}
-                            variant="secondary"
-                            size="sm"
-                          >
-                            Suspendă profil
-                          </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            disabled={changing}
-                            onClick={() => updateDoctorStatus(doctor, "active")}
-                            size="sm"
-                          >
-                            Reactivează profil
-                          </Button>
-                        )}
-
-                        {profileAccountStatus !== "blocked" ? (
-                          <Button
-                            type="button"
-                            disabled={changing}
-                            onClick={() => updateAccountStatus(doctor, "blocked")}
-                            variant="danger-outline"
-                            size="sm"
-                          >
-                            Blochează cont
-                          </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            disabled={changing}
-                            onClick={() => updateAccountStatus(doctor, "active")}
-                            size="sm"
-                          >
-                            Deblochează cont
-                          </Button>
-                        )}
-
-                        {doctor.verification_status !== "verified" ? (
-                          <Button
-                            type="button"
-                            disabled={changing}
-                            onClick={() => verifyDoctor(doctor)}
-                            size="sm"
-                          >
-                            Verifică profesional
-                          </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            disabled={changing}
-                            onClick={() => removeVerification(doctor)}
-                            variant="danger-outline"
-                            size="sm"
-                          >
-                            Elimină verificarea
-                          </Button>
-                        )}
+                          {
+                            doctorStatusLabel
+                          }
+                        </span>
                       </div>
+
+                      <div>
+                        <p className="text-xs font-semibold uppercase text-gray-500">
+                          {
+                            copy.doctors
+                              .labels
+                              .userAccount
+                          }
+                        </p>
+                        <span
+                          className={`mt-[8px] inline-flex rounded-full px-[13px] py-[5px] text-xs font-semibold ${getStatusClasses(
+                            profileAccountStatus
+                          )}`}
+                        >
+                          {
+                            accountStatusLabel
+                          }
+                        </span>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-semibold uppercase text-gray-500">
+                          {
+                            copy.doctors
+                              .labels
+                              .payer
+                          }
+                        </p>
+                        <p className="mt-[8px] font-semibold text-gray-900">
+                          {getSubscriptionPayerLabel(
+                            doctor
+                          )}
+                        </p>
+                        <p className="mt-[5px] text-xs text-gray-500">
+                          {getSubscriptionLabel(
+                            doctor.subscription,
+                            doctor
+                          )}
+                        </p>
+                      </div>
+
+                      <Button
+                        type="button"
+                        onClick={() =>
+                          setExpandedDoctorId(
+                            expanded
+                              ? null
+                              : doctor.id
+                          )
+                        }
+                        variant="secondary"
+                        size="sm"
+                      >
+                        {expanded
+                          ? copy.doctors
+                              .actions
+                              .hideDetails
+                          : copy.doctors
+                              .actions
+                              .showDetails}
+                      </Button>
                     </div>
-                  )}
-                </article>
-              );
-            })}
+
+                    {expanded && (
+                      <div className="mt-[21px] border-t border-gray-200 pt-[21px]">
+                        <div className="grid gap-[13px] sm:grid-cols-2 xl:grid-cols-4">
+                          <div className="rounded-[13px] bg-gray-50 p-[13px]">
+                            <p className="text-xs font-semibold uppercase text-gray-500">
+                              {
+                                copy.doctors
+                                  .labels
+                                  .verification
+                              }
+                            </p>
+                            <p className="mt-[8px] font-semibold text-gray-900">
+                              {getVerificationLabel(
+                                doctor.verification_status
+                              )}
+                            </p>
+                            <p className="mt-[5px] text-xs text-gray-500">
+                              {
+                                copy.doctors
+                                  .labels
+                                  .registrationNumber
+                              }
+                              :{" "}
+                              {doctor
+                                .professional_registration_number ??
+                                copy.common
+                                  .none}
+                            </p>
+                            <p className="mt-[5px] text-xs text-gray-500">
+                              {
+                                copy.doctors
+                                  .labels
+                                  .expires
+                              }
+                              :{" "}
+                              {formatDate(
+                                doctor.verification_expires_at
+                              )}
+                            </p>
+                          </div>
+
+                          <div className="rounded-[13px] bg-gray-50 p-[13px]">
+                            <p className="text-xs font-semibold uppercase text-gray-500">
+                              {
+                                copy.doctors
+                                  .labels
+                                  .clinics
+                              }
+                            </p>
+                            <p className="mt-[8px] text-2xl font-bold text-gray-900">
+                              {
+                                doctor.clinic_count
+                              }
+                            </p>
+                          </div>
+
+                          <div className="rounded-[13px] bg-gray-50 p-[13px]">
+                            <p className="text-xs font-semibold uppercase text-gray-500">
+                              {
+                                copy.doctors
+                                  .labels
+                                  .activeStaff
+                              }
+                            </p>
+                            <p className="mt-[8px] text-2xl font-bold text-gray-900">
+                              {
+                                doctor.active_staff_count
+                              }
+                            </p>
+                          </div>
+
+                          <div className="rounded-[13px] bg-gray-50 p-[13px]">
+                            <p className="text-xs font-semibold uppercase text-gray-500">
+                              {
+                                copy.doctors
+                                  .labels
+                                  .rating
+                              }
+                            </p>
+                            <p className="mt-[8px] font-semibold text-gray-900">
+                              {Number(
+                                doctor.average_rating
+                              ).toFixed(
+                                1
+                              )}{" "}
+                              / 5
+                            </p>
+                            <p className="mt-[5px] text-xs text-gray-500">
+                              {interpolatePlatformDoctorCopy(
+                                copy.doctors
+                                  .labels
+                                  .reviews,
+                                {
+                                  count:
+                                    doctor.review_count,
+                                }
+                              )}
+                            </p>
+                          </div>
+                        </div>
+
+                        <details className="group mt-[21px] rounded-[13px] border border-gray-200 bg-gray-50">
+                          <summary className="romdoc-focus-ring flex cursor-pointer list-none items-center justify-between gap-[13px] rounded-[13px] p-[13px]">
+                            <h3 className="font-semibold text-gray-900">
+                              {
+                                copy.doctors
+                                  .labels
+                                  .commercialDetails
+                              }
+                            </h3>
+                            <span
+                              aria-hidden="true"
+                              className="text-lg text-gray-500 transition group-open:rotate-180"
+                            >
+                              ⌄
+                            </span>
+                          </summary>
+
+                          <dl className="grid gap-[13px] border-t border-gray-200 p-[13px] sm:grid-cols-2 xl:grid-cols-3">
+                            <div>
+                              <dt className="text-xs text-gray-500">
+                                {
+                                  copy.doctors
+                                    .labels
+                                    .accountType
+                                }
+                              </dt>
+                              <dd className="mt-[5px] font-medium">
+                                {getDoctorTypeLabel(
+                                  doctor
+                                )}
+                              </dd>
+                            </div>
+
+                            <div>
+                              <dt className="text-xs text-gray-500">
+                                {
+                                  copy.doctors
+                                    .labels
+                                    .subscriptionPayer
+                                }
+                              </dt>
+                              <dd className="mt-[5px] font-medium">
+                                {getSubscriptionPayerLabel(
+                                  doctor
+                                )}
+                              </dd>
+                            </div>
+
+                            <div>
+                              <dt className="text-xs text-gray-500">
+                                {
+                                  copy.doctors
+                                    .labels
+                                    .clinicOrganization
+                                }
+                              </dt>
+                              <dd className="mt-[5px] font-medium">
+                                {doctor
+                                  .clinic_organization_name ??
+                                  copy.common
+                                    .none}
+                              </dd>
+                            </div>
+
+                            <div>
+                              <dt className="text-xs text-gray-500">
+                                {
+                                  copy.doctors
+                                    .labels
+                                    .plan
+                                }
+                              </dt>
+                              <dd className="mt-[5px] font-medium">
+                                {doctor
+                                  .subscription
+                                  ?.billing_interval ===
+                                "yearly"
+                                  ? copy
+                                      .doctors
+                                      .labels
+                                      .annual
+                                  : doctor.subscription
+                                    ? copy
+                                        .doctors
+                                        .labels
+                                        .monthly
+                                    : doctor.subscription_payer ===
+                                        "clinic"
+                                      ? copy
+                                          .doctors
+                                          .labels
+                                          .clinicCovered
+                                      : copy
+                                          .common
+                                          .none}
+                              </dd>
+                            </div>
+
+                            <div>
+                              <dt className="text-xs text-gray-500">
+                                {
+                                  copy.doctors
+                                    .labels
+                                    .stripeStatus
+                                }
+                              </dt>
+                              <dd className="mt-[5px] font-medium">
+                                {doctor.subscription_payer ===
+                                "clinic"
+                                  ? copy
+                                      .doctors
+                                      .labels
+                                      .clinicNotApplicable
+                                  : doctor
+                                      .subscription
+                                      ?.status ??
+                                    copy
+                                      .common
+                                      .none}
+                              </dd>
+                            </div>
+
+                            <div>
+                              <dt className="text-xs text-gray-500">
+                                {
+                                  copy.doctors
+                                    .labels
+                                    .periodEnd
+                                }
+                              </dt>
+                              <dd className="mt-[5px] font-medium">
+                                {formatDate(
+                                  doctor
+                                    .subscription
+                                    ?.current_period_end ??
+                                    null
+                                )}
+                              </dd>
+                            </div>
+                          </dl>
+                        </details>
+
+                        <div className="mt-[21px] rounded-[13px] border border-blue-100 bg-blue-50 p-[13px] text-sm leading-6 text-blue-900">
+                          {
+                            copy.doctors
+                              .labels
+                              .publicResponsibility
+                          }
+                        </div>
+
+                        <details className="group mt-[21px] rounded-[13px] border border-gray-200 bg-white">
+                          <summary className="romdoc-focus-ring flex cursor-pointer list-none items-center justify-between gap-[13px] rounded-[13px] p-[13px]">
+                            <div>
+                              <h3 className="font-semibold text-gray-900">
+                                {
+                                  copy.doctors
+                                    .labels
+                                    .clinicAssociations
+                                }
+                              </h3>
+                              <p className="mt-[5px] text-xs text-gray-500">
+                                {
+                                  copy.doctors
+                                    .labels
+                                    .clinicAssociationsDeferred
+                                }
+                              </p>
+                            </div>
+                            <span
+                              aria-hidden="true"
+                              className="text-lg text-gray-500 transition group-open:rotate-180"
+                            >
+                              ⌄
+                            </span>
+                          </summary>
+
+                          <div className="border-t border-gray-200 p-[13px]">
+                            <AdminDoctorClinicsInline
+                              doctorId={
+                                doctor.id
+                              }
+                            />
+                          </div>
+                        </details>
+
+                        <div className="mt-[21px] flex flex-wrap gap-[13px]">
+                          <Link
+                            href={`/doctor/${doctor.slug}`}
+                            target="_blank"
+                            className="romdoc-focus-ring rounded-[13px] border border-gray-300 px-[13px] py-[8px] text-sm font-semibold hover:bg-gray-50"
+                          >
+                            {
+                              copy.common
+                                .publicProfile
+                            }
+                          </Link>
+
+                          {doctor.status ===
+                          "active" ? (
+                            <Button
+                              type="button"
+                              disabled={
+                                changing
+                              }
+                              onClick={() =>
+                                updateDoctorStatus(
+                                  doctor,
+                                  "suspended"
+                                )
+                              }
+                              variant="secondary"
+                              size="sm"
+                            >
+                              {
+                                copy.doctors
+                                  .actions
+                                  .suspendProfile
+                              }
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              disabled={
+                                changing
+                              }
+                              onClick={() =>
+                                updateDoctorStatus(
+                                  doctor,
+                                  "active"
+                                )
+                              }
+                              size="sm"
+                            >
+                              {
+                                copy.doctors
+                                  .actions
+                                  .reactivateProfile
+                              }
+                            </Button>
+                          )}
+
+                          {profileAccountStatus !==
+                          "blocked" ? (
+                            <Button
+                              type="button"
+                              disabled={
+                                changing
+                              }
+                              onClick={() =>
+                                updateAccountStatus(
+                                  doctor,
+                                  "blocked"
+                                )
+                              }
+                              variant="danger-outline"
+                              size="sm"
+                            >
+                              {
+                                copy.doctors
+                                  .actions
+                                  .blockAccount
+                              }
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              disabled={
+                                changing
+                              }
+                              onClick={() =>
+                                updateAccountStatus(
+                                  doctor,
+                                  "active"
+                                )
+                              }
+                              size="sm"
+                            >
+                              {
+                                copy.doctors
+                                  .actions
+                                  .unblockAccount
+                              }
+                            </Button>
+                          )}
+
+                          {doctor.verification_status !==
+                          "verified" ? (
+                            <Button
+                              type="button"
+                              disabled={
+                                changing
+                              }
+                              onClick={() =>
+                                verifyDoctor(
+                                  doctor
+                                )
+                              }
+                              size="sm"
+                            >
+                              {
+                                copy.doctors
+                                  .actions
+                                  .verify
+                              }
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              disabled={
+                                changing
+                              }
+                              onClick={() =>
+                                removeVerification(
+                                  doctor
+                                )
+                              }
+                              variant="danger-outline"
+                              size="sm"
+                            >
+                              {
+                                copy.doctors
+                                  .actions
+                                  .removeVerification
+                              }
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </article>
+                );
+              }
+            )}
           </div>
         )}
       </section>
