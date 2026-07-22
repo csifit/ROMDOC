@@ -163,12 +163,12 @@ function buildMessage(
   if (!date || !time) return null;
 
   if (event === "reminder_24_hours") {
-    return `RomDoc: Reamintire - ai programare mâine, ${formatDate(
+    return `RomDoc: Reamintire - ai programare maine, ${formatDate(
       date
     )}, ora ${formatTime(time)}, la ${doctorName}, ${clinicName}.`;
   }
 
-  return `RomDoc: Programarea la ${doctorName}, ${clinicName}, a fost confirmată pentru ${formatDate(
+  return `RomDoc: Programarea la ${doctorName}, ${clinicName}, a fost confirmata pentru ${formatDate(
     date
   )}, ora ${formatTime(time)}.`;
 }
