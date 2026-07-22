@@ -1,17 +1,37 @@
 "use client";
 
+import Link from "next/link";
+import {
+  useTranslations,
+} from "next-intl";
 import {
   type FormEvent,
   useState,
 } from "react";
-import Link from "next/link";
 
 import Button from "@/components/ui/button";
+import type {
+  AppLocale,
+} from "@/lib/i18n/app-locale";
 import {
   createClient,
 } from "@/lib/supabase/client";
 
-export default function ForgotPasswordForm() {
+type ForgotPasswordFormProps = {
+  locale: AppLocale;
+  nextPath: string;
+};
+
+export default function
+ForgotPasswordForm({
+  locale,
+  nextPath,
+}: ForgotPasswordFormProps) {
+  const t =
+    useTranslations(
+      "PasswordReset.forgot"
+    );
+
   const [email, setEmail] =
     useState("");
 
@@ -23,6 +43,21 @@ export default function ForgotPasswordForm() {
 
   const [message, setMessage] =
     useState("");
+
+  const loginParameters =
+    new URLSearchParams({
+      locale,
+    });
+
+  if (nextPath !== "/login") {
+    loginParameters.set(
+      "next",
+      nextPath
+    );
+  }
+
+  const loginHref =
+    `/login?${loginParameters.toString()}`;
 
   async function handleSubmit(
     event:
@@ -37,7 +72,7 @@ export default function ForgotPasswordForm() {
 
     if (!normalizedEmail) {
       setError(
-        "Introdu adresa de e-mail."
+        t("emailRequired")
       );
       return;
     }
@@ -50,8 +85,26 @@ export default function ForgotPasswordForm() {
       const supabase =
         createClient();
 
-      const redirectTo =
-        `${window.location.origin}/set-password?mode=recovery&next=/login`;
+      const redirectUrl =
+        new URL(
+          "/set-password",
+          window.location.origin
+        );
+
+      redirectUrl.searchParams.set(
+        "mode",
+        "recovery"
+      );
+
+      redirectUrl.searchParams.set(
+        "locale",
+        locale
+      );
+
+      redirectUrl.searchParams.set(
+        "next",
+        nextPath
+      );
 
       const {
         error: resetError,
@@ -60,7 +113,8 @@ export default function ForgotPasswordForm() {
           .resetPasswordForEmail(
             normalizedEmail,
             {
-              redirectTo,
+              redirectTo:
+                redirectUrl.toString(),
             }
           );
 
@@ -72,7 +126,7 @@ export default function ForgotPasswordForm() {
       }
 
       setMessage(
-        "Dacă există un cont asociat acestei adrese, vei primi un e-mail cu linkul pentru alegerea unei parole noi."
+        t("securityMessage")
       );
     } catch (requestError) {
       console.error(
@@ -81,7 +135,7 @@ export default function ForgotPasswordForm() {
       );
 
       setMessage(
-        "Dacă există un cont asociat acestei adrese, vei primi un e-mail cu linkul pentru alegerea unei parole noi."
+        t("securityMessage")
       );
     } finally {
       setIsSending(false);
@@ -92,18 +146,18 @@ export default function ForgotPasswordForm() {
     <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
       <header className="text-center">
         <Link
-          href="/"
+          href={`/${locale}`}
           className="inline-block text-3xl font-bold text-gray-900"
         >
           RomDoc
         </Link>
 
         <h1 className="mt-6 text-2xl font-bold text-gray-900">
-          Resetarea parolei
+          {t("title")}
         </h1>
 
         <p className="mt-2 text-sm leading-6 text-gray-600">
-          Introdu adresa contului. Îți vom trimite un link securizat pentru alegerea unei parole noi.
+          {t("description")}
         </p>
       </header>
 
@@ -115,7 +169,7 @@ export default function ForgotPasswordForm() {
       >
         <label className="block">
           <span className="text-sm font-medium text-gray-700">
-            E-mail
+            {t("emailLabel")}
           </span>
 
           <input
@@ -133,7 +187,11 @@ export default function ForgotPasswordForm() {
                 event.target.value
               )
             }
-            placeholder="nume@example.com"
+            placeholder={
+              t(
+                "emailPlaceholder"
+              )
+            }
             className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-not-allowed disabled:opacity-60"
           />
         </label>
@@ -162,18 +220,20 @@ export default function ForgotPasswordForm() {
           isLoading={
             isSending
           }
-          loadingText="Se trimite..."
+          loadingText={
+            t("sending")
+          }
         >
-          Trimite linkul de resetare
+          {t("submit")}
         </Button>
       </form>
 
       <div className="mt-6 text-center">
         <Link
-          href="/login"
+          href={loginHref}
           className="text-sm font-semibold text-[#036661] underline-offset-4 hover:underline"
         >
-          Înapoi la autentificare
+          {t("backToLogin")}
         </Link>
       </div>
     </div>

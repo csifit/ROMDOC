@@ -1,39 +1,50 @@
 "use client";
 
+import type {
+  User,
+} from "@supabase/supabase-js";
+import Link from "next/link";
+import {
+  useTranslations,
+} from "next-intl";
+import {
+  useRouter,
+} from "next/navigation";
 import {
   type FormEvent,
   useEffect,
   useState,
 } from "react";
-import Link from "next/link";
-import {
-  useRouter,
-} from "next/navigation";
-import type {
-  User,
-} from "@supabase/supabase-js";
 
 import Button from "@/components/ui/button";
+import type {
+  AppLocale,
+} from "@/lib/i18n/app-locale";
 import {
   createClient,
 } from "@/lib/supabase/client";
 
-function getSafeNextPath(
-  value: string | null,
-  fallback: string
-) {
-  if (
-    !value ||
-    !value.startsWith("/") ||
-    value.startsWith("//")
-  ) {
-    return fallback;
-  }
+type SetPasswordMode =
+  | "invite"
+  | "recovery";
 
-  return value;
-}
+type SetPasswordFormProps = {
+  locale: AppLocale;
+  mode: SetPasswordMode;
+  destination: string;
+};
 
-export default function SetPasswordForm() {
+export default function
+SetPasswordForm({
+  locale,
+  mode,
+  destination,
+}: SetPasswordFormProps) {
+  const t =
+    useTranslations(
+      "PasswordReset.set"
+    );
+
   const router =
     useRouter();
 
@@ -73,55 +84,22 @@ export default function SetPasswordForm() {
   const [message, setMessage] =
     useState("");
 
-  const [mode, setMode] =
-    useState<
-      "invite" | "recovery"
-    >("invite");
-
-  const [
-    destination,
-    setDestination,
-  ] =
-    useState(
-      "/staff-dashboard"
-    );
-
   useEffect(() => {
-    const searchParams =
-      new URLSearchParams(
-        window.location.search
-      );
-
-    const requestedMode =
-      searchParams.get("mode") ===
-      "recovery"
-        ? "recovery"
-        : "invite";
-
-    setMode(requestedMode);
-
-    setDestination(
-      getSafeNextPath(
-        searchParams.get("next"),
-        requestedMode ===
-          "recovery"
-          ? "/login"
-          : "/staff-dashboard"
-      )
-    );
-
     const supabase =
       createClient();
 
     void supabase.auth
       .getUser()
-      .then(({ data, error: userError }) => {
+      .then(({
+        data,
+        error: userError,
+      }) => {
         if (
           userError ||
           !data.user
         ) {
           setError(
-            "Linkul nu este valid sau a expirat. Solicită un link nou."
+            t("invalidLink")
           );
           return;
         }
@@ -137,13 +115,17 @@ export default function SetPasswordForm() {
         );
 
         setError(
-          "Sesiunea nu a putut fi verificată. Solicită un link nou."
+          t(
+            "sessionVerificationFailed"
+          )
         );
       })
       .finally(() => {
-        setIsCheckingSession(false);
+        setIsCheckingSession(
+          false
+        );
       });
-  }, []);
+  }, [t]);
 
   async function handleSubmit(
     event:
@@ -156,7 +138,7 @@ export default function SetPasswordForm() {
 
     if (!currentUser) {
       setError(
-        "Sesiunea nu este disponibilă. Solicită un link nou."
+        t("sessionUnavailable")
       );
       return;
     }
@@ -165,7 +147,7 @@ export default function SetPasswordForm() {
       password.length < 8
     ) {
       setError(
-        "Parola trebuie să conțină cel puțin 8 caractere."
+        t("passwordMinLength")
       );
       return;
     }
@@ -175,7 +157,7 @@ export default function SetPasswordForm() {
       confirmPassword
     ) {
       setError(
-        "Parolele introduse nu coincid."
+        t("passwordMismatch")
       );
       return;
     }
@@ -193,7 +175,8 @@ export default function SetPasswordForm() {
           .updateUser({
             password,
             data: {
-              ...currentUser.user_metadata,
+              ...currentUser
+                .user_metadata,
               password_initialized:
                 true,
             },
@@ -207,26 +190,45 @@ export default function SetPasswordForm() {
         mode === "recovery"
       ) {
         setMessage(
-          "Parola a fost actualizată."
+          t("passwordUpdated")
         );
 
         await supabase.auth
           .signOut();
 
+        const loginParameters =
+          new URLSearchParams({
+            password_updated:
+              "1",
+            locale,
+          });
+
+        if (
+          destination !==
+          "/login"
+        ) {
+          loginParameters.set(
+            "next",
+            destination
+          );
+        }
+
         router.replace(
-          "/login?password_updated=1"
+          `/login?${loginParameters.toString()}`
         );
+
         router.refresh();
         return;
       }
 
       setMessage(
-        "Parola a fost creată. Vei fi redirecționat către contul tău."
+        t("passwordCreated")
       );
 
       router.replace(
         destination
       );
+
       router.refresh();
     } catch (
       updateError
@@ -237,20 +239,29 @@ export default function SetPasswordForm() {
       );
 
       setError(
-        updateError instanceof Error
-          ? updateError.message
-          : "Parola nu a putut fi salvată."
+        t("passwordSaveFailed")
       );
     } finally {
       setIsSaving(false);
     }
   }
 
+  const retryParameters =
+    new URLSearchParams({
+      locale,
+      next: destination,
+    });
+
+  const retryHref =
+    mode === "recovery"
+      ? `/forgot-password?${retryParameters.toString()}`
+      : `/login?locale=${locale}`;
+
   return (
     <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
       <header className="text-center">
         <Link
-          href="/"
+          href={`/${locale}`}
           className="inline-block text-3xl font-bold text-gray-900"
         >
           RomDoc
@@ -258,20 +269,24 @@ export default function SetPasswordForm() {
 
         <h1 className="mt-6 text-2xl font-bold text-gray-900">
           {mode === "recovery"
-            ? "Alege o parolă nouă"
-            : "Creează parola contului"}
+            ? t("recoveryTitle")
+            : t("inviteTitle")}
         </h1>
 
         <p className="mt-2 text-sm leading-6 text-gray-600">
           {mode === "recovery"
-            ? "Introdu și confirmă noua parolă pentru contul tău."
-            : "Invitația a fost confirmată. Creează acum parola pe care o vei folosi la autentificare."}
+            ? t(
+                "recoveryDescription"
+              )
+            : t(
+                "inviteDescription"
+              )}
         </p>
       </header>
 
       {isCheckingSession ? (
         <div className="mt-8 rounded-xl border border-gray-200 bg-gray-50 px-4 py-5 text-center text-sm text-gray-600">
-          Se verifică linkul securizat...
+          {t("checkingLink")}
         </div>
       ) : (
         <form
@@ -282,7 +297,9 @@ export default function SetPasswordForm() {
         >
           <label className="block">
             <span className="text-sm font-medium text-gray-700">
-              Parolă nouă
+              {t(
+                "newPasswordLabel"
+              )}
             </span>
 
             <input
@@ -302,14 +319,20 @@ export default function SetPasswordForm() {
                   event.target.value
                 )
               }
-              placeholder="Minimum 8 caractere"
+              placeholder={
+                t(
+                  "newPasswordPlaceholder"
+                )
+              }
               className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-not-allowed disabled:opacity-60"
             />
           </label>
 
           <label className="block">
             <span className="text-sm font-medium text-gray-700">
-              Confirmă parola
+              {t(
+                "confirmPasswordLabel"
+              )}
             </span>
 
             <input
@@ -331,13 +354,19 @@ export default function SetPasswordForm() {
                   event.target.value
                 )
               }
-              placeholder="Repetă parola"
+              placeholder={
+                t(
+                  "confirmPasswordPlaceholder"
+                )
+              }
               className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20 disabled:cursor-not-allowed disabled:opacity-60"
             />
           </label>
 
           <p className="text-xs leading-5 text-gray-500">
-            Folosește minimum 8 caractere și evită parolele utilizate pe alte servicii.
+            {t(
+              "passwordGuidance"
+            )}
           </p>
 
           {message && (
@@ -367,9 +396,11 @@ export default function SetPasswordForm() {
             isLoading={
               isSaving
             }
-            loadingText="Se salvează..."
+            loadingText={
+              t("saving")
+            }
           >
-            Salvează parola
+            {t("savePassword")}
           </Button>
         </form>
       )}
@@ -378,16 +409,17 @@ export default function SetPasswordForm() {
         !currentUser && (
           <div className="mt-6 text-center">
             <Link
-              href={
-                mode === "recovery"
-                  ? "/forgot-password"
-                  : "/login"
-              }
+              href={retryHref}
               className="text-sm font-semibold text-[#036661] underline-offset-4 hover:underline"
             >
-              {mode === "recovery"
-                ? "Solicită un link nou"
-                : "Înapoi la autentificare"}
+              {mode ===
+              "recovery"
+                ? t(
+                    "requestNewLink"
+                  )
+                : t(
+                    "backToLogin"
+                  )}
             </Link>
           </div>
         )}

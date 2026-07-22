@@ -2702,5 +2702,42 @@
       "opening": "Se deschide...",
       "genericError": "Portalul de facturare nu a putut fi deschis."
     }
+  },
+  "PasswordReset": {
+    "forgot": {
+      "title": "Resetarea parolei",
+      "description": "Introdu adresa contului. Îți vom trimite un link securizat pentru alegerea unei parole noi.",
+      "emailLabel": "E-mail",
+      "emailPlaceholder": "nume@example.com",
+      "emailRequired": "Introdu adresa de e-mail.",
+      "securityMessage": "Dacă există un cont asociat acestei adrese, vei primi un e-mail cu linkul pentru alegerea unei parole noi.",
+      "sending": "Se trimite...",
+      "submit": "Trimite linkul de resetare",
+      "backToLogin": "Înapoi la autentificare"
+    },
+    "set": {
+      "recoveryTitle": "Alege o parolă nouă",
+      "inviteTitle": "Creează parola contului",
+      "recoveryDescription": "Introdu și confirmă noua parolă pentru contul tău.",
+      "inviteDescription": "Invitația a fost confirmată. Creează acum parola pe care o vei folosi la autentificare.",
+      "checkingLink": "Se verifică linkul securizat...",
+      "newPasswordLabel": "Parolă nouă",
+      "newPasswordPlaceholder": "Minimum 8 caractere",
+      "confirmPasswordLabel": "Confirmă parola",
+      "confirmPasswordPlaceholder": "Repetă parola",
+      "passwordGuidance": "Folosește minimum 8 caractere și evită parolele utilizate pe alte servicii.",
+      "saving": "Se salvează...",
+      "savePassword": "Salvează parola",
+      "requestNewLink": "Solicită un link nou",
+      "backToLogin": "Înapoi la autentificare",
+      "invalidLink": "Linkul nu este valid sau a expirat. Solicită un link nou.",
+      "sessionVerificationFailed": "Sesiunea nu a putut fi verificată. Solicită un link nou.",
+      "sessionUnavailable": "Sesiunea nu este disponibilă. Solicită un link nou.",
+      "passwordMinLength": "Parola trebuie să conțină cel puțin 8 caractere.",
+      "passwordMismatch": "Parolele introduse nu coincid.",
+      "passwordUpdated": "Parola a fost actualizată.",
+      "passwordCreated": "Parola a fost creată. Vei fi redirecționat către contul tău.",
+      "passwordSaveFailed": "Parola nu a putut fi salvată."
+    }
   }
 }

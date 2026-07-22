@@ -2702,5 +2702,42 @@
       "opening": "Opening...",
       "genericError": "The billing portal could not be opened."
     }
+  },
+  "PasswordReset": {
+    "forgot": {
+      "title": "Reset your password",
+      "description": "Enter the email address for your account. We will send you a secure link to choose a new password.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "name@example.com",
+      "emailRequired": "Enter your email address.",
+      "securityMessage": "If an account is associated with this address, you will receive an email with a link to choose a new password.",
+      "sending": "Sending...",
+      "submit": "Send reset link",
+      "backToLogin": "Back to sign in"
+    },
+    "set": {
+      "recoveryTitle": "Choose a new password",
+      "inviteTitle": "Create your account password",
+      "recoveryDescription": "Enter and confirm the new password for your account.",
+      "inviteDescription": "Your invitation has been confirmed. Create the password you will use to sign in.",
+      "checkingLink": "Checking the secure link...",
+      "newPasswordLabel": "New password",
+      "newPasswordPlaceholder": "At least 8 characters",
+      "confirmPasswordLabel": "Confirm password",
+      "confirmPasswordPlaceholder": "Enter the password again",
+      "passwordGuidance": "Use at least 8 characters and avoid passwords you use for other services.",
+      "saving": "Saving...",
+      "savePassword": "Save password",
+      "requestNewLink": "Request a new link",
+      "backToLogin": "Back to sign in",
+      "invalidLink": "This link is invalid or has expired. Request a new link.",
+      "sessionVerificationFailed": "The session could not be verified. Request a new link.",
+      "sessionUnavailable": "The session is unavailable. Request a new link.",
+      "passwordMinLength": "The password must contain at least 8 characters.",
+      "passwordMismatch": "The passwords do not match.",
+      "passwordUpdated": "Your password has been updated.",
+      "passwordCreated": "Your password has been created. You will be redirected to your account.",
+      "passwordSaveFailed": "The password could not be saved."
+    }
   }
 }
