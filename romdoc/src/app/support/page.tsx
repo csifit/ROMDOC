@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import {
+  NextIntlClientProvider,
+} from "next-intl";
 
 import PublicLayout from "@/components/public/public-layout";
 import SupportTicketForm from "@/components/support/support-ticket-form";
@@ -14,6 +17,10 @@ import {
   type SupportCategory,
   type SupportRequesterType,
 } from "@/lib/i18n/public-support";
+
+import deMessages from "../../../messages/de.json";
+import enMessages from "../../../messages/en.json";
+import roMessages from "../../../messages/ro.json";
 
 type SupportPageProps = {
   searchParams?: Promise<{
@@ -39,6 +46,12 @@ const CATEGORIES = new Set([
   "technical_problem",
   "other",
 ]);
+
+const messagesByLocale = {
+  ro: roMessages,
+  en: enMessages,
+  de: deMessages,
+} as const;
 
 function getRequesterType(
   value: string | undefined
@@ -91,6 +104,8 @@ export default async function SupportPage({
   );
   const copy =
     publicSupportCopy[locale];
+  const messages =
+    messagesByLocale[locale];
 
   const initialRequesterType =
     getRequesterType(
@@ -111,56 +126,63 @@ export default async function SupportPage({
   });
 
   return (
-    <PublicLayout>
-      <main className="min-h-screen bg-[#F0EEE9] px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-5xl">
-          <header className="mb-8 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#036661]">
-              {copy.supportPage.eyebrow}
-            </p>
+    <NextIntlClientProvider
+      locale={locale}
+      messages={messages}
+    >
+      <PublicLayout
+        locale={locale}
+      >
+        <main className="min-h-screen bg-[#F0EEE9] px-4 py-10 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-5xl">
+            <header className="mb-8 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#036661]">
+                {copy.supportPage.eyebrow}
+              </p>
 
-            <h1 className="mt-3 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              {copy.supportPage.title}
-            </h1>
+              <h1 className="mt-3 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+                {copy.supportPage.title}
+              </h1>
 
-            <p className="mt-4 max-w-3xl text-base leading-7 text-gray-600">
-              {copy.supportPage.description}
-            </p>
+              <p className="mt-4 max-w-3xl text-base leading-7 text-gray-600">
+                {copy.supportPage.description}
+              </p>
 
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                href={contactHref}
-                className="romdoc-button romdoc-button-secondary romdoc-button-sm"
-              >
-                {
-                  copy.supportPage
-                    .backToContact
-                }
-              </Link>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link
+                  href={contactHref}
+                  className="romdoc-button romdoc-button-secondary romdoc-button-sm"
+                >
+                  {
+                    copy.supportPage
+                      .backToContact
+                  }
+                </Link>
 
-              <Link
-                href={privacyHref}
-                className="romdoc-button romdoc-button-secondary romdoc-button-sm"
-              >
-                {
-                  copy.supportPage
-                    .privacyLabel
-                }
-              </Link>
-            </div>
-          </header>
+                <Link
+                  href={privacyHref}
+                  className="romdoc-button romdoc-button-secondary romdoc-button-sm"
+                >
+                  {
+                    copy.supportPage
+                      .privacyLabel
+                  }
+                </Link>
+              </div>
+            </header>
 
-          <SupportTicketForm
-            initialRequesterType={
-              initialRequesterType
-            }
-            initialCategory={
-              initialCategory
-            }
-            copy={copy.form}
-          />
-        </div>
-      </main>
-    </PublicLayout>
+            <SupportTicketForm
+              initialRequesterType={
+                initialRequesterType
+              }
+              initialCategory={
+                initialCategory
+              }
+              copy={copy.form}
+            />
+          </div>
+        </main>
+      </PublicLayout>
+    </NextIntlClientProvider>
   );
 }

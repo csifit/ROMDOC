@@ -19,6 +19,7 @@ import {
 
 type PublicLayoutProps = {
   children: ReactNode;
+  locale?: AppLocale;
 };
 
 type PublicProfile = {
@@ -53,9 +54,11 @@ function getDisplayName(
 
 export default async function PublicLayout({
   children,
+  locale: localeProp,
 }: PublicLayoutProps) {
   const locale =
-    (await getLocale()) as AppLocale;
+    localeProp ??
+    ((await getLocale()) as AppLocale);
 
   const supabase =
     await createClient();
@@ -119,7 +122,9 @@ export default async function PublicLayout({
         {children}
       </div>
 
-      <PublicFooter />
+      <PublicFooter
+        locale={locale}
+      />
 
       <CookieInformationBanner
         locale={locale}
