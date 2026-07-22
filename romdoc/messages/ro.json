@@ -2593,5 +2593,114 @@
         }
       }
     }
+  },
+  "DoctorApplication": {
+    "checkoutSuccess": "Plata a fost transmisă către Stripe. Activarea finală este realizată automat după confirmarea webhookului securizat.",
+    "checkoutCancelled": "Plata a fost anulată. Poți selecta din nou planul dorit când ești pregătit.",
+    "eyebrow": "Cont medic RomDoc",
+    "applicant": "Candidat",
+    "nameUnavailable": "Nume indisponibil",
+    "applicationSubmitted": "Cerere trimisă",
+    "applicationStatus": "Status cerere: {status}",
+    "invitationAccepted": "momentul acceptării invitației",
+    "clinicCoverageNotice": "Abonamentul tău este acoperit de clinică din {date}. Nu este necesară plata individuală prin Stripe.",
+    "currentPlan": "Plan curent",
+    "yearlyPlan": "Abonament anual",
+    "monthlyPlan": "Abonament lunar",
+    "yearlyBilling": "Facturare o dată pe an",
+    "monthlyBilling": "Facturare în fiecare lună",
+    "subscriptionStatus": "Status abonament",
+    "currentPeriodEnds": "Perioada curentă se încheie la {date}.",
+    "nextBillingUnavailable": "Data următoarei facturări nu este disponibilă.",
+    "cancellationScheduled": "Abonamentul este programat pentru anulare la sfârșitul perioadei curente.",
+    "clinicCoveredTitle": "Abonament acoperit de clinică",
+    "clinicCoveredDescription": "Clinica gestionează plata abonamentului tău RomDoc. Următorul pas pentru tine este să finalizezi datele profesionale și verificarea profilului de medic.",
+    "manageTitle": "Administrarea abonamentului",
+    "manageDescription": "În portalul Stripe poți schimba planul lunar sau anual, metoda de plată și informațiile de facturare.",
+    "choosePlanTitle": "Alege planul de abonament",
+    "choosePlanDescription": "Selectează facturarea lunară sau anuală. Accesul la platforma medicilor este activat după confirmarea plății Stripe.",
+    "openDoctorDashboard": "Deschide panoul medicului",
+    "status": {
+      "clinicCovered": {
+        "title": "Abonamentul este acoperit de clinică",
+        "description": "Contul tău de medic a fost creat printr-o invitație de clinică. Plata abonamentului RomDoc este gestionată de clinică.",
+        "badge": "Plătit de clinică"
+      },
+      "active": {
+        "title": "Abonamentul este activ",
+        "description": "Contul tău de medic este activ și ai acces la serviciile platformei.",
+        "badge": "Activ"
+      },
+      "pastDue": {
+        "title": "Plata abonamentului necesită atenție",
+        "description": "Actualizează metoda de plată în portalul de facturare.",
+        "badge": "Plată restantă"
+      },
+      "inactive": {
+        "title": "Abonamentul nu este activ",
+        "description": "Abonamentul trebuie reactivat pentru acces complet la serviciile de medic.",
+        "badge": "Inactiv"
+      },
+      "processing": {
+        "title": "Plata este în curs de procesare",
+        "description": "Așteptăm confirmarea securizată de la Stripe. Pagina se va actualiza după procesarea webhookului.",
+        "badge": "În procesare"
+      },
+      "approved": {
+        "title": "Contul de medic este activ",
+        "description": "Plata a fost confirmată și contul a fost activat.",
+        "badge": "Activ"
+      },
+      "rejected": {
+        "title": "Cererea nu poate continua",
+        "description": "Contactează echipa RomDoc pentru informații suplimentare.",
+        "badge": "Respinsă"
+      },
+      "cancelled": {
+        "title": "Cererea a fost anulată",
+        "description": "Poți contacta echipa RomDoc pentru reactivarea procesului.",
+        "badge": "Anulată"
+      },
+      "pending": {
+        "title": "Activează abonamentul RomDoc",
+        "description": "Adresa de e-mail a fost confirmată. Următorul pas este activarea abonamentului de medic.",
+        "badge": "Plată necesară"
+      }
+    },
+    "subscriptionStatuses": {
+      "active": "Activ",
+      "trialing": "Perioadă de probă",
+      "pastDue": "Plată restantă",
+      "canceled": "Anulat",
+      "unpaid": "Neplătit",
+      "incomplete": "Plată incompletă",
+      "incompleteExpired": "Plată expirată",
+      "paused": "Suspendat"
+    },
+    "applicationStatuses": {
+      "pendingPayment": "Plată necesară",
+      "paymentProcessing": "Plată în procesare",
+      "paid": "Plătită",
+      "approved": "Aprobată",
+      "rejected": "Respinsă",
+      "cancelled": "Anulată"
+    },
+    "checkout": {
+      "monthlyTitle": "Abonament lunar",
+      "monthlyPrice": "{price} + TVA / lună",
+      "monthlyDescription": "Facturare lunară recurentă. Poți administra abonamentul ulterior din portalul Stripe.",
+      "monthlyButton": "Activează abonamentul lunar",
+      "yearlyTitle": "Abonament anual",
+      "yearlyPrice": "{price} + TVA / an",
+      "yearlyDescription": "Facturare anuală recurentă, cu un cost mai avantajos decât plata lunară.",
+      "yearlyButton": "Activează abonamentul anual",
+      "openingCheckout": "Se deschide pagina de plată...",
+      "genericError": "Pagina de plată nu a putut fi deschisă."
+    },
+    "manage": {
+      "button": "Administrează abonamentul",
+      "opening": "Se deschide...",
+      "genericError": "Portalul de facturare nu a putut fi deschis."
+    }
   }
 }

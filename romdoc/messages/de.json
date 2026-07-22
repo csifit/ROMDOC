@@ -2593,5 +2593,114 @@
         }
       }
     }
+  },
+  "DoctorApplication": {
+    "checkoutSuccess": "Die Zahlung wurde an Stripe übermittelt. Die endgültige Aktivierung erfolgt automatisch nach Bestätigung des sicheren Webhooks.",
+    "checkoutCancelled": "Die Zahlung wurde abgebrochen. Sie können den gewünschten Tarif erneut auswählen, sobald Sie bereit sind.",
+    "eyebrow": "RomDoc-Arztkonto",
+    "applicant": "Antragsteller",
+    "nameUnavailable": "Name nicht verfügbar",
+    "applicationSubmitted": "Antrag eingereicht",
+    "applicationStatus": "Antragsstatus: {status}",
+    "invitationAccepted": "dem Zeitpunkt der Annahme der Einladung",
+    "clinicCoverageNotice": "Ihr Abonnement wird seit {date} von der Klinik übernommen. Eine individuelle Zahlung über Stripe ist nicht erforderlich.",
+    "currentPlan": "Aktueller Tarif",
+    "yearlyPlan": "Jahresabonnement",
+    "monthlyPlan": "Monatsabonnement",
+    "yearlyBilling": "Jährliche Abrechnung",
+    "monthlyBilling": "Monatliche Abrechnung",
+    "subscriptionStatus": "Abonnementstatus",
+    "currentPeriodEnds": "Der aktuelle Zeitraum endet am {date}.",
+    "nextBillingUnavailable": "Das nächste Abrechnungsdatum ist nicht verfügbar.",
+    "cancellationScheduled": "Das Abonnement wird zum Ende des aktuellen Zeitraums gekündigt.",
+    "clinicCoveredTitle": "Abonnement wird von der Klinik übernommen",
+    "clinicCoveredDescription": "Die Klinik verwaltet die Zahlung Ihres RomDoc-Abonnements. Als Nächstes vervollständigen Sie Ihre beruflichen Angaben und die Verifizierung Ihres Arztprofils.",
+    "manageTitle": "Abonnement verwalten",
+    "manageDescription": "Im Stripe-Portal können Sie zwischen Monats- und Jahrestarif wechseln sowie Zahlungsmethode und Rechnungsdaten bearbeiten.",
+    "choosePlanTitle": "Abonnement auswählen",
+    "choosePlanDescription": "Wählen Sie monatliche oder jährliche Abrechnung. Der Zugang zur Ärzteplattform wird nach Bestätigung der Zahlung durch Stripe aktiviert.",
+    "openDoctorDashboard": "Ärzte-Dashboard öffnen",
+    "status": {
+      "clinicCovered": {
+        "title": "Das Abonnement wird von der Klinik übernommen",
+        "description": "Ihr Arztkonto wurde über eine Klinikeinladung erstellt. Die Klinik verwaltet die Zahlung des RomDoc-Abonnements.",
+        "badge": "Von Klinik bezahlt"
+      },
+      "active": {
+        "title": "Das Abonnement ist aktiv",
+        "description": "Ihr Arztkonto ist aktiv und Sie haben Zugang zu den Plattformdiensten.",
+        "badge": "Aktiv"
+      },
+      "pastDue": {
+        "title": "Die Abonnementzahlung erfordert Aufmerksamkeit",
+        "description": "Aktualisieren Sie die Zahlungsmethode im Abrechnungsportal.",
+        "badge": "Überfällig"
+      },
+      "inactive": {
+        "title": "Das Abonnement ist nicht aktiv",
+        "description": "Das Abonnement muss für den vollständigen Zugang zu den Arztdiensten reaktiviert werden.",
+        "badge": "Inaktiv"
+      },
+      "processing": {
+        "title": "Die Zahlung wird verarbeitet",
+        "description": "Wir warten auf die sichere Bestätigung von Stripe. Die Seite wird nach Verarbeitung des Webhooks aktualisiert.",
+        "badge": "In Bearbeitung"
+      },
+      "approved": {
+        "title": "Das Arztkonto ist aktiv",
+        "description": "Die Zahlung wurde bestätigt und das Konto aktiviert.",
+        "badge": "Aktiv"
+      },
+      "rejected": {
+        "title": "Der Antrag kann nicht fortgesetzt werden",
+        "description": "Kontaktieren Sie das RomDoc-Team für weitere Informationen.",
+        "badge": "Abgelehnt"
+      },
+      "cancelled": {
+        "title": "Der Antrag wurde storniert",
+        "description": "Sie können das RomDoc-Team kontaktieren, um den Vorgang wieder zu aktivieren.",
+        "badge": "Storniert"
+      },
+      "pending": {
+        "title": "RomDoc-Abonnement aktivieren",
+        "description": "Ihre E-Mail-Adresse wurde bestätigt. Als Nächstes aktivieren Sie das Arztabonnement.",
+        "badge": "Zahlung erforderlich"
+      }
+    },
+    "subscriptionStatuses": {
+      "active": "Aktiv",
+      "trialing": "Testzeitraum",
+      "pastDue": "Überfällig",
+      "canceled": "Gekündigt",
+      "unpaid": "Unbezahlt",
+      "incomplete": "Unvollständige Zahlung",
+      "incompleteExpired": "Zahlung abgelaufen",
+      "paused": "Pausiert"
+    },
+    "applicationStatuses": {
+      "pendingPayment": "Zahlung erforderlich",
+      "paymentProcessing": "Zahlung wird verarbeitet",
+      "paid": "Bezahlt",
+      "approved": "Genehmigt",
+      "rejected": "Abgelehnt",
+      "cancelled": "Storniert"
+    },
+    "checkout": {
+      "monthlyTitle": "Monatsabonnement",
+      "monthlyPrice": "{price} zzgl. MwSt. / Monat",
+      "monthlyDescription": "Wiederkehrende monatliche Abrechnung. Das Abonnement kann später im Stripe-Portal verwaltet werden.",
+      "monthlyButton": "Monatsabonnement aktivieren",
+      "yearlyTitle": "Jahresabonnement",
+      "yearlyPrice": "{price} zzgl. MwSt. / Jahr",
+      "yearlyDescription": "Wiederkehrende jährliche Abrechnung zu niedrigeren Gesamtkosten als bei monatlicher Zahlung.",
+      "yearlyButton": "Jahresabonnement aktivieren",
+      "openingCheckout": "Zahlungsseite wird geöffnet...",
+      "genericError": "Die Zahlungsseite konnte nicht geöffnet werden."
+    },
+    "manage": {
+      "button": "Abonnement verwalten",
+      "opening": "Wird geöffnet...",
+      "genericError": "Das Abrechnungsportal konnte nicht geöffnet werden."
+    }
   }
 }

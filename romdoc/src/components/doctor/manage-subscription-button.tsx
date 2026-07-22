@@ -1,9 +1,15 @@
 "use client";
 
 import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
+import {
+  useEffect,
   useState,
   useTransition,
 } from "react";
+
 import Button from "@/components/ui/button";
 
 type PortalResponse = {
@@ -12,39 +18,49 @@ type PortalResponse = {
 };
 
 export default function ManageSubscriptionButton() {
-  const [
-    isPending,
-    startTransition,
-  ] = useTransition();
+  const locale = useLocale();
+  const t = useTranslations(
+    "DoctorApplication.manage"
+  );
 
+  const [isPending, startTransition] =
+    useTransition();
   const [error, setError] =
-    useState<string | null>(
-      null
-    );
+    useState<string | null>(null);
+
+  useEffect(() => {
+    document.cookie =
+      `NEXT_LOCALE=${encodeURIComponent(locale)}; ` +
+      "Path=/; Max-Age=31536000; SameSite=Lax";
+  }, [locale]);
 
   function openPortal() {
     setError(null);
 
     startTransition(async () => {
       try {
-        const response =
-          await fetch(
-            "/api/stripe/customer-portal",
-            {
-              method: "POST",
-            }
-          );
+        const response = await fetch(
+          "/api/stripe/customer-portal",
+          {
+            method: "POST",
+          }
+        );
 
         const result =
-          (await response.json()) as PortalResponse;
+          (await response.json()) as
+            PortalResponse;
 
         if (
           !response.ok ||
           !result.url
         ) {
+          console.error(
+            "Stripe customer portal failed:",
+            result.error
+          );
+
           throw new Error(
-            result.error ??
-              "Portalul nu a putut fi deschis."
+            t("genericError")
           );
         }
 
@@ -55,7 +71,7 @@ export default function ManageSubscriptionButton() {
         setError(
           portalError instanceof Error
             ? portalError.message
-            : "Portalul nu a putut fi deschis."
+            : t("genericError")
         );
       }
     });
@@ -67,10 +83,10 @@ export default function ManageSubscriptionButton() {
         type="button"
         variant="secondary"
         isLoading={isPending}
-        loadingText="Se deschide..."
+        loadingText={t("opening")}
         onClick={openPortal}
       >
-        Administrează abonamentul
+        {t("button")}
       </Button>
 
       {error && (

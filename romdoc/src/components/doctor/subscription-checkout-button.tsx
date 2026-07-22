@@ -1,6 +1,11 @@
 "use client";
 
 import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
+import {
+  useEffect,
   useState,
   useTransition,
 } from "react";
@@ -16,54 +21,66 @@ type CheckoutResponse = {
   error?: string;
 };
 
-const plans: Array<{
-  interval: BillingInterval;
-  title: string;
-  price: string;
-  description: string;
-  buttonLabel: string;
-}> = [
-  {
-    interval: "monthly",
-    title: "Abonament lunar",
-    price: "60 RON + TVA / lună",
-    description:
-      "Facturare lunară recurentă. Poți administra abonamentul ulterior din portalul Stripe.",
-    buttonLabel:
-      "Activează abonamentul lunar",
-  },
-  {
-    interval: "yearly",
-    title: "Abonament anual",
-    price: "600 RON + TVA / an",
-    description:
-      "Facturare anuală recurentă, cu un cost mai avantajos decât plata lunară.",
-    buttonLabel:
-      "Activează abonamentul anual",
-  },
-];
+type SubscriptionCheckoutButtonProps = {
+  monthlyPrice: string;
+  yearlyPrice: string;
+};
 
-export default function
-SubscriptionCheckoutButton() {
-  const [
-    isPending,
-    startTransition,
-  ] = useTransition();
+export default function SubscriptionCheckoutButton({
+  monthlyPrice,
+  yearlyPrice,
+}: SubscriptionCheckoutButtonProps) {
+  const locale = useLocale();
+  const t = useTranslations(
+    "DoctorApplication.checkout"
+  );
 
-  const [
-    selectedInterval,
-    setSelectedInterval,
-  ] =
-    useState<BillingInterval | null>(
-      null
-    );
-
+  const [isPending, startTransition] =
+    useTransition();
+  const [selectedInterval, setSelectedInterval] =
+    useState<BillingInterval | null>(null);
   const [error, setError] =
     useState<string | null>(null);
 
+  useEffect(() => {
+    document.cookie =
+      `NEXT_LOCALE=${encodeURIComponent(locale)}; ` +
+      "Path=/; Max-Age=31536000; SameSite=Lax";
+  }, [locale]);
+
+  const plans: Array<{
+    interval: BillingInterval;
+    title: string;
+    price: string;
+    description: string;
+    buttonLabel: string;
+  }> = [
+    {
+      interval: "monthly",
+      title: t("monthlyTitle"),
+      price: t("monthlyPrice", {
+        price: monthlyPrice,
+      }),
+      description: t(
+        "monthlyDescription"
+      ),
+      buttonLabel: t("monthlyButton"),
+    },
+    {
+      interval: "yearly",
+      title: t("yearlyTitle"),
+      price: t("yearlyPrice", {
+        price: yearlyPrice,
+      }),
+      description: t(
+        "yearlyDescription"
+      ),
+      buttonLabel: t("yearlyButton"),
+    },
+  ];
+
   function startCheckout(
-    billingInterval:
-      BillingInterval
+    billingInterval: BillingInterval
   ) {
     setError(null);
     setSelectedInterval(
@@ -72,20 +89,19 @@ SubscriptionCheckoutButton() {
 
     startTransition(async () => {
       try {
-        const response =
-          await fetch(
-            "/api/stripe/create-checkout-session",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
-              body: JSON.stringify({
-                billingInterval,
-              }),
-            }
-          );
+        const response = await fetch(
+          "/api/stripe/create-checkout-session",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              billingInterval,
+            }),
+          }
+        );
 
         const result =
           (await response.json()) as
@@ -95,9 +111,13 @@ SubscriptionCheckoutButton() {
           !response.ok ||
           !result.url
         ) {
+          console.error(
+            "Stripe checkout session failed:",
+            result.error
+          );
+
           throw new Error(
-            result.error ??
-              "Pagina de plată nu a putut fi deschisă."
+            t("genericError")
           );
         }
 
@@ -108,10 +128,9 @@ SubscriptionCheckoutButton() {
         setSelectedInterval(null);
 
         setError(
-          checkoutError instanceof
-            Error
+          checkoutError instanceof Error
             ? checkoutError.message
-            : "Pagina de plată nu a putut fi deschisă."
+            : t("genericError")
         );
       }
     });
@@ -150,7 +169,9 @@ SubscriptionCheckoutButton() {
                   isLoading={
                     isThisPlanPending
                   }
-                  loadingText="Se deschide pagina de plată..."
+                  loadingText={t(
+                    "openingCheckout"
+                  )}
                   disabled={
                     isPending &&
                     !isThisPlanPending

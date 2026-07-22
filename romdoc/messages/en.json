@@ -2593,5 +2593,114 @@
         }
       }
     }
+  },
+  "DoctorApplication": {
+    "checkoutSuccess": "The payment was submitted to Stripe. Final activation happens automatically after the secure webhook is confirmed.",
+    "checkoutCancelled": "The payment was cancelled. You can select a plan again whenever you are ready.",
+    "eyebrow": "RomDoc Doctor account",
+    "applicant": "Applicant",
+    "nameUnavailable": "Name unavailable",
+    "applicationSubmitted": "Application submitted",
+    "applicationStatus": "Application status: {status}",
+    "invitationAccepted": "the moment the invitation was accepted",
+    "clinicCoverageNotice": "Your subscription has been covered by the clinic since {date}. An individual Stripe payment is not required.",
+    "currentPlan": "Current plan",
+    "yearlyPlan": "Yearly subscription",
+    "monthlyPlan": "Monthly subscription",
+    "yearlyBilling": "Billed once per year",
+    "monthlyBilling": "Billed every month",
+    "subscriptionStatus": "Subscription status",
+    "currentPeriodEnds": "The current period ends on {date}.",
+    "nextBillingUnavailable": "The next billing date is unavailable.",
+    "cancellationScheduled": "The subscription is scheduled to cancel at the end of the current period.",
+    "clinicCoveredTitle": "Subscription covered by the clinic",
+    "clinicCoveredDescription": "The clinic manages payment for your RomDoc subscription. Your next step is to complete your professional details and Doctor profile verification.",
+    "manageTitle": "Manage subscription",
+    "manageDescription": "In the Stripe portal you can change the monthly or yearly plan, payment method and billing information.",
+    "choosePlanTitle": "Choose a subscription plan",
+    "choosePlanDescription": "Select monthly or yearly billing. Access to the Doctor platform is activated after Stripe confirms the payment.",
+    "openDoctorDashboard": "Open Doctor dashboard",
+    "status": {
+      "clinicCovered": {
+        "title": "The subscription is covered by the clinic",
+        "description": "Your Doctor account was created through a clinic invitation. The clinic manages payment for the RomDoc subscription.",
+        "badge": "Clinic-paid"
+      },
+      "active": {
+        "title": "The subscription is active",
+        "description": "Your Doctor account is active and you have access to the platform services.",
+        "badge": "Active"
+      },
+      "pastDue": {
+        "title": "The subscription payment needs attention",
+        "description": "Update the payment method in the billing portal.",
+        "badge": "Past due"
+      },
+      "inactive": {
+        "title": "The subscription is inactive",
+        "description": "The subscription must be reactivated for full access to Doctor services.",
+        "badge": "Inactive"
+      },
+      "processing": {
+        "title": "The payment is processing",
+        "description": "We are waiting for Stripe's secure confirmation. The page will update after the webhook is processed.",
+        "badge": "Processing"
+      },
+      "approved": {
+        "title": "The Doctor account is active",
+        "description": "The payment was confirmed and the account was activated.",
+        "badge": "Active"
+      },
+      "rejected": {
+        "title": "The application cannot continue",
+        "description": "Contact the RomDoc team for additional information.",
+        "badge": "Rejected"
+      },
+      "cancelled": {
+        "title": "The application was cancelled",
+        "description": "You can contact the RomDoc team to reactivate the process.",
+        "badge": "Cancelled"
+      },
+      "pending": {
+        "title": "Activate your RomDoc subscription",
+        "description": "Your email address has been confirmed. The next step is to activate the Doctor subscription.",
+        "badge": "Payment required"
+      }
+    },
+    "subscriptionStatuses": {
+      "active": "Active",
+      "trialing": "Trial period",
+      "pastDue": "Past due",
+      "canceled": "Cancelled",
+      "unpaid": "Unpaid",
+      "incomplete": "Incomplete payment",
+      "incompleteExpired": "Payment expired",
+      "paused": "Paused"
+    },
+    "applicationStatuses": {
+      "pendingPayment": "Payment required",
+      "paymentProcessing": "Payment processing",
+      "paid": "Paid",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "cancelled": "Cancelled"
+    },
+    "checkout": {
+      "monthlyTitle": "Monthly subscription",
+      "monthlyPrice": "{price} + VAT / month",
+      "monthlyDescription": "Recurring monthly billing. You can manage the subscription later from the Stripe portal.",
+      "monthlyButton": "Activate monthly subscription",
+      "yearlyTitle": "Yearly subscription",
+      "yearlyPrice": "{price} + VAT / year",
+      "yearlyDescription": "Recurring yearly billing at a lower cost than paying monthly.",
+      "yearlyButton": "Activate yearly subscription",
+      "openingCheckout": "Opening the payment page...",
+      "genericError": "The payment page could not be opened."
+    },
+    "manage": {
+      "button": "Manage subscription",
+      "opening": "Opening...",
+      "genericError": "The billing portal could not be opened."
+    }
   }
 }

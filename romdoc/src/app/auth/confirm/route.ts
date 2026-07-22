@@ -14,18 +14,12 @@ import {
 } from "@/lib/supabase/server";
 
 function getSafeNextPath(
-  value:
-    | string
-    | null
+  value: string | null
 ) {
   if (
     !value ||
-    !value.startsWith(
-      "/"
-    ) ||
-    value.startsWith(
-      "//"
-    )
+    !value.startsWith("/") ||
+    value.startsWith("//")
   ) {
     return "/dashboard";
   }
@@ -33,70 +27,84 @@ function getSafeNextPath(
   return value;
 }
 
+function getLocalizedNextUrl(
+  nextPath: string,
+  locale: string,
+  origin: string
+) {
+  const nextUrl = new URL(
+    nextPath,
+    origin
+  );
+
+  if (
+    nextUrl.pathname ===
+    "/doctor-application"
+  ) {
+    nextUrl.searchParams.set(
+      "locale",
+      locale
+    );
+  }
+
+  return nextUrl;
+}
+
 export async function GET(
   request: NextRequest
 ) {
-  const requestUrl =
-    new URL(
-      request.url
-    );
+  const requestUrl = new URL(
+    request.url
+  );
 
-  const locale =
-    normalizeAppLocale(
-      requestUrl
-        .searchParams
-        .get("locale")
-    );
+  const locale = normalizeAppLocale(
+    requestUrl.searchParams.get(
+      "locale"
+    )
+  );
 
   const code =
-    requestUrl
-      .searchParams
-      .get("code");
+    requestUrl.searchParams.get(
+      "code"
+    );
 
   const tokenHash =
-    requestUrl
-      .searchParams
-      .get(
-        "token_hash"
-      );
+    requestUrl.searchParams.get(
+      "token_hash"
+    );
 
   const type =
-    requestUrl
-      .searchParams
-      .get(
-        "type"
-      ) as
-        | EmailOtpType
-        | null;
+    requestUrl.searchParams.get(
+      "type"
+    ) as EmailOtpType | null;
 
-  const nextPath =
-    getSafeNextPath(
-      requestUrl
-        .searchParams
-        .get("next")
+  const nextPath = getSafeNextPath(
+    requestUrl.searchParams.get(
+      "next"
+    )
+  );
+
+  const localizedNextUrl =
+    getLocalizedNextUrl(
+      nextPath,
+      locale,
+      requestUrl.origin
     );
 
   const supabase =
     await createClient();
 
   if (code) {
-    const {
-      error,
-    } =
-      await supabase
-        .auth
+    const { error } =
+      await supabase.auth
         .exchangeCodeForSession(
           code
         );
 
     if (!error) {
-      return NextResponse
-        .redirect(
-          new URL(
-            nextPath,
-            requestUrl.origin
-          )
-        );
+      return NextResponse.redirect(
+        localizedNextUrl
+      );
     }
 
     console.error(
@@ -105,30 +113,17 @@ export async function GET(
     );
   }
 
-  if (
-    tokenHash &&
-    type
-  ) {
-    const {
-      error,
-    } =
-      await supabase
-        .auth
-        .verifyOtp({
-          token_hash:
-            tokenHash,
-
-          type,
-        });
+  if (tokenHash && type) {
+    const { error } =
+      await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type,
+      });
 
     if (!error) {
-      return NextResponse
-        .redirect(
-          new URL(
-            nextPath,
-            requestUrl.origin
-          )
-        );
+      return NextResponse.redirect(
+        localizedNextUrl
+      );
     }
 
     console.error(
@@ -137,32 +132,27 @@ export async function GET(
     );
   }
 
-  const errorUrl =
-    new URL(
-      "/login",
-      requestUrl.origin
-    );
+  const errorUrl = new URL(
+    "/login",
+    requestUrl.origin
+  );
 
-  errorUrl.searchParams
-    .set(
-      "locale",
-      locale
-    );
+  errorUrl.searchParams.set(
+    "locale",
+    locale
+  );
 
-  errorUrl.searchParams
-    .set(
-      "error",
-      "confirmation_failed"
-    );
+  errorUrl.searchParams.set(
+    "error",
+    "confirmation_failed"
+  );
 
-  errorUrl.searchParams
-    .set(
-      "next",
-      nextPath
-    );
+  errorUrl.searchParams.set(
+    "next",
+    `${localizedNextUrl.pathname}${localizedNextUrl.search}`
+  );
 
-  return NextResponse
-    .redirect(
-      errorUrl
-    );
+  return NextResponse.redirect(
+    errorUrl
+  );
 }
