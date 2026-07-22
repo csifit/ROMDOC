@@ -294,9 +294,9 @@
       "title": "Abonamentul medicului",
       "description": "Abonamentul oferă acces la profilul profesional, serviciile, clinicile, disponibilitatea și instrumentele de programare RomDoc.",
       "monthlyLabel": "Plan lunar",
-      "monthlyPrice": "60 RON/lună + TVA",
+      "monthlyPrice": "12 EURO/lună + TVA",
       "yearlyLabel": "Plan anual",
-      "yearlyPrice": "600 RON/an + TVA",
+      "yearlyPrice": "120 EURO/an + TVA",
       "smsNote": "Costurile serviciului de mesagerie și SMS sunt separate și nu sunt incluse în abonamentul medicului."
     },
     "sms": {
@@ -406,7 +406,7 @@
       "vatNumber": "Cod TVA",
       "independentTitle": "Cont de medic independent",
       "independentDescription": "Acest formular creează un cont profesional independent, asociat exclusiv adresei de e-mail introduse aici.",
-      "independentBilling": "Abonamentul RomDoc este plătit direct de medic: 60 RON/lună + TVA sau 600 RON/an + TVA.",
+      "independentBilling": "Abonamentul RomDoc este plătit direct de medic: 12 EURO/lună + TVA sau 120 EURO/an + TVA.",
       "independentImmutable": "Contul nu poate fi transformat ulterior într-un cont plătit de clinică. Pentru acoperire plătită de clinică este necesară o invitație separată, trimisă la o altă adresă de e-mail, care va crea un alt utilizator RomDoc.",
       "independentAcknowledgement": "Înțeleg că acest cont rămâne independent și nu poate primi ulterior acoperire plătită de clinică.",
       "termsPrefix": "Accept",

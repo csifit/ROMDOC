@@ -294,9 +294,9 @@
       "title": "Doctor subscription",
       "description": "The subscription provides access to the professional profile, services, clinics, availability and RomDoc appointment tools.",
       "monthlyLabel": "Monthly plan",
-      "monthlyPrice": "60 RON/month + VAT",
+      "monthlyPrice": "12 EURO/month + VAT",
       "yearlyLabel": "Yearly plan",
-      "yearlyPrice": "600 RON/year + VAT",
+      "yearlyPrice": "120 EURO/year + VAT",
       "smsNote": "Messaging and SMS service costs are separate and are not included in the doctor subscription."
     },
     "sms": {
@@ -406,7 +406,7 @@
       "vatNumber": "VAT number",
       "independentTitle": "Independent doctor account",
       "independentDescription": "This form creates an independent professional account associated exclusively with the email address entered here.",
-      "independentBilling": "The RomDoc subscription is paid directly by the doctor: RON 60/month plus VAT or RON 600/year plus VAT.",
+      "independentBilling": "The RomDoc subscription is paid directly by the doctor: 12 EURO/month plus VAT or 120 EURO/year plus VAT.",
       "independentImmutable": "This account cannot later be converted into a clinic-paid account. Clinic-paid coverage requires a separate invitation sent to another email address, creating another RomDoc user.",
       "independentAcknowledgement": "I understand that this account remains independent and cannot later receive clinic-paid coverage.",
       "termsPrefix": "I accept the",

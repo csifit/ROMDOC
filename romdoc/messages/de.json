@@ -294,9 +294,9 @@
       "title": "Arzt-Abonnement",
       "description": "Das Abonnement bietet Zugriff auf Berufsprofil, Leistungen, Kliniken, Verfügbarkeit und RomDoc-Terminwerkzeuge.",
       "monthlyLabel": "Monatsplan",
-      "monthlyPrice": "60 RON/Monat + MwSt.",
+      "monthlyPrice": "12 EURO/Monat + MwSt.",
       "yearlyLabel": "Jahresplan",
-      "yearlyPrice": "600 RON/Jahr + MwSt.",
+      "yearlyPrice": "120 EURO/Jahr + MwSt.",
       "smsNote": "Kosten für Nachrichten- und SMS-Dienste sind separat und nicht im Arzt-Abonnement enthalten."
     },
     "sms": {
@@ -406,7 +406,7 @@
       "vatNumber": "Umsatzsteuer-ID",
       "independentTitle": "Konto für selbstständige Ärzte",
       "independentDescription": "Dieses Formular erstellt ein unabhängiges berufliches Konto, das ausschließlich mit der hier angegebenen E-Mail-Adresse verknüpft ist.",
-      "independentBilling": "Das RomDoc-Abonnement wird direkt vom Arzt bezahlt: 60 RON pro Monat zuzüglich Mehrwertsteuer oder 600 RON pro Jahr zuzüglich Mehrwertsteuer.",
+      "independentBilling": "Das RomDoc-Abonnement wird direkt vom Arzt bezahlt: 12 EURO pro Monat zuzüglich Mehrwertsteuer oder 120 EURO pro Jahr zuzüglich Mehrwertsteuer.",
       "independentImmutable": "Dieses Konto kann später nicht in ein von einer Klinik bezahltes Konto umgewandelt werden. Eine von einer Klinik bezahlte Abdeckung erfordert eine separate Einladung an eine andere E-Mail-Adresse und erstellt einen weiteren RomDoc-Benutzer.",
       "independentAcknowledgement": "Ich verstehe, dass dieses Konto unabhängig bleibt und später keine von einer Klinik bezahlte Abdeckung erhalten kann.",
       "termsPrefix": "Ich akzeptiere die",
