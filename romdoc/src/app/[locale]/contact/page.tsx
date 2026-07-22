@@ -1,4 +1,4 @@
 export {
   default,
-  metadata,
+  generateMetadata,
 } from "@/app/contact/page";

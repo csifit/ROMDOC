@@ -1,166 +1,162 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  type ChangeEvent,
+  type FormEvent,
+  useMemo,
+  useState,
+} from "react";
 
-type SupportRequesterType =
-  | "patient"
-  | "doctor"
-  | "clinic"
-  | "visitor";
-
-type SupportCategory =
-  | "patient_support"
-  | "doctor_support"
-  | "profile_correction"
-  | "booking_problem"
-  | "privacy_request"
-  | "technical_problem"
-  | "other";
+import type {
+  SupportCategory,
+  SupportRequesterType,
+  SupportTicketFormCopy,
+} from "@/lib/i18n/public-support";
 
 type SupportTicketFormProps = {
   initialRequesterType?: SupportRequesterType;
   initialCategory?: SupportCategory;
+  copy: SupportTicketFormCopy;
 };
 
-const REQUESTER_TYPE_OPTIONS: Array<{
-  value: SupportRequesterType;
-  label: string;
-}> = [
-  { value: "patient", label: "Pacient" },
-  { value: "doctor", label: "Medic" },
-  { value: "clinic", label: "Clinică / recepție" },
-  { value: "visitor", label: "Vizitator" },
-];
+const REQUESTER_TYPES = new Set([
+  "patient",
+  "doctor",
+  "clinic",
+  "visitor",
+]);
 
-const CATEGORY_OPTIONS: Array<{
-  value: SupportCategory;
-  label: string;
-  hint: string;
-}> = [
-  {
-    value: "patient_support",
-    label: "Suport pacient",
-    hint: "Cont pacient, acces, dashboard, anulare programare.",
-  },
-  {
-    value: "doctor_support",
-    label: "Suport medic",
-    hint: "Profil medic, abonament, clinici, disponibilitate, verificare.",
-  },
-  {
-    value: "profile_correction",
-    label: "Corectare profil sau informații publice",
-    hint: "Date incorecte despre medic, clinică, adresă sau specialitate.",
-  },
-  {
-    value: "booking_problem",
-    label: "Problemă cu o programare",
-    hint: "Nu apare programarea, confirmare lipsă, oră greșită sau anulare.",
-  },
-  {
-    value: "privacy_request",
-    label: "Confidențialitate / date personale",
-    hint: "Acces, corectare, ștergere sau întrebări despre date personale.",
-  },
-  {
-    value: "technical_problem",
-    label: "Problemă tehnică",
-    hint: "Eroare de pagină, formular care nu se trimite, problemă de autentificare.",
-  },
-  {
-    value: "other",
-    label: "Altă solicitare",
-    hint: "Alt subiect legat de utilizarea platformei RomDoc.",
-  },
-];
+const CATEGORIES = new Set([
+  "patient_support",
+  "doctor_support",
+  "profile_correction",
+  "booking_problem",
+  "privacy_request",
+  "technical_problem",
+  "other",
+]);
 
 function isValidRequesterType(
   value: string | undefined
 ): value is SupportRequesterType {
-  return REQUESTER_TYPE_OPTIONS.some(
-    (option) => option.value === value
+  return REQUESTER_TYPES.has(
+    value ?? ""
   );
 }
 
 function isValidCategory(
   value: string | undefined
 ): value is SupportCategory {
-  return CATEGORY_OPTIONS.some(
-    (option) => option.value === value
+  return CATEGORIES.has(
+    value ?? ""
   );
 }
 
 export default function SupportTicketForm({
   initialRequesterType = "patient",
   initialCategory = "patient_support",
+  copy,
 }: SupportTicketFormProps) {
   const [requesterType, setRequesterType] =
     useState<SupportRequesterType>(
-      isValidRequesterType(initialRequesterType)
+      isValidRequesterType(
+        initialRequesterType
+      )
         ? initialRequesterType
         : "patient"
     );
 
   const [category, setCategory] =
     useState<SupportCategory>(
-      isValidCategory(initialCategory)
+      isValidCategory(
+        initialCategory
+      )
         ? initialCategory
         : "patient_support"
     );
 
-  const [requesterName, setRequesterName] = useState("");
-  const [requesterEmail, setRequesterEmail] = useState("");
-  const [requesterPhone, setRequesterPhone] = useState("");
-  const [subject, setSubject] = useState("");
-  const [message, setMessage] = useState("");
-  const [relatedUrl, setRelatedUrl] = useState("");
-  const [appointmentId, setAppointmentId] = useState("");
-  const [website, setWebsite] = useState("");
+  const [requesterName, setRequesterName] =
+    useState("");
+  const [requesterEmail, setRequesterEmail] =
+    useState("");
+  const [requesterPhone, setRequesterPhone] =
+    useState("");
+  const [subject, setSubject] =
+    useState("");
+  const [message, setMessage] =
+    useState("");
+  const [relatedUrl, setRelatedUrl] =
+    useState("");
+  const [appointmentId, setAppointmentId] =
+    useState("");
+  const [website, setWebsite] =
+    useState("");
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [ticketId, setTicketId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] =
+    useState(false);
+  const [submitError, setSubmitError] =
+    useState<string | null>(null);
+  const [ticketId, setTicketId] =
+    useState<string | null>(null);
 
   const selectedCategory = useMemo(
-    () => CATEGORY_OPTIONS.find((option) => option.value === category),
-    [category]
+    () =>
+      copy.categoryOptions.find(
+        (option) =>
+          option.value === category
+      ),
+    [category, copy.categoryOptions]
   );
 
-  async function submitTicket(event: React.FormEvent<HTMLFormElement>) {
+  async function submitTicket(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
     setSubmitError(null);
     setTicketId(null);
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/support/tickets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          requesterType,
-          category,
-          requesterName,
-          requesterEmail,
-          requesterPhone,
-          subject,
-          message,
-          relatedUrl,
-          appointmentId,
-          website,
-        }),
-      });
+      const response = await fetch(
+        "/api/support/tickets",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            requesterType,
+            category,
+            requesterName,
+            requesterEmail,
+            requesterPhone,
+            subject,
+            message,
+            relatedUrl,
+            appointmentId,
+            website,
+          }),
+        }
+      );
 
-      const result = (await response.json()) as {
-        success?: boolean;
-        ticketId?: string;
-        error?: string;
-      };
+      const result =
+        (await response.json()) as {
+          success?: boolean;
+          ticketId?: string;
+          error?: string;
+        };
 
       if (!response.ok) {
-        throw new Error(result.error ?? "Solicitarea nu a putut fi trimisă.");
+        throw new Error(
+          result.error ??
+            copy.errorFallback
+        );
       }
 
-      setTicketId(result.ticketId ?? null);
+      setTicketId(
+        result.ticketId ?? null
+      );
       setRequesterPhone("");
       setSubject("");
       setMessage("");
@@ -171,7 +167,7 @@ export default function SupportTicketForm({
       setSubmitError(
         error instanceof Error
           ? error.message
-          : "Solicitarea nu a putut fi trimisă."
+          : copy.errorFallback
       );
     } finally {
       setIsSubmitting(false);
@@ -185,39 +181,40 @@ export default function SupportTicketForm({
     >
       <div>
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#036661]">
-          Tichet suport RomDoc
+          {copy.eyebrow}
         </p>
 
         <h2 className="mt-3 text-2xl font-bold text-gray-900">
-          Trimite o solicitare către echipa RomDoc
+          {copy.title}
         </h2>
 
         <p className="mt-3 text-sm leading-6 text-gray-600">
-          Folosește acest formular pentru probleme legate de platformă: cont,
-          profil public, programări, confidențialitate sau erori tehnice.
+          {copy.description}
         </p>
       </div>
 
       <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-        Nu include date medicale sensibile, diagnostice, rezultate de analize
-        sau urgențe medicale. Pentru urgențe, contactează serviciile medicale
-        potrivite.
+        {copy.warning}
       </div>
 
-      {ticketId && (
-        <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm leading-6 text-green-900">
-          Solicitarea a fost trimisă. ID tichet: <strong>{ticketId}</strong>.
+      {ticketId ? (
+        <div
+          aria-live="polite"
+          className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm leading-6 text-green-900"
+        >
+          {copy.successPrefix}{" "}
+          <strong>{ticketId}</strong>.
         </div>
-      )}
+      ) : null}
 
-      {submitError && (
+      {submitError ? (
         <div
           role="alert"
           className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800"
         >
           {submitError}
         </div>
-      )}
+      ) : null}
 
       <input
         type="text"
@@ -225,7 +222,11 @@ export default function SupportTicketForm({
         tabIndex={-1}
         autoComplete="off"
         value={website}
-        onChange={(event) => setWebsite(event.target.value)}
+        onChange={(event: ChangeEvent<HTMLInputElement>) =>
+          setWebsite(
+            event.target.value
+          )
+        }
         className="hidden"
         aria-hidden="true"
       />
@@ -233,53 +234,79 @@ export default function SupportTicketForm({
       <div className="mt-8 grid gap-5 md:grid-cols-2">
         <label className="block">
           <span className="text-sm font-semibold text-gray-700">
-            Cine trimite solicitarea?
+            {copy.requesterLabel}
           </span>
+
           <select
             value={requesterType}
-            onChange={(event) =>
-              setRequesterType(event.target.value as SupportRequesterType)
+            onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+              setRequesterType(
+                event.target
+                  .value as SupportRequesterType
+              )
             }
             className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
           >
-            {REQUESTER_TYPE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
+            {copy.requesterOptions.map(
+              (option) => (
+                <option
+                  key={option.value}
+                  value={option.value}
+                >
+                  {option.label}
+                </option>
+              )
+            )}
           </select>
         </label>
 
         <label className="block">
           <span className="text-sm font-semibold text-gray-700">
-            Categoria solicitării
+            {copy.categoryLabel}
           </span>
+
           <select
             value={category}
-            onChange={(event) =>
-              setCategory(event.target.value as SupportCategory)
+            onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+              setCategory(
+                event.target
+                  .value as SupportCategory
+              )
             }
             className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
           >
-            {CATEGORY_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
+            {copy.categoryOptions.map(
+              (option) => (
+                <option
+                  key={option.value}
+                  value={option.value}
+                >
+                  {option.label}
+                </option>
+              )
+            )}
           </select>
-          {selectedCategory && (
+
+          {selectedCategory ? (
             <span className="mt-2 block text-xs leading-5 text-gray-500">
               {selectedCategory.hint}
             </span>
-          )}
+          ) : null}
         </label>
 
         <label className="block">
-          <span className="text-sm font-semibold text-gray-700">Nume</span>
+          <span className="text-sm font-semibold text-gray-700">
+            {copy.nameLabel}
+          </span>
+
           <input
             type="text"
             value={requesterName}
-            onChange={(event) => setRequesterName(event.target.value)}
+            onChange={(event: ChangeEvent<HTMLInputElement>) =>
+              setRequesterName(
+                event.target.value
+              )
+            }
             required
             minLength={2}
             maxLength={120}
@@ -288,11 +315,18 @@ export default function SupportTicketForm({
         </label>
 
         <label className="block">
-          <span className="text-sm font-semibold text-gray-700">E-mail</span>
+          <span className="text-sm font-semibold text-gray-700">
+            {copy.emailLabel}
+          </span>
+
           <input
             type="email"
             value={requesterEmail}
-            onChange={(event) => setRequesterEmail(event.target.value)}
+            onChange={(event: ChangeEvent<HTMLInputElement>) =>
+              setRequesterEmail(
+                event.target.value
+              )
+            }
             required
             maxLength={180}
             className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
@@ -301,12 +335,20 @@ export default function SupportTicketForm({
 
         <label className="block">
           <span className="text-sm font-semibold text-gray-700">
-            Telefon <span className="font-normal text-gray-500">opțional</span>
+            {copy.phoneLabel}{" "}
+            <span className="font-normal text-gray-500">
+              {copy.optionalLabel}
+            </span>
           </span>
+
           <input
             type="tel"
             value={requesterPhone}
-            onChange={(event) => setRequesterPhone(event.target.value)}
+            onChange={(event: ChangeEvent<HTMLInputElement>) =>
+              setRequesterPhone(
+                event.target.value
+              )
+            }
             maxLength={40}
             className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
           />
@@ -314,24 +356,41 @@ export default function SupportTicketForm({
 
         <label className="block">
           <span className="text-sm font-semibold text-gray-700">
-            ID programare <span className="font-normal text-gray-500">opțional</span>
+            {copy.appointmentIdLabel}{" "}
+            <span className="font-normal text-gray-500">
+              {copy.optionalLabel}
+            </span>
           </span>
+
           <input
             type="text"
             value={appointmentId}
-            onChange={(event) => setAppointmentId(event.target.value)}
-            placeholder="Doar dacă îl ai"
+            onChange={(event: ChangeEvent<HTMLInputElement>) =>
+              setAppointmentId(
+                event.target.value
+              )
+            }
+            placeholder={
+              copy.appointmentPlaceholder
+            }
             className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
           />
         </label>
       </div>
 
       <label className="mt-5 block">
-        <span className="text-sm font-semibold text-gray-700">Subiect</span>
+        <span className="text-sm font-semibold text-gray-700">
+          {copy.subjectLabel}
+        </span>
+
         <input
           type="text"
           value={subject}
-          onChange={(event) => setSubject(event.target.value)}
+          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+            setSubject(
+              event.target.value
+            )
+          }
           required
           minLength={4}
           maxLength={180}
@@ -341,32 +400,49 @@ export default function SupportTicketForm({
 
       <label className="mt-5 block">
         <span className="text-sm font-semibold text-gray-700">
-          Link relevant <span className="font-normal text-gray-500">opțional</span>
+          {copy.relatedUrlLabel}{" "}
+          <span className="font-normal text-gray-500">
+            {copy.optionalLabel}
+          </span>
         </span>
+
         <input
           type="url"
           value={relatedUrl}
-          onChange={(event) => setRelatedUrl(event.target.value)}
-          placeholder="Ex: link profil medic, pagină programare, pagină cu eroare"
+          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+            setRelatedUrl(
+              event.target.value
+            )
+          }
+          placeholder={
+            copy.relatedUrlPlaceholder
+          }
           maxLength={600}
           className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
         />
       </label>
 
       <label className="mt-5 block">
-        <span className="text-sm font-semibold text-gray-700">Mesaj</span>
+        <span className="text-sm font-semibold text-gray-700">
+          {copy.messageLabel}
+        </span>
+
         <textarea
           value={message}
-          onChange={(event) => setMessage(event.target.value)}
+          onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
+            setMessage(
+              event.target.value
+            )
+          }
           required
           minLength={10}
           maxLength={4000}
           rows={7}
           className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-[#036661] focus:ring-2 focus:ring-[#036661]/20"
         />
+
         <span className="mt-2 block text-xs text-gray-500">
-          Maximum 4000 de caractere. Pentru mesaje medicale despre o programare,
-          folosește pagina programării, nu formularul de suport platformă.
+          {copy.messageHint}
         </span>
       </label>
 
@@ -375,7 +451,9 @@ export default function SupportTicketForm({
         disabled={isSubmitting}
         className="romdoc-button romdoc-button-primary mt-7 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {isSubmitting ? "Se trimite..." : "Trimite solicitarea"}
+        {isSubmitting
+          ? copy.submittingLabel
+          : copy.submitLabel}
       </button>
     </form>
   );
