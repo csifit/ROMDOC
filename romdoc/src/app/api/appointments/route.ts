@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 
 import { doctorCanUseClinic } from "@/lib/doctors/clinic-subaccount-scope";
+import {
+  resolveAppointmentNotificationLocale,
+} from "@/lib/appointments/notification-locale";
 import { createClient } from "@/lib/supabase/server";
 
 import {
@@ -20,6 +23,7 @@ type AppointmentRequestBody = {
   requestedTime?: string;
   durationMinutes?: number;
   notes?: string | null;
+  notificationLocale?: unknown;
 };
 
 type AvailableSlotRow = {
@@ -149,6 +153,10 @@ export async function POST(request: NextRequest): Promise<Response> {
     const requestedTime = body.requestedTime?.trim();
     const durationMinutes = Number(body.durationMinutes);
     const notes = body.notes?.trim() || null;
+    const notificationLocale =
+      resolveAppointmentNotificationLocale(
+        body.notificationLocale
+      );
 
     if (
       !doctorId ||
@@ -362,6 +370,8 @@ export async function POST(request: NextRequest): Promise<Response> {
         patient_name: patientName,
         patient_email: patientEmail,
         patient_phone: patientPhone,
+        notification_locale:
+          notificationLocale,
         requested_date: requestedDate,
         requested_time: requestedTime,
         duration_minutes: durationMinutes,

@@ -40,7 +40,7 @@ export default function AppointmentRequestForm({ doctorId, doctorName, doctorSlu
     event.preventDefault(); setError(null); if (!validClinic() || !validAvailability() || !validPatient() || !selectedClinic) return;
     startTransition(async () => {
       try {
-        const response = await fetch("/api/appointments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ doctorId, doctorName, clinicId, clinicName: selectedClinic.name, patientName: patientName.trim(), patientPhone: patientPhone.trim(), requestedDate, requestedTime, durationMinutes, notes: notes.trim() || null }) });
+        const response = await fetch("/api/appointments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ doctorId, doctorName, clinicId, clinicName: selectedClinic.name, notificationLocale: locale, patientName: patientName.trim(), patientPhone: patientPhone.trim(), requestedDate, requestedTime, durationMinutes, notes: notes.trim() || null }) });
         const result = await response.json() as ApiResponse;
         if (response.status === 401) { window.location.href = `/login?locale=${locale}&next=${encodeURIComponent(`${localeDoctorPath(locale, doctorSlug)}#programare`)}`; return; }
         if (!response.ok) throw new Error(locale === "ro" && result.error ? result.error : t.submitFailed);

@@ -9,6 +9,12 @@ import {
   type AppointmentReminderType,
 } from "@/lib/appointments/send-appointment-reminder-email";
 import {
+  getNotificationEntityFallback,
+  resolveAppointmentNotificationLocale,
+  selectNotificationTranslation,
+  type AppointmentNotificationLocale,
+} from "@/lib/appointments/notification-locale";
+import {
   logAppointmentNotificationDelivery,
   reminderTypeToNotificationType,
 } from "@/lib/appointments/log-appointment-notification-delivery";
@@ -52,6 +58,8 @@ type AppointmentRecord = {
   status: string;
   patient_name: string;
   patient_email: string;
+  notification_locale:
+    string | null;
   scheduled_date: string | null;
   scheduled_time: string | null;
   doctor_id: string;
@@ -89,7 +97,10 @@ function isAuthorizedCronRequest(
 }
 
 function getDoctorName(
-  appointment: AppointmentRecord
+  appointment:
+    AppointmentRecord,
+  locale:
+    AppointmentNotificationLocale
 ) {
   const doctor = firstRelation(
     appointment.doctors
@@ -120,27 +131,36 @@ function getDoctorName(
           part.slice(1)
       )
       .join(" ") ??
-    "Medic RomDoc"
+    getNotificationEntityFallback(
+      locale,
+      "doctor"
+    )
   );
 }
 
 function getClinicName(
-  appointment: AppointmentRecord
+  appointment:
+    AppointmentRecord,
+  locale:
+    AppointmentNotificationLocale
 ) {
   const clinic = firstRelation(
     appointment.clinics
   );
 
   if (!clinic) {
-    return "Clinică nespecificată";
+    return getNotificationEntityFallback(
+      locale,
+      "clinic"
+    );
   }
 
   return (
-    clinic.clinic_translations.find(
-      (translation) =>
-        translation.locale === "ro"
+    selectNotificationTranslation(
+      clinic
+        .clinic_translations,
+      locale
     )?.name ??
-    clinic.clinic_translations[0]?.name ??
     clinic.slug
   );
 }
@@ -278,6 +298,7 @@ export async function GET(
         status,
         patient_name,
         patient_email,
+        notification_locale,
         scheduled_date,
         scheduled_time,
         doctor_id,
@@ -532,17 +553,29 @@ export async function GET(
       continue;
     }
 
+    const notificationLocale =
+      resolveAppointmentNotificationLocale(
+        appointment
+          .notification_locale
+      );
+
     const sendResult =
       await sendAppointmentReminderEmail({
         reminderType: reminder.reminder_type,
         patientName: appointment.patient_name,
         patientEmail: appointment.patient_email,
-        doctorName: getDoctorName(appointment),
-        clinicName: getClinicName(appointment),
+        doctorName: getDoctorName(
+          appointment,
+          notificationLocale
+        ),
+        clinicName: getClinicName(
+          appointment,
+          notificationLocale
+        ),
         scheduledDate: appointment.scheduled_date,
         scheduledTime: appointment.scheduled_time,
         cancellationUrl:
-          `${request.nextUrl.origin}/patient-dashboard`,
+          `${request.nextUrl.origin}/patient-dashboard?locale=${notificationLocale}`,
         idempotencyKey,
       });
 

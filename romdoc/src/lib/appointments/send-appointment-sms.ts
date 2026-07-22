@@ -1,4 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  getNotificationEntityFallback,
+  resolveAppointmentNotificationLocale,
+  selectNotificationTranslation,
+  type AppointmentNotificationLocale,
+} from "@/lib/appointments/notification-locale";
 
 export type AppointmentSmsEvent =
   | "confirmed"
@@ -56,6 +62,8 @@ type AppointmentRow = {
   clinic_id: string | null;
   patient_name: string;
   patient_phone: string;
+  notification_locale:
+    string | null;
   scheduled_date: string | null;
   scheduled_time: string | null;
   requested_date: string | null;
@@ -92,31 +100,128 @@ function formatNameFromSlug(slug: string) {
     .join(" ");
 }
 
-function getDoctorName(appointment: AppointmentRow) {
-  const doctor = firstRelation(appointment.doctors);
-  const profile = firstRelation(doctor?.profiles ?? null);
-  const profileName = [profile?.first_name, profile?.last_name]
+function getDoctorName(
+  appointment: AppointmentRow,
+  locale:
+    AppointmentNotificationLocale
+) {
+  const doctor =
+    firstRelation(
+      appointment.doctors
+    );
+
+  const profile =
+    firstRelation(
+      doctor?.profiles ??
+        null
+    );
+
+  const profileName = [
+    profile?.first_name,
+    profile?.last_name,
+  ]
     .filter(Boolean)
     .join(" ")
     .trim();
 
   return (
     profileName ||
-    (doctor ? formatNameFromSlug(doctor.slug) : "Medic RomDoc")
+    (
+      doctor
+        ? formatNameFromSlug(
+            doctor.slug
+          )
+        : getNotificationEntityFallback(
+            locale,
+            "doctor"
+          )
+    )
   );
 }
 
-function getClinicName(appointment: AppointmentRow) {
-  const clinic = firstRelation(appointment.clinics);
-  if (!clinic) return "clinica selectată";
+function getClinicName(
+  appointment: AppointmentRow,
+  locale:
+    AppointmentNotificationLocale
+) {
+  const clinic =
+    firstRelation(
+      appointment.clinics
+    );
+
+  if (!clinic) {
+    return getNotificationEntityFallback(
+      locale,
+      "clinic"
+    );
+  }
 
   return (
-    clinic.clinic_translations?.find(
-      (translation) => translation.locale === "ro"
+    selectNotificationTranslation(
+      clinic
+        .clinic_translations,
+      locale
     )?.name ??
-    clinic.clinic_translations?.[0]?.name ??
-    formatNameFromSlug(clinic.slug)
+    formatNameFromSlug(
+      clinic.slug
+    )
   );
+}
+
+function buildMessage(
+  event: AppointmentSmsEvent,
+  appointment: AppointmentRow
+) {
+  const locale =
+    resolveAppointmentNotificationLocale(
+      appointment
+        .notification_locale
+    );
+
+  const doctorName =
+    getDoctorName(
+      appointment,
+      locale
+    );
+
+  const clinicName =
+    getClinicName(
+      appointment,
+      locale
+    );
+
+  const date =
+    appointment
+      .scheduled_date ??
+    appointment
+      .requested_date;
+
+  const time =
+    appointment
+      .scheduled_time ??
+    appointment
+      .requested_time;
+
+  if (!date || !time) {
+    return null;
+  }
+
+  /*
+   * Group 8A establishes the locale pipeline.
+   * The complete RO/EN/DE SMS wording is added in Group 8B.
+   */
+  if (
+    event ===
+    "reminder_24_hours"
+  ) {
+    return `RomDoc: Reamintire - ai programare maine, ${formatDate(
+      date
+    )}, ora ${formatTime(time)}, la ${doctorName}, ${clinicName}.`;
+  }
+
+  return `RomDoc: Programarea la ${doctorName}, ${clinicName}, a fost confirmata pentru ${formatDate(
+    date
+  )}, ora ${formatTime(time)}.`;
 }
 
 function resolvePayer(appointment: AppointmentRow): SmsPayer {
@@ -149,28 +254,6 @@ function formatDate(date: string) {
 
 function formatTime(time: string) {
   return time.slice(0, 5);
-}
-
-function buildMessage(
-  event: AppointmentSmsEvent,
-  appointment: AppointmentRow
-) {
-  const doctorName = getDoctorName(appointment);
-  const clinicName = getClinicName(appointment);
-  const date = appointment.scheduled_date ?? appointment.requested_date;
-  const time = appointment.scheduled_time ?? appointment.requested_time;
-
-  if (!date || !time) return null;
-
-  if (event === "reminder_24_hours") {
-    return `RomDoc: Reamintire - ai programare maine, ${formatDate(
-      date
-    )}, ora ${formatTime(time)}, la ${doctorName}, ${clinicName}.`;
-  }
-
-  return `RomDoc: Programarea la ${doctorName}, ${clinicName}, a fost confirmata pentru ${formatDate(
-    date
-  )}, ora ${formatTime(time)}.`;
 }
 
 function configuredSmsUnitCostMinor(value: unknown) {
@@ -425,6 +508,7 @@ export async function sendAppointmentSms({
       clinic_id,
       patient_name,
       patient_phone,
+      notification_locale,
       scheduled_date,
       scheduled_time,
       requested_date,

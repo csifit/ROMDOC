@@ -2,6 +2,12 @@ import {
   createAdminClient,
 } from "@/lib/supabase/admin";
 import {
+  getNotificationEntityFallback,
+  resolveAppointmentNotificationLocale,
+  selectNotificationTranslation,
+  type AppointmentNotificationLocale,
+} from "@/lib/appointments/notification-locale";
+import {
   sendAppointmentSms,
 } from "@/lib/appointments/send-appointment-sms";
 import {
@@ -29,6 +35,8 @@ type AppointmentRow = {
   patient_name: string;
   patient_email: string;
   patient_phone: string;
+  notification_locale:
+    string | null;
   scheduled_date: string | null;
   scheduled_time: string | null;
   requested_date: string | null;
@@ -116,55 +124,65 @@ function formatNameFromSlug(
 }
 
 function getDoctorName(
-  appointment: AppointmentRow
+  appointment: AppointmentRow,
+  locale:
+    AppointmentNotificationLocale
 ) {
   const doctor =
     firstRelation(
       appointment.doctors
     );
 
+  const translation =
+    selectNotificationTranslation(
+      doctor
+        ?.doctor_translations,
+      locale
+    );
+
   return (
-    doctor?.doctor_translations
-      ?.find(
-        (item) =>
-          item.locale ===
-          "ro"
-      )?.title ??
-    doctor?.doctor_translations?.[0]
-      ?.title ??
+    translation?.title ??
     (
       doctor
         ? formatNameFromSlug(
             doctor.slug
           )
-        : "Medic"
+        : getNotificationEntityFallback(
+            locale,
+            "doctor"
+          )
     )
   );
 }
 
 function getClinicName(
-  appointment: AppointmentRow
+  appointment: AppointmentRow,
+  locale:
+    AppointmentNotificationLocale
 ) {
   const clinic =
     firstRelation(
       appointment.clinics
     );
 
+  const translation =
+    selectNotificationTranslation(
+      clinic
+        ?.clinic_translations,
+      locale
+    );
+
   return (
-    clinic?.clinic_translations
-      ?.find(
-        (item) =>
-          item.locale ===
-          "ro"
-      )?.name ??
-    clinic?.clinic_translations?.[0]
-      ?.name ??
+    translation?.name ??
     (
       clinic
         ? formatNameFromSlug(
             clinic.slug
           )
-        : "Clinică"
+        : getNotificationEntityFallback(
+            locale,
+            "clinic"
+          )
     )
   );
 }
@@ -397,6 +415,7 @@ export async function notifyAppointmentLifecycle({
       patient_name,
       patient_email,
       patient_phone,
+      notification_locale,
       scheduled_date,
       scheduled_time,
       requested_date,
@@ -449,6 +468,12 @@ export async function notifyAppointmentLifecycle({
   const appointment =
     appointmentData as unknown as
       AppointmentRow;
+
+  const notificationLocale =
+    resolveAppointmentNotificationLocale(
+      appointment
+        .notification_locale
+    );
 
   const doctor =
     firstRelation(
@@ -593,11 +618,13 @@ export async function notifyAppointmentLifecycle({
           appointment.patient_email,
         doctorName:
           getDoctorName(
-            appointment
+            appointment,
+            notificationLocale
           ),
         clinicName:
           getClinicName(
-            appointment
+            appointment,
+            notificationLocale
           ),
         scheduledDate:
           appointment.scheduled_date ??
