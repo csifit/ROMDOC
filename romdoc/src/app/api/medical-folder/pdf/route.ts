@@ -16,11 +16,6 @@ import {
 import {
   createClient,
 } from "@/lib/supabase/server";
-import {
-  consumeRateLimit,
-  rateLimitResponse,
-} from "@/lib/security/rate-limit";
-
 export const runtime = "nodejs";
 
 type PdfMakeWithVirtualFileSystem =
@@ -143,22 +138,6 @@ export async function POST(
           "Nu ai permisiunea de a genera acest PDF.",
       },
       { status: 403 }
-    );
-  }
-
-  const rateLimit =
-    await consumeRateLimit({
-      namespace:
-        "medical-folder-pdf",
-      identifier: user.id,
-      limit: 20,
-      windowSeconds:
-        60 * 60,
-    });
-
-  if (!rateLimit.allowed) {
-    return rateLimitResponse(
-      rateLimit
     );
   }
 
