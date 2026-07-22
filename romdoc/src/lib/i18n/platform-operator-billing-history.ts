@@ -36,6 +36,7 @@ const messages = {
       effectiveOutsideMonth:
         "Regula personalizată există, dar nu este valabilă în luna selectată; s-au folosit prețurile globale.",
       subscriptionPrice: "Preț abonament",
+      managedDoctors: "Medici gestionați",
       smsPrice: "Preț SMS",
       vatTreatment: "Regim TVA",
       vatReason: "Motiv TVA",
@@ -204,6 +205,7 @@ const messages = {
       effectiveOutsideMonth:
         "A custom rule exists but is not valid for the selected month; global prices were used.",
       subscriptionPrice: "Subscription price",
+      managedDoctors: "Managed Doctors",
       smsPrice: "SMS price",
       vatTreatment: "VAT treatment",
       vatReason: "VAT reason",
@@ -371,6 +373,7 @@ const messages = {
       effectiveOutsideMonth:
         "Eine individuelle Regel besteht, ist aber im gewählten Monat nicht gültig; globale Preise wurden verwendet.",
       subscriptionPrice: "Abonnementpreis",
+      managedDoctors: "Verwaltete Ärzte",
       smsPrice: "SMS-Preis",
       vatTreatment: "MwSt.-Behandlung",
       vatReason: "MwSt.-Begründung",

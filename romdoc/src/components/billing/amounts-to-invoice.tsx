@@ -150,7 +150,7 @@ function ClientRow({
 
   return (
     <details className="group overflow-hidden rounded-[21px] border border-gray-200 bg-white shadow-sm">
-      <summary className="romdoc-focus-ring flex cursor-pointer list-none flex-col gap-[13px] p-[21px] marker:content-none lg:flex-row lg:items-center lg:justify-between">
+      <summary className="romdoc-focus-ring flex cursor-pointer list-none flex-col gap-[13px] p-[21px] marker:content-none xl:flex-row xl:items-center xl:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-[8px]">
             <h4 className="truncate text-lg font-bold text-gray-900">
@@ -170,11 +170,25 @@ function ClientRow({
           </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-[8px] sm:min-w-[420px]">
+        <div className="grid w-full grid-cols-2 gap-[8px] sm:grid-cols-3 xl:min-w-[760px] xl:grid-cols-7">
           <div className="rounded-[13px] bg-gray-50 p-[8px] text-center">
-            <p className="text-xs text-gray-500">{oldCopy.amounts.subscriptions}</p>
+            <p className="text-xs text-gray-500">
+              {row.clientType === "clinic_organization"
+                ? copy.history.managedDoctors
+                : oldCopy.amounts.subscriptions}
+            </p>
             <p className="mt-[5px] text-lg font-bold text-gray-900">
               {row.subscriptionCount}
+            </p>
+          </div>
+          <div className="rounded-[13px] bg-gray-50 p-[8px] text-center">
+            <p className="text-xs text-gray-500">{copy.history.subscriptionPrice}</p>
+            <p className="mt-[5px] text-sm font-bold text-gray-900">
+              {formatPlatformBillingCurrency(
+                row.subscriptionUnitPrice,
+                locale,
+                row.currency
+              )}
             </p>
           </div>
           <div className="rounded-[13px] bg-gray-50 p-[8px] text-center">
@@ -183,9 +197,31 @@ function ClientRow({
               {row.totalSmsCount}
             </p>
           </div>
-          <div className="rounded-[13px] bg-[#036661]/5 p-[8px] text-center">
+          <div className="rounded-[13px] bg-gray-50 p-[8px] text-center">
+            <p className="text-xs text-gray-500">{copy.history.smsPrice}</p>
+            <p className="mt-[5px] text-sm font-bold text-gray-900">
+              {formatPlatformBillingCurrency(
+                row.smsUnitPrice,
+                locale,
+                row.currency
+              )}
+            </p>
+          </div>
+          <div className="rounded-[13px] bg-gray-50 p-[8px] text-center">
+            <p className="text-xs text-gray-500">{copy.history.subtotal}</p>
+            <p className="mt-[5px] text-sm font-bold text-gray-900">
+              {formatPlatformBillingCurrency(row.subtotal, locale, row.currency)}
+            </p>
+          </div>
+          <div className="rounded-[13px] bg-gray-50 p-[8px] text-center">
+            <p className="text-xs text-gray-500">{copy.history.vat}</p>
+            <p className="mt-[5px] text-sm font-bold text-gray-900">
+              {formatPlatformBillingCurrency(row.vatAmount, locale, row.currency)}
+            </p>
+          </div>
+          <div className="col-span-2 rounded-[13px] bg-[#036661]/5 p-[8px] text-center sm:col-span-1">
             <p className="text-xs text-gray-500">{copy.history.total}</p>
-            <p className="mt-[5px] text-lg font-bold text-[#036661]">
+            <p className="mt-[5px] text-sm font-bold text-[#036661]">
               {formatPlatformBillingCurrency(
                 displayedTotal,
                 locale,
