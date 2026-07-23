@@ -1,14 +1,14 @@
 import Link from "next/link";
 import {
-  getTranslations,
-} from "next-intl/server";
-import {
   notFound,
   redirect,
 } from "next/navigation";
 
+import AppLocaleCookieSync from "@/components/i18n/app-locale-cookie-sync";
+import PublicFooter from "@/components/public/public-footer";
+import AppointmentStatusBadge from "@/components/ui/appointment-status-badge";
 import {
-  getAppointmentStatusLabel,
+  type AppointmentStatus,
 } from "@/lib/appointments/appointment-status";
 import {
   type AppLocale,
@@ -35,11 +35,9 @@ type ClinicRelation = {
   formatted_address:
     | string
     | null;
-
   street_address:
     | string
     | null;
-
   clinic_translations:
     | ClinicTranslation[]
     | null;
@@ -47,43 +45,36 @@ type ClinicRelation = {
 
 type AppointmentRecord = {
   id: string;
-
   patient_profile_id:
     | string
     | null;
-
   patient_email: string;
   patient_name: string;
   patient_phone: string;
   requested_date: string;
-
   requested_time:
     | string
     | null;
-
   scheduled_date:
     | string
     | null;
-
   scheduled_time:
     | string
     | null;
-
   duration_minutes:
     | number
     | null;
-
   status: string;
-
   notes:
     | string
     | null;
-
+  reschedule_reason:
+    | string
+    | null;
   doctors:
     | DoctorRelation
     | DoctorRelation[]
     | null;
-
   clinics:
     | ClinicRelation
     | ClinicRelation[]
@@ -94,12 +85,188 @@ type PageProps = {
   params: Promise<{
     appointmentId: string;
   }>;
-
   searchParams: Promise<{
     emailSent?: string;
     locale?: string;
   }>;
 };
+
+type PageCopy = {
+  brandLine: string;
+  title: string;
+  description: string;
+  patientName: string;
+  doctor: string;
+  clinic: string;
+  address: string;
+  requested: string;
+  scheduled: string;
+  phone: string;
+  notes: string;
+  rescheduleReason: string;
+  calendarTitle: string;
+  calendarDescription: string;
+  downloadCalendar: string;
+  addGoogleCalendar: string;
+  doctorProfile: string;
+  patientDashboard: string;
+  handoffTitle: string;
+  handoffDescription: string;
+  handoffHint: string;
+  signInPatient: string;
+  backHome: string;
+};
+
+const COPY:
+  Record<
+    AppLocale,
+    PageCopy
+  > = {
+    ro: {
+      brandLine:
+        "Detalii programare",
+      title:
+        "Programarea ta RomDoc",
+      description:
+        "Verifică detaliile cererii și starea curentă a programării.",
+      patientName:
+        "Pacient",
+      doctor:
+        "Medic",
+      clinic:
+        "Clinică",
+      address:
+        "Adresă",
+      requested:
+        "Data solicitată",
+      scheduled:
+        "Data confirmată",
+      phone:
+        "Telefon",
+      notes:
+        "Observații",
+      rescheduleReason:
+        "Motivul reprogramării",
+      calendarTitle:
+        "Adaugă programarea în calendar",
+      calendarDescription:
+        "Calendarul este disponibil după confirmarea sau reprogramarea consultației.",
+      downloadCalendar:
+        "Descarcă fișierul .ics",
+      addGoogleCalendar:
+        "Adaugă în Google Calendar",
+      doctorProfile:
+        "Vezi profilul medicului",
+      patientDashboard:
+        "Deschide contul de pacient",
+      handoffTitle:
+        "Autentifică-te cu contul pacientului",
+      handoffDescription:
+        "Această programare aparține contului de pacient care a făcut solicitarea.",
+      handoffHint:
+        "Dacă ești autentificat ca medic sau personal, continuă la pagina de autentificare și introdu datele contului pacientului.",
+      signInPatient:
+        "Continuă cu contul pacientului",
+      backHome:
+        "Înapoi la RomDoc",
+    },
+    en: {
+      brandLine:
+        "Appointment details",
+      title:
+        "Your RomDoc appointment",
+      description:
+        "Review the request details and the current appointment status.",
+      patientName:
+        "Patient",
+      doctor:
+        "Doctor",
+      clinic:
+        "Clinic",
+      address:
+        "Address",
+      requested:
+        "Requested date",
+      scheduled:
+        "Confirmed date",
+      phone:
+        "Phone",
+      notes:
+        "Notes",
+      rescheduleReason:
+        "Rescheduling reason",
+      calendarTitle:
+        "Add the appointment to your calendar",
+      calendarDescription:
+        "Calendar options become available after the appointment is confirmed or rescheduled.",
+      downloadCalendar:
+        "Download .ics file",
+      addGoogleCalendar:
+        "Add to Google Calendar",
+      doctorProfile:
+        "View Doctor profile",
+      patientDashboard:
+        "Open patient account",
+      handoffTitle:
+        "Sign in with the patient account",
+      handoffDescription:
+        "This appointment belongs to the patient account that submitted the request.",
+      handoffHint:
+        "When you are currently signed in as a Doctor or staff member, continue to the login page and enter the patient account credentials.",
+      signInPatient:
+        "Continue with patient account",
+      backHome:
+        "Back to RomDoc",
+    },
+    de: {
+      brandLine:
+        "Termindetails",
+      title:
+        "Dein RomDoc-Termin",
+      description:
+        "Prüfe die Terminanfrage und den aktuellen Status.",
+      patientName:
+        "Patient",
+      doctor:
+        "Arzt",
+      clinic:
+        "Klinik",
+      address:
+        "Adresse",
+      requested:
+        "Gewünschter Termin",
+      scheduled:
+        "Bestätigter Termin",
+      phone:
+        "Telefon",
+      notes:
+        "Hinweise",
+      rescheduleReason:
+        "Grund der Verschiebung",
+      calendarTitle:
+        "Termin zum Kalender hinzufügen",
+      calendarDescription:
+        "Die Kalenderoptionen sind nach der Bestätigung oder Verschiebung verfügbar.",
+      downloadCalendar:
+        ".ics-Datei herunterladen",
+      addGoogleCalendar:
+        "Zu Google Kalender hinzufügen",
+      doctorProfile:
+        "Arztprofil ansehen",
+      patientDashboard:
+        "Patientenkonto öffnen",
+      handoffTitle:
+        "Mit dem Patientenkonto anmelden",
+      handoffDescription:
+        "Dieser Termin gehört zu dem Patientenkonto, das die Anfrage gesendet hat.",
+      handoffHint:
+        "Falls du derzeit als Arzt oder Mitarbeiter angemeldet bist, öffne die Anmeldung und verwende die Zugangsdaten des Patientenkontos.",
+      signInPatient:
+        "Mit Patientenkonto fortfahren",
+      backHome:
+        "Zurück zu RomDoc",
+    },
+  };
 
 const INTL_LOCALE:
   Record<
@@ -130,7 +297,7 @@ function first<T>(
     : value;
 }
 
-function doctorName(
+function formatNameFromSlug(
   slug: string
 ) {
   return decodeURIComponent(
@@ -150,30 +317,6 @@ function doctorName(
     .join(" ");
 }
 
-function getClinicName(
-  clinic:
-    | ClinicRelation
-    | null,
-  locale:
-    AppLocale,
-  fallback:
-    string
-) {
-  const translation =
-    selectTranslation(
-      clinic
-        ?.clinic_translations,
-      locale
-    );
-
-  return (
-    translation
-      ?.name
-      ?.trim() ||
-    fallback
-  );
-}
-
 function formatDate(
   value: string,
   locale:
@@ -188,34 +331,31 @@ function formatDate(
       .split("-")
       .map(Number);
 
-  return new Intl
-    .DateTimeFormat(
-      INTL_LOCALE[
-        locale
-      ],
-      {
-        day:
-          "numeric",
-
-        month:
-          "long",
-
-        year:
-          "numeric",
-
-        timeZone:
-          "UTC",
-      }
-    )
-    .format(
-      new Date(
-        Date.UTC(
-          year,
-          month - 1,
-          day
-        )
+  return new Intl.DateTimeFormat(
+    INTL_LOCALE[
+      locale
+    ],
+    {
+      weekday:
+        "long",
+      day:
+        "2-digit",
+      month:
+        "long",
+      year:
+        "numeric",
+      timeZone:
+        "UTC",
+    }
+  ).format(
+    new Date(
+      Date.UTC(
+        year,
+        month - 1,
+        day
       )
-    );
+    )
+  );
 }
 
 function formatTime(
@@ -231,30 +371,29 @@ function formatTime(
     : "—";
 }
 
-function statusClasses(
-  status: string
+function getReturnPath(
+  appointmentId: string,
+  locale:
+    AppLocale,
+  emailSent:
+    | string
+    | undefined
 ) {
-  switch (
-    status
-  ) {
-    case "confirmed":
-      return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  const parameters =
+    new URLSearchParams({
+      locale,
+    });
 
-    case "rescheduled":
-      return "border-blue-200 bg-blue-50 text-blue-800";
-
-    case "completed":
-      return "border-gray-200 bg-gray-100 text-gray-800";
-
-    case "cancelled":
-      return "border-red-200 bg-red-50 text-red-800";
-
-    case "no_show":
-      return "border-orange-200 bg-orange-50 text-orange-900";
-
-    default:
-      return "border-amber-200 bg-amber-50 text-amber-900";
+  if (emailSent) {
+    parameters.set(
+      "emailSent",
+      emailSent
+    );
   }
+
+  return `/appointments/${encodeURIComponent(
+    appointmentId
+  )}/request-received?${parameters.toString()}`;
 }
 
 function getDoctorProfileHref(
@@ -267,65 +406,30 @@ function getDoctorProfileHref(
       slug
     );
 
-  if (
-    locale === "de"
-  ) {
-    return `/de/arzt/${encodedSlug}`;
-  }
-
-  return `/${locale}/doctor/${encodedSlug}`;
+  return locale ===
+    "de"
+    ? `/de/arzt/${encodedSlug}`
+    : `/${locale}/doctor/${encodedSlug}`;
 }
 
-function getReturnPath({
-  appointmentId,
+function getGoogleCalendarUrl({
   locale,
-  emailSent,
-}: {
-  appointmentId: string;
-  locale: AppLocale;
-  emailSent:
-    | string
-    | undefined;
-}) {
-  const parameters =
-    new URLSearchParams({
-      locale,
-    });
-
-  if (
-    emailSent
-  ) {
-    parameters.set(
-      "emailSent",
-      emailSent
-    );
-  }
-
-  return `/appointments/${encodeURIComponent(
-    appointmentId
-  )}/request-received?${parameters.toString()}`;
-}
-
-function googleCalendarUrl({
-  title,
-  details,
-  clinic,
+  doctorName,
+  clinicName,
   address,
   date,
   time,
-  duration,
+  durationMinutes,
 }: {
-  title: string;
-  details: string;
-  clinic: string;
-
+  locale: AppLocale;
+  doctorName: string;
+  clinicName: string;
   address:
     | string
     | null;
-
   date: string;
   time: string;
-  duration: number;
+  durationMinutes: number;
 }) {
   const [
     year,
@@ -337,14 +441,11 @@ function googleCalendarUrl({
       .map(Number);
 
   const [
-    hour,
-    minute,
+    hours,
+    minutes,
   ] =
     time
-      .slice(
-        0,
-        5
-      )
+      .slice(0, 5)
       .split(":")
       .map(Number);
 
@@ -354,68 +455,63 @@ function googleCalendarUrl({
         year,
         month - 1,
         day,
-        hour,
-        minute
+        hours,
+        minutes
       )
     );
 
   const end =
     new Date(
       start.getTime() +
-        duration *
+        durationMinutes *
           60 *
           1000
     );
 
-  const compact =
-    (
-      value:
-        Date
-    ) =>
-      value
-        .toISOString()
-        .slice(
-          0,
-          19
-        )
-        .replaceAll(
-          "-",
-          ""
-        )
-        .replaceAll(
-          ":",
-          ""
-        );
+  function compact(
+    value: Date
+  ) {
+    return value
+      .toISOString()
+      .slice(0, 19)
+      .replaceAll("-", "")
+      .replaceAll(":", "");
+  }
+
+  const title =
+    locale === "de"
+      ? `Termin - ${doctorName}`
+      : locale === "en"
+        ? `Appointment - ${doctorName}`
+        : `Programare - ${doctorName}`;
+
+  const details =
+    locale === "de"
+      ? "Über RomDoc bestätigter Arzttermin."
+      : locale === "en"
+        ? "Medical appointment confirmed through RomDoc."
+        : "Programare medicală confirmată prin RomDoc.";
 
   const query =
     new URLSearchParams({
       action:
         "TEMPLATE",
-
       text:
         title,
-
       dates:
         `${compact(
           start
         )}/${compact(
           end
         )}`,
-
       details,
-
       location:
         [
-          clinic,
+          clinicName,
           address,
         ]
-          .filter(
-            Boolean
-          )
-          .join(
-            ", "
-          ),
-
+          .filter(Boolean)
+          .join(", "),
       ctz:
         "Europe/Bucharest",
     });
@@ -423,7 +519,118 @@ function googleCalendarUrl({
   return `https://calendar.google.com/calendar/render?${query.toString()}`;
 }
 
-export default async function AppointmentRequestReceivedPage({
+function isAppointmentStatus(
+  value: string
+): value is AppointmentStatus {
+  return [
+    "pending",
+    "confirmed",
+    "rescheduled",
+    "completed",
+    "cancelled",
+    "no_show",
+  ].includes(value);
+}
+
+function Detail({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+        {label}
+      </p>
+
+      <p className="mt-1 whitespace-pre-wrap text-gray-900">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function PatientAccountHandoff({
+  appointmentId,
+  locale,
+  emailSent,
+}: {
+  appointmentId: string;
+  locale: AppLocale;
+  emailSent:
+    | string
+    | undefined;
+}) {
+  const copy =
+    COPY[locale];
+
+  const returnPath =
+    getReturnPath(
+      appointmentId,
+      locale,
+      emailSent
+    );
+
+  const loginParameters =
+    new URLSearchParams({
+      locale,
+      next:
+        returnPath,
+    });
+
+  return (
+    <div className="flex min-h-screen flex-col bg-[#F0EEE9]">
+      <AppLocaleCookieSync
+        locale={locale}
+      />
+
+      <main className="flex flex-1 items-center justify-center px-6 py-12">
+        <section className="w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#036661]">
+            RomDoc
+          </p>
+
+          <h1 className="mt-3 text-3xl font-bold text-gray-900">
+            {copy.handoffTitle}
+          </h1>
+
+          <p className="mt-4 leading-7 text-gray-700">
+            {copy.handoffDescription}
+          </p>
+
+          <p className="mt-3 text-sm leading-6 text-gray-600">
+            {copy.handoffHint}
+          </p>
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link
+              href={`/login?${loginParameters.toString()}`}
+              className="romdoc-focus-ring inline-flex min-h-11 items-center justify-center rounded-xl bg-[#036661] px-5 py-3 font-semibold text-white hover:bg-[#02534f]"
+            >
+              {copy.signInPatient}
+            </Link>
+
+            <Link
+              href={`/${locale}`}
+              className="romdoc-focus-ring inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-300 bg-white px-5 py-3 font-semibold text-gray-800 hover:bg-gray-50"
+            >
+              {copy.backHome}
+            </Link>
+          </div>
+        </section>
+      </main>
+
+      <PublicFooter
+        locale={locale}
+      />
+    </div>
+  );
+}
+
+export default async function
+AppointmentRequestReceivedPage({
   params,
   searchParams,
 }: PageProps) {
@@ -440,77 +647,8 @@ export default async function AppointmentRequestReceivedPage({
       query.locale
     );
 
-  const t =
-    await getTranslations({
-      locale,
-      namespace:
-        "AppointmentRequestReceived",
-    });
-
-  const returnPath =
-    getReturnPath({
-      appointmentId,
-      locale,
-      emailSent:
-        query.emailSent,
-    });
-
-  const supabase =
-    await createClient();
-
-  const {
-    data: {
-      user,
-    },
-    error:
-      userError,
-  } =
-    await supabase
-      .auth
-      .getUser();
-
-  if (
-    userError ||
-    !user
-  ) {
-    const parameters =
-      new URLSearchParams({
-        locale,
-        next:
-          returnPath,
-      });
-
-    redirect(
-      `/login?${parameters.toString()}`
-    );
-  }
-
-  if (
-    !user
-      .email_confirmed_at
-  ) {
-    const parameters =
-      new URLSearchParams({
-        locale,
-        type:
-          "patient",
-        next:
-          returnPath,
-      });
-
-    if (
-      user.email
-    ) {
-      parameters.set(
-        "email",
-        user.email
-      );
-    }
-
-    redirect(
-      `/check-email?${parameters.toString()}`
-    );
-  }
+  const copy =
+    COPY[locale];
 
   const admin =
     createAdminClient();
@@ -536,6 +674,7 @@ export default async function AppointmentRequestReceivedPage({
         duration_minutes,
         status,
         notes,
+        reschedule_reason,
         doctors (
           slug
         ),
@@ -554,16 +693,17 @@ export default async function AppointmentRequestReceivedPage({
       )
       .maybeSingle();
 
-  if (error) {
-    console.error(
-      "Appointment request-received lookup failed:",
-      error
-    );
+  if (
+    error ||
+    !data
+  ) {
+    if (error) {
+      console.error(
+        "Appointment request-received lookup failed:",
+        error
+      );
+    }
 
-    notFound();
-  }
-
-  if (!data) {
     notFound();
   }
 
@@ -571,31 +711,85 @@ export default async function AppointmentRequestReceivedPage({
     data as unknown as
       AppointmentRecord;
 
+  const supabase =
+    await createClient();
+
+  const {
+    data: {
+      user,
+    },
+  } =
+    await supabase.auth
+      .getUser();
+
   const authenticatedEmail =
-    user.email
+    user?.email
       ?.trim()
       .toLowerCase() ??
     "";
 
   const ownsAppointment =
-    appointment
-      .patient_profile_id ===
-      user.id ||
+    Boolean(user) &&
     (
-      Boolean(
-        authenticatedEmail
-      ) &&
       appointment
-        .patient_email
-        .trim()
-        .toLowerCase() ===
-        authenticatedEmail
+        .patient_profile_id ===
+        user?.id ||
+      (
+        Boolean(
+          authenticatedEmail
+        ) &&
+        appointment
+          .patient_email
+          .trim()
+          .toLowerCase() ===
+          authenticatedEmail
+      )
     );
 
+  if (!ownsAppointment) {
+    return (
+      <PatientAccountHandoff
+        appointmentId={
+          appointmentId
+        }
+        locale={locale}
+        emailSent={
+          query.emailSent
+        }
+      />
+    );
+  }
+
   if (
-    !ownsAppointment
+    user &&
+    !user.email_confirmed_at
   ) {
-    notFound();
+    const returnPath =
+      getReturnPath(
+        appointmentId,
+        locale,
+        query.emailSent
+      );
+
+    const parameters =
+      new URLSearchParams({
+        locale,
+        type:
+          "patient",
+        next:
+          returnPath,
+      });
+
+    if (user.email) {
+      parameters.set(
+        "email",
+        user.email
+      );
+    }
+
+    redirect(
+      `/check-email?${parameters.toString()}`
+    );
   }
 
   const doctor =
@@ -610,402 +804,314 @@ export default async function AppointmentRequestReceivedPage({
 
   const displayDoctorName =
     doctor
-      ? doctorName(
+      ? formatNameFromSlug(
           doctor.slug
         )
-      : t(
-          "unavailableDoctor"
-        );
+      : locale === "de"
+        ? "RomDoc-Arzt"
+        : locale === "en"
+          ? "RomDoc Doctor"
+          : "Medic RomDoc";
 
   const displayClinicName =
-    getClinicName(
-      clinic,
-      locale,
-      t(
-        "unavailableClinic"
-      )
+    selectTranslation(
+      clinic
+        ?.clinic_translations,
+      locale
+    )?.name ??
+    (
+      locale === "de"
+        ? "Klinik"
+        : locale === "en"
+          ? "Clinic"
+          : "Clinică"
     );
 
-  const clinicAddress =
+  const address =
     clinic
-      ?.formatted_address ||
+      ?.formatted_address ??
     clinic
-      ?.street_address ||
+      ?.street_address ??
     null;
 
-  const isConfirmed =
+  const effectiveDate =
+    appointment
+      .scheduled_date ??
+    appointment
+      .requested_date;
+
+  const effectiveTime =
+    appointment
+      .scheduled_time ??
+    appointment
+      .requested_time;
+
+  const calendarAvailable =
     [
       "confirmed",
       "rescheduled",
     ].includes(
       appointment.status
+    ) &&
+    Boolean(
+      effectiveDate &&
+      effectiveTime
     );
 
-  const displayDate =
-    isConfirmed
-      ? appointment
-          .scheduled_date ||
-        appointment
-          .requested_date
-      : appointment
-          .requested_date;
+  const calendarDownloadUrl =
+    `/api/appointments/${encodeURIComponent(
+      appointment.id
+    )}/calendar?locale=${locale}`;
 
-  const displayTime =
-    isConfirmed
-      ? appointment
-          .scheduled_time ||
-        appointment
-          .requested_time
-      : appointment
-          .requested_time;
-
-  const duration =
-    Number(
-      appointment
-        .duration_minutes ??
-      30
-    );
-
-  const googleUrl =
-    isConfirmed &&
-    displayTime
-      ? googleCalendarUrl({
-          title:
-            t(
-              "calendarTitle",
-              {
-                doctor:
-                  displayDoctorName,
-              }
-            ),
-
-          details:
-            t(
-              "calendarDetails"
-            ),
-
-          clinic:
+  const googleCalendarUrl =
+    calendarAvailable &&
+    effectiveTime
+      ? getGoogleCalendarUrl({
+          locale,
+          doctorName:
+            displayDoctorName,
+          clinicName:
             displayClinicName,
-
-          address:
-            clinicAddress,
-
+          address,
           date:
-            displayDate,
-
+            effectiveDate,
           time:
-            displayTime,
-
-          duration,
+            effectiveTime,
+          durationMinutes:
+            Number(
+              appointment
+                .duration_minutes ??
+              30
+            ),
         })
       : null;
 
-  const emailWasSent =
-    query.emailSent !==
-    "0";
-
-  const doctorHref =
-    doctor
-      ? getDoctorProfileHref(
-          locale,
-          doctor.slug
-        )
-      : null;
+  const status =
+    isAppointmentStatus(
+      appointment.status
+    )
+      ? appointment.status
+      : "pending";
 
   return (
-    <main className="min-h-screen bg-[#F0EEE9] px-4 py-10 sm:px-6">
-      <div className="mx-auto max-w-3xl">
-        <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-          <div className="bg-amber-50 px-6 py-8 text-center sm:px-10">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500 text-3xl font-bold text-white">
-              ✓
-            </div>
+    <div className="flex min-h-screen flex-col bg-[#F0EEE9]">
+      <AppLocaleCookieSync
+        locale={locale}
+      />
 
-            <p className="mt-5 text-sm font-semibold uppercase tracking-wide text-amber-800">
-              {t(
-                "registeredEyebrow"
-              )}
+      <main className="flex-1 px-4 py-10 sm:px-6">
+        <div className="mx-auto max-w-4xl">
+          <header className="max-w-2xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#036661]">
+              {copy.brandLine}
             </p>
 
-            <h1 className="mt-2 text-3xl font-bold text-gray-900">
-              {t(
-                "title"
-              )}
+            <h1 className="mt-3 text-3xl font-bold text-gray-900 sm:text-4xl">
+              {copy.title}
             </h1>
 
-            <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-gray-700">
-              {t(
-                "description"
-              )}
+            <p className="mt-3 leading-7 text-gray-600">
+              {copy.description}
             </p>
-          </div>
+          </header>
 
-          <div className="space-y-6 px-6 py-7 sm:px-10">
-            <div
-              className={[
-                "rounded-xl border px-4 py-3 text-sm font-semibold",
-                statusClasses(
-                  appointment.status
-                ),
-              ].join(
-                " "
-              )}
-            >
-              {t(
-                "currentStatus",
-                {
-                  status:
-                    getAppointmentStatusLabel(
-                      appointment.status,
-                      locale
-                    ),
-                }
-              )}
+          <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 pb-5">
+              <div>
+                <p className="text-sm text-gray-500">
+                  RomDoc
+                </p>
+
+                <h2 className="mt-1 text-2xl font-bold text-gray-900">
+                  {displayDoctorName}
+                </h2>
+              </div>
+
+              <AppointmentStatusBadge
+                status={status}
+                locale={locale}
+              />
             </div>
 
-            {!isConfirmed && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-                {t(
-                  "pendingNotice"
-                )}
+            <div className="mt-6 grid gap-6 sm:grid-cols-2">
+              <Detail
+                label={
+                  copy.patientName
+                }
+                value={
+                  appointment
+                    .patient_name
+                }
+              />
+
+              <Detail
+                label={
+                  copy.doctor
+                }
+                value={
+                  displayDoctorName
+                }
+              />
+
+              <Detail
+                label={
+                  copy.clinic
+                }
+                value={
+                  displayClinicName
+                }
+              />
+
+              {address && (
+                <Detail
+                  label={
+                    copy.address
+                  }
+                  value={
+                    address
+                  }
+                />
+              )}
+
+              <Detail
+                label={
+                  copy.requested
+                }
+                value={`${formatDate(
+                  appointment
+                    .requested_date,
+                  locale
+                )}, ${formatTime(
+                  appointment
+                    .requested_time
+                )}`}
+              />
+
+              {appointment
+                .scheduled_date && (
+                <Detail
+                  label={
+                    copy.scheduled
+                  }
+                  value={`${formatDate(
+                    appointment
+                      .scheduled_date,
+                    locale
+                  )}, ${formatTime(
+                    appointment
+                      .scheduled_time
+                  )}`}
+                />
+              )}
+
+              <Detail
+                label={
+                  copy.phone
+                }
+                value={
+                  appointment
+                    .patient_phone
+                }
+              />
+            </div>
+
+            {appointment.notes && (
+              <div className="mt-6 rounded-xl bg-gray-50 p-4">
+                <Detail
+                  label={
+                    copy.notes
+                  }
+                  value={
+                    appointment.notes
+                  }
+                />
               </div>
             )}
 
-            <dl className="divide-y divide-gray-200 rounded-xl border border-gray-200">
-              <div className="grid gap-1 p-4 sm:grid-cols-[150px_1fr]">
-                <dt className="text-sm text-gray-500">
-                  {t(
-                    "doctor"
-                  )}
-                </dt>
-
-                <dd className="font-semibold text-gray-900">
-                  {
-                    displayDoctorName
+            {appointment
+              .reschedule_reason && (
+              <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-4">
+                <Detail
+                  label={
+                    copy.rescheduleReason
                   }
-                </dd>
+                  value={
+                    appointment
+                      .reschedule_reason
+                  }
+                />
               </div>
+            )}
 
-              <div className="grid gap-1 p-4 sm:grid-cols-[150px_1fr]">
-                <dt className="text-sm text-gray-500">
-                  {t(
-                    "clinic"
-                  )}
-                </dt>
-
-                <dd>
-                  <p className="font-semibold text-gray-900">
-                    {
-                      displayClinicName
-                    }
-                  </p>
-
-                  {clinicAddress && (
-                    <p className="mt-1 text-sm text-gray-600">
-                      {
-                        clinicAddress
-                      }
-                    </p>
-                  )}
-                </dd>
-              </div>
-
-              <div className="grid gap-1 p-4 sm:grid-cols-[150px_1fr]">
-                <dt className="text-sm text-gray-500">
-                  {isConfirmed
-                    ? t(
-                        "scheduledDate"
-                      )
-                    : t(
-                        "requestedDate"
-                      )}
-                </dt>
-
-                <dd className="font-semibold text-gray-900">
-                  {formatDate(
-                    displayDate,
-                    locale
-                  )}
-                </dd>
-              </div>
-
-              <div className="grid gap-1 p-4 sm:grid-cols-[150px_1fr]">
-                <dt className="text-sm text-gray-500">
-                  {isConfirmed
-                    ? t(
-                        "scheduledTime"
-                      )
-                    : t(
-                        "requestedTime"
-                      )}
-                </dt>
-
-                <dd className="font-semibold text-gray-900">
-                  {formatTime(
-                    displayTime
-                  )}
-
-                  {displayTime &&
-                    ` · ${t(
-                      "minutes",
-                      {
-                        count:
-                          duration,
-                      }
-                    )}`}
-                </dd>
-              </div>
-
-              <div className="grid gap-1 p-4 sm:grid-cols-[150px_1fr]">
-                <dt className="text-sm text-gray-500">
-                  {t(
-                    "patient"
-                  )}
-                </dt>
-
-                <dd>
-                  <p className="font-semibold text-gray-900">
-                    {
-                      appointment
-                        .patient_name
-                    }
-                  </p>
-
-                  <p className="mt-1 text-sm text-gray-600">
-                    {
-                      appointment
-                        .patient_phone
-                    }
-                  </p>
-
-                  <p className="mt-1 text-sm text-gray-600">
-                    {
-                      appointment
-                        .patient_email
-                    }
-                  </p>
-                </dd>
-              </div>
-
-              {appointment
-                .notes && (
-                <div className="grid gap-1 p-4 sm:grid-cols-[150px_1fr]">
-                  <dt className="text-sm text-gray-500">
-                    {t(
-                      "message"
-                    )}
-                  </dt>
-
-                  <dd className="whitespace-pre-wrap text-sm leading-6 text-gray-700">
-                    {
-                      appointment
-                        .notes
-                    }
-                  </dd>
-                </div>
-              )}
-            </dl>
-
-            <div
-              className={
-                emailWasSent
-                  ? "rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
-                  : "rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-              }
-            >
-              {emailWasSent
-                ? t(
-                    "emailSent",
-                    {
-                      email:
-                        appointment
-                          .patient_email,
-                    }
-                  )
-                : t(
-                    "emailFailed"
-                  )}
-            </div>
-
-            {isConfirmed &&
-              displayTime && (
-                <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
-                  <h2 className="text-lg font-bold text-gray-900">
-                    {t(
-                      "confirmedTitle"
-                    )}
-                  </h2>
-
-                  <p className="mt-2 text-sm leading-6 text-gray-700">
-                    {t(
-                      "confirmedDescription"
-                    )}
-                  </p>
-
-                  <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                    <a
-                      href={`/api/appointments/${appointment.id}/calendar`}
-                      className="romdoc-button romdoc-button-primary"
-                    >
-                      {t(
-                        "downloadCalendar"
-                      )}
-                    </a>
-
-                    {googleUrl && (
-                      <a
-                        href={
-                          googleUrl
-                        }
-                        target="_blank"
-                        rel="noreferrer"
-                        className="romdoc-button romdoc-button-secondary"
-                      >
-                        {t(
-                          "addGoogleCalendar"
-                        )}
-                      </a>
-                    )}
-                  </div>
-                </section>
-              )}
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Link
-                href="/patient-dashboard"
-                className="romdoc-button romdoc-button-primary"
-              >
-                {t(
-                  "viewAppointments"
-                )}
-              </Link>
-
-              {doctorHref && (
+            <div className="mt-8 flex flex-wrap gap-3">
+              {doctor && (
                 <Link
                   href={
-                    doctorHref
+                    getDoctorProfileHref(
+                      locale,
+                      doctor.slug
+                    )
                   }
-                  className="romdoc-button romdoc-button-secondary"
+                  className="romdoc-focus-ring inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-300 bg-white px-5 py-3 font-semibold text-gray-800 hover:bg-gray-50"
                 >
-                  {t(
-                    "backDoctor"
-                  )}
+                  {copy.doctorProfile}
                 </Link>
               )}
-            </div>
 
-            <p className="text-center text-xs text-gray-500">
-              {t(
-                "reference",
-                {
-                  id:
-                    appointment.id,
-                }
-              )}
+              <Link
+                href={`/patient-dashboard?locale=${locale}`}
+                className="romdoc-focus-ring inline-flex min-h-11 items-center justify-center rounded-xl bg-[#036661] px-5 py-3 font-semibold text-white hover:bg-[#02534f]"
+              >
+                {copy.patientDashboard}
+              </Link>
+            </div>
+          </section>
+
+          <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+            <h2 className="text-xl font-bold text-gray-900">
+              {copy.calendarTitle}
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-gray-600">
+              {copy.calendarDescription}
             </p>
-          </div>
-        </section>
-      </div>
-    </main>
+
+            {calendarAvailable ? (
+              <div className="mt-5 flex flex-wrap gap-3">
+                <a
+                  href={
+                    calendarDownloadUrl
+                  }
+                  className="romdoc-focus-ring inline-flex min-h-11 items-center justify-center rounded-xl bg-[#036661] px-5 py-3 font-semibold text-white hover:bg-[#02534f]"
+                >
+                  {copy.downloadCalendar}
+                </a>
+
+                {googleCalendarUrl && (
+                  <a
+                    href={
+                      googleCalendarUrl
+                    }
+                    target="_blank"
+                    rel="noreferrer"
+                    className="romdoc-focus-ring inline-flex min-h-11 items-center justify-center rounded-xl border border-[#036661] bg-white px-5 py-3 font-semibold text-[#036661] hover:bg-[#036661]/5"
+                  >
+                    {copy.addGoogleCalendar}
+                  </a>
+                )}
+              </div>
+            ) : (
+              <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                {copy.calendarDescription}
+              </p>
+            )}
+          </section>
+        </div>
+      </main>
+
+      <PublicFooter
+        locale={locale}
+      />
+    </div>
   );
 }

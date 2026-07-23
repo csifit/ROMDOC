@@ -105,9 +105,11 @@ function getAppointmentDetailsUrl(
 }
 
 function getCalendarDownloadUrl(
-  appointmentId: string
+  appointmentId: string,
+  locale:
+    AppointmentNotificationLocale
 ) {
-  return `${getSiteUrl()}/api/appointments/${appointmentId}/calendar`;
+  return `${getSiteUrl()}/api/appointments/${appointmentId}/calendar?locale=${locale}`;
 }
 
 function getGoogleCalendarUrl(
@@ -305,7 +307,8 @@ sendAppointmentStatusEmail(
 
   const calendarDownloadUrl =
     getCalendarDownloadUrl(
-      input.appointmentId
+      input.appointmentId,
+      locale
     );
 
   const googleCalendarUrl =

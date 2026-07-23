@@ -1,28 +1,28 @@
 "use client";
 
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import {
-  useLocale,
-  useTranslations,
-} from "next-intl";
-import FullCalendar from "@fullcalendar/react";
-import dayGridPlugin from "@fullcalendar/daygrid";
-import timeGridPlugin from "@fullcalendar/timegrid";
-import interactionPlugin from "@fullcalendar/interaction";
-import roLocale from "@fullcalendar/core/locales/ro";
-import enGbLocale from "@fullcalendar/core/locales/en-gb";
 import deLocale from "@fullcalendar/core/locales/de";
+import enGbLocale from "@fullcalendar/core/locales/en-gb";
+import roLocale from "@fullcalendar/core/locales/ro";
 import type {
   DatesSetArg,
   EventClickArg,
   EventContentArg,
   EventInput,
 } from "@fullcalendar/core";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import interactionPlugin from "@fullcalendar/interaction";
+import FullCalendar from "@fullcalendar/react";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import {
+  useLocale,
+  useTranslations,
+} from "next-intl";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import TranslatedAppointmentActions from "@/components/doctor/translated-appointment-actions";
 import AppointmentStatusBadge from "@/components/ui/appointment-status-badge";
@@ -50,135 +50,134 @@ export type DoctorCalendarAppointment = {
   patientEmail: string;
   patientPhone: string;
   clinicName: string;
-
   requestedDate: string;
-  requestedTime: string | null;
-
-  scheduledDate: string | null;
-  scheduledTime: string | null;
-
+  requestedTime:
+    | string
+    | null;
+  scheduledDate:
+    | string
+    | null;
+  scheduledTime:
+    | string
+    | null;
   calendarDate: string;
-  calendarTime: string | null;
-
-  rescheduleReason: string | null;
-  status: AppointmentStatus;
+  calendarTime:
+    | string
+    | null;
+  rescheduleReason:
+    | string
+    | null;
+  status:
+    AppointmentStatus;
   source: string;
-  notes: string | null;
+  notes:
+    | string
+    | null;
 };
 
 type AppointmentCalendarProps = {
-  appointments: DoctorCalendarAppointment[];
+  appointments:
+    DoctorCalendarAppointment[];
 };
 
-const calendarViewByMode: Record<
-  Exclude<CalendarMode, "agenda">,
-  string
-> = {
-  day: "timeGridDay",
-  week: "timeGridWeek",
-  month: "dayGridMonth",
-};
+const CALENDAR_VIEW:
+  Record<
+    Exclude<
+      CalendarMode,
+      "agenda"
+    >,
+    string
+  > = {
+    day:
+      "timeGridDay",
+    week:
+      "timeGridWeek",
+    month:
+      "dayGridMonth",
+  };
 
-const INTL_LOCALE: Record<AppLocale, string> = {
-  ro: "ro-RO",
-  en: "en-GB",
-  de: "de-DE",
-};
+const DATE_LOCALE:
+  Record<
+    AppLocale,
+    string
+  > = {
+    ro:
+      "ro-RO",
+    en:
+      "en-GB",
+    de:
+      "de-DE",
+  };
 
 const FULL_CALENDAR_LOCALE = {
-  ro: roLocale,
-  en: enGbLocale,
-  de: deLocale,
+  ro:
+    roLocale,
+  en:
+    enGbLocale,
+  de:
+    deLocale,
 } as const;
 
 function normalizeTime(
-  time: string | null
+  value:
+    | string
+    | null
 ) {
-  if (!time) {
+  if (!value) {
     return "09:00:00";
   }
 
   if (
     /^\d{2}:\d{2}:\d{2}$/.test(
-      time
+      value
     )
   ) {
-    return time;
+    return value;
   }
 
   if (
     /^\d{2}:\d{2}$/.test(
-      time
+      value
     )
   ) {
-    return `${time}:00`;
+    return `${value}:00`;
   }
 
   return "09:00:00";
 }
 
-function formatDate(
-  date: string,
-  locale: AppLocale
-) {
-  return new Intl.DateTimeFormat(
-    INTL_LOCALE[locale],
-    {
-      weekday: "long",
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    }
-  ).format(
-    new Date(
-      `${date}T12:00:00`
-    )
-  );
-}
-
-function formatCompactDate(
-  date: string,
-  locale: AppLocale
-) {
-  return new Intl.DateTimeFormat(
-    INTL_LOCALE[locale],
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }
-  ).format(
-    new Date(
-      `${date}T12:00:00`
-    )
-  );
-}
-
-function formatTime(
-  time: string | null,
+function shortTime(
+  value:
+    | string
+    | null,
   fallback: string
 ) {
-  return time
-    ? time.slice(0, 5)
+  return value
+    ? value.slice(
+        0,
+        5
+      )
     : fallback;
 }
 
-
-function toTimestamp(
-  appointment: DoctorCalendarAppointment
+function timestamp(
+  appointment:
+    DoctorCalendarAppointment
 ) {
   return new Date(
     `${appointment.calendarDate}T${normalizeTime(
-      appointment.calendarTime
+      appointment
+        .calendarTime
     )}`
   ).getTime();
 }
 
 function isUpcoming(
-  appointment: DoctorCalendarAppointment
+  appointment:
+    DoctorCalendarAppointment
 ) {
   return (
-    toTimestamp(
+    timestamp(
       appointment
     ) >=
       Date.now() &&
@@ -192,20 +191,79 @@ function isUpcoming(
   );
 }
 
-export default function AppointmentCalendar({
+function formatDate(
+  value: string,
+  locale:
+    AppLocale
+) {
+  return new Intl.DateTimeFormat(
+    DATE_LOCALE[
+      locale
+    ],
+    {
+      weekday:
+        "long",
+      day:
+        "2-digit",
+      month:
+        "long",
+      year:
+        "numeric",
+    }
+  ).format(
+    new Date(
+      `${value}T12:00:00`
+    )
+  );
+}
+
+function formatCompactDate(
+  value: string,
+  locale:
+    AppLocale
+) {
+  return new Intl.DateTimeFormat(
+    DATE_LOCALE[
+      locale
+    ],
+    {
+      day:
+        "2-digit",
+      month:
+        "short",
+      year:
+        "numeric",
+    }
+  ).format(
+    new Date(
+      `${value}T12:00:00`
+    )
+  );
+}
+
+export default function
+AppointmentCalendar({
   appointments,
 }: AppointmentCalendarProps) {
-  const locale = normalizeAppLocale(
-    useLocale()
-  );
-  const t = useTranslations(
-    "DoctorAppointmentOperations.calendar.component"
-  );
-  const commonT = useTranslations(
-    "DoctorAppointmentOperations.common"
-  );
+  const locale =
+    normalizeAppLocale(
+      useLocale()
+    );
+
+  const t =
+    useTranslations(
+      "DoctorAppointmentOperations.calendar.component"
+    );
+
+  const commonT =
+    useTranslations(
+      "DoctorAppointmentOperations.common"
+    );
+
   const calendarRef =
-    useRef<FullCalendar | null>(
+    useRef<
+      FullCalendar | null
+    >(
       null
     );
 
@@ -222,7 +280,8 @@ export default function AppointmentCalendar({
     setAgendaFilter,
   ] =
     useState<
-      "upcoming" | "all"
+      "upcoming" |
+      "all"
     >(
       "upcoming"
     );
@@ -232,7 +291,9 @@ export default function AppointmentCalendar({
     setCalendarTitle,
   ] =
     useState(
-      t("calendar")
+      t(
+        "calendar"
+      )
     );
 
   const [
@@ -251,9 +312,7 @@ export default function AppointmentCalendar({
         "(min-width: 768px)"
       ).matches;
 
-    if (
-      desktop
-    ) {
+    if (desktop) {
       setMode(
         "month"
       );
@@ -270,10 +329,10 @@ export default function AppointmentCalendar({
             first,
             second
           ) =>
-            toTimestamp(
+            timestamp(
               first
             ) -
-            toTimestamp(
+            timestamp(
               second
             )
         ),
@@ -297,15 +356,44 @@ export default function AppointmentCalendar({
       ]
     );
 
-  const selectedAppointment =
+  const groupedAgenda =
     useMemo(() => {
-      if (
-        !selectedAppointmentId
+      const groups =
+        new Map<
+          string,
+          DoctorCalendarAppointment[]
+        >();
+
+      for (
+        const appointment of
+          agendaAppointments
       ) {
-        return null;
+        groups.set(
+          appointment
+            .calendarDate,
+          [
+            ...(
+              groups.get(
+                appointment
+                  .calendarDate
+              ) ??
+              []
+            ),
+            appointment,
+          ]
+        );
       }
 
-      return (
+      return Array.from(
+        groups.entries()
+      );
+    }, [
+      agendaAppointments,
+    ]);
+
+  const selectedAppointment =
+    useMemo(
+      () =>
         appointments.find(
           (
             appointment
@@ -313,12 +401,12 @@ export default function AppointmentCalendar({
             appointment.id ===
             selectedAppointmentId
         ) ??
-        null
-      );
-    }, [
-      appointments,
-      selectedAppointmentId,
-    ]);
+        null,
+      [
+        appointments,
+        selectedAppointmentId,
+      ]
+    );
 
   const events =
     useMemo<
@@ -338,23 +426,22 @@ export default function AppointmentCalendar({
               id:
                 appointment.id,
               title:
-                appointment.patientName,
+                appointment
+                  .patientName,
               start:
                 `${appointment.calendarDate}T${normalizeTime(
-                  appointment.calendarTime
+                  appointment
+                    .calendarTime
                 )}`,
               backgroundColor:
-                style.calendarBackground,
+                style
+                  .calendarBackground,
               borderColor:
-                style.calendarBorder,
+                style
+                  .calendarBorder,
               textColor:
-                style.calendarText,
-              extendedProps: {
-                appointmentId:
-                  appointment.id,
-                status:
-                  appointment.status,
-              },
+                style
+                  .calendarText,
             };
           }
         ),
@@ -363,47 +450,32 @@ export default function AppointmentCalendar({
       ]
     );
 
-  const groupedAgenda =
-    useMemo(() => {
-      const groups =
-        new Map<
-          string,
-          DoctorCalendarAppointment[]
-        >();
-
-      for (
-        const appointment of
-        agendaAppointments
-      ) {
-        const current =
-          groups.get(
-            appointment.calendarDate
-          ) ??
-          [];
-
-        current.push(
-          appointment
-        );
-
-        groups.set(
-          appointment.calendarDate,
-          current
-        );
-      }
-
-      return Array.from(
-        groups.entries()
-      );
-    }, [
-      agendaAppointments,
-    ]);
-
-  function selectMode(
-    nextMode: CalendarMode
+  function sourceLabel(
+    source: string
   ) {
-    setMode(
-      nextMode
-    );
+    return source ===
+      "phone"
+      ? commonT(
+          "sourcePhone"
+        )
+      : source ===
+          "walk_in"
+        ? commonT(
+            "sourceWalkIn"
+          )
+        : source ===
+            "email"
+          ? commonT(
+              "sourceEmail"
+            )
+          : source ===
+              "other"
+            ? commonT(
+                "sourceOther"
+              )
+            : commonT(
+                "sourceOnline"
+              );
   }
 
   function moveCalendar(
@@ -413,11 +485,10 @@ export default function AppointmentCalendar({
       | "next"
   ) {
     const api =
-      calendarRef.current?.getApi();
+      calendarRef.current
+        ?.getApi();
 
-    if (
-      !api
-    ) {
+    if (!api) {
       return;
     }
 
@@ -440,24 +511,9 @@ export default function AppointmentCalendar({
     api.today();
   }
 
-  function handleDatesSet(
-    dateInfo: DatesSetArg
-  ) {
-    setCalendarTitle(
-      dateInfo.view.title
-    );
-  }
-
-  function handleEventClick(
-    clickInfo: EventClickArg
-  ) {
-    setSelectedAppointmentId(
-      clickInfo.event.id
-    );
-  }
-
   function renderEventContent(
-    eventInfo: EventContentArg
+    eventInfo:
+      EventContentArg
   ) {
     const appointment =
       appointments.find(
@@ -466,91 +522,102 @@ export default function AppointmentCalendar({
         ) =>
           item.id ===
           eventInfo.event.id
-      ) ??
-      null;
+      );
 
-    if (
-      !appointment
-    ) {
+    if (!appointment) {
       return null;
     }
 
     return (
       <div className="min-w-0 px-[5px] py-[3px] text-xs">
-        {eventInfo.timeText && (
+        {eventInfo
+          .timeText && (
           <span className="font-semibold">
             {
-              eventInfo.timeText
+              eventInfo
+                .timeText
             }
           </span>
         )}
 
         <span className="ml-[5px] truncate">
           {
-            appointment.patientName
+            appointment
+              .patientName
           }
         </span>
       </div>
     );
   }
 
+  const modes:
+    CalendarMode[] = [
+      "agenda",
+      "day",
+      "week",
+      "month",
+    ];
+
   return (
-    <div className="space-y-[21px]">
-      <section className="romdoc-card p-[13px] sm:p-[21px]">
-        <div className="flex flex-col gap-[13px] border-b border-gray-200 pb-[13px] lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-[#036661]">
-              {t("view")}
-            </p>
+    <section className="rounded-[21px] border border-gray-200 bg-white p-[13px] shadow-sm sm:p-[21px]">
+      <div className="flex flex-col gap-[13px] border-b border-gray-200 pb-[13px] xl:flex-row xl:items-center xl:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-[#036661]">
+            {t(
+              "view"
+            )}
+          </p>
 
-            <h2 className="mt-[5px] text-xl font-bold text-gray-900">
-              {mode ===
-              "agenda"
-                ? t("agendaTitle")
-                : calendarTitle}
-            </h2>
-          </div>
+          <h2 className="mt-[5px] text-xl font-bold text-gray-900">
+            {mode ===
+            "agenda"
+              ? t(
+                  "agendaTitle"
+                )
+              : calendarTitle}
+          </h2>
+        </div>
 
-          <div
-            className="romdoc-segmented-control grid-cols-4"
-            aria-label={t("chooseView")}
-          >
-            {(
-              [
-                [
-                  "agenda",
-                  t("agenda"),
-                ],
-                [
-                  "day",
-                  t("day"),
-                ],
-                [
-                  "week",
-                  t("weekShort"),
-                ],
-                [
-                  "month",
-                  t("month"),
-                ],
-              ] as Array<
-                [
-                  CalendarMode,
-                  string,
-                ]
-              >
-            ).map(
-              ([
-                value,
-                label,
-              ]) => (
+        <div
+          className="romdoc-segmented-control grid-cols-4"
+          aria-label={
+            t(
+              "chooseView"
+            )
+          }
+        >
+          {modes.map(
+            (
+              value
+            ) => {
+              const label =
+                value ===
+                "agenda"
+                  ? t(
+                      "agenda"
+                    )
+                  : value ===
+                      "day"
+                    ? t(
+                        "day"
+                      )
+                    : value ===
+                        "week"
+                      ? t(
+                          "weekShort"
+                        )
+                      : t(
+                          "month"
+                        );
+
+              return (
                 <button
                   key={
                     value
                   }
                   type="button"
                   onClick={() =>
-                    selectMode(
+                    setMode(
                       value
                     )
                   }
@@ -565,318 +632,634 @@ export default function AppointmentCalendar({
                       : "text-gray-600 hover:bg-white/70 hover:text-gray-900"
                   }`}
                 >
-                  {
-                    label
-                  }
+                  {label}
                 </button>
-              )
-            )}
-          </div>
-        </div>
-
-        <div className="mt-[13px] flex flex-wrap gap-x-[13px] gap-y-[8px]">
-          {(
-            APPOINTMENT_STATUS_ORDER.map(
-              (
-                status
-              ) => [
-                status,
-                APPOINTMENT_STATUS[
-                  status
-                ],
-              ] as const
-            )
-          ).map(
-            ([
-              status,
-              style,
-            ]) => (
-              <div
-                key={
-                  status
-                }
-                className="flex items-center gap-[5px] text-xs text-gray-600"
-              >
-                <span
-                  className={`h-[8px] w-[8px] rounded-full ${style.dotClassName}`}
-                />
-
-                <span>
-                  {
-                    getAppointmentStatusLabel(
-                      status,
-                      locale
-                    )
-                  }
-                </span>
-              </div>
-            )
+              );
+            }
           )}
         </div>
+      </div>
 
-        {appointments.length ===
-        0 ? (
-          <EmptyState />
-        ) : mode ===
-          "agenda" ? (
-          <div className="mt-[21px]">
-            <div className="flex flex-wrap items-center justify-between gap-[13px]">
-              <p className="text-sm text-gray-600">
+      <div className="mt-[13px] flex flex-wrap gap-x-[13px] gap-y-[8px]">
+        {APPOINTMENT_STATUS_ORDER.map(
+          (
+            status
+          ) => (
+            <div
+              key={
+                status
+              }
+              className="flex items-center gap-[5px] text-xs text-gray-600"
+            >
+              <span
+                className={`h-[8px] w-[8px] rounded-full ${APPOINTMENT_STATUS[
+                  status
+                ].dotClassName}`}
+              />
+
+              <span>
                 {
-                  agendaAppointments.length
-                }{" "}
-                {agendaAppointments.length ===
-                1
-                  ? t("shownOne")
-                  : t("shownMany")}
-              </p>
-
-              <div className="flex rounded-[13px] border border-gray-200 bg-white p-[3px]">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setAgendaFilter(
-                      "upcoming"
-                    )
-                  }
-                  aria-pressed={
-                    agendaFilter ===
-                    "upcoming"
-                  }
-                  className={`romdoc-focus-ring min-h-[34px] rounded-[8px] px-[13px] py-[5px] text-sm font-semibold ${
-                    agendaFilter ===
-                    "upcoming"
-                      ? "bg-[#036661] text-white"
-                      : "text-gray-600 hover:bg-gray-50"
-                  }`}
-                >
-                  {t("upcoming")}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setAgendaFilter(
-                      "all"
-                    )
-                  }
-                  aria-pressed={
-                    agendaFilter ===
-                    "all"
-                  }
-                  className={`romdoc-focus-ring min-h-[34px] rounded-[8px] px-[13px] py-[5px] text-sm font-semibold ${
-                    agendaFilter ===
-                    "all"
-                      ? "bg-[#036661] text-white"
-                      : "text-gray-600 hover:bg-gray-50"
-                  }`}
-                >
-                  {t("all")}
-                </button>
-              </div>
-            </div>
-
-            {groupedAgenda.length >
-            0 ? (
-              <div className="mt-[21px] space-y-[21px]">
-                {groupedAgenda.map(
-                  ([
-                    date,
-                    dateAppointments,
-                  ]) => (
-                    <section
-                      key={
-                        date
-                      }
-                    >
-                      <div className="sticky top-[8px] z-10 rounded-[13px] border border-gray-200 bg-white/95 px-[13px] py-[8px] backdrop-blur">
-                        <h3 className="text-sm font-bold capitalize text-gray-900">
-                          {formatDate(
-                            date,
-                            locale
-                          )}
-                        </h3>
-                      </div>
-
-                      <div className="mt-[8px] space-y-[8px]">
-                        {dateAppointments.map(
-                          (
-                            appointment
-                          ) => (
-                            <AgendaCard
-                              key={
-                                appointment.id
-                              }
-                              appointment={
-                                appointment
-                              }
-                              onOpen={() =>
-                                setSelectedAppointmentId(
-                                  appointment.id
-                                )
-                              }
-                            />
-                          )
-                        )}
-                      </div>
-                    </section>
+                  getAppointmentStatusLabel(
+                    status,
+                    locale
                   )
-                )}
+                }
+              </span>
+            </div>
+          )
+        )}
+      </div>
+
+      {appointments.length ===
+      0 ? (
+        <div className="mt-[21px] rounded-[21px] border border-dashed border-gray-300 bg-gray-50 p-[34px] text-center">
+          <div className="mx-auto flex h-[55px] w-[55px] items-center justify-center rounded-full bg-white text-2xl shadow-sm">
+            📅
+          </div>
+
+          <h3 className="mt-[13px] text-lg font-bold text-gray-900">
+            {t(
+              "emptyTitle"
+            )}
+          </h3>
+
+          <p className="mx-auto mt-[8px] max-w-md text-sm leading-6 text-gray-600">
+            {t(
+              "emptyDescription"
+            )}
+          </p>
+        </div>
+      ) : (
+        <div className="mt-[21px] grid gap-[21px] lg:grid-cols-[minmax(0,1.618fr)_minmax(320px,1fr)] lg:items-start">
+          <div className="min-w-0">
+            {mode ===
+            "agenda" ? (
+              <div>
+                <div className="flex flex-wrap items-center justify-between gap-[13px]">
+                  <p className="text-sm text-gray-600">
+                    {
+                      agendaAppointments
+                        .length
+                    }{" "}
+                    {agendaAppointments
+                      .length ===
+                    1
+                      ? t(
+                          "shownOne"
+                        )
+                      : t(
+                          "shownMany"
+                        )}
+                  </p>
+
+                  <div className="flex rounded-[13px] border border-gray-200 bg-white p-[3px]">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAgendaFilter(
+                          "upcoming"
+                        )
+                      }
+                      className={`romdoc-focus-ring min-h-[34px] rounded-[8px] px-[13px] py-[5px] text-sm font-semibold ${
+                        agendaFilter ===
+                        "upcoming"
+                          ? "bg-[#036661] text-white"
+                          : "text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      {t(
+                        "upcoming"
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAgendaFilter(
+                          "all"
+                        )
+                      }
+                      className={`romdoc-focus-ring min-h-[34px] rounded-[8px] px-[13px] py-[5px] text-sm font-semibold ${
+                        agendaFilter ===
+                        "all"
+                          ? "bg-[#036661] text-white"
+                          : "text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      {t(
+                        "all"
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-[13px] max-h-[610px] space-y-[13px] overflow-y-auto pr-[5px]">
+                  {groupedAgenda.length >
+                  0 ? (
+                    groupedAgenda.map(
+                      ([
+                        date,
+                        dateAppointments,
+                      ]) => (
+                        <div
+                          key={
+                            date
+                          }
+                        >
+                          <h3 className="sticky top-0 z-10 rounded-[8px] bg-gray-50 px-[13px] py-[8px] text-sm font-bold capitalize text-gray-700">
+                            {formatDate(
+                              date,
+                              locale
+                            )}
+                          </h3>
+
+                          <div className="mt-[5px] space-y-[5px]">
+                            {dateAppointments.map(
+                              (
+                                appointment
+                              ) => {
+                                const selected =
+                                  appointment.id ===
+                                  selectedAppointmentId;
+
+                                return (
+                                  <button
+                                    key={
+                                      appointment.id
+                                    }
+                                    type="button"
+                                    onClick={() =>
+                                      setSelectedAppointmentId(
+                                        appointment.id
+                                      )
+                                    }
+                                    className={`romdoc-focus-ring block w-full rounded-[13px] border p-[13px] text-left ${
+                                      selected
+                                        ? "border-[#036661] bg-[#036661]/5 shadow-sm"
+                                        : "border-gray-200 bg-white hover:border-[#036661]/40"
+                                    }`}
+                                  >
+                                    <div className="flex items-start gap-[13px]">
+                                      <div className="w-[55px] shrink-0 rounded-[8px] bg-gray-50 px-[5px] py-[8px] text-center">
+                                        <p className="font-bold text-gray-900">
+                                          {shortTime(
+                                            appointment.calendarTime,
+                                            commonT(
+                                              "timeUnspecified"
+                                            )
+                                          )}
+                                        </p>
+                                      </div>
+
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex flex-wrap items-start justify-between gap-[8px]">
+                                          <div className="min-w-0">
+                                            <p className="truncate font-semibold text-gray-900">
+                                              {
+                                                appointment.patientName
+                                              }
+                                            </p>
+
+                                            <p className="mt-[3px] truncate text-xs text-gray-500">
+                                              {
+                                                appointment.clinicName
+                                              }
+                                            </p>
+                                          </div>
+
+                                          <AppointmentStatusBadge
+                                            status={
+                                              appointment.status
+                                            }
+                                            locale={
+                                              locale
+                                            }
+                                          />
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </button>
+                                );
+                              }
+                            )}
+                          </div>
+                        </div>
+                      )
+                    )
+                  ) : (
+                    <div className="rounded-[13px] border border-dashed border-gray-300 bg-gray-50 p-[21px] text-center">
+                      <p className="font-semibold text-gray-900">
+                        {t(
+                          "noUpcoming"
+                        )}
+                      </p>
+
+                      <p className="mt-[5px] text-sm text-gray-600">
+                        {t(
+                          "showAllHint"
+                        )}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
-              <div className="mt-[21px] rounded-[13px] border border-dashed border-gray-300 bg-gray-50 p-[21px] text-center">
-                <p className="font-semibold text-gray-900">
-                  {t("noUpcoming")}
-                </p>
+              <div>
+                <div className="mb-[13px] flex flex-wrap items-center justify-between gap-[13px]">
+                  <div className="flex gap-[5px]">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() =>
+                        moveCalendar(
+                          "previous"
+                        )
+                      }
+                      aria-label={
+                        t(
+                          "previousPeriod"
+                        )
+                      }
+                    >
+                      ←
+                    </Button>
 
-                <p className="mt-[5px] text-sm text-gray-600">
-                  {t("showAllHint")}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() =>
+                        moveCalendar(
+                          "today"
+                        )
+                      }
+                    >
+                      {t(
+                        "today"
+                      )}
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() =>
+                        moveCalendar(
+                          "next"
+                        )
+                      }
+                      aria-label={
+                        t(
+                          "nextPeriod"
+                        )
+                      }
+                    >
+                      →
+                    </Button>
+                  </div>
+
+                  <p className="text-sm font-semibold capitalize text-gray-900">
+                    {
+                      calendarTitle
+                    }
+                  </p>
+                </div>
+
+                <div className="doctor-calendar overflow-x-auto rounded-[13px] border border-gray-200">
+                  <div
+                    className={
+                      mode ===
+                      "week"
+                        ? "min-w-[690px]"
+                        : mode ===
+                            "day"
+                          ? "min-w-[390px]"
+                          : "min-w-[610px]"
+                    }
+                  >
+                    <FullCalendar
+                      key={`${mode}-${locale}`}
+                      ref={
+                        calendarRef
+                      }
+                      plugins={[
+                        dayGridPlugin,
+                        timeGridPlugin,
+                        interactionPlugin,
+                      ]}
+                      locale={
+                        FULL_CALENDAR_LOCALE[
+                          locale
+                        ]
+                      }
+                      initialView={
+                        CALENDAR_VIEW[
+                          mode
+                        ]
+                      }
+                      headerToolbar={
+                        false
+                      }
+                      events={
+                        events
+                      }
+                      eventClick={(
+                        clickInfo:
+                          EventClickArg
+                      ) =>
+                        setSelectedAppointmentId(
+                          clickInfo
+                            .event
+                            .id
+                        )
+                      }
+                      eventContent={
+                        renderEventContent
+                      }
+                      datesSet={(
+                        dateInfo:
+                          DatesSetArg
+                      ) =>
+                        setCalendarTitle(
+                          dateInfo
+                            .view
+                            .title
+                        )
+                      }
+                      height="auto"
+                      nowIndicator
+                      navLinks
+                      dayMaxEvents
+                      weekends
+                      firstDay={
+                        1
+                      }
+                      slotMinTime="06:00:00"
+                      slotMaxTime="22:00:00"
+                      slotDuration="00:30:00"
+                      allDaySlot={
+                        false
+                      }
+                      eventDisplay="block"
+                      displayEventEnd={
+                        false
+                      }
+                    />
+                  </div>
+                </div>
+
+                <p className="mt-[8px] text-xs text-gray-500 md:hidden">
+                  {t(
+                    "swipeHint"
+                  )}
                 </p>
               </div>
             )}
           </div>
-        ) : (
-          <div className="mt-[21px]">
-            <div className="mb-[13px] flex flex-wrap items-center justify-between gap-[13px]">
-              <div className="flex gap-[5px]">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() =>
-                    moveCalendar(
-                      "previous"
-                    )
-                  }
-                  aria-label={t("previousPeriod")}
-                >
-                  ←
-                </Button>
 
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() =>
-                    moveCalendar(
-                      "today"
-                    )
-                  }
-                >
-                  {t("today")}
-                </Button>
+          <aside className="lg:sticky lg:top-[21px]">
+            {selectedAppointment ? (
+              <div className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
+                <div className="flex items-start justify-between gap-[13px]">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#036661]">
+                      {t(
+                        "selected"
+                      )}
+                    </p>
 
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() =>
-                    moveCalendar(
-                      "next"
-                    )
-                  }
-                  aria-label={t("nextPeriod")}
-                >
-                  →
-                </Button>
-              </div>
+                    <h3 className="mt-[5px] truncate text-xl font-bold text-gray-900">
+                      {
+                        selectedAppointment
+                          .patientName
+                      }
+                    </h3>
+                  </div>
 
-              <p className="text-sm font-semibold capitalize text-gray-900">
-                {
-                  calendarTitle
-                }
-              </p>
-            </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedAppointmentId(
+                        null
+                      )
+                    }
+                    aria-label={
+                      t(
+                        "close"
+                      )
+                    }
+                    className="romdoc-focus-ring flex h-[34px] w-[34px] items-center justify-center rounded-full border border-gray-200 text-gray-500"
+                  >
+                    ×
+                  </button>
+                </div>
 
-            <div className="doctor-calendar overflow-x-auto rounded-[13px] border border-gray-200">
-              <div
-                className={
-                  mode ===
-                  "week"
-                    ? "min-w-[760px]"
-                    : mode ===
-                        "day"
-                      ? "min-w-[420px]"
-                      : "min-w-[680px]"
-                }
-              >
-                <FullCalendar
-                  key={
-                    mode
+                <div className="mt-[13px] flex flex-wrap items-center gap-[8px]">
+                  <AppointmentStatusBadge
+                    status={
+                      selectedAppointment
+                        .status
+                    }
+                    locale={
+                      locale
+                    }
+                  />
+
+                  <span className="text-sm text-gray-600">
+                    {formatCompactDate(
+                      selectedAppointment
+                        .calendarDate,
+                      locale
+                    )}
+                    ,{" "}
+                    {shortTime(
+                      selectedAppointment
+                        .calendarTime,
+                      commonT(
+                        "timeUnspecified"
+                      )
+                    )}
+                  </span>
+                </div>
+
+                <div className="mt-[21px] space-y-[13px]">
+                  <Detail
+                    label={
+                      t(
+                        "clinic"
+                      )
+                    }
+                    value={
+                      selectedAppointment
+                        .clinicName
+                    }
+                  />
+
+                  <Detail
+                    label={
+                      t(
+                        "source"
+                      )
+                    }
+                    value={
+                      sourceLabel(
+                        selectedAppointment
+                          .source
+                      )
+                    }
+                  />
+
+                  <Detail
+                    label={
+                      t(
+                        "requestedDate"
+                      )
+                    }
+                    value={`${formatCompactDate(
+                      selectedAppointment
+                        .requestedDate,
+                      locale
+                    )}, ${shortTime(
+                      selectedAppointment
+                        .requestedTime,
+                      commonT(
+                        "timeUnspecified"
+                      )
+                    )}`}
+                  />
+
+                  {selectedAppointment
+                    .scheduledDate && (
+                    <Detail
+                      label={
+                        t(
+                          "confirmedDate"
+                        )
+                      }
+                      value={`${formatCompactDate(
+                        selectedAppointment
+                          .scheduledDate,
+                        locale
+                      )}, ${shortTime(
+                        selectedAppointment
+                          .scheduledTime,
+                        commonT(
+                          "timeUnspecified"
+                        )
+                      )}`}
+                    />
+                  )}
+
+                  <ContactDetail
+                    label={
+                      t(
+                        "phone"
+                      )
+                    }
+                    value={
+                      selectedAppointment
+                        .patientPhone
+                    }
+                    href={`tel:${selectedAppointment.patientPhone.replace(
+                      /\s+/g,
+                      ""
+                    )}`}
+                  />
+
+                  <ContactDetail
+                    label={
+                      t(
+                        "email"
+                      )
+                    }
+                    value={
+                      selectedAppointment
+                        .patientEmail
+                    }
+                    href={`mailto:${selectedAppointment.patientEmail}`}
+                  />
+                </div>
+
+                {selectedAppointment
+                  .notes && (
+                  <InfoBox
+                    label={
+                      t(
+                        "notes"
+                      )
+                    }
+                    value={
+                      selectedAppointment
+                        .notes
+                    }
+                  />
+                )}
+
+                {selectedAppointment
+                  .rescheduleReason && (
+                  <InfoBox
+                    label={
+                      t(
+                        "rescheduleReason"
+                      )
+                    }
+                    value={
+                      selectedAppointment
+                        .rescheduleReason
+                    }
+                    blue
+                  />
+                )}
+
+                <TranslatedAppointmentActions
+                  appointmentId={
+                    selectedAppointment
+                      .id
                   }
-                  ref={
-                    calendarRef
+                  currentStatus={
+                    selectedAppointment
+                      .status
                   }
-                  plugins={[
-                    dayGridPlugin,
-                    timeGridPlugin,
-                    interactionPlugin,
-                  ]}
-                  locale={
-                    FULL_CALENDAR_LOCALE[locale]
+                  requestedDate={
+                    selectedAppointment
+                      .requestedDate
                   }
-                  initialView={
-                    calendarViewByMode[
-                      mode
-                    ]
+                  requestedTime={
+                    selectedAppointment
+                      .requestedTime
                   }
-                  headerToolbar={
-                    false
+                  scheduledDate={
+                    selectedAppointment
+                      .scheduledDate
                   }
-                  events={
-                    events
+                  scheduledTime={
+                    selectedAppointment
+                      .scheduledTime
                   }
-                  eventClick={
-                    handleEventClick
-                  }
-                  eventContent={
-                    renderEventContent
-                  }
-                  datesSet={
-                    handleDatesSet
-                  }
-                  height="auto"
-                  nowIndicator
-                  navLinks
-                  dayMaxEvents={
-                    true
-                  }
-                  weekends
-                  firstDay={
-                    1
-                  }
-                  slotMinTime="06:00:00"
-                  slotMaxTime="22:00:00"
-                  slotDuration="00:30:00"
-                  allDaySlot={
-                    false
-                  }
-                  eventDisplay="block"
-                  displayEventEnd={
-                    false
+                  currentReason={
+                    selectedAppointment
+                      .rescheduleReason
                   }
                 />
               </div>
-            </div>
+            ) : (
+              <div className="rounded-[21px] border border-dashed border-gray-300 bg-gray-50 p-[21px] text-center">
+                <p className="font-semibold text-gray-900">
+                  {t(
+                    "selected"
+                  )}
+                </p>
 
-            <p className="mt-[8px] text-xs text-gray-500 md:hidden">
-              {t("swipeHint")}
-            </p>
-          </div>
-        )}
-      </section>
-
-      {selectedAppointment && (
-        <AppointmentDetails
-          appointment={
-            selectedAppointment
-          }
-          onClose={() =>
-            setSelectedAppointmentId(
-              null
-            )
-          }
-        />
+                <p className="mt-[5px] text-sm leading-6 text-gray-600">
+                  {t(
+                    "showAllHint"
+                  )}
+                </p>
+              </div>
+            )}
+          </aside>
+        </div>
       )}
 
       <style jsx global>{`
@@ -924,256 +1307,6 @@ export default function AppointmentCalendar({
           color: #6b7280;
         }
       `}</style>
-    </div>
-  );
-}
-
-function AgendaCard({
-  appointment,
-  onOpen,
-}: {
-  appointment: DoctorCalendarAppointment;
-  onOpen: () => void;
-}) {
-  const locale = normalizeAppLocale(
-    useLocale()
-  );
-  const commonT = useTranslations(
-    "DoctorAppointmentOperations.common"
-  );
-
-  const sourceLabel =
-    appointment.source === "phone"
-      ? commonT("sourcePhone")
-      : appointment.source === "walk_in"
-        ? commonT("sourceWalkIn")
-        : appointment.source === "email"
-          ? commonT("sourceEmail")
-          : appointment.source === "other"
-            ? commonT("sourceOther")
-            : commonT("sourceOnline");
-
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="romdoc-focus-ring block w-full rounded-[13px] border border-gray-200 bg-white p-[13px] text-left transition hover:border-[#036661]/40 hover:shadow-sm"
-    >
-      <div className="flex items-start gap-[13px]">
-        <div className="w-[55px] shrink-0 rounded-[13px] bg-gray-50 px-[8px] py-[13px] text-center">
-          <p className="text-lg font-bold text-gray-900">
-            {formatTime(
-              appointment.calendarTime,
-              commonT("timeUnspecified")
-            )}
-          </p>
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-[8px]">
-            <div className="min-w-0">
-              <p className="truncate font-semibold text-gray-900">
-                {appointment.patientName}
-              </p>
-              <p className="mt-[5px] truncate text-sm text-gray-600">
-                {appointment.clinicName}
-              </p>
-            </div>
-
-            <AppointmentStatusBadge
-              status={appointment.status}
-              locale={locale}
-            />
-          </div>
-
-          <div className="mt-[8px] flex flex-wrap gap-x-[13px] gap-y-[5px] text-xs text-gray-500">
-            <span>{sourceLabel}</span>
-            <span>{appointment.patientPhone}</span>
-          </div>
-        </div>
-      </div>
-    </button>
-  );
-}
-
-function EmptyState() {
-  const t = useTranslations(
-    "DoctorAppointmentOperations.calendar.component"
-  );
-
-  return (
-    <div className="mt-[21px] rounded-[21px] border border-dashed border-gray-300 bg-gray-50 p-[34px] text-center">
-      <div className="mx-auto flex h-[55px] w-[55px] items-center justify-center rounded-full bg-white text-2xl shadow-sm">
-        📅
-      </div>
-
-      <h3 className="mt-[13px] text-lg font-bold text-gray-900">
-        {t("emptyTitle")}
-      </h3>
-
-      <p className="mx-auto mt-[8px] max-w-md text-sm leading-6 text-gray-600">
-        {t("emptyDescription")}
-      </p>
-    </div>
-  );
-}
-
-function AppointmentDetails({
-  appointment,
-  onClose,
-}: {
-  appointment: DoctorCalendarAppointment;
-  onClose: () => void;
-}) {
-  const locale = normalizeAppLocale(
-    useLocale()
-  );
-  const t = useTranslations(
-    "DoctorAppointmentOperations.calendar.component"
-  );
-  const commonT = useTranslations(
-    "DoctorAppointmentOperations.common"
-  );
-
-  const sourceLabel =
-    appointment.source === "phone"
-      ? commonT("sourcePhone")
-      : appointment.source === "walk_in"
-        ? commonT("sourceWalkIn")
-        : appointment.source === "email"
-          ? commonT("sourceEmail")
-          : appointment.source === "other"
-            ? commonT("sourceOther")
-            : commonT("sourceOnline");
-
-  return (
-    <section
-      id={`calendar-appointment-${appointment.id}`}
-      className="scroll-mt-[89px] rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm"
-    >
-      <div className="flex flex-col justify-between gap-[13px] sm:flex-row sm:items-start">
-        <div>
-          <p className="text-sm font-medium text-gray-500">
-            {t("selected")}
-          </p>
-
-          <h2 className="mt-[5px] text-2xl font-bold text-gray-900">
-            {appointment.patientName}
-          </h2>
-
-          <div className="mt-[8px] flex flex-wrap items-center gap-[8px]">
-            <AppointmentStatusBadge
-              status={appointment.status}
-              locale={locale}
-            />
-
-            <span className="text-sm text-gray-500">
-              {formatCompactDate(
-                appointment.calendarDate,
-                locale
-              )}, {formatTime(
-                appointment.calendarTime,
-                commonT("timeUnspecified")
-              )}
-            </span>
-          </div>
-        </div>
-
-        <Button
-          type="button"
-          onClick={onClose}
-          variant="secondary"
-          size="sm"
-          className="w-fit"
-        >
-          {t("close")}
-        </Button>
-      </div>
-
-      <div className="mt-[21px] grid gap-[21px] sm:grid-cols-2 lg:grid-cols-3">
-        <Detail
-          label={t("clinic")}
-          value={appointment.clinicName}
-        />
-
-        <Detail
-          label={t("source")}
-          value={sourceLabel}
-        />
-
-        <Detail
-          label={t("requestedDate")}
-          value={`${formatCompactDate(
-            appointment.requestedDate,
-            locale
-          )}${
-            appointment.requestedTime
-              ? `, ${formatTime(
-                  appointment.requestedTime,
-                  commonT("timeUnspecified")
-                )}`
-              : ""
-          }`}
-        />
-
-        {appointment.scheduledDate && (
-          <Detail
-            label={t("confirmedDate")}
-            value={`${formatCompactDate(
-              appointment.scheduledDate,
-              locale
-            )}${
-              appointment.scheduledTime
-                ? `, ${formatTime(
-                    appointment.scheduledTime,
-                    commonT("timeUnspecified")
-                  )}`
-                : ""
-            }`}
-            strong
-          />
-        )}
-
-        <ContactDetail
-          label={t("phone")}
-          value={appointment.patientPhone}
-          href={`tel:${appointment.patientPhone.replace(
-            /\s+/g,
-            ""
-          )}`}
-        />
-
-        <ContactDetail
-          label={t("email")}
-          value={appointment.patientEmail}
-          href={`mailto:${appointment.patientEmail}`}
-        />
-      </div>
-
-      {appointment.notes && (
-        <InfoBox
-          label={t("notes")}
-          value={appointment.notes}
-        />
-      )}
-
-      {appointment.rescheduleReason && (
-        <InfoBox
-          label={t("rescheduleReason")}
-          value={appointment.rescheduleReason}
-          blue
-        />
-      )}
-
-      <TranslatedAppointmentActions
-        appointmentId={appointment.id}
-        currentStatus={appointment.status}
-        requestedDate={appointment.requestedDate}
-        requestedTime={appointment.requestedTime}
-        scheduledDate={appointment.scheduledDate}
-        scheduledTime={appointment.scheduledTime}
-        currentReason={appointment.rescheduleReason}
-      />
     </section>
   );
 }
@@ -1181,30 +1314,18 @@ function AppointmentDetails({
 function Detail({
   label,
   value,
-  strong = false,
 }: {
   label: string;
   value: string;
-  strong?: boolean;
 }) {
   return (
     <div>
       <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-        {
-          label
-        }
+        {label}
       </p>
 
-      <p
-        className={`mt-[5px] text-gray-900 ${
-          strong
-            ? "font-semibold"
-            : ""
-        }`}
-      >
-        {
-          value
-        }
+      <p className="mt-[5px] text-sm leading-6 text-gray-900">
+        {value}
       </p>
     </div>
   );
@@ -1222,20 +1343,16 @@ function ContactDetail({
   return (
     <div>
       <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-        {
-          label
-        }
+        {label}
       </p>
 
       <a
         href={
           href
         }
-        className="romdoc-focus-ring mt-[5px] block break-all rounded-[5px] text-gray-900 underline-offset-4 hover:text-[#036661] hover:underline"
+        className="romdoc-focus-ring mt-[5px] block break-all rounded-[5px] text-sm text-gray-900 underline-offset-4 hover:text-[#036661] hover:underline"
       >
-        {
-          value
-        }
+        {value}
       </a>
     </div>
   );
@@ -1265,9 +1382,7 @@ function InfoBox({
             : "text-gray-500"
         }`}
       >
-        {
-          label
-        }
+        {label}
       </p>
 
       <p
@@ -1277,9 +1392,7 @@ function InfoBox({
             : "text-gray-700"
         }`}
       >
-        {
-          value
-        }
+        {value}
       </p>
     </div>
   );
