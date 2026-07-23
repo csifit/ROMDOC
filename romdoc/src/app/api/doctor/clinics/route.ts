@@ -194,7 +194,7 @@ async function requireDoctor():
     error: doctorError,
   } = await supabase
     .from("doctors")
-    .select("id")
+    .select("id, account_type")
     .eq("profile_id", user.id)
     .maybeSingle();
 
@@ -213,6 +213,29 @@ async function requireDoctor():
           },
           {
             status: 404,
+          }
+        ),
+    };
+  }
+
+  if (
+    doctor.account_type !==
+      "independent"
+  ) {
+    return {
+      identity: null,
+
+      error:
+        NextResponse.json(
+          {
+            code:
+              "independent_doctor_required",
+
+            error:
+              "Doar medicii independenți pot propune sau administra clinici.",
+          },
+          {
+            status: 403,
           }
         ),
     };

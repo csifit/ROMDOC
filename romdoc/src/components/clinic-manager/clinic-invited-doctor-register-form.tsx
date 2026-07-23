@@ -424,6 +424,9 @@ export default function ClinicInvitedDoctorRegisterForm({
                       token
                     ),
 
+                    language:
+                      locale,
+
                     first_name:
                       normalizedFirstName,
 

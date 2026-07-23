@@ -1,0 +1,1 @@
+{{ if eq .Data.language "en" }}Confirm your RomDoc account{{ else if eq .Data.language "de" }}Bestätigen Sie Ihr RomDoc-Konto{{ else }}Confirmă contul RomDoc{{ end }}

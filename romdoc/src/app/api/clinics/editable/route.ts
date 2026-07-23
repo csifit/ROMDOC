@@ -204,7 +204,7 @@ async function requireEditableClinicAccess(): Promise<UserAccess> {
     const admin = createAdminClient();
     const { data: doctor, error: doctorError } = await admin
       .from("doctors")
-      .select("id")
+      .select("id, account_type")
       .eq("profile_id", user.id)
       .maybeSingle();
 
@@ -218,6 +218,28 @@ async function requireEditableClinicAccess(): Promise<UserAccess> {
           {
             code: PLATFORM_OPERATOR_CLINIC_CODES.doctorProfileMissing,
             error: "Contul de medic nu este asociat unui profil de medic.",
+          },
+          403
+        ),
+      };
+    }
+
+    if (
+      doctor.account_type !==
+        "independent"
+    ) {
+      return {
+        mode: null,
+        profileId: null,
+        role: null,
+        doctorId: null,
+        response: json(
+          {
+            code:
+              "independent_doctor_required",
+
+            error:
+              "Doar medicii independenți pot edita datele clinicilor.",
           },
           403
         ),

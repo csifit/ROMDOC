@@ -204,6 +204,7 @@ export default async function DoctorProfilePage() {
         id,
         slug,
         status,
+        account_type,
         photo_url,
         phone,
         email,
@@ -245,6 +246,10 @@ export default async function DoctorProfilePage() {
       </main>
     );
   }
+
+  const isIndependentDoctor =
+    doctor.account_type ===
+    "independent";
 
   const [
     servicesResult,
@@ -580,17 +585,19 @@ export default async function DoctorProfilePage() {
             }
           />
 
-          <DoctorClinicEditingPanel
-            title={t(
-              "clinicsTitle"
-            )}
-            description={t(
-              "clinicsDescription"
-            )}
-            emptyMessage={t(
-              "clinicsEmpty"
-            )}
-          />
+          {isIndependentDoctor && (
+            <DoctorClinicEditingPanel
+              title={t(
+                "clinicsTitle"
+              )}
+              description={t(
+                "clinicsDescription"
+              )}
+              emptyMessage={t(
+                "clinicsEmpty"
+              )}
+            />
+          )}
 
           {specialtiesResult
             .error ||

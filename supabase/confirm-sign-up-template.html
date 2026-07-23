@@ -1,0 +1,45 @@
+{{ if eq .Data.language "en" }}
+<h2>Confirm your RomDoc account</h2>
+
+<p>Hello,</p>
+
+<p>Follow the link below to confirm your email address and finish creating your RomDoc account.</p>
+
+<p>
+  <a href="{{ .ConfirmationURL }}">Confirm email address</a>
+</p>
+
+<p>If you did not create this account, you can ignore this email.</p>
+
+<p>The RomDoc team</p>
+
+{{ else if eq .Data.language "de" }}
+<h2>Bestätigen Sie Ihr RomDoc-Konto</h2>
+
+<p>Guten Tag,</p>
+
+<p>Öffnen Sie den folgenden Link, um Ihre E-Mail-Adresse zu bestätigen und die Erstellung Ihres RomDoc-Kontos abzuschließen.</p>
+
+<p>
+  <a href="{{ .ConfirmationURL }}">E-Mail-Adresse bestätigen</a>
+</p>
+
+<p>Wenn Sie dieses Konto nicht erstellt haben, können Sie diese E-Mail ignorieren.</p>
+
+<p>Das RomDoc-Team</p>
+
+{{ else }}
+<h2>Confirmă contul RomDoc</h2>
+
+<p>Bună ziua,</p>
+
+<p>Deschide linkul de mai jos pentru a confirma adresa de e-mail și pentru a finaliza crearea contului RomDoc.</p>
+
+<p>
+  <a href="{{ .ConfirmationURL }}">Confirmă adresa de e-mail</a>
+</p>
+
+<p>Dacă nu ai creat acest cont, poți ignora acest e-mail.</p>
+
+<p>Echipa RomDoc</p>
+{{ end }}

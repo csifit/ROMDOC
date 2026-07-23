@@ -232,13 +232,13 @@ export default async function DoctorClinicsPage() {
       | DoctorAccount
       | null;
 
-  const isClinicSubAccount =
+  const isClinicInvitedDoctor =
     doctor
       ?.account_type ===
-    "clinic_sub_account";
+    "clinic_invited";
 
   if (
-    !isClinicSubAccount ||
+    !isClinicInvitedDoctor ||
     !doctor
   ) {
     return (
