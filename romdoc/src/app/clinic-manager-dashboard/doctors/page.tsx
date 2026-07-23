@@ -3,6 +3,7 @@ import {
   getTranslations,
 } from "next-intl/server";
 
+import DoctorCoverageSuspensionControl from "@/components/clinic-manager/doctor-coverage-suspension-control";
 import DoctorLocationAssignmentControl from "@/components/clinic-manager/doctor-location-assignment-control";
 import {
   type AppLocale,
@@ -52,6 +53,14 @@ type DoctorRelationship = {
   invitation_status: string;
   payment_responsibility: string;
   coverage_status: string;
+
+  pause_reason:
+    | string
+    | null;
+
+  paused_at:
+    | string
+    | null;
 
   accepted_at:
     | string
@@ -420,6 +429,8 @@ export default async function ClinicManagerDoctorsPage() {
             invitation_status,
             payment_responsibility,
             coverage_status,
+            pause_reason,
+            paused_at,
             accepted_at,
             expires_at,
             created_at
@@ -427,10 +438,6 @@ export default async function ClinicManagerDoctorsPage() {
           .in(
             "organization_id",
             organizationIds
-          )
-          .eq(
-            "payment_responsibility",
-            "clinic_paid"
           )
           .order(
             "created_at",
@@ -1382,6 +1389,34 @@ export default async function ClinicManagerDoctorsPage() {
                               approvedLocations
                             }
                           />
+
+                            <DoctorCoverageSuspensionControl
+                              relationshipId={
+                                relationship.id
+                              }
+                              doctorName={doctorDisplayName(
+                                relationship
+                              )}
+                              currentStatus={
+                                relationship.coverage_status
+                              }
+                              pauseReason={
+                                relationship.pause_reason
+                              }
+                              pausedAt={
+                                relationship.paused_at
+                              }
+                              locale={
+                                locale
+                              }
+                              disabled={
+                                !relationship.doctor_id ||
+                                relationship.invitation_status !==
+                                  "accepted" ||
+                                organization?.status !==
+                                  "active"
+                              }
+                            />
                         </dd>
                       </div>
 
@@ -1621,6 +1656,34 @@ export default async function ClinicManagerDoctorsPage() {
                               }
                               locations={
                                 approvedLocations
+                              }
+                            />
+
+                            <DoctorCoverageSuspensionControl
+                              relationshipId={
+                                relationship.id
+                              }
+                              doctorName={doctorDisplayName(
+                                relationship
+                              )}
+                              currentStatus={
+                                relationship.coverage_status
+                              }
+                              pauseReason={
+                                relationship.pause_reason
+                              }
+                              pausedAt={
+                                relationship.paused_at
+                              }
+                              locale={
+                                locale
+                              }
+                              disabled={
+                                !relationship.doctor_id ||
+                                relationship.invitation_status !==
+                                  "accepted" ||
+                                organization?.status !==
+                                  "active"
                               }
                             />
                           </td>

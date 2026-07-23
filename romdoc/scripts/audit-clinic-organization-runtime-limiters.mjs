@@ -1,3 +1,6 @@
+// Audit the clinic organization API routes to ensure that there are no doctor-count, invitation-count, location-count, or SMS usage quotas, subscription gates, custom rate limiters, or HTTP 429 blockers.
+// run this script:  node scripts/audit-clinic-organization-runtime-limiters.mjs
+
 import {
   access,
   readFile,

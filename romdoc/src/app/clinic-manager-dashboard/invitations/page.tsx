@@ -2,6 +2,7 @@ import {
   getTranslations,
 } from "next-intl/server";
 
+import DoctorInvitationResendPanel from "@/components/clinic-manager/doctor-invitation-resend-panel";
 import DoctorInvitationsPanel from "@/components/clinic-manager/doctor-invitations-panel";
 import {
   getStoredAppLocale,
@@ -39,7 +40,8 @@ type DoctorInvitation = {
   created_at: string;
 };
 
-export default async function ClinicManagerInvitationsPage() {
+export default async function
+ClinicManagerInvitationsPage() {
   const locale =
     await getStoredAppLocale();
 
@@ -205,6 +207,18 @@ export default async function ClinicManagerInvitationsPage() {
       </header>
 
       <DoctorInvitationsPanel
+        organizations={
+          organizations
+        }
+        invitations={
+          invitations
+        }
+      />
+
+      <DoctorInvitationResendPanel
+        locale={
+          locale
+        }
         organizations={
           organizations
         }
