@@ -456,7 +456,7 @@
   },
   "AuthReturn": {
     "checkEmail": {
-      "title": "Verifică adresa de e-mail",
+      "title": "Vă rugăm să verificați e-mailul pentru a vă confirma contul.",
       "sentWithEmail": "Dacă această adresă nu este deja asociată unui cont RomDoc, am trimis un mesaj de confirmare la <email>{email}</email>.",
       "sentWithoutEmail": "Dacă adresa introdusă nu este deja asociată unui cont RomDoc, am trimis un mesaj de confirmare.",
       "instructions": "Deschide mesajul și apasă linkul de confirmare pentru activarea contului.",

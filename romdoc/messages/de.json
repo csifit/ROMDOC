@@ -456,7 +456,7 @@
   },
   "AuthReturn": {
     "checkEmail": {
-      "title": "E-Mail-Adresse bestätigen",
+      "title": "Bitte prüfen Sie Ihre E-Mails, um Ihr Konto zu bestätigen.",
       "sentWithEmail": "Falls diese Adresse noch keinem RomDoc-Konto zugeordnet ist, haben wir eine Bestätigungsnachricht an <email>{email}</email> gesendet.",
       "sentWithoutEmail": "Falls die eingegebene Adresse noch keinem RomDoc-Konto zugeordnet ist, haben wir eine Bestätigungsnachricht gesendet.",
       "instructions": "Öffnen Sie die Nachricht und wählen Sie den Bestätigungslink aus, um Ihr Konto zu aktivieren.",

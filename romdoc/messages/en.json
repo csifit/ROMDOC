@@ -456,7 +456,7 @@
   },
   "AuthReturn": {
     "checkEmail": {
-      "title": "Check your email address",
+      "title": "Check your email to confirm your account",
       "sentWithEmail": "If this address is not already associated with a RomDoc account, we sent a confirmation message to <email>{email}</email>.",
       "sentWithoutEmail": "If the address entered is not already associated with a RomDoc account, we sent a confirmation message.",
       "instructions": "Open the message and select the confirmation link to activate your account.",
