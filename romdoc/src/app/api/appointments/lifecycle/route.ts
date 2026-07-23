@@ -1,11 +1,27 @@
 import {
   NextRequest,
-  NextResponse,
 } from "next/server";
 
 import {
+  APPOINTMENT_API_CODES,
+  type AppointmentApiCode,
+} from "@/lib/api/appointment-api-codes";
+import {
+  stableApiError,
+  stableApiSuccess,
+} from "@/lib/api/stable-api-response";
+import {
   notifyAppointmentLifecycle,
 } from "@/lib/appointments/notify-appointment-lifecycle";
+import {
+  getAppointmentApiMessage,
+} from "@/lib/i18n/appointment-api-copy";
+import type {
+  AppLocale,
+} from "@/lib/i18n/app-locale";
+import {
+  getRequestAppLocale,
+} from "@/lib/i18n/request-app-locale";
 import {
   createClient,
 } from "@/lib/supabase/server";
@@ -21,32 +37,36 @@ type LifecycleAction =
   | "no_show";
 
 type LifecycleRequestBody = {
-  appointmentId?: unknown;
+  appointmentId?:
+    unknown;
   action?: unknown;
-  scheduledDate?: unknown;
-  scheduledTime?: unknown;
+  scheduledDate?:
+    unknown;
+  scheduledTime?:
+    unknown;
   reason?: unknown;
 };
 
-const actionToStatus: Record<
-  LifecycleAction,
-  | "confirmed"
-  | "rescheduled"
-  | "cancelled"
-  | "completed"
-  | "no_show"
-> = {
-  confirm:
-    "confirmed",
-  reschedule:
-    "rescheduled",
-  cancel:
-    "cancelled",
-  complete:
-    "completed",
-  no_show:
-    "no_show",
-};
+const actionToStatus:
+  Record<
+    LifecycleAction,
+    | "confirmed"
+    | "rescheduled"
+    | "cancelled"
+    | "completed"
+    | "no_show"
+  > = {
+    confirm:
+      "confirmed",
+    reschedule:
+      "rescheduled",
+    cancel:
+      "cancelled",
+    complete:
+      "completed",
+    no_show:
+      "no_show",
+  };
 
 function normalizeString(
   value: unknown
@@ -91,32 +111,53 @@ function isValidTime(
   );
 }
 
+function apiError(
+  locale: AppLocale,
+  code:
+    AppointmentApiCode,
+  status: number,
+  parameters?: {
+    maximumDays?: number;
+  }
+) {
+  return stableApiError(
+    code,
+    getAppointmentApiMessage(
+      locale,
+      code,
+      parameters
+    ),
+    status
+  );
+}
+
 function transitionErrorResponse(
+  locale: AppLocale,
   message: string,
-  code?: string
+  databaseCode?:
+    string
 ) {
   const normalized =
     message.toLowerCase();
 
   if (
-    code === "P0002" ||
+    databaseCode ===
+      "P0002" ||
     normalized.includes(
       "appointment_not_found"
     )
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Programarea nu a fost găsită.",
-      },
-      {
-        status: 404,
-      }
+    return apiError(
+      locale,
+      APPOINTMENT_API_CODES
+        .appointmentNotFound,
+      404
     );
   }
 
   if (
-    code === "42501" ||
+    databaseCode ===
+      "42501" ||
     normalized.includes(
       "not_permitted"
     ) ||
@@ -124,19 +165,17 @@ function transitionErrorResponse(
       "active_profile_required"
     )
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Nu ai permisiunea de a modifica această programare.",
-      },
-      {
-        status: 403,
-      }
+    return apiError(
+      locale,
+      APPOINTMENT_API_CODES
+        .appointmentActionNotPermitted,
+      403
     );
   }
 
   if (
-    code === "23P01" ||
+    databaseCode ===
+      "23P01" ||
     normalized.includes(
       "appointment_slot_conflict"
     ) ||
@@ -144,14 +183,11 @@ function transitionErrorResponse(
       "appointments_no_doctor_overlap"
     )
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Intervalul selectat nu mai este disponibil. Alege o altă dată sau oră.",
-      },
-      {
-        status: 409,
-      }
+    return apiError(
+      locale,
+      APPOINTMENT_API_CODES
+        .appointmentSlotConflict,
+      409
     );
   }
 
@@ -160,14 +196,11 @@ function transitionErrorResponse(
       "appointment_outside_working_hours"
     )
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Intervalul selectat este în afara programului de lucru al medicului.",
-      },
-      {
-        status: 409,
-      }
+    return apiError(
+      locale,
+      APPOINTMENT_API_CODES
+        .appointmentOutsideWorkingHours,
+      409
     );
   }
 
@@ -176,14 +209,11 @@ function transitionErrorResponse(
       "appointment_overlaps_break"
     )
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Intervalul selectat se suprapune cu o pauză din program.",
-      },
-      {
-        status: 409,
-      }
+    return apiError(
+      locale,
+      APPOINTMENT_API_CODES
+        .appointmentOverlapsBreak,
+      409
     );
   }
 
@@ -192,14 +222,11 @@ function transitionErrorResponse(
       "doctor_unavailable_for_period"
     )
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Medicul este indisponibil în intervalul selectat.",
-      },
-      {
-        status: 409,
-      }
+    return apiError(
+      locale,
+      APPOINTMENT_API_CODES
+        .doctorUnavailableForPeriod,
+      409
     );
   }
 
@@ -211,14 +238,11 @@ function transitionErrorResponse(
       "appointment_clinic_required"
     )
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Clinica nu este disponibilă pentru această programare.",
-      },
-      {
-        status: 409,
-      }
+    return apiError(
+      locale,
+      APPOINTMENT_API_CODES
+        .appointmentClinicUnavailable,
+      409
     );
   }
 
@@ -230,14 +254,11 @@ function transitionErrorResponse(
       "invalid_appointment_duration"
     )
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Durata programării nu corespunde intervalelor configurate de medic.",
-      },
-      {
-        status: 409,
-      }
+    return apiError(
+      locale,
+      APPOINTMENT_API_CODES
+        .appointmentDurationMismatch,
+      409
     );
   }
 
@@ -246,14 +267,11 @@ function transitionErrorResponse(
       "appointment_date_is_in_the_past"
     )
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Nu poți selecta o dată din trecut.",
-      },
-      {
-        status: 400,
-      }
+    return apiError(
+      locale,
+      APPOINTMENT_API_CODES
+        .appointmentDateInPast,
+      400
     );
   }
 
@@ -262,13 +280,14 @@ function transitionErrorResponse(
       "appointment_date_exceeds_advance_limit"
     )
   ) {
-    return NextResponse.json(
+    return apiError(
+      locale,
+      APPOINTMENT_API_CODES
+        .appointmentTooFar,
+      400,
       {
-        error:
-          "Programările pot fi stabilite cu maximum 180 de zile în avans.",
-      },
-      {
-        status: 400,
+        maximumDays:
+          180,
       }
     );
   }
@@ -278,14 +297,11 @@ function transitionErrorResponse(
       "invalid_appointment_transition"
     )
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Această schimbare nu este permisă pentru starea actuală a programării.",
-      },
-      {
-        status: 409,
-      }
+    return apiError(
+      locale,
+      APPOINTMENT_API_CODES
+        .appointmentTransitionInvalid,
+      409
     );
   }
 
@@ -297,14 +313,11 @@ function transitionErrorResponse(
       "rescheduled_appointment_requires_a_new_slot"
     )
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Pentru reprogramare trebuie să alegi o dată sau o oră diferită.",
-      },
-      {
-        status: 409,
-      }
+    return apiError(
+      locale,
+      APPOINTMENT_API_CODES
+        .appointmentRescheduleSameSlot,
+      409
     );
   }
 
@@ -316,71 +329,71 @@ function transitionErrorResponse(
       "scheduled_date_and_time_required"
     )
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Selectează data și ora programării.",
-      },
-      {
-        status: 400,
-      }
+    return apiError(
+      locale,
+      APPOINTMENT_API_CODES
+        .appointmentScheduleRequired,
+      400
     );
   }
 
   if (
-    code === "22001" ||
+    databaseCode ===
+      "22001" ||
     normalized.includes(
       "reason_too_long"
     )
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Motivul sau nota poate avea cel mult 2.000 de caractere.",
-      },
-      {
-        status: 400,
-      }
+    return apiError(
+      locale,
+      APPOINTMENT_API_CODES
+        .appointmentReasonTooLong,
+      400
     );
   }
 
-  return NextResponse.json(
-    {
-      error:
-        "Programarea nu a putut fi actualizată.",
-    },
-    {
-      status: 500,
-    }
+  return apiError(
+    locale,
+    APPOINTMENT_API_CODES
+      .appointmentUpdateFailed,
+    500
   );
 }
 
-function successMessage(
-  action: LifecycleAction
-) {
+function successCode(
+  action:
+    LifecycleAction
+): AppointmentApiCode {
   switch (
     action
   ) {
     case "confirm":
-      return "Programarea a fost confirmată.";
-
+      return APPOINTMENT_API_CODES
+        .appointmentConfirmed;
     case "reschedule":
-      return "Programarea a fost reprogramată.";
-
+      return APPOINTMENT_API_CODES
+        .appointmentRescheduled;
     case "cancel":
-      return "Programarea a fost anulată.";
-
+      return APPOINTMENT_API_CODES
+        .appointmentCancelled;
     case "complete":
-      return "Programarea a fost marcată ca finalizată.";
-
+      return APPOINTMENT_API_CODES
+        .appointmentCompleted;
     case "no_show":
-      return "Programarea a fost marcată ca neprezentare.";
+      return APPOINTMENT_API_CODES
+        .appointmentNoShow;
   }
 }
 
 export async function PATCH(
-  request: NextRequest
+  request:
+    NextRequest
 ): Promise<Response> {
+  const locale =
+    getRequestAppLocale(
+      request
+    );
+
   const supabase =
     await createClient();
 
@@ -391,20 +404,18 @@ export async function PATCH(
     error:
       userError,
   } =
-    await supabase.auth.getUser();
+    await supabase.auth
+      .getUser();
 
   if (
     userError ||
     !user
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Trebuie să fii autentificat.",
-      },
-      {
-        status: 401,
-      }
+    return apiError(
+      locale,
+      APPOINTMENT_API_CODES
+        .authenticationRequired,
+      401
     );
   }
 
@@ -413,16 +424,19 @@ export async function PATCH(
       profile,
     error:
       profileError,
-  } = await supabase
-    .from("profiles")
-    .select(
-      "role, account_status"
-    )
-    .eq(
-      "id",
-      user.id
-    )
-    .maybeSingle();
+  } =
+    await supabase
+      .from(
+        "profiles"
+      )
+      .select(
+        "role, account_status"
+      )
+      .eq(
+        "id",
+        user.id
+      )
+      .maybeSingle();
 
   if (
     profileError ||
@@ -437,14 +451,11 @@ export async function PATCH(
     profile.account_status !==
       "active"
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Nu ai un rol activ care poate administra programări.",
-      },
-      {
-        status: 403,
-      }
+    return apiError(
+      locale,
+      APPOINTMENT_API_CODES
+        .appointmentRoleRequired,
+      403
     );
   }
 
@@ -453,17 +464,15 @@ export async function PATCH(
 
   try {
     body =
-      (await request.json()) as
+      (await request
+        .json()) as
         LifecycleRequestBody;
   } catch {
-    return NextResponse.json(
-      {
-        error:
-          "Cererea nu conține date JSON valide.",
-      },
-      {
-        status: 400,
-      }
+    return apiError(
+      locale,
+      APPOINTMENT_API_CODES
+        .invalidJson,
+      400
     );
   }
 
@@ -475,7 +484,8 @@ export async function PATCH(
   const action =
     normalizeString(
       body.action
-    ) as LifecycleAction;
+    ) as
+      LifecycleAction;
 
   const scheduledDate =
     normalizeString(
@@ -497,14 +507,11 @@ export async function PATCH(
       appointmentId
     )
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Identificatorul programării nu este valid.",
-      },
-      {
-        status: 400,
-      }
+    return apiError(
+      locale,
+      APPOINTMENT_API_CODES
+        .appointmentIdInvalid,
+      400
     );
   }
 
@@ -519,14 +526,11 @@ export async function PATCH(
       action
     )
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Acțiunea solicitată nu este validă.",
-      },
-      {
-        status: 400,
-      }
+    return apiError(
+      locale,
+      APPOINTMENT_API_CODES
+        .appointmentActionInvalid,
+      400
     );
   }
 
@@ -546,46 +550,35 @@ export async function PATCH(
       )
     )
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Selectează data și ora programării.",
-      },
-      {
-        status: 400,
-      }
+    return apiError(
+      locale,
+      APPOINTMENT_API_CODES
+        .appointmentScheduleRequired,
+      400
     );
   }
 
   if (
     action ===
       "reschedule" &&
-    reason.length <
-      3
+    reason.length < 3
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Introdu motivul reprogramării.",
-      },
-      {
-        status: 400,
-      }
+    return apiError(
+      locale,
+      APPOINTMENT_API_CODES
+        .rescheduleReasonRequired,
+      400
     );
   }
 
   if (
-    reason.length >
-    2000
+    reason.length > 2000
   ) {
-    return NextResponse.json(
-      {
-        error:
-          "Motivul sau nota poate avea cel mult 2.000 de caractere.",
-      },
-      {
-        status: 400,
-      }
+    return apiError(
+      locale,
+      APPOINTMENT_API_CODES
+        .appointmentReasonTooLong,
+      400
     );
   }
 
@@ -594,34 +587,35 @@ export async function PATCH(
       transitionData,
     error:
       transitionError,
-  } = await supabase.rpc(
-    "transition_own_appointment",
-    {
-      target_appointment_id:
-        appointmentId,
-      target_status:
-        actionToStatus[
-          action
-        ],
-      target_scheduled_date:
-        action ===
-          "confirm" ||
-        action ===
-          "reschedule"
-          ? scheduledDate
-          : null,
-      target_scheduled_time:
-        action ===
-          "confirm" ||
-        action ===
-          "reschedule"
-          ? scheduledTime
-          : null,
-      transition_reason:
-        reason ||
-        null,
-    }
-  );
+  } =
+    await supabase.rpc(
+      "transition_own_appointment",
+      {
+        target_appointment_id:
+          appointmentId,
+        target_status:
+          actionToStatus[
+            action
+          ],
+        target_scheduled_date:
+          action ===
+            "confirm" ||
+          action ===
+            "reschedule"
+            ? scheduledDate
+            : null,
+        target_scheduled_time:
+          action ===
+            "confirm" ||
+          action ===
+            "reschedule"
+            ? scheduledTime
+            : null,
+        transition_reason:
+          reason ||
+          null,
+      }
+    );
 
   if (
     transitionError
@@ -632,8 +626,11 @@ export async function PATCH(
     );
 
     return transitionErrorResponse(
-      transitionError.message,
-      transitionError.code
+      locale,
+      transitionError
+        .message,
+      transitionError
+        .code
     );
   }
 
@@ -646,29 +643,22 @@ export async function PATCH(
       : transitionData;
 
   const notificationStatus =
-    action ===
-      "confirm"
-      ? "confirmed"
-      : action ===
-          "reschedule"
-        ? "rescheduled"
-        : action ===
-            "cancel"
-          ? "cancelled"
-          : action ===
-              "complete"
-            ? "completed"
-            : "no_show";
+    actionToStatus[
+      action
+    ];
 
   let notificationResult = {
     dashboardCreated:
       false,
     emailSent:
-      null as boolean | null,
+      null as
+        boolean | null,
     smsSent:
-      null as boolean | null,
+      null as
+        boolean | null,
     smsSkipped:
-      null as boolean | null,
+      null as
+        boolean | null,
   };
 
   try {
@@ -689,21 +679,33 @@ export async function PATCH(
     );
   }
 
-  return NextResponse.json({
-    success: true,
-    message:
-      successMessage(
-        action
-      ),
-    appointment:
-      transition,
-    dashboardCreated:
-      notificationResult.dashboardCreated,
-    emailSent:
-      notificationResult.emailSent,
-    smsSent:
-      notificationResult.smsSent,
-    smsSkipped:
-      notificationResult.smsSkipped,
-  });
+  const code =
+    successCode(
+      action
+    );
+
+  return stableApiSuccess(
+    code,
+    {
+      message:
+        getAppointmentApiMessage(
+          locale,
+          code
+        ),
+      appointment:
+        transition,
+      dashboardCreated:
+        notificationResult
+          .dashboardCreated,
+      emailSent:
+        notificationResult
+          .emailSent,
+      smsSent:
+        notificationResult
+          .smsSent,
+      smsSkipped:
+        notificationResult
+          .smsSkipped,
+    }
+  );
 }

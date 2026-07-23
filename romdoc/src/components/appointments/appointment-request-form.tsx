@@ -5,13 +5,14 @@ import { useLocale } from "next-intl";
 
 import PublicAvailabilityCalendar from "@/components/appointments/public-availability-calendar";
 import Button from "@/components/ui/button";
+import type { AppointmentApiPayload } from "@/lib/api/appointment-api-codes";
 import { BOOKING_COPY, interpolateBookingCopy } from "@/lib/appointments/booking-copy";
 import { clearBookingDraft, readBookingDraft } from "@/lib/appointments/booking-draft";
 import { normalizeAppLocale } from "@/lib/i18n/app-locale";
 
 type ClinicOption = { id: string; name: string; address: string };
 type Props = { doctorId: string; doctorName: string; doctorSlug: string; clinics: ClinicOption[]; initialPatientName: string; authenticatedEmail: string };
-type ApiResponse = { appointmentId?: string; emailSent?: boolean; error?: string };
+type ApiResponse = AppointmentApiPayload & { appointmentId?: string; emailSent?: boolean };
 type Step = "clinic" | "availability" | "patient" | "review";
 const INTL_LOCALE = { ro: "ro-RO", en: "en-GB", de: "de-DE" } as const;
 function localDate(date: Date) { const year = date.getFullYear(); const month = String(date.getMonth() + 1).padStart(2, "0"); const day = String(date.getDate()).padStart(2, "0"); return `${year}-${month}-${day}`; }
@@ -24,7 +25,7 @@ export default function AppointmentRequestForm({ doctorId, doctorName, doctorSlu
   const [isPending, startTransition] = useTransition(); const [step, setStep] = useState<Step>("clinic");
   const [clinicId, setClinicId] = useState(clinics.length === 1 ? clinics[0].id : ""); const [patientName, setPatientName] = useState(initialPatientName); const [patientPhone, setPatientPhone] = useState("");
   const [requestedDate, setRequestedDate] = useState(""); const [requestedTime, setRequestedTime] = useState(""); const [durationMinutes, setDurationMinutes] = useState(30); const [notes, setNotes] = useState(""); const [error, setError] = useState<string | null>(null); const [restoredDraft, setRestoredDraft] = useState(false);
-  const today = useMemo(() => localDate(new Date()), []); const maximumDate = useMemo(() => { const date = new Date(); date.setDate(date.getDate() + 90); return localDate(date); }, []);
+  const today = useMemo(() => localDate(new Date()), []); const maximumDate = useMemo(() => { const date = new Date(); date.setDate(date.getDate() + 180); return localDate(date); }, []);
   const selectedClinic = clinics.find(clinic => clinic.id === clinicId) ?? null; const stepIndex = steps.findIndex(item => item.id === step);
   const formatDisplayDate = useCallback((value: string) => { const [year, month, day] = value.split("-").map(Number); return year && month && day ? dateFormatter.format(new Date(Date.UTC(year, month - 1, day))) : value; }, [dateFormatter]);
 
@@ -43,7 +44,7 @@ export default function AppointmentRequestForm({ doctorId, doctorName, doctorSlu
         const response = await fetch("/api/appointments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ doctorId, doctorName, clinicId, clinicName: selectedClinic.name, notificationLocale: locale, patientName: patientName.trim(), patientPhone: patientPhone.trim(), requestedDate, requestedTime, durationMinutes, notes: notes.trim() || null }) });
         const result = await response.json() as ApiResponse;
         if (response.status === 401) { window.location.href = `/login?locale=${locale}&next=${encodeURIComponent(`${localeDoctorPath(locale, doctorSlug)}#programare`)}`; return; }
-        if (!response.ok) throw new Error(locale === "ro" && result.error ? result.error : t.submitFailed);
+        if (!response.ok) throw new Error(result.error ?? t.submitFailed);
         if (!result.appointmentId) throw new Error(t.confirmationFailed);
         clearBookingDraft(); window.location.href = `/appointments/${result.appointmentId}/request-received?locale=${locale}&emailSent=${result.emailSent === false ? "0" : "1"}`;
       } catch (submitError) { setError(submitError instanceof Error ? submitError.message : t.submitFailed); }
