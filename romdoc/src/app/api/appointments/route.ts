@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
 
 import { doctorCanUseClinic } from "@/lib/doctors/clinic-subaccount-scope";
+import {
+  sendAppointmentRequestEmail,
+} from "@/lib/appointments/send-appointment-request-email";
 import {
   resolveAppointmentNotificationLocale,
 } from "@/lib/appointments/notification-locale";
@@ -62,23 +64,6 @@ function getLocalDateString(date: Date) {
   const day = String(date.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
-}
-
-function formatAppointmentDate(date: string) {
-  return new Intl.DateTimeFormat("ro-RO", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(`${date}T12:00:00`));
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
 }
 
 function getFriendlyAppointmentError(message: string | undefined) {
@@ -394,72 +379,32 @@ export async function POST(request: NextRequest): Promise<Response> {
       );
     }
 
-    const resendApiKey = process.env.RESEND_API_KEY;
-    const resendFromEmail = process.env.RESEND_FROM_EMAIL;
+    const emailResult =
+      await sendAppointmentRequestEmail({
+        appointmentId,
+        locale:
+          notificationLocale,
+        patientName,
+        patientEmail,
+        patientPhone,
+        doctorName,
+        clinicName,
+        requestedDate,
+        requestedTime,
+        notes,
+      });
 
-    if (!resendApiKey || !resendFromEmail) {
-      console.error("Resend environment variables are missing.");
-
-      return NextResponse.json(
+    if (
+      !emailResult.sent &&
+      !emailResult.skipped
+    ) {
+      console.error(
+        "Patient appointment request email failed:",
         {
-          success: true,
-          appointmentId,
-          emailSent: false,
-        },
-        {
-          status: 201,
-          headers: {
-            "Cache-Control": "no-store",
-          },
-        }
-      );
-    }
-
-    const resend = new Resend(resendApiKey);
-    const safePatientName = escapeHtml(patientName);
-    const safeDoctorName = escapeHtml(doctorName);
-    const safeClinicName = escapeHtml(clinicName);
-    const safePatientPhone = escapeHtml(patientPhone);
-    const safeNotes = notes ? escapeHtml(notes) : null;
-    const formattedDate = formatAppointmentDate(requestedDate);
-    const formattedTime = requestedTime.slice(0, 5);
-
-    const { error: emailError } = await resend.emails.send({
-      from: resendFromEmail,
-      to: patientEmail,
-      subject: `Programare RomDoc - ${safeDoctorName}`,
-      html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937;">
-          <h1 style="color: #036661;">Cererea ta de programare a fost trimisă</h1>
-          <p>Bună, ${safePatientName},</p>
-          <p>Am înregistrat cererea ta de programare. Clinica sau medicul va confirma disponibilitatea.</p>
-          <ul>
-            <li><strong>Medic:</strong> ${safeDoctorName}</li>
-            <li><strong>Clinică:</strong> ${safeClinicName}</li>
-            <li><strong>Data:</strong> ${formattedDate}</li>
-            <li><strong>Ora:</strong> ${formattedTime}</li>
-            <li><strong>Telefon:</strong> ${safePatientPhone}</li>
-          </ul>
-          ${safeNotes ? `<p><strong>Observații:</strong> ${safeNotes}</p>` : ""}
-          <p>Mulțumim,<br />Echipa RomDoc</p>
-        </div>
-      `,
-    });
-
-    if (emailError) {
-      console.error("Patient appointment confirmation email failed:", emailError);
-
-      return NextResponse.json(
-        {
-          success: true,
-          appointmentId,
-          emailSent: false,
-        },
-        {
-          status: 201,
-          headers: {
-            "Cache-Control": "no-store",
-          },
+          errorCode:
+            emailResult.errorCode,
+          errorMessage:
+            emailResult.errorMessage,
         }
       );
     }
@@ -468,12 +413,14 @@ export async function POST(request: NextRequest): Promise<Response> {
       {
         success: true,
         appointmentId,
-        emailSent: true,
+        emailSent:
+          emailResult.sent,
       },
       {
         status: 201,
         headers: {
-          "Cache-Control": "no-store",
+          "Cache-Control":
+            "no-store",
         },
       }
     );

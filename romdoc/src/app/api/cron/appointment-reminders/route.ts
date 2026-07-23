@@ -561,6 +561,8 @@ export async function GET(
 
     const sendResult =
       await sendAppointmentReminderEmail({
+        locale:
+          notificationLocale,
         reminderType: reminder.reminder_type,
         patientName: appointment.patient_name,
         patientEmail: appointment.patient_email,

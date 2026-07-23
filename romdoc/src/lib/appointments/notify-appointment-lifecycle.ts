@@ -611,6 +611,8 @@ export async function notifyAppointmentLifecycle({
     const emailResult =
       await sendAppointmentStatusEmail({
         appointmentId,
+        locale:
+          notificationLocale,
         status,
         patientName:
           appointment.patient_name,

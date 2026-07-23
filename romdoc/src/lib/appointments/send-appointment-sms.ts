@@ -1,5 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
+  buildAppointmentSmsMessage,
+} from "@/lib/appointments/appointment-sms-message";
+import {
   getNotificationEntityFallback,
   resolveAppointmentNotificationLocale,
   selectNotificationTranslation,
@@ -46,13 +49,30 @@ type DoctorRelation = {
     | null;
 };
 
+type CityRelation = {
+  city_translations:
+    | Array<{
+        locale: string;
+        name: string;
+      }>
+    | null;
+};
+
 type ClinicRelation = {
   slug: string;
+  address_line_1:
+    string | null;
+  street_address:
+    string | null;
   clinic_translations:
     | Array<{
         locale: string;
         name: string;
       }>
+    | null;
+  cities:
+    | CityRelation
+    | CityRelation[]
     | null;
 };
 
@@ -168,6 +188,56 @@ function getClinicName(
   );
 }
 
+function getClinicAddress(
+  appointment: AppointmentRow,
+  locale:
+    AppointmentNotificationLocale
+) {
+  const clinic =
+    firstRelation(
+      appointment.clinics
+    );
+
+  if (!clinic) {
+    return null;
+  }
+
+  const city =
+    firstRelation(
+      clinic.cities
+    );
+
+  const cityName =
+    selectNotificationTranslation(
+      city
+        ?.city_translations,
+      locale
+    )?.name ??
+    null;
+
+  const street =
+    clinic.address_line_1
+      ?.trim() ||
+    clinic.street_address
+      ?.trim() ||
+    null;
+
+  const addressParts = [
+    street,
+    cityName,
+  ].filter(
+    (
+      value
+    ): value is string =>
+      Boolean(value)
+  );
+
+  return (
+    addressParts.join(", ") ||
+    null
+  );
+}
+
 function buildMessage(
   event: AppointmentSmsEvent,
   appointment: AppointmentRow
@@ -176,18 +246,6 @@ function buildMessage(
     resolveAppointmentNotificationLocale(
       appointment
         .notification_locale
-    );
-
-  const doctorName =
-    getDoctorName(
-      appointment,
-      locale
-    );
-
-  const clinicName =
-    getClinicName(
-      appointment,
-      locale
     );
 
   const date =
@@ -206,22 +264,27 @@ function buildMessage(
     return null;
   }
 
-  /*
-   * Group 8A establishes the locale pipeline.
-   * The complete RO/EN/DE SMS wording is added in Group 8B.
-   */
-  if (
-    event ===
-    "reminder_24_hours"
-  ) {
-    return `RomDoc: Reamintire - ai programare maine, ${formatDate(
-      date
-    )}, ora ${formatTime(time)}, la ${doctorName}, ${clinicName}.`;
-  }
-
-  return `RomDoc: Programarea la ${doctorName}, ${clinicName}, a fost confirmata pentru ${formatDate(
-    date
-  )}, ora ${formatTime(time)}.`;
+  return buildAppointmentSmsMessage({
+    locale,
+    event,
+    scheduledDate: date,
+    scheduledTime: time,
+    doctorName:
+      getDoctorName(
+        appointment,
+        locale
+      ),
+    clinicName:
+      getClinicName(
+        appointment,
+        locale
+      ),
+    clinicAddress:
+      getClinicAddress(
+        appointment,
+        locale
+      ),
+  });
 }
 
 function resolvePayer(appointment: AppointmentRow): SmsPayer {
@@ -241,19 +304,6 @@ function resolvePayer(appointment: AppointmentRow): SmsPayer {
     payerType: "doctor",
     clinicOrganizationId: null,
   };
-}
-
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat("ro-RO", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    timeZone: "Europe/Bucharest",
-  }).format(new Date(`${date}T12:00:00`));
-}
-
-function formatTime(time: string) {
-  return time.slice(0, 5);
 }
 
 function configuredSmsUnitCostMinor(value: unknown) {
@@ -524,9 +574,17 @@ export async function sendAppointmentSms({
       ),
       clinics (
         slug,
+        address_line_1,
+        street_address,
         clinic_translations (
           locale,
           name
+        ),
+        cities (
+          city_translations (
+            locale,
+            name
+          )
         )
       )
     `)
