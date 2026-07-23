@@ -79,10 +79,6 @@ export default async function CheckEmailPage({
     parameters.email?.trim() ??
     "";
 
-  const isDoctor =
-    parameters.type ===
-    "doctor";
-
   const isClinic =
     parameters.type ===
     "clinic";
@@ -162,26 +158,6 @@ export default async function CheckEmailPage({
                 )}
               </p>
             </div>
-
-            {isDoctor && (
-              <div className="mt-[21px] rounded-[13px] border border-[#D97757]/30 bg-[#F0EEE9] p-[13px] text-left text-sm leading-6 text-gray-800">
-                {t.rich(
-                  "doctorNotice",
-                  {
-                    price:
-                      (
-                        chunks
-                      ) => (
-                        <strong>
-                          {
-                            chunks
-                          }
-                        </strong>
-                      ),
-                  }
-                )}
-              </div>
-            )}
 
             {isClinic && (
               <div className="mt-[21px] rounded-[13px] border border-[#D97757]/30 bg-[#F0EEE9] p-[13px] text-left text-sm leading-6 text-gray-800">
