@@ -690,6 +690,9 @@ export default function RegisterForm({
                       .toString(),
 
                   data: {
+                    language:
+                      locale,
+
                     registration_type:
                       registrationType,
 
