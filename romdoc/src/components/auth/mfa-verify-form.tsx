@@ -1,33 +1,140 @@
 "use client";
 
 import {
+  useRouter,
+} from "next/navigation";
+import {
   type FormEvent,
   useState,
   useTransition,
 } from "react";
-import { useRouter } from "next/navigation";
 
 import Button from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/client";
+import type {
+  AppLocale,
+} from "@/lib/i18n/app-locale";
+import {
+  createClient,
+} from "@/lib/supabase/client";
 
 type MfaVerifyFormProps = {
+  locale: AppLocale;
   nextPath: string;
 };
 
-export default function MfaVerifyForm({
+type MfaVerifyCopy = {
+  eyebrow: string;
+  title: string;
+  description: string;
+  codeLabel: string;
+  invalidCode: string;
+  factorLookupFailed: string;
+  missingFactor: string;
+  verificationFailed: string;
+  loading: string;
+  submit: string;
+};
+
+const COPY:
+  Record<
+    AppLocale,
+    MfaVerifyCopy
+  > = {
+    ro: {
+      eyebrow:
+        "Verificare în doi pași",
+      title:
+        "Introdu codul Google Authenticator",
+      description:
+        "Acest cont are autentificarea în doi pași activată.",
+      codeLabel:
+        "Cod de verificare",
+      invalidCode:
+        "Introdu codul de 6 cifre din Google Authenticator.",
+      factorLookupFailed:
+        "Factorul MFA nu a putut fi verificat.",
+      missingFactor:
+        "Contul nu are un factor Google Authenticator activ.",
+      verificationFailed:
+        "Codul nu este valid sau a expirat. Introdu codul curent din Google Authenticator.",
+      loading:
+        "Se verifică...",
+      submit:
+        "Continuă",
+    },
+    en: {
+      eyebrow:
+        "Two-step verification",
+      title:
+        "Enter your Google Authenticator code",
+      description:
+        "Two-step verification is enabled for this account.",
+      codeLabel:
+        "Verification code",
+      invalidCode:
+        "Enter the 6-digit code from Google Authenticator.",
+      factorLookupFailed:
+        "The MFA factor could not be verified.",
+      missingFactor:
+        "This account does not have an active Google Authenticator factor.",
+      verificationFailed:
+        "The code is invalid or has expired. Enter the current code from Google Authenticator.",
+      loading:
+        "Verifying...",
+      submit:
+        "Continue",
+    },
+    de: {
+      eyebrow:
+        "Bestätigung in zwei Schritten",
+      title:
+        "Google-Authenticator-Code eingeben",
+      description:
+        "Für dieses Konto ist die Bestätigung in zwei Schritten aktiviert.",
+      codeLabel:
+        "Bestätigungscode",
+      invalidCode:
+        "Gib den 6-stelligen Code aus Google Authenticator ein.",
+      factorLookupFailed:
+        "Der MFA-Faktor konnte nicht überprüft werden.",
+      missingFactor:
+        "Für dieses Konto ist kein aktiver Google-Authenticator-Faktor eingerichtet.",
+      verificationFailed:
+        "Der Code ist ungültig oder abgelaufen. Gib den aktuellen Code aus Google Authenticator ein.",
+      loading:
+        "Wird überprüft...",
+      submit:
+        "Weiter",
+    },
+  };
+
+export default function
+MfaVerifyForm({
+  locale,
   nextPath,
 }: MfaVerifyFormProps) {
-  const router = useRouter();
+  const router =
+    useRouter();
+
+  const copy =
+    COPY[locale];
 
   const [
     isPending,
     startTransition,
-  ] = useTransition();
+  ] =
+    useTransition();
 
-  const [code, setCode] =
+  const [
+    code,
+    setCode,
+  ] =
     useState("");
 
-  const [error, setError] =
+  const [
+    error,
+    setError,
+  ] =
     useState<string | null>(
       null
     );
@@ -50,7 +157,7 @@ export default function MfaVerifyForm({
       )
     ) {
       setError(
-        "Introdu codul de 6 cifre din Google Authenticator."
+        copy.invalidCode
       );
       return;
     }
@@ -75,7 +182,7 @@ export default function MfaVerifyForm({
           );
 
           setError(
-            "Factorul MFA nu a putut fi verificat."
+            copy.factorLookupFailed
           );
           return;
         }
@@ -85,7 +192,7 @@ export default function MfaVerifyForm({
 
         if (!factor) {
           setError(
-            "Contul nu are un factor Google Authenticator activ."
+            copy.missingFactor
           );
           return;
         }
@@ -111,7 +218,7 @@ export default function MfaVerifyForm({
           );
 
           setError(
-            "Codul nu este valid sau a expirat. Introdu codul curent din Google Authenticator."
+            copy.verificationFailed
           );
           return;
         }
@@ -119,6 +226,7 @@ export default function MfaVerifyForm({
         router.replace(
           nextPath
         );
+
         router.refresh();
       }
     );
@@ -128,15 +236,15 @@ export default function MfaVerifyForm({
     <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
       <header className="text-center">
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#036661]">
-          Verificare MFA
+          {copy.eyebrow}
         </p>
 
         <h1 className="mt-3 text-2xl font-bold text-gray-900">
-          Introdu codul Google Authenticator
+          {copy.title}
         </h1>
 
         <p className="mt-3 text-sm leading-6 text-gray-600">
-          Acest cont are autentificarea în doi pași activată.
+          {copy.description}
         </p>
       </header>
 
@@ -148,7 +256,7 @@ export default function MfaVerifyForm({
       >
         <label className="block">
           <span className="text-sm font-medium text-gray-700">
-            Cod de verificare
+            {copy.codeLabel}
           </span>
 
           <input
@@ -197,9 +305,11 @@ export default function MfaVerifyForm({
           isLoading={
             isPending
           }
-          loadingText="Se verifică..."
+          loadingText={
+            copy.loading
+          }
         >
-          Continuă
+          {copy.submit}
         </Button>
       </form>
     </div>

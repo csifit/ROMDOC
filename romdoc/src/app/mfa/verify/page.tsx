@@ -1,11 +1,20 @@
-import { redirect } from "next/navigation";
+import {
+  redirect,
+} from "next/navigation";
 
 import MfaVerifyForm from "@/components/auth/mfa-verify-form";
+import AppLocaleCookieSync from "@/components/i18n/app-locale-cookie-sync";
 import PublicFooter from "@/components/public/public-footer";
-import { createClient } from "@/lib/supabase/server";
+import {
+  normalizeAppLocale,
+} from "@/lib/i18n/app-locale";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
 type MfaVerifyPageProps = {
   searchParams: Promise<{
+    locale?: string;
     next?: string;
   }>;
 };
@@ -24,11 +33,17 @@ function safeNextPath(
   return value;
 }
 
-export default async function MfaVerifyPage({
+export default async function
+MfaVerifyPage({
   searchParams,
 }: MfaVerifyPageProps) {
   const params =
     await searchParams;
+
+  const locale =
+    normalizeAppLocale(
+      params.locale
+    );
 
   const nextPath =
     safeNextPath(
@@ -39,19 +54,26 @@ export default async function MfaVerifyPage({
     await createClient();
 
   const {
-    data: { user },
+    data: {
+      user,
+    },
     error: userError,
   } =
-    await supabase.auth.getUser();
+    await supabase.auth
+      .getUser();
 
   if (
     userError ||
     !user
   ) {
+    const loginParameters =
+      new URLSearchParams({
+        locale,
+        next: nextPath,
+      });
+
     redirect(
-      `/login?next=${encodeURIComponent(
-        nextPath
-      )}`
+      `/login?${loginParameters.toString()}`
     );
   }
 
@@ -84,7 +106,7 @@ export default async function MfaVerifyPage({
       "active"
   ) {
     redirect(
-      "/dashboard"
+      `/${locale}`
     );
   }
 
@@ -96,7 +118,7 @@ export default async function MfaVerifyPage({
 
   if (
     assurance?.currentLevel ===
-    "aal2"
+      "aal2"
   ) {
     redirect(nextPath);
   }
@@ -113,22 +135,27 @@ export default async function MfaVerifyPage({
       0
     ) === 0
   ) {
-    redirect(
-      "/dashboard"
-    );
+    redirect(nextPath);
   }
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F0EEE9]">
+      <AppLocaleCookieSync
+        locale={locale}
+      />
+
       <main className="flex flex-1 items-center justify-center px-6 py-12">
         <MfaVerifyForm
+          locale={locale}
           nextPath={
             nextPath
           }
         />
       </main>
 
-      <PublicFooter />
+      <PublicFooter
+        locale={locale}
+      />
     </div>
   );
 }
