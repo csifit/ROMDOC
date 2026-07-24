@@ -3,6 +3,7 @@ import {
   redirect,
 } from "next/navigation";
 
+import ClinicOrganizationAccountRequests from "@/components/admin/clinic-organization-account-requests";
 import {
   OverviewAccordion,
   OverviewMetricCard,
@@ -508,6 +509,12 @@ export default async function AdminPage() {
           </p>
         </section>
       )}
+
+      <ClinicOrganizationAccountRequests
+        locale={
+          locale
+        }
+      />
 
       <section className="space-y-[13px]">
         <h2 className="text-xl font-bold text-gray-950">
