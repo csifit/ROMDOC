@@ -7,6 +7,7 @@ import {
 } from "next/navigation";
 
 import DoctorDashboardOperationalOverview from "@/components/doctor/doctor-dashboard-operational-overview";
+import DoctorSmsUsageOverview from "@/components/doctor/doctor-sms-usage-overview";
 import DoctorOnboardingChecklist from "@/components/doctor/doctor-onboarding-checklist";
 import DoctorSmsBillingPaymentButton from "@/components/doctor/doctor-sms-billing-payment-button";
 import DashboardNotifications, {
@@ -33,6 +34,19 @@ type SmsUsageLogRow = {
   status: string;
   invoice_status: string | null;
   unit_cost_minor: number | null;
+  currency: string | null;
+};
+
+type BillingSettingsRow = {
+  sms_unit_price_ron: number | string | null;
+  vat_rate: number | string | null;
+  billing_currency: string | null;
+};
+
+type DoctorSmsBillingSettings = {
+  smsUnitCostMinor: number;
+  vatRateBasisPoints: number;
+  currency: string;
 };
 
 type BillableSmsLogRow = {
@@ -68,28 +82,42 @@ const INTL_LOCALE: Record<AppLocale, string> = {
   de: "de-DE",
 };
 
+function getBucharestYearMonth() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Bucharest",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(new Date());
+
+  return {
+    year: Number(parts.find((part) => part.type === "year")?.value),
+    month: Number(parts.find((part) => part.type === "month")?.value),
+  };
+}
+
 function getCurrentMonthBounds() {
-  const now = new Date();
+  const current = getBucharestYearMonth();
   const monthStart = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+    Date.UTC(current.year, current.month - 1, 1)
   );
   const nextMonthStart = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
+    Date.UTC(current.year, current.month, 1)
   );
 
   return {
+    monthStartDate: monthStart.toISOString().slice(0, 10),
     monthStartIso: monthStart.toISOString(),
     nextMonthStartIso: nextMonthStart.toISOString(),
   };
 }
 
 function getPreviousMonthDateBounds() {
-  const now = new Date();
+  const current = getBucharestYearMonth();
   const periodStart = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)
+    Date.UTC(current.year, current.month - 2, 1)
   );
   const periodEnd = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+    Date.UTC(current.year, current.month - 1, 1)
   );
 
   return {
@@ -100,10 +128,14 @@ function getPreviousMonthDateBounds() {
   };
 }
 
+function normalizeCurrency(value: string | null | undefined) {
+  return value === "RON" ? "RON" : "EUR";
+}
+
 function formatMoney(
   minorAmount: number,
   locale: AppLocale,
-  currency = "RON"
+  currency = "EUR"
 ) {
   return new Intl.NumberFormat(INTL_LOCALE[locale], {
     style: "currency",
@@ -125,12 +157,50 @@ function formatPeriod(
   }).format(startDate);
 }
 
+async function getDoctorSmsBillingSettings(): Promise<DoctorSmsBillingSettings> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("clinic_billing_settings")
+    .select("sms_unit_price_ron, vat_rate, billing_currency")
+    .eq("id", 1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Doctor SMS billing settings query failed:", error);
+  }
+
+  const row = data as BillingSettingsRow | null;
+  const unitPrice =
+    row?.sms_unit_price_ron === null ||
+    row?.sms_unit_price_ron === undefined
+      ? Number.NaN
+      : Number(row.sms_unit_price_ron);
+  const vatRate =
+    row?.vat_rate === null || row?.vat_rate === undefined
+      ? Number.NaN
+      : Number(row.vat_rate);
+
+  return {
+    smsUnitCostMinor:
+      Number.isFinite(unitPrice) && unitPrice >= 0
+        ? Math.round(unitPrice * 100)
+        : 30,
+    vatRateBasisPoints:
+      Number.isFinite(vatRate) && vatRate >= 0
+        ? Math.round(vatRate * 10000)
+        : VAT_RATE_BASIS_POINTS,
+    currency: normalizeCurrency(row?.billing_currency),
+  };
+}
+
 async function getOrCreatePreviousSmsBill({
   doctorId,
   profileId,
+  settings,
 }: {
   doctorId: string;
   profileId: string;
+  settings: DoctorSmsBillingSettings;
 }) {
   const admin = createAdminClient();
   const {
@@ -185,11 +255,12 @@ async function getOrCreatePreviousSmsBill({
   }
 
   const netAmountMinor = billableLogs.reduce(
-    (total, log) => total + (log.unit_cost_minor ?? 30),
+    (total, log) =>
+      total + (log.unit_cost_minor ?? settings.smsUnitCostMinor),
     0
   );
   const vatAmountMinor = Math.round(
-    (netAmountMinor * VAT_RATE_BASIS_POINTS) / 10000
+    (netAmountMinor * settings.vatRateBasisPoints) / 10000
   );
   const grossAmountMinor = netAmountMinor + vatAmountMinor;
   const { data: newBill, error: newBillError } = await admin
@@ -200,12 +271,12 @@ async function getOrCreatePreviousSmsBill({
       period_start: periodStartDate,
       period_end: periodEndDate,
       sms_count: billableLogs.length,
-      unit_cost_minor: 30,
+      unit_cost_minor: settings.smsUnitCostMinor,
       net_amount_minor: netAmountMinor,
-      vat_rate_basis_points: VAT_RATE_BASIS_POINTS,
+      vat_rate_basis_points: settings.vatRateBasisPoints,
       vat_amount_minor: vatAmountMinor,
       gross_amount_minor: grossAmountMinor,
-      currency: "RON",
+      currency: settings.currency,
       payment_status: "unpaid",
       saga_invoice_status: "not_issued",
     })
@@ -229,6 +300,44 @@ async function getOrCreatePreviousSmsBill({
       "id",
       billableLogs.map((log) => log.id)
     );
+}
+
+async function getPreviousSmsBill({
+  doctorId,
+  profileId,
+}: {
+  doctorId: string;
+  profileId: string;
+}) {
+  const admin = createAdminClient();
+  const { periodStartDate, periodEndDate } =
+    getPreviousMonthDateBounds();
+  const { data, error } = await admin
+    .from("doctor_sms_billing_periods")
+    .select(`
+      id,
+      period_start,
+      period_end,
+      sms_count,
+      net_amount_minor,
+      vat_amount_minor,
+      gross_amount_minor,
+      currency,
+      payment_status,
+      saga_invoice_status
+    `)
+    .eq("doctor_id", doctorId)
+    .eq("profile_id", profileId)
+    .eq("period_start", periodStartDate)
+    .eq("period_end", periodEndDate)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Previous SMS bill query failed:", error);
+    return null;
+  }
+
+  return data as SmsBillingPeriodRow | null;
 }
 
 async function getUnpaidSmsBills({
@@ -367,7 +476,15 @@ export default async function DoctorDashboardPage() {
     sent: 0,
     invoiced: 0,
     uninvoiced: 0,
+    estimatedNetMinor: 0,
     uninvoicedValueMinor: 0,
+    currency: "EUR",
+  };
+  let previousSmsBill: SmsBillingPeriodRow | null = null;
+  let smsBillingSettings: DoctorSmsBillingSettings = {
+    smsUnitCostMinor: 30,
+    vatRateBasisPoints: VAT_RATE_BASIS_POINTS,
+    currency: "EUR",
   };
   let unpaidSmsBills: SmsBillingPeriodRow[] = [];
   let unpaidBalance = {
@@ -375,7 +492,7 @@ export default async function DoctorDashboardPage() {
     netAmountMinor: 0,
     vatAmountMinor: 0,
     grossAmountMinor: 0,
-    currency: "RON",
+    currency: "EUR",
   };
 
   if (!isClinicInvited) {
@@ -385,18 +502,25 @@ export default async function DoctorDashboardPage() {
       nextMonthStartIso,
     } = getCurrentMonthBounds();
 
+    smsBillingSettings = await getDoctorSmsBillingSettings();
+
     await getOrCreatePreviousSmsBill({
       doctorId: completion.doctorId,
       profileId: user.id,
+      settings: smsBillingSettings,
     });
 
-    const [smsLogsResult, unpaidBills] = await Promise.all([
+    const [smsLogsResult, previousBill, unpaidBills] = await Promise.all([
       admin
         .from("sms_delivery_logs")
-        .select("status, invoice_status, unit_cost_minor")
+        .select("status, invoice_status, unit_cost_minor, currency")
         .eq("doctor_id", completion.doctorId)
         .gte("created_at", monthStartIso)
         .lt("created_at", nextMonthStartIso),
+      getPreviousSmsBill({
+        doctorId: completion.doctorId,
+        profileId: user.id,
+      }),
       getUnpaidSmsBills({
         doctorId: completion.doctorId,
         profileId: user.id,
@@ -416,10 +540,12 @@ export default async function DoctorDashboardPage() {
       (currentUsage, log) => {
         const invoiceStatus =
           log.invoice_status ?? "not_billable";
-        const unitCostMinor = log.unit_cost_minor ?? 30;
+        const unitCostMinor =
+          log.unit_cost_minor ?? smsBillingSettings.smsUnitCostMinor;
 
         if (log.status === "sent") {
           currentUsage.sent += 1;
+          currentUsage.estimatedNetMinor += unitCostMinor;
         }
 
         if (invoiceStatus === "invoiced") {
@@ -431,15 +557,22 @@ export default async function DoctorDashboardPage() {
           currentUsage.uninvoicedValueMinor += unitCostMinor;
         }
 
+        if (log.currency) {
+          currentUsage.currency = normalizeCurrency(log.currency);
+        }
+
         return currentUsage;
       },
       {
         sent: 0,
         invoiced: 0,
         uninvoiced: 0,
+        estimatedNetMinor: 0,
         uninvoicedValueMinor: 0,
+        currency: smsBillingSettings.currency,
       }
     );
+    previousSmsBill = previousBill;
     unpaidSmsBills = unpaidBills;
     unpaidBalance = unpaidSmsBills.reduce(
       (total, bill) => ({
@@ -457,10 +590,16 @@ export default async function DoctorDashboardPage() {
         netAmountMinor: 0,
         vatAmountMinor: 0,
         grossAmountMinor: 0,
-        currency: "RON",
+        currency: smsBillingSettings.currency,
       }
     );
   }
+
+  const currentMonth = getCurrentMonthBounds();
+  const previousMonth = getPreviousMonthDateBounds();
+  const previousCurrency = normalizeCurrency(
+    previousSmsBill?.currency ?? smsBillingSettings.currency
+  );
 
   const notificationCopy: DashboardNotificationsCopy = {
     eyebrow: notificationT("eyebrow"),
@@ -634,59 +773,60 @@ export default async function DoctorDashboardPage() {
               </section>
             ) : null}
 
-            <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-              <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#036661]">
-                    {t("smsEyebrow")}
-                  </p>
-                  <h2 className="mt-2 text-xl font-bold text-gray-900">
-                    {t("smsUsageTitle")}
-                  </h2>
-                  <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-                    {t("smsUsageDescription")}
-                  </p>
-                </div>
-
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
-                  {t("unbilledValue", {
-                    amount: formatMoney(
-                      smsUsage.uninvoicedValueMinor,
-                      locale
-                    ),
-                  })}
-                </div>
-              </div>
-
-              <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                <div className="rounded-xl bg-gray-50 p-5">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    {t("sentThisMonth")}
-                  </p>
-                  <p className="mt-2 text-3xl font-bold text-gray-900">
-                    {smsUsage.sent}
-                  </p>
-                </div>
-
-                <div className="rounded-xl bg-emerald-50 p-5">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                    {t("invoiced")}
-                  </p>
-                  <p className="mt-2 text-3xl font-bold text-emerald-900">
-                    {smsUsage.invoiced}
-                  </p>
-                </div>
-
-                <div className="rounded-xl bg-blue-50 p-5">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                    {t("uninvoiced")}
-                  </p>
-                  <p className="mt-2 text-3xl font-bold text-blue-900">
-                    {smsUsage.uninvoiced}
-                  </p>
-                </div>
-              </div>
-            </section>
+            <DoctorSmsUsageOverview
+              locale={locale}
+              eyebrow={t("smsEyebrow")}
+              title={t("smsUsageTitle")}
+              description={t("smsUsageDescription")}
+              current={{
+                label: formatPeriod(
+                  currentMonth.monthStartDate,
+                  locale
+                ),
+                currency: smsUsage.currency,
+                sent: smsUsage.sent,
+                invoiced: smsUsage.invoiced,
+                uninvoiced: smsUsage.uninvoiced,
+                estimatedNetFormatted: formatMoney(
+                  smsUsage.estimatedNetMinor,
+                  locale,
+                  smsUsage.currency
+                ),
+                uninvoicedNetFormatted: formatMoney(
+                  smsUsage.uninvoicedValueMinor,
+                  locale,
+                  smsUsage.currency
+                ),
+              }}
+              previous={{
+                label: formatPeriod(
+                  previousMonth.periodStartDate,
+                  locale
+                ),
+                currency: previousCurrency,
+                hasActivity: Boolean(previousSmsBill),
+                smsCount: previousSmsBill?.sms_count ?? 0,
+                netFormatted: formatMoney(
+                  previousSmsBill?.net_amount_minor ?? 0,
+                  locale,
+                  previousCurrency
+                ),
+                vatFormatted: formatMoney(
+                  previousSmsBill?.vat_amount_minor ?? 0,
+                  locale,
+                  previousCurrency
+                ),
+                grossFormatted: formatMoney(
+                  previousSmsBill?.gross_amount_minor ?? 0,
+                  locale,
+                  previousCurrency
+                ),
+                paymentStatus:
+                  previousSmsBill?.payment_status ?? "not_applicable",
+                invoiceStatus:
+                  previousSmsBill?.saga_invoice_status ?? "not_applicable",
+              }}
+            />
           </>
         ) : null}
       </div>
