@@ -1,9 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 import { PLATFORM_OPERATOR_BILLING_HISTORY_CODES } from "@/lib/api/platform-operator-billing-history-codes";
+import { loadPlatformInvoicingDataWithCurrency } from "@/lib/billing/platform-billing-currency";
 import {
   getPlatformMonthRange,
-  loadPlatformInvoicingData,
   shiftPlatformBillingMonth,
 } from "@/lib/billing/platform-invoicing";
 import { buildPlatformBillingUsageXlsx } from "@/lib/billing/export-platform-billing-xlsx";
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest): Promise<Response> {
   );
 
   try {
-    const data = await loadPlatformInvoicingData({
+    const data = await loadPlatformInvoicingDataWithCurrency({
       locale,
       month: requestedMonth,
       fallback: "previous",

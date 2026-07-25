@@ -2,16 +2,20 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { PLATFORM_OPERATOR_BILLING_CODES } from "@/lib/api/platform-operator-billing-codes";
 import { requirePlatformOperatorAal2Api } from "@/lib/auth/require-platform-operator-aal2-api";
+import type { PlatformBillingCurrency } from "@/lib/billing/platform-invoicing";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
 const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
+const CURRENCIES = new Set<PlatformBillingCurrency>(["EUR", "RON"]);
+const DEFAULT_CURRENCY: PlatformBillingCurrency = "EUR";
 
 type BillingSettingsBody = {
   subscriptionPriceRon?: unknown;
   smsPriceRon?: unknown;
   vatRate?: unknown;
+  billingCurrency?: unknown;
 };
 
 function json(body: Record<string, unknown>, status = 200) {
@@ -31,6 +35,13 @@ function normalizeVat(value: unknown) {
   const parsed = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1) return null;
   return Math.round(parsed * 1000000) / 1000000;
+}
+
+function normalizeCurrency(value: unknown): PlatformBillingCurrency | null {
+  return typeof value === "string" &&
+    CURRENCIES.has(value as PlatformBillingCurrency)
+    ? (value as PlatformBillingCurrency)
+    : null;
 }
 
 async function requireAccountingPermission(
@@ -77,7 +88,7 @@ export async function GET(): Promise<Response> {
   const { data, error } = await admin
     .from("clinic_billing_settings")
     .select(
-      "clinic_doctor_monthly_price_ron, sms_unit_price_ron, vat_rate, updated_at, updated_by_profile_id"
+      "clinic_doctor_monthly_price_ron, sms_unit_price_ron, vat_rate, billing_currency, updated_at, updated_by_profile_id"
     )
     .eq("id", 1)
     .maybeSingle();
@@ -101,6 +112,10 @@ export async function GET(): Promise<Response> {
       ),
       smsPriceRon: Number(data?.sms_unit_price_ron ?? 0.3),
       vatRate: Number(data?.vat_rate ?? 0.21),
+      billingCurrency:
+        data?.billing_currency === "RON" || data?.billing_currency === "EUR"
+          ? data.billing_currency
+          : DEFAULT_CURRENCY,
       updatedAt: data?.updated_at ?? null,
       updatedByProfileId: data?.updated_by_profile_id ?? null,
       canEdit: true,
@@ -134,16 +149,18 @@ export async function PATCH(request: NextRequest): Promise<Response> {
   const subscriptionPriceRon = normalizeMoney(body.subscriptionPriceRon);
   const smsPriceRon = normalizeMoney(body.smsPriceRon, 1000);
   const vatRate = normalizeVat(body.vatRate);
+  const billingCurrency = normalizeCurrency(body.billingCurrency);
 
   if (
     subscriptionPriceRon === null ||
     smsPriceRon === null ||
-    vatRate === null
+    vatRate === null ||
+    billingCurrency === null
   ) {
     return json(
       {
         code: PLATFORM_OPERATOR_BILLING_CODES.invalidPrices,
-        error: "Prețurile introduse nu sunt valide.",
+        error: "Prețurile sau moneda introduse nu sunt valide.",
       },
       400
     );
@@ -158,13 +175,14 @@ export async function PATCH(request: NextRequest): Promise<Response> {
         clinic_doctor_monthly_price_ron: subscriptionPriceRon,
         sms_unit_price_ron: smsPriceRon,
         vat_rate: vatRate,
+        billing_currency: billingCurrency,
         updated_at: new Date().toISOString(),
         updated_by_profile_id: authorization.profileId,
       },
       { onConflict: "id" }
     )
     .select(
-      "clinic_doctor_monthly_price_ron, sms_unit_price_ron, vat_rate, updated_at, updated_by_profile_id"
+      "clinic_doctor_monthly_price_ron, sms_unit_price_ron, vat_rate, billing_currency, updated_at, updated_by_profile_id"
     )
     .single();
 
@@ -186,6 +204,8 @@ export async function PATCH(request: NextRequest): Promise<Response> {
       subscriptionPriceRon: Number(data.clinic_doctor_monthly_price_ron),
       smsPriceRon: Number(data.sms_unit_price_ron),
       vatRate: Number(data.vat_rate),
+      billingCurrency:
+        data.billing_currency === "RON" ? "RON" : DEFAULT_CURRENCY,
       updatedAt: data.updated_at,
       updatedByProfileId: data.updated_by_profile_id,
       canEdit: true,

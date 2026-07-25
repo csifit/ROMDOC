@@ -1,19 +1,18 @@
-import Link from "next/link";
-
 import CreateClinicInvoiceFromEstimateLink from "@/components/invoices/create-clinic-invoice-from-estimate-link";
+import ClinicManagerMonthSelector from "@/components/clinic-manager/clinic-manager-month-selector";
 import type { AppLocale } from "@/lib/i18n/app-locale";
+import type { PlatformInvoicingDataWithCurrency } from "@/lib/billing/platform-billing-currency";
 import {
   formatPlatformBillingCurrency,
   formatPlatformBillingMonth,
   type PlatformBillingCurrency,
   type PlatformInvoiceAmountRow,
-  type PlatformInvoicingData,
 } from "@/lib/billing/platform-invoicing";
 import { getPlatformOperatorBilling } from "@/lib/i18n/platform-operator-billing";
 
 type PlatformSmsReportProps = {
   locale: AppLocale;
-  data: PlatformInvoicingData;
+  data: PlatformInvoicingDataWithCurrency;
   clientType: "independent_doctor" | "clinic_organization";
   basePath:
     | "/manager-dashboard/doctor-sms"
@@ -33,11 +32,22 @@ function Metric({ label, value }: { label: string; value: string | number }) {
   );
 }
 
+function currencyLabel(locale: AppLocale) {
+  if (locale === "de") return "Währung";
+  if (locale === "en") return "Currency";
+  return "Monedă";
+}
+
 function formatCurrencyTotals(
   totals: CurrencyTotals,
-  locale: AppLocale
+  locale: AppLocale,
+  defaultCurrency: PlatformBillingCurrency
 ) {
-  const values = (["RON", "EUR"] as const)
+  const order: PlatformBillingCurrency[] = [
+    defaultCurrency,
+    defaultCurrency === "EUR" ? "RON" : "EUR",
+  ];
+  const values = order
     .filter((currency) => totals[currency] !== 0)
     .map((currency) =>
       formatPlatformBillingCurrency(totals[currency], locale, currency)
@@ -45,7 +55,7 @@ function formatCurrencyTotals(
 
   return values.length > 0
     ? values.join(" · ")
-    : formatPlatformBillingCurrency(0, locale, "RON");
+    : formatPlatformBillingCurrency(0, locale, defaultCurrency);
 }
 
 function ClientDetails({
@@ -56,7 +66,7 @@ function ClientDetails({
 }: {
   row: PlatformInvoiceAmountRow;
   locale: AppLocale;
-  data: PlatformInvoicingData;
+  data: PlatformInvoicingDataWithCurrency;
   clientType: "independent_doctor" | "clinic_organization";
 }) {
   const copy = getPlatformOperatorBilling(locale);
@@ -125,11 +135,15 @@ function ClientDetails({
               <div
                 key={String(label)}
                 className={`flex items-start justify-between gap-[13px] ${
-                  index === 6 ? "border-t border-gray-200 pt-[13px] font-bold" : ""
+                  index === 6
+                    ? "border-t border-gray-200 pt-[13px] font-bold"
+                    : ""
                 }`}
               >
                 <dt className="text-gray-600">{label}</dt>
-                <dd className="text-right font-semibold text-gray-900">{value}</dd>
+                <dd className="text-right font-semibold text-gray-900">
+                  {value}
+                </dd>
               </div>
             ))}
           </dl>
@@ -147,7 +161,9 @@ function ClientDetails({
             {billing ? (
               <dl className="mt-[8px] space-y-[5px] text-sm leading-6 text-gray-700">
                 <div>
-                  <dt className="sr-only">{copy.amounts.invoiceDetails.legalName}</dt>
+                  <dt className="sr-only">
+                    {copy.amounts.invoiceDetails.legalName}
+                  </dt>
                   <dd className="font-semibold text-gray-950">
                     {billing.legalName || row.clientName}
                   </dd>
@@ -173,7 +189,7 @@ function ClientDetails({
           </aside>
         </div>
 
-        {clientType === "clinic_organization" && row.currency === "RON" ? (
+        {clientType === "clinic_organization" ? (
           <div className="mt-[21px]">
             <CreateClinicInvoiceFromEstimateLink
               href="/manager-dashboard/invoices"
@@ -235,28 +251,17 @@ export default function PlatformSmsReport({
             <p className="mt-[8px] text-xl font-bold capitalize text-gray-900">
               {monthLabel}
             </p>
+            <p className="mt-[5px] text-sm text-gray-500">
+              {currencyLabel(locale)}: {data.defaultCurrency}
+            </p>
           </div>
-          <div className="flex flex-wrap gap-[8px]">
-            <Link
-              href={`${basePath}?month=${data.range.previousMonth}`}
-              className="romdoc-focus-ring rounded-[13px] border border-gray-300 bg-white px-[13px] py-[8px] text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
-            >
-              ← {copy.smsReport.previous}
-            </Link>
-            {data.range.month !== data.range.currentMonth ? (
-              <Link
-                href={basePath}
-                className="romdoc-focus-ring rounded-[13px] border border-[#036661]/30 bg-[#036661]/5 px-[13px] py-[8px] text-sm font-semibold text-[#036661]"
-              >
-                {copy.smsReport.returnCurrent}
-              </Link>
-            ) : null}
-            <Link
-              href={`${basePath}?month=${data.range.nextMonth}`}
-              className="romdoc-focus-ring rounded-[13px] border border-gray-300 bg-white px-[13px] py-[8px] text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
-            >
-              {copy.smsReport.next} →
-            </Link>
+          <div className="w-full max-w-sm">
+            <ClinicManagerMonthSelector
+              value={data.range.month}
+              locale={locale}
+              basePath={basePath}
+              maxMonth={data.range.currentMonth}
+            />
           </div>
         </div>
       </section>
@@ -270,7 +275,11 @@ export default function PlatformSmsReport({
         <Metric label={copy.smsReport.summarySent} value={totals.sms} />
         <Metric
           label={copy.smsReport.summaryCost}
-          value={formatCurrencyTotals(totals.amounts, locale)}
+          value={formatCurrencyTotals(
+            totals.amounts,
+            locale,
+            data.defaultCurrency
+          )}
         />
       </div>
 

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import PlatformSmsReport from "@/components/billing/platform-sms-report";
-import { loadPlatformInvoicingData } from "@/lib/billing/platform-invoicing";
+import { loadPlatformInvoicingDataWithCurrency } from "@/lib/billing/platform-billing-currency";
 import { requireClinicInvoiceAccess } from "@/lib/invoices/require-clinic-invoice-access";
 import { getPlatformOperatorBilling } from "@/lib/i18n/platform-operator-billing";
 import { getStoredAppLocale } from "@/lib/i18n/server-app-locale";
@@ -31,7 +31,7 @@ export default async function ManagerClinicSmsPage({
   if (access.actor.role !== "manager") redirect("/dashboard");
 
   const parameters = (await searchParams) ?? {};
-  const data = await loadPlatformInvoicingData({
+  const data = await loadPlatformInvoicingDataWithCurrency({
     locale,
     month: parameters.month,
     fallback: "current",

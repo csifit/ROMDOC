@@ -5,13 +5,16 @@ import BillingClientList, {
 } from "@/components/billing/billing-client-list";
 import ClientBillingTermsManager from "@/components/billing/client-billing-terms-manager";
 import PlatformBillingSettingsForm from "@/components/billing/platform-billing-settings-form";
-import type { AppLocale } from "@/lib/i18n/app-locale";
+import ClinicManagerMonthSelector from "@/components/clinic-manager/clinic-manager-month-selector";
+import type {
+  PlatformBillingCurrency,
+} from "@/lib/billing/platform-invoicing";
 import {
   formatPlatformBillingCurrency,
   formatPlatformBillingMonth,
-  type PlatformBillingCurrency,
-  type PlatformInvoicingData,
 } from "@/lib/billing/platform-invoicing";
+import type { PlatformInvoicingDataWithCurrency } from "@/lib/billing/platform-billing-currency";
+import type { AppLocale } from "@/lib/i18n/app-locale";
 import { getPlatformOperatorBilling } from "@/lib/i18n/platform-operator-billing";
 import {
   getPlatformOperatorBillingHistory,
@@ -22,7 +25,7 @@ export type { InitialClientInvoiceDraft };
 
 type AmountsToInvoiceProps = {
   locale: AppLocale;
-  data: PlatformInvoicingData;
+  data: PlatformInvoicingDataWithCurrency;
   role: "admin" | "manager";
   initialInvoiceDraft?: InitialClientInvoiceDraft | null;
 };
@@ -33,6 +36,12 @@ type CurrencyTotals = {
   displayedTotal: number;
   clientCount: number;
 };
+
+function currencyLabel(locale: AppLocale) {
+  if (locale === "de") return "Währung";
+  if (locale === "en") return "Currency";
+  return "Monedă";
+}
 
 export default function AmountsToInvoice({
   locale,
@@ -64,12 +73,18 @@ export default function AmountsToInvoice({
     totals.set(currency, current);
   }
 
+  const currencyOrder: PlatformBillingCurrency[] = [
+    data.defaultCurrency,
+    data.defaultCurrency === "EUR" ? "RON" : "EUR",
+  ];
+
   return (
     <div className="space-y-[34px]">
       {role === "admin" ? (
         <ClientBillingTermsManager
           locale={locale}
           clients={data.pricingClients}
+          defaultCurrency={data.defaultCurrency}
         />
       ) : null}
 
@@ -89,6 +104,9 @@ export default function AmountsToInvoice({
                   : copy.history.pastDescription,
                 { month: monthLabel }
               )}
+            </p>
+            <p className="mt-[8px] text-sm text-gray-500">
+              {currencyLabel(locale)}: {data.defaultCurrency}
             </p>
           </div>
 
@@ -123,29 +141,14 @@ export default function AmountsToInvoice({
             ))}
           </div>
 
-          <form
-            action={basePath}
-            method="get"
-            className="mt-[13px] flex flex-wrap items-end gap-[8px]"
-          >
-            <label>
-              <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                {copy.history.chooseMonth}
-              </span>
-              <input
-                type="month"
-                name="month"
-                defaultValue={data.range.month}
-                className="romdoc-focus-ring mt-[5px] rounded-[13px] border border-gray-300 bg-white px-[13px] py-[8px] text-sm"
-              />
-            </label>
-            <button
-              type="submit"
-              className="romdoc-focus-ring rounded-[13px] border border-gray-300 bg-white px-[13px] py-[8px] text-sm font-semibold text-gray-800"
-            >
-              {copy.history.openMonth}
-            </button>
-          </form>
+          <div className="mt-[13px] max-w-sm">
+            <ClinicManagerMonthSelector
+              value={data.range.month}
+              locale={locale}
+              basePath={basePath}
+              maxMonth={data.range.currentMonth}
+            />
+          </div>
         </nav>
 
         {data.range.month === data.previousCalendarMonth ? (
@@ -199,6 +202,7 @@ export default function AmountsToInvoice({
               <PlatformBillingSettingsForm
                 locale={locale}
                 rates={data.rates}
+                currency={data.defaultCurrency}
                 canEdit
               />
             </div>
@@ -206,7 +210,7 @@ export default function AmountsToInvoice({
         ) : null}
 
         <div className="mt-[21px] grid gap-[13px] xl:grid-cols-2">
-          {(["RON", "EUR"] as PlatformBillingCurrency[]).map((currency) => {
+          {currencyOrder.map((currency) => {
             const value = totals.get(currency);
             if (!value) return null;
 

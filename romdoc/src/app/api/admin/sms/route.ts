@@ -4,13 +4,14 @@ import {
   requireAdministratorCapability,
   requirePlatformOperatorAal2Api,
 } from "@/lib/auth/require-platform-operator-aal2-api";
+import type { PlatformBillingCurrency } from "@/lib/billing/platform-invoicing";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
 const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 const DEFAULT_SMS_UNIT_COST_MINOR = 30;
-const SMS_CURRENCY = "RON";
+const DEFAULT_SMS_CURRENCY: PlatformBillingCurrency = "EUR";
 
 type SmsPatchBody = {
   action?: unknown;
@@ -85,10 +86,16 @@ function nameFromSlug(slug: string) {
 }
 
 function currentSmsUnitCostMinor(value: unknown) {
-  const priceRon = Number(value);
-  return Number.isFinite(priceRon) && priceRon >= 0
-    ? Math.round(priceRon * 100)
+  const price = Number(value);
+  return Number.isFinite(price) && price >= 0
+    ? Math.round(price * 100)
     : DEFAULT_SMS_UNIT_COST_MINOR;
+}
+
+function normalizeCurrency(value: unknown): PlatformBillingCurrency {
+  return value === "RON" || value === "EUR"
+    ? value
+    : DEFAULT_SMS_CURRENCY;
 }
 
 async function requireSmsBillingCapability(
@@ -150,7 +157,7 @@ export async function GET(): Promise<Response> {
       .maybeSingle(),
     admin
       .from("clinic_billing_settings")
-      .select("sms_unit_price_ron")
+      .select("sms_unit_price_ron, billing_currency")
       .eq("id", 1)
       .maybeSingle(),
     admin
@@ -195,6 +202,9 @@ export async function GET(): Promise<Response> {
     (billingPeriodsResult.data ?? []) as SmsBillingPeriodRow[];
   const configuredUnitCostMinor = currentSmsUnitCostMinor(
     billingSettingsResult.data?.sms_unit_price_ron
+  );
+  const configuredCurrency = normalizeCurrency(
+    billingSettingsResult.data?.billing_currency
   );
 
   const profileIds = Array.from(
@@ -351,7 +361,7 @@ export async function GET(): Promise<Response> {
       },
     billing: {
       unitCostMinor: configuredUnitCostMinor,
-      currency: SMS_CURRENCY,
+      currency: configuredCurrency,
       vatMode: "plus_vat",
     },
     doctorCounters,

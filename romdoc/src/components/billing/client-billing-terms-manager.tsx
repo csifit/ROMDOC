@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
 import type {
   PlatformBillingClientOption,
@@ -15,6 +15,7 @@ import { getPlatformOperatorBillingHistory } from "@/lib/i18n/platform-operator-
 type Props = {
   locale: AppLocale;
   clients: PlatformBillingClientOption[];
+  defaultCurrency: PlatformBillingCurrency;
 };
 
 type ApiResponse = {
@@ -32,7 +33,11 @@ function clientKey(client: PlatformBillingClientOption) {
   return `${client.clientType}:${client.id}`;
 }
 
-export default function ClientBillingTermsManager({ locale, clients }: Props) {
+export default function ClientBillingTermsManager({
+  locale,
+  clients,
+  defaultCurrency,
+}: Props) {
   const copy = getPlatformOperatorBillingHistory(locale);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -40,7 +45,8 @@ export default function ClientBillingTermsManager({ locale, clients }: Props) {
   const [selectedKey, setSelectedKey] = useState("");
   const [subscriptionPrice, setSubscriptionPrice] = useState("");
   const [smsPrice, setSmsPrice] = useState("");
-  const [currency, setCurrency] = useState<PlatformBillingCurrency>("RON");
+  const [currency, setCurrency] =
+    useState<PlatformBillingCurrency>(defaultCurrency);
   const [vatPercent, setVatPercent] = useState("");
   const [vatTreatment, setVatTreatment] =
     useState<PlatformVatTreatment>("domestic");
@@ -74,7 +80,7 @@ export default function ClientBillingTermsManager({ locale, clients }: Props) {
     const terms = selectedClient?.terms;
     setSubscriptionPrice(numberValue(terms?.subscriptionUnitPrice ?? null));
     setSmsPrice(numberValue(terms?.smsUnitPrice ?? null));
-    setCurrency(terms?.currency ?? "RON");
+    setCurrency(terms?.currency ?? defaultCurrency);
     setVatPercent(
       terms?.vatRate === null || terms?.vatRate === undefined
         ? ""
@@ -89,7 +95,7 @@ export default function ClientBillingTermsManager({ locale, clients }: Props) {
     setEffectiveUntil(terms?.effectiveUntil ?? "");
     setMessage("");
     setError("");
-  }, [selectedClient]);
+  }, [defaultCurrency, selectedClient]);
 
   function parseOptionalNumber(value: string) {
     if (!value.trim()) return null;
@@ -142,13 +148,19 @@ export default function ClientBillingTermsManager({ locale, clients }: Props) {
         });
         const result = (await response.json()) as ApiResponse;
         if (!response.ok) {
-          throw new Error(locale === "ro" && result.error ? result.error : copy.pricing.invalidPrices);
+          throw new Error(
+            locale === "ro" && result.error
+              ? result.error
+              : copy.pricing.invalidPrices
+          );
         }
         setMessage(copy.pricing.saved);
         router.refresh();
       } catch (saveError) {
         setError(
-          saveError instanceof Error ? saveError.message : copy.pricing.invalidPrices
+          saveError instanceof Error
+            ? saveError.message
+            : copy.pricing.invalidPrices
         );
       }
     });
@@ -171,13 +183,19 @@ export default function ClientBillingTermsManager({ locale, clients }: Props) {
         });
         const result = (await response.json()) as ApiResponse;
         if (!response.ok) {
-          throw new Error(locale === "ro" && result.error ? result.error : copy.pricing.invalidPrices);
+          throw new Error(
+            locale === "ro" && result.error
+              ? result.error
+              : copy.pricing.invalidPrices
+          );
         }
         setMessage(copy.pricing.resetDone);
         router.refresh();
       } catch (resetError) {
         setError(
-          resetError instanceof Error ? resetError.message : copy.pricing.invalidPrices
+          resetError instanceof Error
+            ? resetError.message
+            : copy.pricing.invalidPrices
         );
       }
     });
@@ -189,6 +207,8 @@ export default function ClientBillingTermsManager({ locale, clients }: Props) {
   const organizationClients = filteredClients.filter(
     (client) => client.clientType === "clinic_organization"
   );
+  const secondaryCurrency: PlatformBillingCurrency =
+    defaultCurrency === "EUR" ? "RON" : "EUR";
 
   return (
     <section className="rounded-[21px] border border-[#9A4F35]/20 bg-white p-[21px] shadow-sm">
@@ -267,11 +287,13 @@ export default function ClientBillingTermsManager({ locale, clients }: Props) {
                 {selectedClient.accountEmail ?? "—"}
               </p>
             </div>
-            <span className={`rounded-full px-[13px] py-[8px] text-xs font-semibold ${
-              selectedClient.terms
-                ? "bg-[#036661]/10 text-[#036661]"
-                : "bg-gray-200 text-gray-700"
-            }`}>
+            <span
+              className={`rounded-full px-[13px] py-[8px] text-xs font-semibold ${
+                selectedClient.terms
+                  ? "bg-[#036661]/10 text-[#036661]"
+                  : "bg-gray-200 text-gray-700"
+              }`}
+            >
               {selectedClient.terms
                 ? copy.pricing.hasOverride
                 : copy.pricing.usesGlobal}
@@ -318,8 +340,8 @@ export default function ClientBillingTermsManager({ locale, clients }: Props) {
                 }
                 className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px]"
               >
-                <option value="RON">RON</option>
-                <option value="EUR">EUR</option>
+                <option value={defaultCurrency}>{defaultCurrency}</option>
+                <option value={secondaryCurrency}>{secondaryCurrency}</option>
               </select>
             </label>
             <label>
@@ -405,7 +427,12 @@ export default function ClientBillingTermsManager({ locale, clients }: Props) {
               >
                 <option value="">{copy.vatValidation.empty}</option>
                 {(
-                  ["not_checked", "valid", "invalid", "unavailable"] as PlatformVatValidationStatus[]
+                  [
+                    "not_checked",
+                    "valid",
+                    "invalid",
+                    "unavailable",
+                  ] as PlatformVatValidationStatus[]
                 ).map((value) => (
                   <option key={value} value={value}>
                     {copy.vatValidation[value]}
@@ -477,7 +504,10 @@ export default function ClientBillingTermsManager({ locale, clients }: Props) {
             </p>
           ) : null}
           {error ? (
-            <p role="alert" className="mt-[13px] rounded-[13px] border border-red-200 bg-red-50 p-[13px] text-sm text-red-800">
+            <p
+              role="alert"
+              className="mt-[13px] rounded-[13px] border border-red-200 bg-red-50 p-[13px] text-sm text-red-800"
+            >
               {error}
             </p>
           ) : null}

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import AmountsToInvoice, {
   type InitialClientInvoiceDraft,
 } from "@/components/billing/amounts-to-invoice";
-import { loadPlatformInvoicingData } from "@/lib/billing/platform-invoicing";
+import { loadPlatformInvoicingDataWithCurrency } from "@/lib/billing/platform-billing-currency";
 import { requireClinicInvoiceAccess } from "@/lib/invoices/require-clinic-invoice-access";
 import { getPlatformOperatorBilling } from "@/lib/i18n/platform-operator-billing";
 import { getPlatformOperatorBillingHistory } from "@/lib/i18n/platform-operator-billing-history";
@@ -86,7 +86,7 @@ export default async function AdminInvoicesPage({
 
   const parameters = (await searchParams) ?? {};
   const initialInvoiceDraft = getInitialInvoiceDraft(parameters);
-  const data = await loadPlatformInvoicingData({
+  const data = await loadPlatformInvoicingDataWithCurrency({
     locale,
     month: getRequestedMonth(parameters),
     fallback: "current",

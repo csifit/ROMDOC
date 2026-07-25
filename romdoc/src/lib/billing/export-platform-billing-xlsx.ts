@@ -62,7 +62,11 @@ export async function buildPlatformBillingUsageXlsx({
     data.range.month,
     locale
   )}`;
-  usage.getCell("A1").font = { bold: true, size: 16, color: { argb: "FFFFFFFF" } };
+  usage.getCell("A1").font = {
+    bold: true,
+    size: 16,
+    color: { argb: "FFFFFFFF" },
+  };
   usage.getCell("A1").fill = {
     type: "pattern",
     pattern: "solid",
@@ -200,7 +204,11 @@ export async function buildPlatformBillingUsageXlsx({
     data.range.month,
     locale
   )}`;
-  summary.getCell("A1").font = { bold: true, size: 16, color: { argb: "FFFFFFFF" } };
+  summary.getCell("A1").font = {
+    bold: true,
+    size: 16,
+    color: { argb: "FFFFFFFF" },
+  };
   summary.getCell("A1").fill = {
     type: "pattern",
     pattern: "solid",
@@ -208,7 +216,10 @@ export async function buildPlatformBillingUsageXlsx({
   };
   summary.mergeCells("A2:E2");
   summary.getCell("A2").value = copy.history.noMixedTotal;
-  summary.getCell("A2").font = { italic: true, color: { argb: "FF4B5563" } };
+  summary.getCell("A2").font = {
+    italic: true,
+    color: { argb: "FF4B5563" },
+  };
   summary.addRow([
     copy.xlsx.currency,
     copy.xlsx.clientCount,
@@ -224,7 +235,7 @@ export async function buildPlatformBillingUsageXlsx({
     fgColor: { argb: "FF9A4F35" },
   };
 
-  for (const currency of ["RON", "EUR"] as PlatformBillingCurrency[]) {
+  for (const currency of ["EUR", "RON"] as PlatformBillingCurrency[]) {
     const value = totalByCurrency(data).get(currency);
     if (!value) continue;
     const row = summary.addRow([

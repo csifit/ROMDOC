@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 
+import type {
+  PlatformBillingCurrency,
+  PlatformBillingRates,
+} from "@/lib/billing/platform-invoicing";
 import type { AppLocale } from "@/lib/i18n/app-locale";
-import type { PlatformBillingRates } from "@/lib/billing/platform-invoicing";
 import {
   getPlatformOperatorBilling,
   interpolatePlatformBillingCopy,
@@ -14,6 +17,7 @@ import {
 type PlatformBillingSettingsFormProps = {
   locale: AppLocale;
   rates: PlatformBillingRates;
+  currency: PlatformBillingCurrency;
   canEdit: boolean;
 };
 
@@ -25,6 +29,7 @@ type SettingsApiResponse = {
     subscriptionPriceRon: number;
     smsPriceRon: number;
     vatRate: number;
+    billingCurrency: PlatformBillingCurrency;
     updatedAt: string | null;
     updatedByProfileId: string | null;
     canEdit: boolean;
@@ -32,12 +37,27 @@ type SettingsApiResponse = {
 };
 
 function numberInputValue(value: number) {
-  return Number.isInteger(value) ? String(value) : String(value.toFixed(4)).replace(/0+$/, "").replace(/\.$/, "");
+  return Number.isInteger(value)
+    ? String(value)
+    : String(value.toFixed(4)).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+function currencyLabel(locale: AppLocale) {
+  if (locale === "de") return "Währung";
+  if (locale === "en") return "Currency";
+  return "Monedă";
+}
+
+function currencyHelper(locale: AppLocale) {
+  if (locale === "de") return "Standardwährung für globale Preise.";
+  if (locale === "en") return "Default currency for global prices.";
+  return "Moneda implicită pentru tarifele globale.";
 }
 
 export default function PlatformBillingSettingsForm({
   locale,
   rates,
+  currency,
   canEdit,
 }: PlatformBillingSettingsFormProps) {
   const copy = getPlatformOperatorBilling(locale);
@@ -47,10 +67,14 @@ export default function PlatformBillingSettingsForm({
   const [subscriptionPrice, setSubscriptionPrice] = useState(
     numberInputValue(rates.subscriptionPriceRon)
   );
-  const [smsPrice, setSmsPrice] = useState(numberInputValue(rates.smsPriceRon));
+  const [smsPrice, setSmsPrice] = useState(
+    numberInputValue(rates.smsPriceRon)
+  );
   const [vatPercent, setVatPercent] = useState(
     numberInputValue(rates.vatRate * 100)
   );
+  const [billingCurrency, setBillingCurrency] =
+    useState<PlatformBillingCurrency>(currency);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -71,6 +95,7 @@ export default function PlatformBillingSettingsForm({
     setSubscriptionPrice(numberInputValue(rates.subscriptionPriceRon));
     setSmsPrice(numberInputValue(rates.smsPriceRon));
     setVatPercent(numberInputValue(rates.vatRate * 100));
+    setBillingCurrency(currency);
     setMessage("");
     setError("");
     setIsEditing(false);
@@ -108,6 +133,7 @@ export default function PlatformBillingSettingsForm({
             subscriptionPriceRon: subscription,
             smsPriceRon: sms,
             vatRate: vat / 100,
+            billingCurrency,
           }),
         });
 
@@ -121,9 +147,12 @@ export default function PlatformBillingSettingsForm({
           );
         }
 
-        setSubscriptionPrice(numberInputValue(result.settings.subscriptionPriceRon));
+        setSubscriptionPrice(
+          numberInputValue(result.settings.subscriptionPriceRon)
+        );
         setSmsPrice(numberInputValue(result.settings.smsPriceRon));
         setVatPercent(numberInputValue(result.settings.vatRate * 100));
+        setBillingCurrency(result.settings.billingCurrency);
         setMessage(copy.settings.saved);
         setIsEditing(false);
         router.refresh();
@@ -146,6 +175,9 @@ export default function PlatformBillingSettingsForm({
           </h3>
           <p className="mt-[8px] max-w-3xl text-sm leading-6 text-gray-600">
             {copy.settings.description}
+          </p>
+          <p className="mt-[8px] text-sm text-gray-500">
+            {currencyLabel(locale)}: {billingCurrency}
           </p>
           {!canEdit ? (
             <p className="mt-[8px] text-xs leading-5 text-gray-500">
@@ -172,7 +204,7 @@ export default function PlatformBillingSettingsForm({
         ) : null}
       </div>
 
-      <div className="mt-[21px] grid gap-[13px] md:grid-cols-3">
+      <div className="mt-[21px] grid gap-[13px] md:grid-cols-2 xl:grid-cols-4">
         <label className="block">
           <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             {copy.settings.subscriptionPrice}
@@ -188,16 +220,19 @@ export default function PlatformBillingSettingsForm({
                 className="min-w-0 flex-1 rounded-l-[13px] px-[13px] py-[13px] text-lg font-bold text-gray-900 outline-none"
               />
               <span className="px-[13px] text-sm font-semibold text-gray-500">
-                {copy.settings.currency}
+                {billingCurrency}
               </span>
             </div>
           ) : (
             <p className="mt-[8px] text-2xl font-bold text-gray-900">
-              {new Intl.NumberFormat(PLATFORM_OPERATOR_BILLING_LOCALE_TAGS[locale], {
-                style: "currency",
-                currency: "RON",
-                maximumFractionDigits: 2,
-              }).format(rates.subscriptionPriceRon)}
+              {new Intl.NumberFormat(
+                PLATFORM_OPERATOR_BILLING_LOCALE_TAGS[locale],
+                {
+                  style: "currency",
+                  currency: billingCurrency,
+                  maximumFractionDigits: 2,
+                }
+              ).format(rates.subscriptionPriceRon)}
             </p>
           )}
         </label>
@@ -211,24 +246,56 @@ export default function PlatformBillingSettingsForm({
               <input
                 type="number"
                 min="0"
-                step="0.01"
+                step="0.0001"
                 value={smsPrice}
                 onChange={(event) => setSmsPrice(event.target.value)}
                 className="min-w-0 flex-1 rounded-l-[13px] px-[13px] py-[13px] text-lg font-bold text-gray-900 outline-none"
               />
               <span className="px-[13px] text-sm font-semibold text-gray-500">
-                {copy.settings.currency}
+                {billingCurrency}
               </span>
             </div>
           ) : (
             <p className="mt-[8px] text-2xl font-bold text-gray-900">
-              {new Intl.NumberFormat(PLATFORM_OPERATOR_BILLING_LOCALE_TAGS[locale], {
-                style: "currency",
-                currency: "RON",
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 4,
-              }).format(rates.smsPriceRon)}
+              {new Intl.NumberFormat(
+                PLATFORM_OPERATOR_BILLING_LOCALE_TAGS[locale],
+                {
+                  style: "currency",
+                  currency: billingCurrency,
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 4,
+                }
+              ).format(rates.smsPriceRon)}
             </p>
+          )}
+        </label>
+
+        <label className="block">
+          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            {currencyLabel(locale)}
+          </span>
+          {isEditing ? (
+            <select
+              value={billingCurrency}
+              onChange={(event) =>
+                setBillingCurrency(
+                  event.target.value as PlatformBillingCurrency
+                )
+              }
+              className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] text-lg font-bold text-gray-900"
+            >
+              <option value="EUR">EUR</option>
+              <option value="RON">RON</option>
+            </select>
+          ) : (
+            <div className="mt-[8px]">
+              <p className="text-2xl font-bold text-gray-900">
+                {billingCurrency}
+              </p>
+              <p className="mt-[5px] text-xs leading-5 text-gray-500">
+                {currencyHelper(locale)}
+              </p>
+            </div>
           )}
         </label>
 
@@ -247,14 +314,19 @@ export default function PlatformBillingSettingsForm({
                 onChange={(event) => setVatPercent(event.target.value)}
                 className="min-w-0 flex-1 rounded-l-[13px] px-[13px] py-[13px] text-lg font-bold text-gray-900 outline-none"
               />
-              <span className="px-[13px] text-sm font-semibold text-gray-500">%</span>
+              <span className="px-[13px] text-sm font-semibold text-gray-500">
+                %
+              </span>
             </div>
           ) : (
             <p className="mt-[8px] text-2xl font-bold text-gray-900">
-              {new Intl.NumberFormat(PLATFORM_OPERATOR_BILLING_LOCALE_TAGS[locale], {
-                style: "percent",
-                maximumFractionDigits: 2,
-              }).format(rates.vatRate)}
+              {new Intl.NumberFormat(
+                PLATFORM_OPERATOR_BILLING_LOCALE_TAGS[locale],
+                {
+                  style: "percent",
+                  maximumFractionDigits: 2,
+                }
+              ).format(rates.vatRate)}
             </p>
           )}
         </label>
@@ -287,7 +359,10 @@ export default function PlatformBillingSettingsForm({
         </p>
       ) : null}
       {error ? (
-        <p role="alert" className="mt-[13px] rounded-[13px] border border-red-200 bg-red-50 px-[13px] py-[8px] text-sm text-red-800">
+        <p
+          role="alert"
+          className="mt-[13px] rounded-[13px] border border-red-200 bg-red-50 px-[13px] py-[8px] text-sm text-red-800"
+        >
           {error}
         </p>
       ) : null}
