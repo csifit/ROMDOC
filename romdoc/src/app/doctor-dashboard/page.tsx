@@ -31,22 +31,13 @@ import {
 
 type SmsUsageLogRow = {
   status: string;
-
-  invoice_status:
-    | string
-    | null;
-
-  unit_cost_minor:
-    | number
-    | null;
+  invoice_status: string | null;
+  unit_cost_minor: number | null;
 };
 
 type BillableSmsLogRow = {
   id: string;
-
-  unit_cost_minor:
-    | number
-    | null;
+  unit_cost_minor: number | null;
 };
 
 type SmsBillingPeriodRow = {
@@ -64,179 +55,74 @@ type SmsBillingPeriodRow = {
 
 type DoctorAccountRow = {
   id: string;
-
-  status:
-    | string
-    | null;
-
-  account_type:
-    | string
-    | null;
-
-  clinic_organization_id:
-    | string
-    | null;
+  status: string | null;
+  account_type: string | null;
+  clinic_organization_id: string | null;
 };
 
-const VAT_RATE_BASIS_POINTS =
-  2100;
+const VAT_RATE_BASIS_POINTS = 2100;
 
-const INTL_LOCALE:
-  Record<
-    AppLocale,
-    string
-  > = {
-    ro:
-      "ro-RO",
-    en:
-      "en-GB",
-    de:
-      "de-DE",
-  };
+const INTL_LOCALE: Record<AppLocale, string> = {
+  ro: "ro-RO",
+  en: "en-GB",
+  de: "de-DE",
+};
 
 function getCurrentMonthBounds() {
-  const now =
-    new Date();
-
-  const monthStart =
-    new Date(
-      Date.UTC(
-        now.getUTCFullYear(),
-        now.getUTCMonth(),
-        1
-      )
-    );
-
-  const nextMonthStart =
-    new Date(
-      Date.UTC(
-        now.getUTCFullYear(),
-        now.getUTCMonth() +
-          1,
-        1
-      )
-    );
+  const now = new Date();
+  const monthStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+  );
+  const nextMonthStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
+  );
 
   return {
-    monthStartIso:
-      monthStart
-        .toISOString(),
-
-    nextMonthStartIso:
-      nextMonthStart
-        .toISOString(),
+    monthStartIso: monthStart.toISOString(),
+    nextMonthStartIso: nextMonthStart.toISOString(),
   };
 }
 
 function getPreviousMonthDateBounds() {
-  const now =
-    new Date();
-
-  const periodStart =
-    new Date(
-      Date.UTC(
-        now.getUTCFullYear(),
-        now.getUTCMonth() -
-          1,
-        1
-      )
-    );
-
-  const periodEnd =
-    new Date(
-      Date.UTC(
-        now.getUTCFullYear(),
-        now.getUTCMonth(),
-        1
-      )
-    );
+  const now = new Date();
+  const periodStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)
+  );
+  const periodEnd = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+  );
 
   return {
-    periodStartDate:
-      periodStart
-        .toISOString()
-        .slice(
-          0,
-          10
-        ),
-
-    periodEndDate:
-      periodEnd
-        .toISOString()
-        .slice(
-          0,
-          10
-        ),
-
-    periodStartIso:
-      periodStart
-        .toISOString(),
-
-    periodEndIso:
-      periodEnd
-        .toISOString(),
+    periodStartDate: periodStart.toISOString().slice(0, 10),
+    periodEndDate: periodEnd.toISOString().slice(0, 10),
+    periodStartIso: periodStart.toISOString(),
+    periodEndIso: periodEnd.toISOString(),
   };
 }
 
 function formatMoney(
-  minorAmount:
-    number,
-  locale:
-    AppLocale,
-  currency =
-    "RON"
+  minorAmount: number,
+  locale: AppLocale,
+  currency = "RON"
 ) {
-  return new Intl
-    .NumberFormat(
-      INTL_LOCALE[
-        locale
-      ],
-      {
-        style:
-          "currency",
-
-        currency,
-
-        minimumFractionDigits:
-          2,
-      }
-    )
-    .format(
-      minorAmount /
-        100
-    );
+  return new Intl.NumberFormat(INTL_LOCALE[locale], {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+  }).format(minorAmount / 100);
 }
 
 function formatPeriod(
-  periodStart:
-    string,
-  locale:
-    AppLocale
+  periodStart: string,
+  locale: AppLocale
 ) {
-  const startDate =
-    new Date(
-      `${periodStart}T12:00:00Z`
-    );
+  const startDate = new Date(`${periodStart}T12:00:00Z`);
 
-  return new Intl
-    .DateTimeFormat(
-      INTL_LOCALE[
-        locale
-      ],
-      {
-        month:
-          "long",
-
-        year:
-          "numeric",
-
-        timeZone:
-          "UTC",
-      }
-    )
-    .format(
-      startDate
-    );
+  return new Intl.DateTimeFormat(INTL_LOCALE[locale], {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(startDate);
 }
 
 async function getOrCreatePreviousSmsBill({
@@ -246,233 +132,102 @@ async function getOrCreatePreviousSmsBill({
   doctorId: string;
   profileId: string;
 }) {
-  const admin =
-    createAdminClient();
-
+  const admin = createAdminClient();
   const {
     periodStartDate,
     periodEndDate,
     periodStartIso,
     periodEndIso,
-  } =
-    getPreviousMonthDateBounds();
+  } = getPreviousMonthDateBounds();
+  const { data: existingBill, error: existingBillError } = await admin
+    .from("doctor_sms_billing_periods")
+    .select("id")
+    .eq("doctor_id", doctorId)
+    .eq("period_start", periodStartDate)
+    .eq("period_end", periodEndDate)
+    .maybeSingle();
 
-  const {
-    data:
-      existingBill,
-    error:
-      existingBillError,
-  } =
-    await admin
-      .from(
-        "doctor_sms_billing_periods"
-      )
-      .select(
-        "id"
-      )
-      .eq(
-        "doctor_id",
-        doctorId
-      )
-      .eq(
-        "period_start",
-        periodStartDate
-      )
-      .eq(
-        "period_end",
-        periodEndDate
-      )
-      .maybeSingle();
-
-  if (
-    existingBillError
-  ) {
+  if (existingBillError) {
     console.error(
       "Previous SMS bill lookup failed:",
       existingBillError
     );
   }
 
-  if (
-    existingBill
-  ) {
+  if (existingBill) {
     return;
   }
 
-  const {
-    data:
-      billableLogsData,
-    error:
-      billableLogsError,
-  } =
+  const { data: billableLogsData, error: billableLogsError } =
     await admin
-      .from(
-        "sms_delivery_logs"
-      )
-      .select(
-        "id, unit_cost_minor"
-      )
-      .eq(
-        "doctor_id",
-        doctorId
-      )
-      .eq(
-        "status",
-        "sent"
-      )
-      .eq(
-        "invoice_status",
-        "uninvoiced"
-      )
-      .is(
-        "sms_billing_period_id",
-        null
-      )
-      .gte(
-        "created_at",
-        periodStartIso
-      )
-      .lt(
-        "created_at",
-        periodEndIso
-      );
+      .from("sms_delivery_logs")
+      .select("id, unit_cost_minor")
+      .eq("doctor_id", doctorId)
+      .eq("status", "sent")
+      .eq("invoice_status", "uninvoiced")
+      .is("sms_billing_period_id", null)
+      .gte("created_at", periodStartIso)
+      .lt("created_at", periodEndIso);
 
-  if (
-    billableLogsError
-  ) {
+  if (billableLogsError) {
     console.error(
       "Previous SMS bill logs lookup failed:",
       billableLogsError
     );
-
     return;
   }
 
   const billableLogs =
-    (
-      billableLogsData ??
-      []
-    ) as
-      BillableSmsLogRow[];
+    (billableLogsData ?? []) as BillableSmsLogRow[];
 
-  if (
-    billableLogs.length ===
-    0
-  ) {
+  if (billableLogs.length === 0) {
     return;
   }
 
-  const netAmountMinor =
-    billableLogs.reduce(
-      (
-        total,
-        log
-      ) =>
-        total +
-        (
-          log
-            .unit_cost_minor ??
-          30
-        ),
-      0
-    );
+  const netAmountMinor = billableLogs.reduce(
+    (total, log) => total + (log.unit_cost_minor ?? 30),
+    0
+  );
+  const vatAmountMinor = Math.round(
+    (netAmountMinor * VAT_RATE_BASIS_POINTS) / 10000
+  );
+  const grossAmountMinor = netAmountMinor + vatAmountMinor;
+  const { data: newBill, error: newBillError } = await admin
+    .from("doctor_sms_billing_periods")
+    .insert({
+      doctor_id: doctorId,
+      profile_id: profileId,
+      period_start: periodStartDate,
+      period_end: periodEndDate,
+      sms_count: billableLogs.length,
+      unit_cost_minor: 30,
+      net_amount_minor: netAmountMinor,
+      vat_rate_basis_points: VAT_RATE_BASIS_POINTS,
+      vat_amount_minor: vatAmountMinor,
+      gross_amount_minor: grossAmountMinor,
+      currency: "RON",
+      payment_status: "unpaid",
+      saga_invoice_status: "not_issued",
+    })
+    .select("id")
+    .single();
 
-  const vatAmountMinor =
-    Math.round(
-      (
-        netAmountMinor *
-        VAT_RATE_BASIS_POINTS
-      ) /
-        10000
-    );
-
-  const grossAmountMinor =
-    netAmountMinor +
-    vatAmountMinor;
-
-  const {
-    data:
-      newBill,
-    error:
-      newBillError,
-  } =
-    await admin
-      .from(
-        "doctor_sms_billing_periods"
-      )
-      .insert({
-        doctor_id:
-          doctorId,
-
-        profile_id:
-          profileId,
-
-        period_start:
-          periodStartDate,
-
-        period_end:
-          periodEndDate,
-
-        sms_count:
-          billableLogs.length,
-
-        unit_cost_minor:
-          30,
-
-        net_amount_minor:
-          netAmountMinor,
-
-        vat_rate_basis_points:
-          VAT_RATE_BASIS_POINTS,
-
-        vat_amount_minor:
-          vatAmountMinor,
-
-        gross_amount_minor:
-          grossAmountMinor,
-
-        currency:
-          "RON",
-
-        payment_status:
-          "unpaid",
-
-        saga_invoice_status:
-          "not_issued",
-      })
-      .select(
-        "id"
-      )
-      .single();
-
-  if (
-    newBillError ||
-    !newBill
-  ) {
+  if (newBillError || !newBill) {
     console.error(
       "Previous SMS bill creation failed:",
       newBillError
     );
-
     return;
   }
 
   await admin
-    .from(
-      "sms_delivery_logs"
-    )
+    .from("sms_delivery_logs")
     .update({
-      sms_billing_period_id:
-        newBill.id,
+      sms_billing_period_id: newBill.id,
     })
     .in(
       "id",
-      billableLogs.map(
-        (
-          log
-        ) =>
-          log.id
-      )
+      billableLogs.map((log) => log.id)
     );
 }
 
@@ -483,206 +238,121 @@ async function getUnpaidSmsBills({
   doctorId: string;
   profileId: string;
 }) {
-  const admin =
-    createAdminClient();
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("doctor_sms_billing_periods")
+    .select(`
+      id,
+      period_start,
+      period_end,
+      sms_count,
+      net_amount_minor,
+      vat_amount_minor,
+      gross_amount_minor,
+      currency,
+      payment_status,
+      saga_invoice_status
+    `)
+    .eq("doctor_id", doctorId)
+    .eq("profile_id", profileId)
+    .in("payment_status", [
+      "unpaid",
+      "checkout_open",
+      "failed",
+    ])
+    .gt("gross_amount_minor", 0)
+    .order("period_start", {
+      ascending: true,
+    });
 
-  const {
-    data,
-    error,
-  } =
-    await admin
-      .from(
-        "doctor_sms_billing_periods"
-      )
-      .select(`
-        id,
-        period_start,
-        period_end,
-        sms_count,
-        net_amount_minor,
-        vat_amount_minor,
-        gross_amount_minor,
-        currency,
-        payment_status,
-        saga_invoice_status
-      `)
-      .eq(
-        "doctor_id",
-        doctorId
-      )
-      .eq(
-        "profile_id",
-        profileId
-      )
-      .in(
-        "payment_status",
-        [
-          "unpaid",
-          "checkout_open",
-          "failed",
-        ]
-      )
-      .gt(
-        "gross_amount_minor",
-        0
-      )
-      .order(
-        "period_start",
-        {
-          ascending:
-            true,
-        }
-      );
-
-  if (
-    error
-  ) {
+  if (error) {
     console.error(
       "Unpaid SMS bills query failed:",
       error
     );
-
     return [];
   }
 
-  return (
-    data ??
-    []
-  ) as
-    SmsBillingPeriodRow[];
+  return (data ?? []) as SmsBillingPeriodRow[];
 }
 
 export default async function DoctorDashboardPage() {
-  const locale =
-    await getStoredAppLocale();
-
-  const t =
-    await getTranslations({
-      locale,
-      namespace:
-        "DoctorStaffFoundation.doctor.home",
-    });
-
-  const notificationT =
-    await getTranslations({
-      locale,
-      namespace:
-        "DoctorStaffFoundation.doctor.notifications",
-    });
-
-  const supabase =
-    await createClient();
-
+  const locale = await getStoredAppLocale();
+  const t = await getTranslations({
+    locale,
+    namespace: "DoctorStaffFoundation.doctor.home",
+  });
+  const notificationT = await getTranslations({
+    locale,
+    namespace: "DoctorStaffFoundation.doctor.notifications",
+  });
+  const supabase = await createClient();
   const {
-    data: {
-      user,
-    },
-    error:
-      userError,
-  } =
-    await supabase.auth
-      .getUser();
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-  if (
-    userError ||
-    !user
-  ) {
-    const parameters =
-      new URLSearchParams({
-        locale,
-        next:
-          "/doctor-dashboard",
-      });
+  if (userError || !user) {
+    const parameters = new URLSearchParams({
+      locale,
+      next: "/doctor-dashboard",
+    });
 
-    redirect(
-      `/login?${parameters.toString()}`
-    );
+    redirect(`/login?${parameters.toString()}`);
   }
 
-  const {
-    data:
-      profile,
-    error:
-      profileError,
-  } =
-    await supabase
-      .from(
-        "profiles"
-      )
-      .select(`
-        role,
-        account_status,
-        first_name,
-        last_name
-      `)
-      .eq(
-        "id",
-        user.id
-      )
-      .maybeSingle();
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select(`
+      role,
+      account_status,
+      first_name,
+      last_name
+    `)
+    .eq("id", user.id)
+    .maybeSingle();
 
   if (
     profileError ||
     !profile ||
-    profile.role !==
-      "doctor" ||
-    profile.account_status !==
-      "active"
+    profile.role !== "doctor" ||
+    profile.account_status !== "active"
   ) {
-    redirect(
-      "/dashboard"
-    );
+    redirect("/dashboard");
   }
 
-  const completion =
-    await getDoctorProfileCompletion(
-      supabase,
-      user.id,
-      profile.first_name,
-      profile.last_name
-    );
+  const completion = await getDoctorProfileCompletion(
+    supabase,
+    user.id,
+    profile.first_name,
+    profile.last_name
+  );
 
-  if (
-    !completion
-  ) {
+  if (!completion) {
     return (
       <main className="px-6 py-12">
         <div className="mx-auto max-w-6xl">
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-amber-900">
-            {t(
-              "accountMissing"
-            )}
+            {t("accountMissing")}
           </div>
         </div>
       </main>
     );
   }
 
-  const {
-    data:
-      doctorAccount,
-    error:
-      doctorAccountError,
-  } =
+  const { data: doctorAccount, error: doctorAccountError } =
     await supabase
-      .from(
-        "doctors"
-      )
+      .from("doctors")
       .select(`
         id,
         status,
         account_type,
         clinic_organization_id
       `)
-      .eq(
-        "id",
-        completion.doctorId
-      )
+      .eq("id", completion.doctorId)
       .maybeSingle();
 
-  if (
-    doctorAccountError
-  ) {
+  if (doctorAccountError) {
     console.error(
       "Doctor dashboard account type query failed:",
       doctorAccountError
@@ -690,106 +360,50 @@ export default async function DoctorDashboardPage() {
   }
 
   const typedDoctorAccount =
-    doctorAccount as
-      | DoctorAccountRow
-      | null;
-
-  const isClinicSubAccount =
-    typedDoctorAccount
-      ?.account_type ===
-    "clinic_sub_account";
-
+    doctorAccount as DoctorAccountRow | null;
+  const isClinicInvited =
+    typedDoctorAccount?.account_type === "clinic_invited";
   let smsUsage = {
-    sent:
-      0,
-
-    invoiced:
-      0,
-
-    uninvoiced:
-      0,
-
-    uninvoicedValueMinor:
-      0,
+    sent: 0,
+    invoiced: 0,
+    uninvoiced: 0,
+    uninvoicedValueMinor: 0,
   };
-
-  let unpaidSmsBills:
-    SmsBillingPeriodRow[] = [];
-
+  let unpaidSmsBills: SmsBillingPeriodRow[] = [];
   let unpaidBalance = {
-    smsCount:
-      0,
-
-    netAmountMinor:
-      0,
-
-    vatAmountMinor:
-      0,
-
-    grossAmountMinor:
-      0,
-
-    currency:
-      "RON",
+    smsCount: 0,
+    netAmountMinor: 0,
+    vatAmountMinor: 0,
+    grossAmountMinor: 0,
+    currency: "RON",
   };
 
-  if (
-    !isClinicSubAccount
-  ) {
-    const admin =
-      createAdminClient();
-
+  if (!isClinicInvited) {
+    const admin = createAdminClient();
     const {
       monthStartIso,
       nextMonthStartIso,
-    } =
-      getCurrentMonthBounds();
+    } = getCurrentMonthBounds();
 
     await getOrCreatePreviousSmsBill({
-      doctorId:
-        completion.doctorId,
-
-      profileId:
-        user.id,
+      doctorId: completion.doctorId,
+      profileId: user.id,
     });
 
-    const [
-      smsLogsResult,
-      unpaidBills,
-    ] =
-      await Promise.all([
-        admin
-          .from(
-            "sms_delivery_logs"
-          )
-          .select(
-            "status, invoice_status, unit_cost_minor"
-          )
-          .eq(
-            "doctor_id",
-            completion.doctorId
-          )
-          .gte(
-            "created_at",
-            monthStartIso
-          )
-          .lt(
-            "created_at",
-            nextMonthStartIso
-          ),
+    const [smsLogsResult, unpaidBills] = await Promise.all([
+      admin
+        .from("sms_delivery_logs")
+        .select("status, invoice_status, unit_cost_minor")
+        .eq("doctor_id", completion.doctorId)
+        .gte("created_at", monthStartIso)
+        .lt("created_at", nextMonthStartIso),
+      getUnpaidSmsBills({
+        doctorId: completion.doctorId,
+        profileId: user.id,
+      }),
+    ]);
 
-        getUnpaidSmsBills({
-          doctorId:
-            completion.doctorId,
-
-          profileId:
-            user.id,
-        }),
-      ]);
-
-    if (
-      smsLogsResult.error
-    ) {
+    if (smsLogsResult.error) {
       console.error(
         "Doctor dashboard SMS usage query failed:",
         smsLogsResult.error
@@ -797,331 +411,153 @@ export default async function DoctorDashboardPage() {
     }
 
     const smsLogs =
-      (
-        smsLogsResult.data ??
-        []
-      ) as
-        SmsUsageLogRow[];
+      (smsLogsResult.data ?? []) as SmsUsageLogRow[];
+    smsUsage = smsLogs.reduce(
+      (currentUsage, log) => {
+        const invoiceStatus =
+          log.invoice_status ?? "not_billable";
+        const unitCostMinor = log.unit_cost_minor ?? 30;
 
-    smsUsage =
-      smsLogs.reduce(
-        (
-          currentUsage,
-          log
-        ) => {
-          const invoiceStatus =
-            log
-              .invoice_status ??
-            "not_billable";
-
-          const unitCostMinor =
-            log
-              .unit_cost_minor ??
-            30;
-
-          if (
-            log.status ===
-            "sent"
-          ) {
-            currentUsage.sent +=
-              1;
-          }
-
-          if (
-            invoiceStatus ===
-            "invoiced"
-          ) {
-            currentUsage.invoiced +=
-              1;
-          }
-
-          if (
-            invoiceStatus ===
-            "uninvoiced"
-          ) {
-            currentUsage.uninvoiced +=
-              1;
-
-            currentUsage.uninvoicedValueMinor +=
-              unitCostMinor;
-          }
-
-          return currentUsage;
-        },
-        {
-          sent:
-            0,
-
-          invoiced:
-            0,
-
-          uninvoiced:
-            0,
-
-          uninvoicedValueMinor:
-            0,
+        if (log.status === "sent") {
+          currentUsage.sent += 1;
         }
-      );
 
-    unpaidSmsBills =
-      unpaidBills;
-
-    unpaidBalance =
-      unpaidSmsBills.reduce(
-        (
-          total,
-          bill
-        ) => ({
-          smsCount:
-            total.smsCount +
-            bill.sms_count,
-
-          netAmountMinor:
-            total.netAmountMinor +
-            bill
-              .net_amount_minor,
-
-          vatAmountMinor:
-            total.vatAmountMinor +
-            bill
-              .vat_amount_minor,
-
-          grossAmountMinor:
-            total.grossAmountMinor +
-            bill
-              .gross_amount_minor,
-
-          currency:
-            bill.currency ||
-            total.currency,
-        }),
-        {
-          smsCount:
-            0,
-
-          netAmountMinor:
-            0,
-
-          vatAmountMinor:
-            0,
-
-          grossAmountMinor:
-            0,
-
-          currency:
-            "RON",
+        if (invoiceStatus === "invoiced") {
+          currentUsage.invoiced += 1;
         }
-      );
+
+        if (invoiceStatus === "uninvoiced") {
+          currentUsage.uninvoiced += 1;
+          currentUsage.uninvoicedValueMinor += unitCostMinor;
+        }
+
+        return currentUsage;
+      },
+      {
+        sent: 0,
+        invoiced: 0,
+        uninvoiced: 0,
+        uninvoicedValueMinor: 0,
+      }
+    );
+    unpaidSmsBills = unpaidBills;
+    unpaidBalance = unpaidSmsBills.reduce(
+      (total, bill) => ({
+        smsCount: total.smsCount + bill.sms_count,
+        netAmountMinor:
+          total.netAmountMinor + bill.net_amount_minor,
+        vatAmountMinor:
+          total.vatAmountMinor + bill.vat_amount_minor,
+        grossAmountMinor:
+          total.grossAmountMinor + bill.gross_amount_minor,
+        currency: bill.currency || total.currency,
+      }),
+      {
+        smsCount: 0,
+        netAmountMinor: 0,
+        vatAmountMinor: 0,
+        grossAmountMinor: 0,
+        currency: "RON",
+      }
+    );
   }
 
-  const notificationCopy:
-    DashboardNotificationsCopy = {
-      eyebrow:
-        notificationT(
-          "eyebrow"
-        ),
-
-      title:
-        notificationT(
-          "title"
-        ),
-
-      unreadSingular:
-        notificationT(
-          "unreadSingular"
-        ),
-
-      unreadPlural:
-        notificationT(
-          "unreadPlural"
-        ),
-
-      markAll:
-        notificationT(
-          "markAll"
-        ),
-
-      loading:
-        notificationT(
-          "loading"
-        ),
-
-      loadFailed:
-        notificationT(
-          "loadFailed"
-        ),
-
-      empty:
-        notificationT(
-          "empty"
-        ),
-
-      markRead:
-        notificationT(
-          "markRead"
-        ),
-    };
-
-  const notificationContent:
-    Record<
-      string,
-      DashboardNotificationContent
-    > = {
-      confirmed: {
-        title:
-          notificationT(
-            "content.confirmedTitle"
-          ),
-
-        body:
-          notificationT(
-            "content.confirmedBody"
-          ),
-      },
-
-      rescheduled: {
-        title:
-          notificationT(
-            "content.rescheduledTitle"
-          ),
-
-        body:
-          notificationT(
-            "content.rescheduledBody"
-          ),
-      },
-
-      cancelled: {
-        title:
-          notificationT(
-            "content.cancelledTitle"
-          ),
-
-        body:
-          notificationT(
-            "content.cancelledBody"
-          ),
-      },
-
-      completed: {
-        title:
-          notificationT(
-            "content.completedTitle"
-          ),
-
-        body:
-          notificationT(
-            "content.completedBody"
-          ),
-      },
-
-      no_show: {
-        title:
-          notificationT(
-            "content.noShowTitle"
-          ),
-
-        body:
-          notificationT(
-            "content.noShowBody"
-          ),
-      },
-    };
+  const notificationCopy: DashboardNotificationsCopy = {
+    eyebrow: notificationT("eyebrow"),
+    title: notificationT("title"),
+    unreadSingular: notificationT("unreadSingular"),
+    unreadPlural: notificationT("unreadPlural"),
+    markAll: notificationT("markAll"),
+    loading: notificationT("loading"),
+    loadFailed: notificationT("loadFailed"),
+    empty: notificationT("empty"),
+    markRead: notificationT("markRead"),
+  };
+  const notificationContent: Record<
+    string,
+    DashboardNotificationContent
+  > = {
+    confirmed: {
+      title: notificationT("content.confirmedTitle"),
+      body: notificationT("content.confirmedBody"),
+    },
+    rescheduled: {
+      title: notificationT("content.rescheduledTitle"),
+      body: notificationT("content.rescheduledBody"),
+    },
+    cancelled: {
+      title: notificationT("content.cancelledTitle"),
+      body: notificationT("content.cancelledBody"),
+    },
+    completed: {
+      title: notificationT("content.completedTitle"),
+      body: notificationT("content.completedBody"),
+    },
+    no_show: {
+      title: notificationT("content.noShowTitle"),
+      body: notificationT("content.noShowBody"),
+    },
+  };
 
   return (
     <main className="px-6 py-12">
       <div className="mx-auto max-w-6xl">
         <header>
           <p className="text-sm font-semibold text-[#036661]">
-            {t(
-              "eyebrow"
-            )}
+            {t("eyebrow")}
           </p>
 
           <h1 className="mt-2 text-4xl font-bold tracking-tight text-gray-900">
-            {t(
-              "welcome",
-              {
-                name:
-                  profile.first_name ||
-                  t(
-                    "doctorFallback"
-                  ),
-              }
-            )}
+            {t("welcome", {
+              name: profile.first_name || t("doctorFallback"),
+            })}
           </h1>
 
           <p className="mt-3 max-w-3xl leading-7 text-gray-600">
-            {t(
-              "description"
-            )}
+            {t("description")}
           </p>
         </header>
 
-        {isClinicSubAccount ? (
+        {isClinicInvited ? (
           <section className="mt-8 rounded-2xl border border-green-200 bg-green-50 p-6 text-green-900 shadow-sm">
             <h2 className="text-xl font-bold">
-              {t(
-                "clinicAccountTitle"
-              )}
+              {t("clinicAccountTitle")}
             </h2>
-
             <p className="mt-2 max-w-3xl text-sm leading-6">
-              {t(
-                "clinicAccountDescription"
-              )}
+              {t("clinicAccountDescription")}
             </p>
           </section>
         ) : null}
 
         {typedDoctorAccount && (
           <DoctorDashboardOperationalOverview
-            doctor={
-              typedDoctorAccount
-            }
-            profileCompletionPercent={
-              completion.percentage
-            }
+            doctor={typedDoctorAccount}
+            profileCompletionPercent={completion.percentage}
           />
         )}
 
         <section className="mt-[21px]">
           <DashboardNotifications
-            locale={
-              locale
-            }
-            copy={
-              notificationCopy
-            }
-            notificationContent={
-              notificationContent
-            }
+            locale={locale}
+            copy={notificationCopy}
+            notificationContent={notificationContent}
           />
         </section>
 
         <div className="mt-8">
-          <DoctorOnboardingChecklist
-            completion={
-              completion
-            }
-          />
+          <DoctorOnboardingChecklist completion={completion} />
         </div>
 
-        {!isClinicSubAccount ? (
+        {!isClinicInvited ? (
           <>
             <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
               <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
                 <div>
                   <h2 className="text-xl font-bold text-gray-900">
-                    {t(
-                      "billingTitle"
-                    )}
+                    {t("billingTitle")}
                   </h2>
-
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-                    {t(
-                      "billingDescription"
-                    )}
+                    {t("billingDescription")}
                   </p>
                 </div>
 
@@ -1129,114 +565,67 @@ export default async function DoctorDashboardPage() {
                   href="/doctor-dashboard/billing"
                   className="romdoc-focus-ring w-fit rounded-xl bg-[#036661] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#024d49]"
                 >
-                  {t(
-                    "billingOpen"
-                  )}
+                  {t("billingOpen")}
                 </Link>
               </div>
             </section>
 
-            {unpaidSmsBills.length >
-            0 ? (
+            {unpaidSmsBills.length > 0 ? (
               <section className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
                 <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-start">
                   <div>
                     <p className="text-sm font-semibold uppercase tracking-[0.16em] text-amber-800">
-                      {t(
-                        "outstandingEyebrow"
-                      )}
+                      {t("outstandingEyebrow")}
                     </p>
-
                     <h2 className="mt-2 text-xl font-bold text-amber-950">
-                      {t(
-                        "totalDue",
-                        {
-                          amount:
-                            formatMoney(
-                              unpaidBalance
-                                .grossAmountMinor,
-                              locale,
-                              unpaidBalance
-                                .currency
-                            ),
-                        }
-                      )}
+                      {t("totalDue", {
+                        amount: formatMoney(
+                          unpaidBalance.grossAmountMinor,
+                          locale,
+                          unpaidBalance.currency
+                        ),
+                      })}
                     </h2>
-
                     <p className="mt-2 text-sm leading-6 text-amber-900">
-                      {t(
-                        "outstandingSummary",
-                        {
-                          smsCount:
-                            unpaidBalance
-                              .smsCount,
-
-                          periodCount:
-                            unpaidSmsBills
-                              .length,
-
-                          net:
-                            formatMoney(
-                              unpaidBalance
-                                .netAmountMinor,
-                              locale,
-                              unpaidBalance
-                                .currency
-                            ),
-
-                          vat:
-                            formatMoney(
-                              unpaidBalance
-                                .vatAmountMinor,
-                              locale,
-                              unpaidBalance
-                                .currency
-                            ),
-                        }
-                      )}
+                      {t("outstandingSummary", {
+                        smsCount: unpaidBalance.smsCount,
+                        periodCount: unpaidSmsBills.length,
+                        net: formatMoney(
+                          unpaidBalance.netAmountMinor,
+                          locale,
+                          unpaidBalance.currency
+                        ),
+                        vat: formatMoney(
+                          unpaidBalance.vatAmountMinor,
+                          locale,
+                          unpaidBalance.currency
+                        ),
+                      })}
                     </p>
 
                     <div className="mt-4 space-y-2 text-sm text-amber-950">
-                      {unpaidSmsBills.map(
-                        (
-                          bill
-                        ) => (
-                          <div
-                            key={
-                              bill.id
-                            }
-                            className="flex flex-col rounded-xl border border-amber-200 bg-white/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-                          >
-                            <span className="font-semibold">
-                              {formatPeriod(
-                                bill
-                                  .period_start,
-                                locale
-                              )}
-                            </span>
-
-                            <span>
-                              {
-                                bill
-                                  .sms_count
-                              }{" "}
-                              SMS ·{" "}
-                              {formatMoney(
-                                bill
-                                  .gross_amount_minor,
-                                locale,
-                                bill.currency
-                              )}
-                            </span>
-                          </div>
-                        )
-                      )}
+                      {unpaidSmsBills.map((bill) => (
+                        <div
+                          key={bill.id}
+                          className="flex flex-col rounded-xl border border-amber-200 bg-white/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <span className="font-semibold">
+                            {formatPeriod(bill.period_start, locale)}
+                          </span>
+                          <span>
+                            {bill.sms_count} SMS ·{" "}
+                            {formatMoney(
+                              bill.gross_amount_minor,
+                              locale,
+                              bill.currency
+                            )}
+                          </span>
+                        </div>
+                      ))}
                     </div>
 
                     <p className="mt-3 text-xs text-amber-800">
-                      {t(
-                        "stripeInvoiceNotice"
-                      )}
+                      {t("stripeInvoiceNotice")}
                     </p>
                   </div>
 
@@ -1249,81 +638,51 @@ export default async function DoctorDashboardPage() {
               <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#036661]">
-                    {t(
-                      "smsEyebrow"
-                    )}
+                    {t("smsEyebrow")}
                   </p>
-
                   <h2 className="mt-2 text-xl font-bold text-gray-900">
-                    {t(
-                      "smsUsageTitle"
-                    )}
+                    {t("smsUsageTitle")}
                   </h2>
-
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-                    {t(
-                      "smsUsageDescription"
-                    )}
+                    {t("smsUsageDescription")}
                   </p>
                 </div>
 
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
-                  {t(
-                    "unbilledValue",
-                    {
-                      amount:
-                        formatMoney(
-                          smsUsage
-                            .uninvoicedValueMinor,
-                          locale
-                        ),
-                    }
-                  )}
+                  {t("unbilledValue", {
+                    amount: formatMoney(
+                      smsUsage.uninvoicedValueMinor,
+                      locale
+                    ),
+                  })}
                 </div>
               </div>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-3">
                 <div className="rounded-xl bg-gray-50 p-5">
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    {t(
-                      "sentThisMonth"
-                    )}
+                    {t("sentThisMonth")}
                   </p>
-
                   <p className="mt-2 text-3xl font-bold text-gray-900">
-                    {
-                      smsUsage.sent
-                    }
+                    {smsUsage.sent}
                   </p>
                 </div>
 
                 <div className="rounded-xl bg-emerald-50 p-5">
                   <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                    {t(
-                      "invoiced"
-                    )}
+                    {t("invoiced")}
                   </p>
-
                   <p className="mt-2 text-3xl font-bold text-emerald-900">
-                    {
-                      smsUsage
-                        .invoiced
-                    }
+                    {smsUsage.invoiced}
                   </p>
                 </div>
 
                 <div className="rounded-xl bg-blue-50 p-5">
                   <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                    {t(
-                      "uninvoiced"
-                    )}
+                    {t("uninvoiced")}
                   </p>
-
                   <p className="mt-2 text-3xl font-bold text-blue-900">
-                    {
-                      smsUsage
-                        .uninvoiced
-                    }
+                    {smsUsage.uninvoiced}
                   </p>
                 </div>
               </div>
