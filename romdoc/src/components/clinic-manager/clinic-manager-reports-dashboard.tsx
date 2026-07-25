@@ -2,7 +2,13 @@
 
 import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import {
   type AppLocale,
@@ -127,11 +133,19 @@ type Copy = {
   title: string;
   description: string;
   month: string;
+  previousMonth: string;
+  nextMonth: string;
+  chooseMonth: string;
+  previousYear: string;
+  nextYear: string;
   clinic: string;
   doctor: string;
   allClinics: string;
   allDoctors: string;
   clearFilters: string;
+  exportReport: string;
+  exportExcel: string;
+  exportPdf: string;
   loading: string;
   loadError: string;
   noData: string;
@@ -184,11 +198,19 @@ const COPY: Record<AppLocale, Copy> = {
     description:
       "Urmărește programările, activitatea medicilor și costurile nete ale organizației pentru luna selectată.",
     month: "Lună",
+    previousMonth: "Luna precedentă",
+    nextMonth: "Luna următoare",
+    chooseMonth: "Alege luna",
+    previousYear: "Anul precedent",
+    nextYear: "Anul următor",
     clinic: "Locație clinică",
     doctor: "Medic",
     allClinics: "Toate locațiile",
     allDoctors: "Toți medicii",
     clearFilters: "Șterge filtrele",
+    exportReport: "Exportă raportul",
+    exportExcel: "Descarcă Excel",
+    exportPdf: "Descarcă PDF",
     loading: "Se încarcă raportul...",
     loadError: "Raportul nu a putut fi încărcat.",
     noData: "Nu există date pentru selecția curentă.",
@@ -253,11 +275,19 @@ const COPY: Record<AppLocale, Copy> = {
     description:
       "Review appointments, Doctor activity and the organisation's net operational costs for the selected month.",
     month: "Month",
+    previousMonth: "Previous month",
+    nextMonth: "Next month",
+    chooseMonth: "Choose month",
+    previousYear: "Previous year",
+    nextYear: "Next year",
     clinic: "Clinic location",
     doctor: "Doctor",
     allClinics: "All locations",
     allDoctors: "All Doctors",
     clearFilters: "Clear filters",
+    exportReport: "Export report",
+    exportExcel: "Download Excel",
+    exportPdf: "Download PDF",
     loading: "Loading report...",
     loadError: "The report could not be loaded.",
     noData: "There is no data for the current selection.",
@@ -322,11 +352,19 @@ const COPY: Record<AppLocale, Copy> = {
     description:
       "Überblick über Termine, Arztaktivität und Nettobetriebskosten der Organisation für den ausgewählten Monat.",
     month: "Monat",
+    previousMonth: "Vorheriger Monat",
+    nextMonth: "Nächster Monat",
+    chooseMonth: "Monat auswählen",
+    previousYear: "Vorheriges Jahr",
+    nextYear: "Nächstes Jahr",
     clinic: "Klinikstandort",
     doctor: "Arzt",
     allClinics: "Alle Standorte",
     allDoctors: "Alle Ärzte",
     clearFilters: "Filter löschen",
+    exportReport: "Bericht exportieren",
+    exportExcel: "Excel herunterladen",
+    exportPdf: "PDF herunterladen",
     loading: "Bericht wird geladen...",
     loadError: "Der Bericht konnte nicht geladen werden.",
     noData: "Für die aktuelle Auswahl sind keine Daten vorhanden.",
@@ -407,6 +445,261 @@ function previousBucharestMonth() {
   return `${previous.getUTCFullYear()}-${String(
     previous.getUTCMonth() + 1
   ).padStart(2, "0")}`;
+}
+
+function shiftMonth(value: string, offset: number) {
+  const [year, month] = value.split("-").map(Number);
+  const shifted = new Date(Date.UTC(year, month - 1 + offset, 1));
+
+  return `${shifted.getUTCFullYear()}-${String(
+    shifted.getUTCMonth() + 1
+  ).padStart(2, "0")}`;
+}
+
+function formatMonthLabel(value: string, locale: AppLocale) {
+  const [year, month] = value.split("-").map(Number);
+
+  return new Intl.DateTimeFormat(INTL_LOCALE[locale], {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, 15)));
+}
+
+function MonthSelector({
+  value,
+  onChange,
+  locale,
+  copy,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  locale: AppLocale;
+  copy: Pick<
+    Copy,
+    | "month"
+    | "previousMonth"
+    | "nextMonth"
+    | "chooseMonth"
+    | "previousYear"
+    | "nextYear"
+  >;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [visibleYear, setVisibleYear] = useState(
+    Number(value.slice(0, 4))
+  );
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setVisibleYear(Number(value.slice(0, 4)));
+  }, [value]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    function closeOnOutsideClick(event: MouseEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setIsOpen(false);
+    }
+
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isOpen]);
+
+  const monthNames = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, index) =>
+        new Intl.DateTimeFormat(INTL_LOCALE[locale], {
+          month: "short",
+          timeZone: "UTC",
+        }).format(new Date(Date.UTC(2024, index, 15)))
+      ),
+    [locale]
+  );
+
+  function chooseMonth(monthIndex: number) {
+    onChange(`${visibleYear}-${String(monthIndex + 1).padStart(2, "0")}`);
+    setIsOpen(false);
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <span className="text-sm font-semibold text-gray-700">{copy.month}</span>
+
+      <div className="mt-[5px] flex min-h-11 w-full overflow-hidden rounded-[10px] border border-gray-300 bg-white">
+        <button
+          type="button"
+          onClick={() => onChange(shiftMonth(value, -1))}
+          aria-label={copy.previousMonth}
+          title={copy.previousMonth}
+          className="romdoc-focus-ring flex w-11 shrink-0 items-center justify-center border-r border-gray-200 text-gray-500 transition hover:bg-gray-50 hover:text-gray-900"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.8}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="m15 18-6-6 6-6"
+            />
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setIsOpen((current) => !current)}
+          aria-haspopup="dialog"
+          aria-expanded={isOpen}
+          aria-label={copy.chooseMonth}
+          className="romdoc-focus-ring flex min-w-0 flex-1 items-center justify-between gap-3 px-[13px] text-left text-sm font-semibold capitalize text-gray-900 transition hover:bg-gray-50"
+        >
+          <span className="truncate">{formatMonthLabel(value, locale)}</span>
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            className={`h-4 w-4 shrink-0 text-gray-500 transition-transform ${
+              isOpen ? "rotate-180" : ""
+            }`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.8}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="m6 9 6 6 6-6"
+            />
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onChange(shiftMonth(value, 1))}
+          aria-label={copy.nextMonth}
+          title={copy.nextMonth}
+          className="romdoc-focus-ring flex w-11 shrink-0 items-center justify-center border-l border-gray-200 text-gray-500 transition hover:bg-gray-50 hover:text-gray-900"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.8}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="m9 18 6-6-6-6"
+            />
+          </svg>
+        </button>
+      </div>
+
+      {isOpen && (
+        <div
+          role="dialog"
+          aria-label={copy.chooseMonth}
+          className="absolute left-0 top-full z-30 mt-[8px] w-full min-w-[280px] rounded-[16px] border border-gray-200 bg-white p-[13px] shadow-lg"
+        >
+          <div className="flex items-center justify-between gap-[8px]">
+            <button
+              type="button"
+              onClick={() => setVisibleYear((year) => year - 1)}
+              aria-label={copy.previousYear}
+              title={copy.previousYear}
+              className="romdoc-focus-ring flex h-9 w-9 items-center justify-center rounded-[9px] text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.8}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m15 18-6-6 6-6"
+                />
+              </svg>
+            </button>
+
+            <p className="text-sm font-bold text-gray-900">{visibleYear}</p>
+
+            <button
+              type="button"
+              onClick={() => setVisibleYear((year) => year + 1)}
+              aria-label={copy.nextYear}
+              title={copy.nextYear}
+              className="romdoc-focus-ring flex h-9 w-9 items-center justify-center rounded-[9px] text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.8}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m9 18 6-6-6-6"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <div className="mt-[8px] grid grid-cols-3 gap-[5px]">
+            {monthNames.map((monthName, index) => {
+              const candidate = `${visibleYear}-${String(index + 1).padStart(
+                2,
+                "0"
+              )}`;
+              const selected = candidate === value;
+
+              return (
+                <button
+                  key={candidate}
+                  type="button"
+                  onClick={() => chooseMonth(index)}
+                  aria-pressed={selected}
+                  className={`romdoc-focus-ring rounded-[9px] px-[8px] py-[8px] text-sm font-semibold capitalize transition ${
+                    selected
+                      ? "bg-[#036661] text-white"
+                      : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                  }`}
+                >
+                  {monthName}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function formatCurrency(
@@ -585,6 +878,22 @@ export default function ClinicManagerReportsDashboard({
     setDoctorId("");
   }
 
+  function buildExportUrl(format: "xlsx" | "pdf") {
+    const parameters = new URLSearchParams({
+      format,
+      month,
+      locale,
+    });
+
+    if (clinicId) parameters.set("clinicId", clinicId);
+    if (doctorId) parameters.set("doctorId", doctorId);
+    if (report?.organization.id) {
+      parameters.set("organizationId", report.organization.id);
+    }
+
+    return `/api/clinic-manager/reports/export?${parameters.toString()}`;
+  }
+
   return (
     <div className="space-y-[21px]">
       <header>
@@ -601,17 +910,12 @@ export default function ClinicManagerReportsDashboard({
 
       <section className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
         <div className="grid gap-[13px] md:grid-cols-3">
-          <label className="block">
-            <span className="text-sm font-semibold text-gray-700">
-              {copy.month}
-            </span>
-            <input
-              type="month"
-              value={month}
-              onChange={(event) => setMonth(event.target.value)}
-              className="romdoc-focus-ring mt-[5px] min-h-11 w-full rounded-[10px] border border-gray-300 bg-white px-[13px] text-gray-900"
-            />
-          </label>
+          <MonthSelector
+            value={month}
+            onChange={setMonth}
+            locale={locale}
+            copy={copy}
+          />
 
           <label className="block">
             <span className="text-sm font-semibold text-gray-700">
@@ -669,6 +973,58 @@ export default function ClinicManagerReportsDashboard({
             >
               {copy.clearFilters}
             </button>
+          </div>
+        )}
+
+        {!isLoading && !error && report && (
+          <div className="mt-[13px] flex flex-wrap items-center justify-between gap-[10px] border-t border-gray-200 pt-[13px]">
+            <p className="text-sm font-semibold text-gray-700">
+              {copy.exportReport}
+            </p>
+            <div className="flex flex-wrap gap-[8px]">
+              <a
+                href={buildExportUrl("xlsx")}
+                className="romdoc-focus-ring inline-flex min-h-10 items-center gap-[8px] rounded-[9px] border border-gray-300 bg-white px-[13px] py-[8px] text-sm font-semibold text-gray-700 transition hover:bg-gray-50 hover:text-gray-900"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  className="h-4 w-4 text-[#036661]"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.8}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M7 3h7l4 4v14H7V3Z"
+                  />
+                  <path strokeLinecap="round" d="M14 3v5h5M9 13h6M9 17h6" />
+                </svg>
+                {copy.exportExcel}
+              </a>
+              <a
+                href={buildExportUrl("pdf")}
+                className="romdoc-focus-ring inline-flex min-h-10 items-center gap-[8px] rounded-[9px] bg-[#036661] px-[13px] py-[8px] text-sm font-semibold text-white transition hover:bg-[#025752]"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.8}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M7 3h7l4 4v14H7V3Z"
+                  />
+                  <path strokeLinecap="round" d="M14 3v5h5M9 16h6M12 11v5" />
+                </svg>
+                {copy.exportPdf}
+              </a>
+            </div>
           </div>
         )}
       </section>
