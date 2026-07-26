@@ -3,8 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 
 import { footerPreferencesCopy } from "@/components/theme/footer-preferences-copy";
-import type { AppLocale } from "@/lib/i18n/app-locale";
-import { switchBrowserLocale } from "@/lib/i18n/client-locale-switch";
+import {
+  isAppLocale,
+  type AppLocale,
+} from "@/lib/i18n/app-locale";
+import {
+  APP_LOCALE_CHANGE_EVENT,
+  readBrowserLocale,
+  switchBrowserLocale,
+} from "@/lib/i18n/client-locale-switch";
 import {
   APP_APPEARANCE_CHANGE_EVENT,
   type AppAppearance,
@@ -96,12 +103,44 @@ export default function FooterPreferencesPanel({
   locale: AppLocale;
   panelId: string;
 }) {
-  const copy = footerPreferencesCopy[locale];
+  const [currentLocale, setCurrentLocale] = useState<AppLocale>(locale);
+  const copy = footerPreferencesCopy[currentLocale];
   const [isOpen, setIsOpen] = useState(false);
   const [appearance, setAppearance] = useState<AppAppearance>("system");
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLElement | null>(null);
   const closeRef = useRef<HTMLButtonElement | null>(null);
+
+
+  useEffect(() => {
+    const synchronizeLocale = () => {
+      setCurrentLocale(readBrowserLocale(locale));
+    };
+
+    const handleLocaleChange = (event: Event) => {
+      const nextLocale = (
+        event as CustomEvent<{ locale?: string }>
+      ).detail?.locale;
+
+      if (nextLocale && isAppLocale(nextLocale)) {
+        setCurrentLocale(nextLocale);
+        return;
+      }
+
+      synchronizeLocale();
+    };
+
+    synchronizeLocale();
+    window.addEventListener(APP_LOCALE_CHANGE_EVENT, handleLocaleChange);
+    window.addEventListener("pageshow", synchronizeLocale);
+    window.addEventListener("focus", synchronizeLocale);
+
+    return () => {
+      window.removeEventListener(APP_LOCALE_CHANGE_EVENT, handleLocaleChange);
+      window.removeEventListener("pageshow", synchronizeLocale);
+      window.removeEventListener("focus", synchronizeLocale);
+    };
+  }, [locale]);
 
   useEffect(() => {
     setAppearance(readStoredAppAppearance());
@@ -243,10 +282,13 @@ export default function FooterPreferencesPanel({
                 {LANGUAGE_OPTIONS.map((option) => (
                   <OptionButton
                     key={option.locale}
-                    selected={locale === option.locale}
+                    selected={currentLocale === option.locale}
                     label={option.label}
                     selectedLabel={copy.selected}
-                    onClick={() => switchBrowserLocale(option.locale)}
+                    onClick={() => {
+                      setCurrentLocale(option.locale);
+                      switchBrowserLocale(option.locale);
+                    }}
                   />
                 ))}
               </div>

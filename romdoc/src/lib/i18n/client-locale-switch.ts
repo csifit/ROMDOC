@@ -2,6 +2,8 @@ import type { AppLocale } from "@/lib/i18n/app-locale";
 
 const ONE_YEAR_IN_SECONDS = 60 * 60 * 24 * 365;
 
+export const APP_LOCALE_CHANGE_EVENT = "romdoc:locale-change";
+
 const routeSegments = {
   directory: { ro: "medici", en: "doctors", de: "aerzte" },
   doctor: { ro: "doctor", en: "doctor", de: "arzt" },
@@ -50,6 +52,42 @@ function isLocaleSegment(value: string | undefined): value is AppLocale {
   return value === "ro" || value === "en" || value === "de";
 }
 
+function readLocaleCookie(): AppLocale | null {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const match = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith("NEXT_LOCALE="));
+
+  const value = match?.slice("NEXT_LOCALE=".length);
+  return isLocaleSegment(value) ? value : null;
+}
+
+function readLocaleFromPathname(pathname: string): AppLocale | null {
+  const firstSegment = pathname.split("/")[1];
+  return isLocaleSegment(firstSegment) ? firstSegment : null;
+}
+
+export function readBrowserLocale(
+  fallbackLocale: AppLocale = "ro"
+): AppLocale {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return fallbackLocale;
+  }
+
+  return (
+    readLocaleFromPathname(window.location.pathname) ??
+    readLocaleCookie() ??
+    (isLocaleSegment(document.documentElement.lang.split("-")[0])
+      ? (document.documentElement.lang.split("-")[0] as AppLocale)
+      : null) ??
+    fallbackLocale
+  );
+}
+
 export function setAppLocaleCookie(locale: AppLocale) {
   document.cookie = [
     `NEXT_LOCALE=${locale}`,
@@ -87,6 +125,12 @@ export function getLocalizedBrowserPath(
 export function switchBrowserLocale(locale: AppLocale) {
   setAppLocaleCookie(locale);
   document.documentElement.lang = locale;
+
+  window.dispatchEvent(
+    new CustomEvent<{ locale: AppLocale }>(APP_LOCALE_CHANGE_EVENT, {
+      detail: { locale },
+    })
+  );
 
   const nextPathname = getLocalizedBrowserPath(
     window.location.pathname,

@@ -608,3 +608,233 @@ html[data-romdoc-surface="dashboard"][data-theme="dark"] ::-webkit-scrollbar-thu
       box-shadow 180ms ease;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Phase 3: complex dashboard surfaces
+---------------------------------------------------------------------------- */
+
+:root {
+  --rd-chart-grid: #d1d5db;
+  --rd-chart-axis: #4b5563;
+  --rd-chart-tooltip: #ffffff;
+  --rd-calendar-today: rgba(3, 102, 97, 0.08);
+  --rd-calendar-now: #ff2800;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] {
+  --rd-chart-grid: #34474b;
+  --rd-chart-axis: #c1cbcd;
+  --rd-chart-tooltip: #18272a;
+  --rd-calendar-today: rgba(112, 210, 202, 0.11);
+  --rd-calendar-now: #ff715b;
+}
+
+/* FullCalendar used by the Doctor calendar. Appointment event colours remain
+   controlled by the existing status configuration and are not overwritten. */
+
+html[data-romdoc-surface="dashboard"] .doctor-calendar {
+  background: var(--rd-surface);
+  color: var(--rd-text-primary);
+}
+
+html[data-romdoc-surface="dashboard"] .doctor-calendar .fc {
+  --fc-border-color: var(--rd-border);
+  --fc-page-bg-color: var(--rd-surface);
+  --fc-neutral-bg-color: var(--rd-surface-muted);
+  --fc-neutral-text-color: var(--rd-text-secondary);
+  --fc-list-event-hover-bg-color: var(--rd-surface-muted);
+  --fc-today-bg-color: var(--rd-calendar-today);
+  --fc-now-indicator-color: var(--rd-calendar-now);
+  color: var(--rd-text-primary);
+}
+
+html[data-romdoc-surface="dashboard"] .doctor-calendar .fc-theme-standard td,
+html[data-romdoc-surface="dashboard"] .doctor-calendar .fc-theme-standard th,
+html[data-romdoc-surface="dashboard"] .doctor-calendar .fc-theme-standard .fc-scrollgrid {
+  border-color: var(--rd-border);
+}
+
+html[data-romdoc-surface="dashboard"] .doctor-calendar .fc-col-header-cell,
+html[data-romdoc-surface="dashboard"] .doctor-calendar .fc-timegrid-axis,
+html[data-romdoc-surface="dashboard"] .doctor-calendar .fc-list-day-cushion,
+html[data-romdoc-surface="dashboard"] .doctor-calendar .fc-popover-header {
+  background: var(--rd-surface-muted);
+}
+
+html[data-romdoc-surface="dashboard"] .doctor-calendar .fc-col-header-cell-cushion,
+html[data-romdoc-surface="dashboard"] .doctor-calendar .fc-daygrid-day-number,
+html[data-romdoc-surface="dashboard"] .doctor-calendar .fc-timegrid-slot-label-cushion,
+html[data-romdoc-surface="dashboard"] .doctor-calendar .fc-timegrid-axis-cushion,
+html[data-romdoc-surface="dashboard"] .doctor-calendar .fc-list-day-text,
+html[data-romdoc-surface="dashboard"] .doctor-calendar .fc-list-day-side-text {
+  color: var(--rd-text-secondary);
+}
+
+html[data-romdoc-surface="dashboard"] .doctor-calendar .fc-daygrid-day.fc-day-today,
+html[data-romdoc-surface="dashboard"] .doctor-calendar .fc-timegrid-col.fc-day-today {
+  background: var(--rd-calendar-today);
+}
+
+html[data-romdoc-surface="dashboard"] .doctor-calendar .fc-popover,
+html[data-romdoc-surface="dashboard"] .doctor-calendar .fc-list {
+  border-color: var(--rd-border);
+  background: var(--rd-surface-raised);
+  color: var(--rd-text-primary);
+  box-shadow: var(--rd-shadow-dialog);
+}
+
+html[data-romdoc-surface="dashboard"] .doctor-calendar .fc-event {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .doctor-calendar .fc-event:focus,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .doctor-calendar .fc-event:hover {
+  filter: brightness(1.08) saturate(1.05);
+}
+
+/* Native date/time controls used by availability and appointment editors. */
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] input[type="date"],
+html[data-romdoc-surface="dashboard"][data-theme="dark"] input[type="time"],
+html[data-romdoc-surface="dashboard"][data-theme="dark"] input[type="datetime-local"],
+html[data-romdoc-surface="dashboard"][data-theme="dark"] input[type="month"] {
+  color-scheme: dark;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] input::-webkit-calendar-picker-indicator {
+  filter: invert(0.84) sepia(0.08) saturate(0.45);
+  opacity: 0.9;
+}
+
+/* Medical Folder and other compact disclosure panels. */
+
+html[data-romdoc-surface="dashboard"] details {
+  color: var(--rd-text-primary);
+}
+
+html[data-romdoc-surface="dashboard"] details > summary {
+  color: var(--rd-text-primary);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] details > summary:hover,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] details[open] > summary {
+  background-color: var(--rd-surface-muted) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] details > summary svg {
+  color: var(--rd-text-muted) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] dl dt {
+  color: var(--rd-text-muted) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] dl dd {
+  color: var(--rd-text-primary) !important;
+}
+
+/* Charts and report visualisations, including Recharts-compatible output. */
+
+html[data-romdoc-surface="dashboard"] .recharts-cartesian-grid line {
+  stroke: var(--rd-chart-grid);
+}
+
+html[data-romdoc-surface="dashboard"] .recharts-cartesian-axis-line,
+html[data-romdoc-surface="dashboard"] .recharts-cartesian-axis-tick-line,
+html[data-romdoc-surface="dashboard"] .recharts-polar-grid-angle line,
+html[data-romdoc-surface="dashboard"] .recharts-polar-grid-concentric path {
+  stroke: var(--rd-chart-grid);
+}
+
+html[data-romdoc-surface="dashboard"] .recharts-text,
+html[data-romdoc-surface="dashboard"] .recharts-label,
+html[data-romdoc-surface="dashboard"] .recharts-cartesian-axis-tick-value {
+  fill: var(--rd-chart-axis);
+}
+
+html[data-romdoc-surface="dashboard"] .recharts-default-tooltip {
+  border-color: var(--rd-border) !important;
+  background: var(--rd-chart-tooltip) !important;
+  color: var(--rd-text-primary) !important;
+  box-shadow: var(--rd-shadow-dialog);
+}
+
+html[data-romdoc-surface="dashboard"] .recharts-tooltip-label,
+html[data-romdoc-surface="dashboard"] .recharts-tooltip-item {
+  color: var(--rd-text-primary) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] svg text:not([fill="white"]):not([fill="#ffffff"]):not([fill="#fff"]) {
+  fill: var(--rd-chart-axis);
+}
+
+/* Appointment details, side panels and modal content. */
+
+html[data-romdoc-surface="dashboard"] dialog,
+html[data-romdoc-surface="dashboard"] [role="dialog"],
+html[data-romdoc-surface="dashboard"] [aria-modal="true"] {
+  border-color: var(--rd-border);
+  background: var(--rd-surface-raised);
+  color: var(--rd-text-primary);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] [role="dialog"] header,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] [aria-modal="true"] header,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] [role="dialog"] footer,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] [aria-modal="true"] footer {
+  border-color: var(--rd-border) !important;
+  background: var(--rd-surface-raised) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .sticky.bg-white,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .sticky.bg-gray-50,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .sticky.bg-gray-50\/60 {
+  background: var(--rd-surface-raised) !important;
+}
+
+/* Billing and moderation workspaces frequently contain horizontally scrolling
+   tables and compact action bars. */
+
+html[data-romdoc-surface="dashboard"] .overflow-x-auto {
+  scrollbar-color: var(--rd-border-strong) transparent;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] hr,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-t,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-b,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-l,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-r {
+  border-color: var(--rd-border);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] progress {
+  color: #70d2ca;
+  background: var(--rd-surface-muted);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] progress::-webkit-progress-bar {
+  background: var(--rd-surface-muted);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] progress::-webkit-progress-value,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] progress::-moz-progress-bar {
+  background: #32a39b;
+}
+
+/* Preserve print and exported-document readability regardless of dashboard
+   appearance. */
+
+@media print {
+  html[data-romdoc-surface="dashboard"] {
+    color-scheme: light;
+  }
+
+  html[data-romdoc-surface="dashboard"] body,
+  html[data-romdoc-surface="dashboard"] .bg-white,
+  html[data-romdoc-surface="dashboard"] .romdoc-card,
+  html[data-romdoc-surface="dashboard"] .romdoc-card-compact,
+  html[data-romdoc-surface="dashboard"] table {
+    background: #ffffff !important;
+    color: #111827 !important;
+  }
+}
