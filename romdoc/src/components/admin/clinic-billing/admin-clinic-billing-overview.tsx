@@ -1,13 +1,10 @@
 "use client";
 
-import { useState } from "react";
-
-import AdminAccordion from "@/components/ui/admin-accordion";
-import {
-  type AppLocale,
-} from "@/i18n/routing";
+import { useMemo, useState } from "react";
 
 import CreateClinicInvoiceFromEstimateLink from "@/components/invoices/create-clinic-invoice-from-estimate-link";
+import type { PlatformBillingCurrency } from "@/lib/billing/platform-invoicing";
+import type { AppLocale } from "@/lib/i18n/app-locale";
 
 export type ClinicBillingDoctorRow = {
   relationshipId: string;
@@ -32,7 +29,6 @@ export type ClinicBillingOrganizationRow = {
     contactEmail: string | null;
     contactPhone: string | null;
   };
-
   billingProfile: {
     company_name: string;
     tax_id: string;
@@ -45,7 +41,6 @@ export type ClinicBillingOrganizationRow = {
     is_vat_payer: boolean;
     vat_number: string | null;
   } | null;
-
   approvedLocationCount: number;
   activeDoctorCount: number;
   confirmationSmsCount: number;
@@ -62,13 +57,11 @@ export type ClinicBillingOrganizationRow = {
 export type ClinicBillingMonthSummary = {
   monthStart: string;
   monthEndExclusive: string;
-
   prices: {
     clinicDoctorMonthlyPriceRon: number;
     smsUnitPriceRon: number;
     vatRate: number;
   };
-
   totals: {
     organizationCount: number;
     approvedLocationCount: number;
@@ -82,1131 +75,667 @@ export type ClinicBillingMonthSummary = {
     estimatedVatRon: number;
     estimatedTotalRon: number;
   };
-
   organizations: ClinicBillingOrganizationRow[];
 };
 
-type AdminClinicBillingOverviewProps = {
+type Props = {
   locale: AppLocale;
-  currentSummary: ClinicBillingMonthSummary;
+  currency: PlatformBillingCurrency;
+  selectedSummary: ClinicBillingMonthSummary;
   previousSummary: ClinicBillingMonthSummary;
 };
 
 type Copy = {
-  generalTitle: string;
-  generalDescription: string;
-  currentEstimate: string;
-  previousInvoiceAmount: string;
-  currentMonthHelper: string;
-  previousMonthHelper: string;
-  organizations: string;
-  organizationsDescription: string;
-  organizationSearchPlaceholder: string;
-  organizationSearchLabel: string;
-  organizationSearchEmpty: string;
-  organization: string;
-  locations: string;
-  activeSubscriptions: string;
-  sentSms: string;
-  billingDetails: string;
-  company: string;
-  taxId: string;
-  tradeRegister: string;
-  billingEmail: string;
-  vatPayer: string;
-  vatNumber: string;
-  address: string;
-  yes: string;
-  no: string;
-  unavailable: string;
-  currentMonth: string;
+  summary: string;
+  description: string;
+  currency: string;
+  selectedMonth: string;
   previousMonth: string;
+  organizations: string;
+  locations: string;
+  doctors: string;
+  sms: string;
   subscriptionSubtotal: string;
   smsSubtotal: string;
-  subtotalBeforeVat: string;
+  subtotal: string;
   vat: string;
   total: string;
-  doctorDetails: string;
-  doctorDetailsDescription: string;
-  account: string;
+  priceOverview: string;
+  doctorPrice: string;
+  smsPrice: string;
+  vatRate: string;
+  organizationSearch: string;
+  searchPlaceholder: string;
+  noResults: string;
+  billingDetails: string;
+  missingBilling: string;
+  contact: string;
+  taxId: string;
+  billingEmail: string;
+  address: string;
+  selectedPeriod: string;
+  previousPeriod: string;
+  doctorBreakdown: string;
+  doctor: string;
   clinic: string;
   subscription: string;
-  sms: string;
-  currentEstimateShort: string;
-  previousAmountShort: string;
+  smsCost: string;
+  estimatedTotal: string;
+  confirmations: string;
+  reminders: string;
+  createInvoice: string;
+  operationalNotice: string;
   noDoctors: string;
-  currentGlobalDetails: string;
-  previousGlobalDetails: string;
-  markAsInvoiced: string;
 };
 
 const COPY: Record<AppLocale, Copy> = {
   ro: {
-    generalTitle: "Sumar general",
-    generalDescription:
-      "Estimarea lunii curente și suma calculată pentru serviciile lunii precedente.",
-    currentEstimate: "Total estimat luna curentă",
-    previousInvoiceAmount:
-      "Total de facturat pentru luna precedentă",
-    currentMonthHelper:
-      "Estimare live folosind tarifele configurate în prezent.",
-    previousMonthHelper:
-      "Bază de verificare pentru facturarea manuală a lunii încheiate.",
-    organizations: "Organizații de clinică",
-    organizationsDescription:
-      "Date de facturare, locații, abonamente active, SMS și costuri pentru fiecare organizație.",
-    organizationSearchPlaceholder:
-      "Caută după organizație, societate, CUI sau e-mail...",
-    organizationSearchLabel: "Caută organizație",
-    organizationSearchEmpty:
-      "Nu există organizații care corespund căutării.",
-    organization: "Organizație",
-    locations: "Locații",
-    activeSubscriptions: "Abonamente active",
-    sentSms: "SMS trimise",
-    billingDetails: "Date de facturare",
-    company: "Societate",
-    taxId: "CUI",
-    tradeRegister: "Registrul Comerțului",
-    billingEmail: "E-mail facturare",
-    vatPayer: "Plătitor TVA",
-    vatNumber: "Cod TVA",
-    address: "Adresă",
-    yes: "Da",
-    no: "Nu",
-    unavailable: "Indisponibil",
-    currentMonth: "Luna curentă",
+    summary: "Sumar consolidat",
+    description:
+      "Estimare operațională pentru luna selectată, comparată cu luna precedentă.",
+    currency: "Monedă",
+    selectedMonth: "Luna selectată",
     previousMonth: "Luna precedentă",
+    organizations: "Organizații",
+    locations: "Locații aprobate",
+    doctors: "Medici acoperiți",
+    sms: "SMS trimise",
     subscriptionSubtotal: "Abonamente medici",
     smsSubtotal: "SMS",
-    subtotalBeforeVat: "Subtotal înainte de TVA",
+    subtotal: "Subtotal înainte de TVA",
     vat: "TVA estimat",
     total: "Total estimat",
-    doctorDetails: "Detalii pe medic / cont",
-    doctorDetailsDescription:
-      "Defalcare simplă pentru verificarea manuală a abonamentelor și SMS-urilor.",
-    account: "Medic / cont",
+    priceOverview: "Tarife utilizate",
+    doctorPrice: "Abonament medic / lună",
+    smsPrice: "Preț / SMS",
+    vatRate: "Cotă TVA",
+    organizationSearch: "Caută organizație",
+    searchPlaceholder: "Organizație, societate, CUI sau e-mail...",
+    noResults: "Nu există organizații care corespund căutării.",
+    billingDetails: "Date de facturare",
+    missingBilling: "Datele de facturare nu sunt completate.",
+    contact: "Contact",
+    taxId: "CUI / CIF",
+    billingEmail: "E-mail facturare",
+    address: "Adresă",
+    selectedPeriod: "Perioada selectată",
+    previousPeriod: "Perioada precedentă",
+    doctorBreakdown: "Detalii pe medic / cont",
+    doctor: "Medic / cont",
     clinic: "Locație",
     subscription: "Abonament",
-    sms: "SMS",
-    currentEstimateShort: "Estimare curentă",
-    previousAmountShort: "Luna precedentă",
-    noDoctors:
-      "Nu există conturi cu acoperire activă pentru această organizație.",
-    currentGlobalDetails: "Detalii luna curentă",
-    previousGlobalDetails: "Detalii luna precedentă",
-    markAsInvoiced: "Marchează ca facturată",
+    smsCost: "Cost SMS",
+    estimatedTotal: "Total estimat",
+    confirmations: "Confirmări",
+    reminders: "Reminder 24h",
+    createInvoice: "Deschide factura",
+    operationalNotice:
+      "Valorile sunt estimări operaționale. Factura contabilă este creată și urmărită separat în SAGA.",
+    noDoctors: "Nu există medici cu acoperire activă în această perioadă.",
   },
-
   en: {
-    generalTitle: "General summary",
-    generalDescription:
-      "Current-month estimate and the calculated amount for the previous month's services.",
-    currentEstimate: "Estimated total for the current month",
-    previousInvoiceAmount:
-      "Amount to invoice for the previous month",
-    currentMonthHelper:
-      "Live estimate using the prices currently configured.",
-    previousMonthHelper:
-      "Review basis for manually invoicing the completed month.",
-    organizations: "Clinic organizations",
-    organizationsDescription:
-      "Billing details, locations, active subscriptions, SMS and costs for each organization.",
-    organizationSearchPlaceholder:
-      "Search by organization, company, tax ID or email...",
-    organizationSearchLabel: "Search organization",
-    organizationSearchEmpty:
-      "No organizations match your search.",
-    organization: "Organization",
-    locations: "Locations",
-    activeSubscriptions: "Active subscriptions",
-    sentSms: "SMS sent",
-    billingDetails: "Billing details",
-    company: "Company",
-    taxId: "Tax ID",
-    tradeRegister: "Trade Register",
-    billingEmail: "Billing email",
-    vatPayer: "VAT payer",
-    vatNumber: "VAT number",
-    address: "Address",
-    yes: "Yes",
-    no: "No",
-    unavailable: "Unavailable",
-    currentMonth: "Current month",
+    summary: "Consolidated summary",
+    description:
+      "Operational estimate for the selected month, compared with the previous month.",
+    currency: "Currency",
+    selectedMonth: "Selected month",
     previousMonth: "Previous month",
+    organizations: "Organizations",
+    locations: "Approved locations",
+    doctors: "Covered Doctors",
+    sms: "SMS sent",
     subscriptionSubtotal: "Doctor subscriptions",
     smsSubtotal: "SMS",
-    subtotalBeforeVat: "Subtotal before VAT",
+    subtotal: "Subtotal before VAT",
     vat: "Estimated VAT",
     total: "Estimated total",
-    doctorDetails: "Doctor / account details",
-    doctorDetailsDescription:
-      "Simple breakdown for manually checking subscriptions and SMS.",
-    account: "Doctor / account",
+    priceOverview: "Prices used",
+    doctorPrice: "Doctor subscription / month",
+    smsPrice: "Price / SMS",
+    vatRate: "VAT rate",
+    organizationSearch: "Search organizations",
+    searchPlaceholder: "Organization, company, tax ID or email...",
+    noResults: "No organizations match the search.",
+    billingDetails: "Billing details",
+    missingBilling: "Billing details have not been completed.",
+    contact: "Contact",
+    taxId: "Tax ID",
+    billingEmail: "Billing email",
+    address: "Address",
+    selectedPeriod: "Selected period",
+    previousPeriod: "Previous period",
+    doctorBreakdown: "Doctor / account details",
+    doctor: "Doctor / account",
     clinic: "Location",
     subscription: "Subscription",
-    sms: "SMS",
-    currentEstimateShort: "Current estimate",
-    previousAmountShort: "Previous month",
-    noDoctors:
-      "There are no accounts with active coverage for this organization.",
-    currentGlobalDetails: "Current-month details",
-    previousGlobalDetails: "Previous-month details",
-    markAsInvoiced: "Mark as Invoiced",
+    smsCost: "SMS cost",
+    estimatedTotal: "Estimated total",
+    confirmations: "Confirmations",
+    reminders: "24h reminders",
+    createInvoice: "Open invoice",
+    operationalNotice:
+      "These values are operational estimates. The accounting invoice is created and tracked separately in SAGA.",
+    noDoctors: "There are no Doctors with active coverage in this period.",
   },
-
   de: {
-    generalTitle: "Allgemeine Übersicht",
-    generalDescription:
-      "Schätzung für den aktuellen Monat und berechneter Betrag für die Leistungen des Vormonats.",
-    currentEstimate: "Geschätzter Gesamtbetrag im aktuellen Monat",
-    previousInvoiceAmount:
-      "Zu berechnender Betrag für den Vormonat",
-    currentMonthHelper:
-      "Live-Schätzung mit den aktuell konfigurierten Preisen.",
-    previousMonthHelper:
-      "Prüfgrundlage für die manuelle Abrechnung des abgeschlossenen Monats.",
-    organizations: "Klinikorganisationen",
-    organizationsDescription:
-      "Rechnungsdaten, Standorte, aktive Abonnements, SMS und Kosten je Organisation.",
-    organizationSearchPlaceholder:
-      "Nach Organisation, Unternehmen, Steuer-ID oder E-Mail suchen...",
-    organizationSearchLabel: "Organisation suchen",
-    organizationSearchEmpty:
-      "Keine Organisationen entsprechen der Suche.",
-    organization: "Organisation",
-    locations: "Standorte",
-    activeSubscriptions: "Aktive Abonnements",
-    sentSms: "Gesendete SMS",
-    billingDetails: "Rechnungsdaten",
-    company: "Unternehmen",
-    taxId: "Steuer-ID",
-    tradeRegister: "Handelsregister",
-    billingEmail: "Rechnungs-E-Mail",
-    vatPayer: "MwSt.-pflichtig",
-    vatNumber: "USt-IdNr.",
-    address: "Adresse",
-    yes: "Ja",
-    no: "Nein",
-    unavailable: "Nicht verfügbar",
-    currentMonth: "Aktueller Monat",
+    summary: "Konsolidierte Übersicht",
+    description:
+      "Operative Schätzung für den ausgewählten Monat im Vergleich zum Vormonat.",
+    currency: "Währung",
+    selectedMonth: "Ausgewählter Monat",
     previousMonth: "Vormonat",
+    organizations: "Organisationen",
+    locations: "Genehmigte Standorte",
+    doctors: "Abgedeckte Ärzte",
+    sms: "Gesendete SMS",
     subscriptionSubtotal: "Arztabonnements",
     smsSubtotal: "SMS",
-    subtotalBeforeVat: "Zwischensumme vor MwSt.",
+    subtotal: "Zwischensumme vor MwSt.",
     vat: "Geschätzte MwSt.",
     total: "Geschätzter Gesamtbetrag",
-    doctorDetails: "Arzt-/Kontodetails",
-    doctorDetailsDescription:
-      "Einfache Aufschlüsselung zur manuellen Prüfung von Abonnements und SMS.",
-    account: "Arzt / Konto",
+    priceOverview: "Verwendete Preise",
+    doctorPrice: "Arztabonnement / Monat",
+    smsPrice: "Preis / SMS",
+    vatRate: "MwSt.-Satz",
+    organizationSearch: "Organisationen suchen",
+    searchPlaceholder: "Organisation, Unternehmen, Steuer-ID oder E-Mail...",
+    noResults: "Keine Organisationen entsprechen der Suche.",
+    billingDetails: "Rechnungsdaten",
+    missingBilling: "Die Rechnungsdaten sind nicht vollständig.",
+    contact: "Kontakt",
+    taxId: "Steuer-ID",
+    billingEmail: "Rechnungs-E-Mail",
+    address: "Adresse",
+    selectedPeriod: "Ausgewählter Zeitraum",
+    previousPeriod: "Vorheriger Zeitraum",
+    doctorBreakdown: "Arzt-/Kontodetails",
+    doctor: "Arzt / Konto",
     clinic: "Standort",
     subscription: "Abonnement",
-    sms: "SMS",
-    currentEstimateShort: "Aktuelle Schätzung",
-    previousAmountShort: "Vormonat",
-    noDoctors:
-      "Für diese Organisation gibt es keine Konten mit aktiver Abdeckung.",
-    currentGlobalDetails: "Details aktueller Monat",
-    previousGlobalDetails: "Details Vormonat",
-    markAsInvoiced: "Als fakturiert markieren",
+    smsCost: "SMS-Kosten",
+    estimatedTotal: "Geschätzter Gesamtbetrag",
+    confirmations: "Bestätigungen",
+    reminders: "24h-Erinnerungen",
+    createInvoice: "Rechnung öffnen",
+    operationalNotice:
+      "Die Werte sind operative Schätzungen. Die Buchhaltungsrechnung wird separat in SAGA erstellt und verfolgt.",
+    noDoctors: "In diesem Zeitraum gibt es keine Ärzte mit aktiver Abdeckung.",
   },
 };
 
-function intlLocale(
-  locale: AppLocale
-) {
-  if (locale === "ro") {
-    return "ro-RO";
-  }
-
-  if (locale === "de") {
-    return "de-DE";
-  }
-
-  return "en-US";
-}
+const LOCALE_TAG: Record<AppLocale, string> = {
+  ro: "ro-RO",
+  en: "en-GB",
+  de: "de-DE",
+};
 
 function formatCurrency(
   value: number,
-  locale: AppLocale
+  locale: AppLocale,
+  currency: PlatformBillingCurrency
 ) {
-  return new Intl.NumberFormat(
-    intlLocale(locale),
-    {
-      style: "currency",
-      currency: "RON",
-      maximumFractionDigits: 2,
-    }
-  ).format(Number(value ?? 0));
+  return new Intl.NumberFormat(LOCALE_TAG[locale], {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 2,
+  }).format(Number(value ?? 0));
 }
 
-function formatMonth(
-  value: string,
-  locale: AppLocale
-) {
-  const [year, month] =
-    value.split("-").map(Number);
-
-  return new Intl.DateTimeFormat(
-    intlLocale(locale),
-    {
-      month: "long",
-      year: "numeric",
-      timeZone: "Europe/Bucharest",
-    }
-  ).format(
-    new Date(
-      Date.UTC(
-        year,
-        month - 1,
-        15
-      )
-    )
-  );
+function formatMonth(value: string, locale: AppLocale) {
+  const [year, month] = value.slice(0, 7).split("-").map(Number);
+  return new Intl.DateTimeFormat(LOCALE_TAG[locale], {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, 15)));
 }
 
-function findPreviousOrganization(
-  previousSummary: ClinicBillingMonthSummary,
-  organizationId: string
-) {
-  return (
-    previousSummary.organizations.find(
-      (organization) =>
-        organization.organization.id ===
-        organizationId
-    ) ?? null
-  );
+function formatPercent(value: number, locale: AppLocale) {
+  return new Intl.NumberFormat(LOCALE_TAG[locale], {
+    style: "percent",
+    maximumFractionDigits: 2,
+  }).format(Number(value ?? 0));
 }
 
-function SummaryCard({
+function normalizeSearch(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function SummaryMetric({
   label,
   value,
-  helper,
 }: {
   label: string;
   value: string | number;
-  helper?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5">
+    <div className="rounded-[13px] border border-gray-200 bg-white p-[13px]">
       <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
         {label}
       </p>
-
-      <p className="mt-3 text-2xl font-bold text-gray-900">
-        {value}
-      </p>
-
-      {helper ? (
-        <p className="mt-2 text-sm leading-6 text-gray-600">
-          {helper}
-        </p>
-      ) : null}
+      <p className="mt-[8px] text-lg font-bold text-gray-900">{value}</p>
     </div>
   );
 }
 
-function CostLine({
-  label,
-  value,
-  strong = false,
-}: {
-  label: string;
-  value: string;
-  strong?: boolean;
-}) {
-  return (
-    <div
-      className={`flex items-center justify-between gap-4 ${
-        strong
-          ? "border-t border-gray-200 pt-3"
-          : ""
-      }`}
-    >
-      <dt
-        className={
-          strong
-            ? "font-semibold text-gray-900"
-            : "text-gray-600"
-        }
-      >
-        {label}
-      </dt>
-
-      <dd
-        className={
-          strong
-            ? "font-bold text-gray-900"
-            : "font-semibold text-gray-900"
-        }
-      >
-        {value}
-      </dd>
-    </div>
-  );
-}
-
-function PeriodBreakdown({
-  title,
-  organization,
-  locale,
-  text,
-}: {
-  title: string;
-  organization:
-    ClinicBillingOrganizationRow;
-  locale: AppLocale;
-  text: Copy;
-}) {
-  return (
-    <div className="rounded-2xl border border-gray-200 p-5">
-      <h4 className="font-semibold text-gray-900">
-        {title}
-      </h4>
-
-      <dl className="mt-4 space-y-3 text-sm">
-        <CostLine
-          label={
-            text.subscriptionSubtotal
-          }
-          value={formatCurrency(
-            organization
-              .subscriptionSubtotalRon,
-            locale
-          )}
-        />
-
-        <CostLine
-          label={`${text.smsSubtotal} (${organization.totalSmsCount})`}
-          value={formatCurrency(
-            organization.smsSubtotalRon,
-            locale
-          )}
-        />
-
-        <CostLine
-          label={
-            text.subtotalBeforeVat
-          }
-          value={formatCurrency(
-            organization
-              .subtotalBeforeVatRon,
-            locale
-          )}
-        />
-
-        <CostLine
-          label={text.vat}
-          value={formatCurrency(
-            organization.estimatedVatRon,
-            locale
-          )}
-        />
-
-        <CostLine
-          label={text.total}
-          value={formatCurrency(
-            organization.estimatedTotalRon,
-            locale
-          )}
-          strong
-        />
-      </dl>
-    </div>
-  );
+function organizationAddress(
+  profile: ClinicBillingOrganizationRow["billingProfile"]
+) {
+  if (!profile) return "";
+  return [
+    profile.billing_address,
+    profile.billing_city,
+    profile.billing_county,
+    profile.billing_country,
+  ]
+    .filter(Boolean)
+    .join(", ");
 }
 
 export default function AdminClinicBillingOverview({
   locale,
-  currentSummary,
+  currency,
+  selectedSummary,
   previousSummary,
-}: AdminClinicBillingOverviewProps) {
-  const text =
-    COPY[locale] ?? COPY.ro;
+}: Props) {
+  const copy = COPY[locale];
+  const [search, setSearch] = useState("");
 
-  const [
-    organizationSearch,
-    setOrganizationSearch,
-  ] = useState("");
+  const previousByOrganization = useMemo(
+    () =>
+      new Map(
+        previousSummary.organizations.map((row) => [row.organization.id, row])
+      ),
+    [previousSummary.organizations]
+  );
 
-  const normalizedSearch =
-    organizationSearch
-      .trim()
-      .toLocaleLowerCase();
+  const filteredOrganizations = useMemo(() => {
+    const needle = normalizeSearch(search);
+    if (!needle) return selectedSummary.organizations;
 
-  const filteredOrganizations =
-    normalizedSearch.length === 0
-      ? currentSummary.organizations
-      : currentSummary.organizations.filter(
-          (organizationRow) => {
-            const organization =
-              organizationRow.organization;
+    return selectedSummary.organizations.filter((row) => {
+      const billing = row.billingProfile;
+      return normalizeSearch(
+        `${row.organization.name} ${row.organization.contactEmail ?? ""} ${
+          billing?.company_name ?? ""
+        } ${billing?.tax_id ?? ""} ${billing?.billing_email ?? ""}`
+      ).includes(needle);
+    });
+  }, [search, selectedSummary.organizations]);
 
-            const billing =
-              organizationRow.billingProfile;
-
-            const searchableText = [
-              organization.name,
-              organization.contactEmail,
-              organization.contactPhone,
-              billing?.company_name,
-              billing?.tax_id,
-              billing?.trade_register_number,
-              billing?.billing_email,
-              billing?.vat_number,
-              billing?.billing_city,
-              billing?.billing_county,
-            ]
-              .filter(Boolean)
-              .join(" ")
-              .toLocaleLowerCase();
-
-            return searchableText.includes(
-              normalizedSearch
-            );
-          }
-        );
+  const selectedLabel = formatMonth(selectedSummary.monthStart, locale);
+  const previousLabel = formatMonth(previousSummary.monthStart, locale);
 
   return (
-    <div className="space-y-6">
-      <AdminAccordion
-        title={text.generalTitle}
-        description={
-          text.generalDescription
-        }
-        defaultOpen
-      >
-        <div className="grid gap-5 md:grid-cols-2">
-          <SummaryCard
-            label={
-              text.currentEstimate
-            }
-            value={formatCurrency(
-              currentSummary.totals
-                .estimatedTotalRon,
-              locale
-            )}
-            helper={`${formatMonth(
-              currentSummary.monthStart,
-              locale
-            )}. ${text.currentMonthHelper}`}
-          />
+    <section className="space-y-[21px] rounded-[21px] border border-[#036661]/20 bg-[#F8FBFA] p-[21px] shadow-sm sm:p-[34px]">
+      <header>
+        <p className="text-sm font-semibold text-[#036661]">{copy.summary}</p>
+        <h2 className="mt-[8px] text-2xl font-bold capitalize text-gray-900">
+          {selectedLabel}
+        </h2>
+        <p className="mt-[8px] max-w-4xl text-sm leading-6 text-gray-600">
+          {copy.description}
+        </p>
+        <p className="mt-[8px] text-sm text-gray-500">
+          {copy.currency}: {currency}
+        </p>
+      </header>
 
-          <SummaryCard
-            label={
-              text.previousInvoiceAmount
-            }
-            value={formatCurrency(
-              previousSummary.totals
-                .estimatedTotalRon,
-              locale
-            )}
-            helper={`${formatMonth(
-              previousSummary.monthStart,
-              locale
-            )}. ${text.previousMonthHelper}`}
-          />
-        </div>
+      <div className="grid gap-[13px] md:grid-cols-2 xl:grid-cols-4">
+        <SummaryMetric
+          label={copy.organizations}
+          value={selectedSummary.totals.organizationCount}
+        />
+        <SummaryMetric
+          label={copy.locations}
+          value={selectedSummary.totals.approvedLocationCount}
+        />
+        <SummaryMetric
+          label={copy.doctors}
+          value={selectedSummary.totals.activeDoctorCount}
+        />
+        <SummaryMetric
+          label={copy.sms}
+          value={selectedSummary.totals.totalSmsCount}
+        />
+      </div>
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <SummaryCard
-            label={
-              text.organization
-            }
-            value={
-              currentSummary.totals
-                .organizationCount
-            }
-          />
-
-          <SummaryCard
-            label={text.locations}
-            value={
-              currentSummary.totals
-                .approvedLocationCount
-            }
-          />
-
-          <SummaryCard
-            label={
-              text.activeSubscriptions
-            }
-            value={
-              currentSummary.totals
-                .activeDoctorCount
-            }
-          />
-
-          <SummaryCard
-            label={text.sentSms}
-            value={
-              currentSummary.totals
-                .totalSmsCount
-            }
-          />
-        </div>
-      </AdminAccordion>
-
-      <AdminAccordion
-        title={text.organizations}
-        description={
-          text.organizationsDescription
-        }
-        defaultOpen
-      >
-        {currentSummary.organizations.length ===
-        0 ? (
-          <p className="text-sm text-gray-600">
-            {text.unavailable}
-          </p>
-        ) : (
-          <div className="space-y-5">
-            <div>
-              <label
-                htmlFor="clinic-organization-search"
-                className="block text-sm font-semibold text-gray-800"
-              >
-                {text.organizationSearchLabel}
-              </label>
-
-              <div className="relative mt-2">
-                <span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400"
-                >
-                  ⌕
-                </span>
-
-                <input
-                  id="clinic-organization-search"
-                  type="search"
-                  value={organizationSearch}
-                  onChange={(event) =>
-                    setOrganizationSearch(
-                      event.target.value
-                    )
-                  }
-                  placeholder={
-                    text.organizationSearchPlaceholder
-                  }
-                  className="romdoc-focus-ring w-full rounded-xl border border-gray-300 bg-white py-3 pl-11 pr-4 text-sm text-gray-900 placeholder:text-gray-400"
-                />
-              </div>
-            </div>
-
-            {filteredOrganizations.length ===
-            0 ? (
-              <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm text-gray-600">
-                {text.organizationSearchEmpty}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {filteredOrganizations.map(
-                  (currentOrganization) => {
-                const organization =
-                  currentOrganization.organization;
-
-                const previousOrganization =
-                  findPreviousOrganization(
-                    previousSummary,
-                    organization.id
-                  );
-
-                return (
-                  <details
-                    key={organization.id}
-                    className="group overflow-hidden rounded-2xl border border-gray-200"
+      <div className="grid gap-[13px] xl:grid-cols-2">
+        {[
+          [copy.selectedMonth, selectedLabel, selectedSummary],
+          [copy.previousMonth, previousLabel, previousSummary],
+        ].map(([eyebrow, monthLabel, summary]) => {
+          const typedSummary = summary as ClinicBillingMonthSummary;
+          return (
+            <article
+              key={String(eyebrow)}
+              className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm"
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {eyebrow as string}
+              </p>
+              <h3 className="mt-[5px] text-lg font-bold capitalize text-gray-900">
+                {monthLabel as string}
+              </h3>
+              <dl className="mt-[13px] space-y-[8px] text-sm">
+                {[
+                  [
+                    copy.subscriptionSubtotal,
+                    formatCurrency(
+                      typedSummary.totals.subscriptionSubtotalRon,
+                      locale,
+                      currency
+                    ),
+                  ],
+                  [
+                    copy.smsSubtotal,
+                    formatCurrency(
+                      typedSummary.totals.smsSubtotalRon,
+                      locale,
+                      currency
+                    ),
+                  ],
+                  [
+                    copy.subtotal,
+                    formatCurrency(
+                      typedSummary.totals.subtotalBeforeVatRon,
+                      locale,
+                      currency
+                    ),
+                  ],
+                  [
+                    copy.vat,
+                    formatCurrency(
+                      typedSummary.totals.estimatedVatRon,
+                      locale,
+                      currency
+                    ),
+                  ],
+                  [
+                    copy.total,
+                    formatCurrency(
+                      typedSummary.totals.estimatedTotalRon,
+                      locale,
+                      currency
+                    ),
+                  ],
+                ].map(([label, value], index) => (
+                  <div
+                    key={String(label)}
+                    className={`flex items-center justify-between gap-[13px] ${
+                      index === 4
+                        ? "border-t border-gray-200 pt-[13px] font-bold"
+                        : ""
+                    }`}
                   >
-                    <summary className="cursor-pointer list-none p-5 sm:p-6">
-                      <div className="flex flex-wrap items-center justify-between gap-5">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-[#9A4F35]">
-                            {text.organization}
-                          </p>
+                    <dt className="text-gray-600">{label}</dt>
+                    <dd className="text-right text-gray-950">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </article>
+          );
+        })}
+      </div>
 
-                          <h3 className="mt-2 text-xl font-bold text-gray-900">
-                            {organization.name}
-                          </h3>
-
-                          <p className="mt-2 text-sm text-gray-600">
-                            {
-                              currentOrganization.activeDoctorCount
-                            }{" "}
-                            {
-                              text.activeSubscriptions
-                            }{" "}
-                            ·{" "}
-                            {
-                              currentOrganization.totalSmsCount
-                            }{" "}
-                            SMS
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-5">
-                          <div className="text-right">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                              {
-                                text.currentEstimateShort
-                              }
-                            </p>
-
-                            <p className="mt-1 font-bold text-gray-900">
-                              {formatCurrency(
-                                currentOrganization
-                                  .estimatedTotalRon,
-                                locale
-                              )}
-                            </p>
-
-                            <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                              {
-                                text.previousAmountShort
-                              }
-                            </p>
-
-                            <p className="mt-1 font-bold text-gray-900">
-                              {formatCurrency(
-                                previousOrganization
-                                  ?.estimatedTotalRon ??
-                                  0,
-                                locale
-                              )}
-                            </p>
-                          </div>
-
-                          <span className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 text-xl text-gray-600 transition-transform group-open:rotate-180">
-                            ⌄
-                          </span>
-                        </div>
-                      </div>
-                    </summary>
-
-                    <div className="space-y-6 border-t border-gray-200 bg-gray-50/60 p-5 sm:p-6">
-                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                        <SummaryCard
-                          label={
-                            text.locations
-                          }
-                          value={
-                            currentOrganization
-                              .approvedLocationCount
-                          }
-                        />
-
-                        <SummaryCard
-                          label={
-                            text.activeSubscriptions
-                          }
-                          value={
-                            currentOrganization
-                              .activeDoctorCount
-                          }
-                        />
-
-                        <SummaryCard
-                          label={
-                            text.sentSms
-                          }
-                          value={
-                            currentOrganization
-                              .totalSmsCount
-                          }
-                        />
-
-                        <SummaryCard
-                          label={
-                            text.currentEstimateShort
-                          }
-                          value={formatCurrency(
-                            currentOrganization
-                              .estimatedTotalRon,
-                            locale
-                          )}
-                        />
-
-                        <SummaryCard
-                          label={
-                            text.previousAmountShort
-                          }
-                          value={formatCurrency(
-                            previousOrganization
-                              ?.estimatedTotalRon ??
-                              0,
-                            locale
-                          )}
-                        />
-                      </div>
-
-                      <div className="grid gap-5 lg:grid-cols-2">
-                        <section className="rounded-2xl border border-gray-200 bg-white p-5">
-                          <h4 className="text-lg font-semibold text-gray-900">
-                            {
-                              text.billingDetails
-                            }
-                          </h4>
-
-                          {currentOrganization
-                            .billingProfile ? (
-                            <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
-                              <div>
-                                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                  {
-                                    text.company
-                                  }
-                                </dt>
-
-                                <dd className="mt-1 text-gray-900">
-                                  {
-                                    currentOrganization
-                                      .billingProfile
-                                      .company_name
-                                  }
-                                </dd>
-                              </div>
-
-                              <div>
-                                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                  {
-                                    text.taxId
-                                  }
-                                </dt>
-
-                                <dd className="mt-1 text-gray-900">
-                                  {
-                                    currentOrganization
-                                      .billingProfile
-                                      .tax_id
-                                  }
-                                </dd>
-                              </div>
-
-                              <div>
-                                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                  {
-                                    text.tradeRegister
-                                  }
-                                </dt>
-
-                                <dd className="mt-1 text-gray-900">
-                                  {currentOrganization
-                                    .billingProfile
-                                    .trade_register_number ??
-                                    "—"}
-                                </dd>
-                              </div>
-
-                              <div>
-                                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                  {
-                                    text.billingEmail
-                                  }
-                                </dt>
-
-                                <dd className="mt-1 text-gray-900">
-                                  {
-                                    currentOrganization
-                                      .billingProfile
-                                      .billing_email
-                                  }
-                                </dd>
-                              </div>
-
-                              <div>
-                                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                  {
-                                    text.vatPayer
-                                  }
-                                </dt>
-
-                                <dd className="mt-1 text-gray-900">
-                                  {currentOrganization
-                                    .billingProfile
-                                    .is_vat_payer
-                                    ? text.yes
-                                    : text.no}
-                                </dd>
-                              </div>
-
-                              <div>
-                                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                  {
-                                    text.vatNumber
-                                  }
-                                </dt>
-
-                                <dd className="mt-1 text-gray-900">
-                                  {currentOrganization
-                                    .billingProfile
-                                    .vat_number ??
-                                    "—"}
-                                </dd>
-                              </div>
-
-                              <div className="sm:col-span-2">
-                                <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                  {
-                                    text.address
-                                  }
-                                </dt>
-
-                                <dd className="mt-1 text-gray-900">
-                                  {[
-                                    currentOrganization
-                                      .billingProfile
-                                      .billing_address,
-
-                                    currentOrganization
-                                      .billingProfile
-                                      .billing_city,
-
-                                    currentOrganization
-                                      .billingProfile
-                                      .billing_county,
-
-                                    currentOrganization
-                                      .billingProfile
-                                      .billing_country,
-                                  ]
-                                    .filter(Boolean)
-                                    .join(", ")}
-                                </dd>
-                              </div>
-                            </dl>
-                          ) : (
-                            <p className="mt-3 text-sm text-gray-600">
-                              {
-                                text.unavailable
-                              }
-                            </p>
-                          )}
-                        </section>
-
-                        <div className="grid gap-5 sm:grid-cols-2">
-                          <PeriodBreakdown
-                            title={`${text.currentGlobalDetails} — ${formatMonth(
-                              currentSummary.monthStart,
-                              locale
-                            )}`}
-                            organization={
-                              currentOrganization
-                            }
-                            locale={locale}
-                            text={text}
-                          />
-
-                          <PeriodBreakdown
-                            title={`${text.previousGlobalDetails} — ${formatMonth(
-                              previousSummary.monthStart,
-                              locale
-                            )}`}
-                            organization={
-                              previousOrganization ?? {
-                                ...currentOrganization,
-                                activeDoctorCount:
-                                  0,
-                                confirmationSmsCount:
-                                  0,
-                                reminder24hSmsCount:
-                                  0,
-                                totalSmsCount: 0,
-                                subscriptionSubtotalRon:
-                                  0,
-                                smsSubtotalRon: 0,
-                                subtotalBeforeVatRon:
-                                  0,
-                                estimatedVatRon: 0,
-                                estimatedTotalRon: 0,
-                                doctors: [],
-                              }
-                            }
-                            locale={locale}
-                            text={text}
-                          />
-                        </div>
-                      </div>
-
-                      {previousOrganization ? (
-                        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#036661]/20 bg-[#036661]/5 p-5">
-                          <div>
-                            <p className="font-semibold text-gray-900">
-                              {text.previousMonth}
-                            </p>
-
-                            <p className="mt-1 text-sm text-gray-600">
-                              {formatMonth(
-                                previousSummary.monthStart,
-                                locale
-                              )}{" "}
-                              ·{" "}
-                              {formatCurrency(
-                                previousOrganization.estimatedTotalRon,
-                                locale
-                              )}
-                            </p>
-                          </div>
-
-                          <CreateClinicInvoiceFromEstimateLink
-                            href="/admin/invoices"
-                            organizationId={organization.id}
-                            billingPeriodStart={
-                              previousSummary.monthStart
-                            }
-                            billingPeriodEnd={
-                              new Date(
-                                new Date(
-                                  `${previousSummary.monthEndExclusive}T00:00:00Z`
-                                ).getTime() -
-                                  24 * 60 * 60 * 1000
-                              )
-                                .toISOString()
-                                .slice(0, 10)
-                            }
-                            estimatedAmountRon={
-                              previousOrganization.estimatedTotalRon
-                            }
-                            label={text.markAsInvoiced}
-                          />
-                        </div>
-                      ) : null}
-
-                      <details className="group overflow-hidden rounded-2xl border border-gray-200 bg-white">
-                        <summary className="cursor-pointer list-none p-5">
-                          <div className="flex items-center justify-between gap-5">
-                            <div>
-                              <h4 className="text-lg font-semibold text-gray-900">
-                                {
-                                  text.doctorDetails
-                                }
-                              </h4>
-
-                              <p className="mt-1 text-sm leading-6 text-gray-600">
-                                {
-                                  text.doctorDetailsDescription
-                                }
-                              </p>
-                            </div>
-
-                            <span className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 text-xl text-gray-600 transition-transform group-open:rotate-180">
-                              ⌄
-                            </span>
-                          </div>
-                        </summary>
-
-                        <div className="border-t border-gray-200 p-5">
-                          {currentOrganization
-                            .doctors.length ===
-                          0 ? (
-                            <p className="text-sm text-gray-600">
-                              {
-                                text.noDoctors
-                              }
-                            </p>
-                          ) : (
-                            <div className="overflow-x-auto">
-                              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                                <thead>
-                                  <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                    <th className="px-3 py-3">
-                                      {
-                                        text.account
-                                      }
-                                    </th>
-
-                                    <th className="px-3 py-3">
-                                      {
-                                        text.clinic
-                                      }
-                                    </th>
-
-                                    <th className="px-3 py-3 text-right">
-                                      {
-                                        text.subscription
-                                      }
-                                    </th>
-
-                                    <th className="px-3 py-3 text-right">
-                                      {text.sms}
-                                    </th>
-
-                                    <th className="px-3 py-3 text-right">
-                                      {
-                                        text.currentEstimateShort
-                                      }
-                                    </th>
-                                  </tr>
-                                </thead>
-
-                                <tbody className="divide-y divide-gray-100">
-                                  {currentOrganization.doctors.map(
-                                    (doctor) => (
-                                      <tr
-                                        key={
-                                          doctor.relationshipId
-                                        }
-                                      >
-                                        <td className="px-3 py-4">
-                                          <p className="font-semibold text-gray-900">
-                                            {
-                                              doctor.doctorName
-                                            }
-                                          </p>
-
-                                          <p className="mt-1 text-xs text-gray-500">
-                                            {doctor.email ??
-                                              "—"}
-                                          </p>
-                                        </td>
-
-                                        <td className="px-3 py-4 text-gray-700">
-                                          {doctor.clinicName ??
-                                            "—"}
-                                        </td>
-
-                                        <td className="px-3 py-4 text-right font-semibold text-gray-900">
-                                          {formatCurrency(
-                                            doctor.subscriptionCostRon,
-                                            locale
-                                          )}
-                                        </td>
-
-                                        <td className="px-3 py-4 text-right text-gray-700">
-                                          {
-                                            doctor.totalSmsCount
-                                          }{" "}
-                                          ·{" "}
-                                          {formatCurrency(
-                                            doctor.smsCostRon,
-                                            locale
-                                          )}
-                                        </td>
-
-                                        <td className="px-3 py-4 text-right font-bold text-gray-900">
-                                          {formatCurrency(
-                                            doctor.estimatedDoctorTotalRon,
-                                            locale
-                                          )}
-                                        </td>
-                                      </tr>
-                                    )
-                                  )}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
-                        </div>
-                      </details>
-                    </div>
-                  </details>
-                );
-                  }
-                )}
-              </div>
+      <section className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
+        <h3 className="text-lg font-bold text-gray-900">{copy.priceOverview}</h3>
+        <p className="mt-[5px] text-sm text-gray-500">
+          {copy.currency}: {currency}
+        </p>
+        <div className="mt-[13px] grid gap-[13px] sm:grid-cols-3">
+          <SummaryMetric
+            label={copy.doctorPrice}
+            value={formatCurrency(
+              selectedSummary.prices.clinicDoctorMonthlyPriceRon,
+              locale,
+              currency
             )}
+          />
+          <SummaryMetric
+            label={copy.smsPrice}
+            value={formatCurrency(
+              selectedSummary.prices.smsUnitPriceRon,
+              locale,
+              currency
+            )}
+          />
+          <SummaryMetric
+            label={copy.vatRate}
+            value={formatPercent(selectedSummary.prices.vatRate, locale)}
+          />
+        </div>
+      </section>
+
+      <section>
+        <label className="block max-w-xl">
+          <span className="text-sm font-semibold text-gray-700">
+            {copy.organizationSearch}
+          </span>
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={copy.searchPlaceholder}
+            className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] text-sm"
+          />
+        </label>
+
+        {filteredOrganizations.length === 0 ? (
+          <div className="mt-[21px] rounded-[21px] border border-dashed border-gray-300 bg-white p-[34px] text-center text-sm text-gray-600">
+            {copy.noResults}
+          </div>
+        ) : (
+          <div className="mt-[21px] space-y-[13px]">
+            {filteredOrganizations.map((row) => {
+              const previous = previousByOrganization.get(row.organization.id);
+              const billing = row.billingProfile;
+
+              return (
+                <details
+                  key={row.organization.id}
+                  className="group overflow-hidden rounded-[21px] border border-gray-200 bg-white shadow-sm"
+                >
+                  <summary className="romdoc-focus-ring flex cursor-pointer list-none flex-col gap-[13px] p-[21px] marker:content-none md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">
+                        {row.organization.name}
+                      </h3>
+                      <p className="mt-[5px] text-sm text-gray-500">
+                        {row.organization.contactEmail ?? "—"}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-[8px] sm:grid-cols-4 md:min-w-[600px]">
+                      <SummaryMetric label={copy.locations} value={row.approvedLocationCount} />
+                      <SummaryMetric label={copy.doctors} value={row.activeDoctorCount} />
+                      <SummaryMetric label={copy.sms} value={row.totalSmsCount} />
+                      <SummaryMetric
+                        label={copy.total}
+                        value={formatCurrency(row.estimatedTotalRon, locale, currency)}
+                      />
+                    </div>
+                  </summary>
+
+                  <div className="border-t border-gray-200 bg-gray-50/60 p-[21px]">
+                    <p className="text-sm text-gray-500">
+                      {copy.currency}: {currency}
+                    </p>
+
+                    <div className="mt-[13px] grid gap-[21px] xl:grid-cols-2">
+                      <aside
+                        className={`rounded-[13px] border p-[13px] ${
+                          billing
+                            ? "border-[#036661]/20 bg-[#036661]/5"
+                            : "border-amber-200 bg-amber-50"
+                        }`}
+                      >
+                        <h4 className="font-bold text-gray-900">
+                          {copy.billingDetails}
+                        </h4>
+                        {billing ? (
+                          <dl className="mt-[8px] space-y-[5px] text-sm leading-6 text-gray-700">
+                            <div>
+                              <dt className="sr-only">{copy.billingDetails}</dt>
+                              <dd className="font-semibold text-gray-950">
+                                {billing.company_name}
+                              </dd>
+                            </div>
+                            <div className="flex gap-[5px]">
+                              <dt className="font-medium">{copy.taxId}:</dt>
+                              <dd>{billing.tax_id}</dd>
+                            </div>
+                            <div className="flex gap-[5px]">
+                              <dt className="font-medium">{copy.billingEmail}:</dt>
+                              <dd>{billing.billing_email}</dd>
+                            </div>
+                            <div className="flex gap-[5px]">
+                              <dt className="font-medium">{copy.address}:</dt>
+                              <dd>{organizationAddress(billing)}</dd>
+                            </div>
+                          </dl>
+                        ) : (
+                          <p className="mt-[8px] text-sm text-amber-900">
+                            {copy.missingBilling}
+                          </p>
+                        )}
+                      </aside>
+
+                      <dl className="rounded-[13px] border border-gray-200 bg-white p-[13px] text-sm">
+                        {[
+                          [
+                            copy.selectedPeriod,
+                            formatCurrency(row.estimatedTotalRon, locale, currency),
+                          ],
+                          [
+                            copy.previousPeriod,
+                            formatCurrency(
+                              previous?.estimatedTotalRon ?? 0,
+                              locale,
+                              currency
+                            ),
+                          ],
+                          [
+                            copy.contact,
+                            [
+                              row.organization.contactEmail,
+                              row.organization.contactPhone,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ") || "—",
+                          ],
+                        ].map(([label, value]) => (
+                          <div
+                            key={String(label)}
+                            className="flex items-start justify-between gap-[13px] border-b border-gray-100 py-[8px] last:border-0"
+                          >
+                            <dt className="text-gray-600">{label}</dt>
+                            <dd className="text-right font-semibold text-gray-950">
+                              {value}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
+
+                    <div className="mt-[21px]">
+                      <h4 className="font-bold text-gray-900">
+                        {copy.doctorBreakdown}
+                      </h4>
+                      {row.doctors.length === 0 ? (
+                        <p className="mt-[8px] text-sm text-gray-600">
+                          {copy.noDoctors}
+                        </p>
+                      ) : (
+                        <div className="mt-[13px] overflow-x-auto rounded-[13px] border border-gray-200 bg-white">
+                          <table className="min-w-full text-left text-sm">
+                            <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                              <tr>
+                                <th className="px-[13px] py-[10px]">{copy.doctor}</th>
+                                <th className="px-[13px] py-[10px]">{copy.clinic}</th>
+                                <th className="px-[13px] py-[10px]">{copy.subscription}</th>
+                                <th className="px-[13px] py-[10px]">{copy.sms}</th>
+                                <th className="px-[13px] py-[10px]">{copy.smsCost}</th>
+                                <th className="px-[13px] py-[10px]">{copy.estimatedTotal}</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {row.doctors.map((doctor) => (
+                                <tr key={doctor.relationshipId}>
+                                  <td className="px-[13px] py-[10px]">
+                                    <p className="font-semibold text-gray-950">
+                                      {doctor.doctorName}
+                                    </p>
+                                    <p className="mt-[3px] text-xs text-gray-500">
+                                      {doctor.email ?? "—"}
+                                    </p>
+                                  </td>
+                                  <td className="px-[13px] py-[10px] text-gray-700">
+                                    {doctor.clinicName ?? "—"}
+                                  </td>
+                                  <td className="px-[13px] py-[10px] font-medium">
+                                    {formatCurrency(
+                                      doctor.subscriptionCostRon,
+                                      locale,
+                                      currency
+                                    )}
+                                  </td>
+                                  <td className="px-[13px] py-[10px] text-gray-700">
+                                    {doctor.totalSmsCount}
+                                    <p className="mt-[3px] text-xs text-gray-500">
+                                      {copy.confirmations}: {doctor.confirmationSmsCount} · {copy.reminders}: {doctor.reminder24hSmsCount}
+                                    </p>
+                                  </td>
+                                  <td className="px-[13px] py-[10px] font-medium">
+                                    {formatCurrency(doctor.smsCostRon, locale, currency)}
+                                  </td>
+                                  <td className="px-[13px] py-[10px] font-bold text-[#036661]">
+                                    {formatCurrency(
+                                      doctor.estimatedDoctorTotalRon,
+                                      locale,
+                                      currency
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+
+                    {previous && previous.estimatedTotalRon > 0 ? (
+                      <div className="mt-[21px]">
+                        <CreateClinicInvoiceFromEstimateLink
+                          href="/admin/invoices"
+                          organizationId={row.organization.id}
+                          billingPeriodStart={previousSummary.monthStart}
+                          billingPeriodEnd={new Date(
+                            new Date(previousSummary.monthEndExclusive).getTime() -
+                              24 * 60 * 60 * 1000
+                          )
+                            .toISOString()
+                            .slice(0, 10)}
+                          estimatedAmountRon={previous.estimatedTotalRon}
+                          label={copy.createInvoice}
+                          className="romdoc-focus-ring inline-flex rounded-[13px] bg-[#036661] px-[21px] py-[13px] text-sm font-semibold text-white transition hover:bg-[#024d49]"
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                </details>
+              );
+            })}
           </div>
         )}
-      </AdminAccordion>
-    </div>
+      </section>
+
+      <div className="rounded-[13px] border border-amber-200 bg-amber-50 p-[13px] text-sm leading-6 text-amber-900">
+        {copy.operationalNotice}
+      </div>
+    </section>
   );
 }
