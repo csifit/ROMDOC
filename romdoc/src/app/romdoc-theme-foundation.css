@@ -1,0 +1,115 @@
+:root {
+  --rd-dashboard-bg: #f9fafb;
+  --rd-surface: #ffffff;
+  --rd-surface-muted: #f3f4f6;
+  --rd-surface-soft: #f0eee9;
+  --rd-footer-panel: #f0eee9;
+  --rd-text-primary: #111827;
+  --rd-text-secondary: #4b5563;
+  --rd-text-muted: #6b7280;
+  --rd-border: #e5e7eb;
+  --rd-border-strong: #d1d5db;
+  --rd-overlay: rgba(0, 0, 0, 0.4);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] {
+  color-scheme: dark;
+  --rd-dashboard-bg: #0c1517;
+  --rd-surface: #132023;
+  --rd-surface-muted: #19292c;
+  --rd-surface-soft: #172326;
+  --rd-footer-panel: #101c1e;
+  --rd-text-primary: #f3f4f6;
+  --rd-text-secondary: #c1cbcd;
+  --rd-text-muted: #94a3a8;
+  --rd-border: #2c3c40;
+  --rd-border-strong: #405257;
+  --rd-overlay: rgba(0, 0, 0, 0.68);
+}
+
+html[data-romdoc-surface="dashboard"] body {
+  background-color: var(--rd-dashboard-bg);
+  color: var(--rd-text-primary);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-white {
+  background-color: var(--rd-surface) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-gray-50,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-gray-50\/60,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-gray-100 {
+  background-color: var(--rd-surface-muted) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-\[\#F0EEE9\],
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-\[\#F8FBFA\] {
+  background-color: var(--rd-dashboard-bg) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-gray-950,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-gray-900,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-gray-800 {
+  color: var(--rd-text-primary) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-gray-700,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-gray-600 {
+  color: var(--rd-text-secondary) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-gray-500,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-gray-400 {
+  color: var(--rd-text-muted) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-gray-100,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-gray-200 {
+  border-color: var(--rd-border) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-gray-300 {
+  border-color: var(--rd-border-strong) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] input,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] select,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] textarea {
+  border-color: var(--rd-border-strong);
+  background-color: var(--rd-surface);
+  color: var(--rd-text-primary);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] input::placeholder,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] textarea::placeholder {
+  color: var(--rd-text-muted);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .hover\:bg-gray-50:hover,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .hover\:bg-gray-100:hover {
+  background-color: var(--rd-surface-muted) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-button-secondary,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-button-muted,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-button-danger-outline {
+  background-color: var(--rd-surface);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .shadow-sm,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .shadow-md,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .shadow-lg,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .shadow-xl {
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.24) !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html[data-romdoc-surface="dashboard"] body,
+  html[data-romdoc-surface="dashboard"] .bg-white,
+  html[data-romdoc-surface="dashboard"] .bg-gray-50 {
+    transition:
+      background-color 180ms ease,
+      border-color 180ms ease,
+      color 180ms ease;
+  }
+}
