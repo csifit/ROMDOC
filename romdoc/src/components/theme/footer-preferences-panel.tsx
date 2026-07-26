@@ -2,9 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import {
-  footerPreferencesCopy,
-} from "@/components/theme/footer-preferences-copy";
+import { footerPreferencesCopy } from "@/components/theme/footer-preferences-copy";
 import type { AppLocale } from "@/lib/i18n/app-locale";
 import { switchBrowserLocale } from "@/lib/i18n/client-locale-switch";
 import {
@@ -69,16 +67,24 @@ function OptionButton({
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={`romdoc-focus-ring flex min-h-12 items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left text-sm font-semibold transition ${
+      aria-label={selected ? `${label} — ${selectedLabel}` : label}
+      className={`romdoc-preference-option romdoc-focus-ring flex min-h-10 w-full items-center justify-between gap-2 rounded-[10px] border px-3 py-2 text-left text-[13px] font-semibold transition ${
         selected
           ? "border-[#036661] bg-[#036661]/10 text-[#036661]"
-          : "border-gray-300 bg-white text-gray-700 hover:border-[#036661] hover:text-[#036661]"
+          : "border-[var(--rd-border-strong)] bg-[var(--rd-surface)] text-[var(--rd-text-secondary)] hover:border-[#036661] hover:text-[#036661]"
       }`}
     >
-      <span>{label}</span>
-      {selected ? (
-        <span className="text-xs font-medium">{selectedLabel}</span>
-      ) : null}
+      <span className="truncate">{label}</span>
+      <span
+        aria-hidden="true"
+        className={`romdoc-preference-check flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] ${
+          selected
+            ? "bg-[#036661] text-white"
+            : "border border-[var(--rd-border)] text-transparent"
+        }`}
+      >
+        ✓
+      </span>
     </button>
   );
 }
@@ -212,44 +218,28 @@ export default function FooterPreferencesPanel({
             : "pointer-events-none translate-y-4 opacity-0"
         }`}
       >
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+          <div className="grid items-start gap-6 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(12rem,15rem)_minmax(12rem,15rem)] lg:gap-5">
+            <div className="pr-12 sm:col-span-2 lg:col-span-1 lg:max-w-xl lg:pr-8">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#036661]">
                 {copy.eyebrow}
               </p>
               <h2 className="mt-2 text-2xl font-bold tracking-tight text-[var(--rd-text-primary)]">
                 {copy.title}
               </h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--rd-text-secondary)]">
+              <p className="mt-2 max-w-lg text-sm leading-6 text-[var(--rd-text-secondary)]">
                 {copy.description}
               </p>
             </div>
 
-            <button
-              ref={closeRef}
-              type="button"
-              onClick={() => {
-                setIsOpen(false);
-                requestAnimationFrame(() => triggerRef.current?.focus());
-              }}
-              aria-label={copy.close}
-              title={copy.close}
-              className="romdoc-focus-ring inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--rd-border)] bg-[var(--rd-surface)] text-[var(--rd-text-secondary)] shadow-sm transition hover:text-[var(--rd-text-primary)]"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            <section className="rounded-2xl border border-[var(--rd-border)] bg-[var(--rd-surface)] p-5 shadow-sm">
-              <h3 className="text-lg font-bold text-[var(--rd-text-primary)]">
+            <section aria-labelledby={`${panelId}-language-title`}>
+              <h3
+                id={`${panelId}-language-title`}
+                className="text-sm font-bold text-[var(--rd-text-primary)]"
+              >
                 {copy.languageTitle}
               </h3>
-              <p className="mt-2 text-sm leading-6 text-[var(--rd-text-secondary)]">
-                {copy.languageDescription}
-              </p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="mt-3 grid gap-2">
                 {LANGUAGE_OPTIONS.map((option) => (
                   <OptionButton
                     key={option.locale}
@@ -262,14 +252,14 @@ export default function FooterPreferencesPanel({
               </div>
             </section>
 
-            <section className="rounded-2xl border border-[var(--rd-border)] bg-[var(--rd-surface)] p-5 shadow-sm">
-              <h3 className="text-lg font-bold text-[var(--rd-text-primary)]">
+            <section aria-labelledby={`${panelId}-appearance-title`}>
+              <h3
+                id={`${panelId}-appearance-title`}
+                className="text-sm font-bold text-[var(--rd-text-primary)]"
+              >
                 {copy.appearanceTitle}
               </h3>
-              <p className="mt-2 text-sm leading-6 text-[var(--rd-text-secondary)]">
-                {copy.appearanceDescription}
-              </p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="mt-3 grid gap-2">
                 {(
                   [
                     ["light", copy.light],
@@ -288,6 +278,20 @@ export default function FooterPreferencesPanel({
               </div>
             </section>
           </div>
+
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={() => {
+              setIsOpen(false);
+              requestAnimationFrame(() => triggerRef.current?.focus());
+            }}
+            aria-label={copy.close}
+            title={copy.close}
+            className="romdoc-focus-ring absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--rd-border)] bg-[var(--rd-surface)] text-[var(--rd-text-secondary)] shadow-sm transition hover:text-[var(--rd-text-primary)] sm:right-6 sm:top-6"
+          >
+            ✕
+          </button>
         </div>
       </section>
     </div>

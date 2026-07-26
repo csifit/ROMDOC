@@ -3,28 +3,92 @@
   --rd-surface: #ffffff;
   --rd-surface-muted: #f3f4f6;
   --rd-surface-soft: #f0eee9;
+  --rd-surface-raised: #ffffff;
   --rd-footer-panel: #f0eee9;
+
   --rd-text-primary: #111827;
   --rd-text-secondary: #4b5563;
   --rd-text-muted: #6b7280;
+  --rd-text-inverse: #ffffff;
+
   --rd-border: #e5e7eb;
   --rd-border-strong: #d1d5db;
   --rd-overlay: rgba(0, 0, 0, 0.4);
+
+  --rd-info-bg: #eff6ff;
+  --rd-info-border: #bfdbfe;
+  --rd-info-text: #1e3a8a;
+  --rd-success-bg: #f0fdf4;
+  --rd-success-border: #bbf7d0;
+  --rd-success-text: #14532d;
+  --rd-warning-bg: #fffbeb;
+  --rd-warning-border: #fde68a;
+  --rd-warning-text: #78350f;
+  --rd-danger-bg: #fef2f2;
+  --rd-danger-border: #fecaca;
+  --rd-danger-text: #7f1d1d;
+  --rd-neutral-bg: #f3f4f6;
+  --rd-neutral-border: #d1d5db;
+  --rd-neutral-text: #374151;
+
+  --rd-shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.06);
+  --rd-shadow-card:
+    0 1px 2px rgba(17, 24, 39, 0.05),
+    0 8px 21px rgba(17, 24, 39, 0.05);
+  --rd-shadow-dialog: 0 24px 70px rgba(17, 24, 39, 0.22);
+}
+
+html[data-romdoc-surface="dashboard"] {
+  --romdoc-color-surface: var(--rd-surface);
+  --romdoc-color-surface-soft: var(--rd-surface-muted);
+  --romdoc-color-page: var(--rd-dashboard-bg);
+  --romdoc-color-text: var(--rd-text-primary);
+  --romdoc-color-text-muted: var(--rd-text-secondary);
+  --romdoc-color-border: var(--rd-border-strong);
+  --romdoc-color-border-soft: var(--rd-border);
+  --romdoc-shadow-card: var(--rd-shadow-card);
 }
 
 html[data-romdoc-surface="dashboard"][data-theme="dark"] {
   color-scheme: dark;
+
   --rd-dashboard-bg: #0c1517;
   --rd-surface: #132023;
   --rd-surface-muted: #19292c;
   --rd-surface-soft: #172326;
+  --rd-surface-raised: #18272a;
   --rd-footer-panel: #101c1e;
+
   --rd-text-primary: #f3f4f6;
   --rd-text-secondary: #c1cbcd;
   --rd-text-muted: #94a3a8;
+  --rd-text-inverse: #071113;
+
   --rd-border: #2c3c40;
   --rd-border-strong: #405257;
-  --rd-overlay: rgba(0, 0, 0, 0.68);
+  --rd-overlay: rgba(0, 0, 0, 0.72);
+
+  --rd-info-bg: #102a43;
+  --rd-info-border: #24547a;
+  --rd-info-text: #bfdbfe;
+  --rd-success-bg: #102c24;
+  --rd-success-border: #28624f;
+  --rd-success-text: #bbf7d0;
+  --rd-warning-bg: #33270f;
+  --rd-warning-border: #755b1c;
+  --rd-warning-text: #fde68a;
+  --rd-danger-bg: #351719;
+  --rd-danger-border: #7c3035;
+  --rd-danger-text: #fecaca;
+  --rd-neutral-bg: #243135;
+  --rd-neutral-border: #46585d;
+  --rd-neutral-text: #d1d5db;
+
+  --rd-shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.22);
+  --rd-shadow-card:
+    0 1px 2px rgba(0, 0, 0, 0.26),
+    0 13px 34px rgba(0, 0, 0, 0.2);
+  --rd-shadow-dialog: 0 34px 89px rgba(0, 0, 0, 0.48);
 }
 
 html[data-romdoc-surface="dashboard"] body {
@@ -32,49 +96,111 @@ html[data-romdoc-surface="dashboard"] body {
   color: var(--rd-text-primary);
 }
 
+/* --------------------------------------------------------------------------
+   Shared surfaces, cards and panels
+---------------------------------------------------------------------------- */
+
 html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-white {
   background-color: var(--rd-surface) !important;
 }
 
 html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-gray-50,
 html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-gray-50\/60,
-html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-gray-100 {
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-gray-100,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-slate-50,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-slate-100 {
   background-color: var(--rd-surface-muted) !important;
 }
 
 html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-\[\#F0EEE9\],
-html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-\[\#F8FBFA\] {
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-\[\#F8FBFA\],
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-\[\#F9FAFB\] {
   background-color: var(--rd-dashboard-bg) !important;
 }
 
+html[data-romdoc-surface="dashboard"] .romdoc-card,
+html[data-romdoc-surface="dashboard"] .romdoc-card-compact,
+html[data-romdoc-surface="dashboard"] .romdoc-panel-muted,
+html[data-romdoc-surface="dashboard"] .romdoc-empty-state {
+  color: var(--rd-text-primary);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-card,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-card-compact {
+  border-color: var(--rd-border);
+  background: var(--rd-surface);
+  box-shadow: var(--rd-shadow-card);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-panel-muted,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-empty-state {
+  border-color: var(--rd-border);
+  background: var(--rd-surface-muted);
+}
+
+/* --------------------------------------------------------------------------
+   Shared typography and borders
+---------------------------------------------------------------------------- */
+
 html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-gray-950,
 html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-gray-900,
-html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-gray-800 {
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-gray-800,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-slate-950,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-slate-900,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-slate-800 {
   color: var(--rd-text-primary) !important;
 }
 
 html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-gray-700,
-html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-gray-600 {
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-gray-600,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-slate-700,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-slate-600 {
   color: var(--rd-text-secondary) !important;
 }
 
 html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-gray-500,
-html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-gray-400 {
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-gray-400,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-slate-500,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-slate-400 {
   color: var(--rd-text-muted) !important;
 }
 
 html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-gray-100,
-html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-gray-200 {
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-gray-200,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-slate-100,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-slate-200 {
   border-color: var(--rd-border) !important;
 }
 
-html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-gray-300 {
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-gray-300,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-slate-300 {
   border-color: var(--rd-border-strong) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .divide-gray-200 > :not([hidden]) ~ :not([hidden]),
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--rd-border) !important;
+}
+
+/* --------------------------------------------------------------------------
+   Forms and native controls
+---------------------------------------------------------------------------- */
+
+html[data-romdoc-surface="dashboard"] .romdoc-label {
+  color: var(--rd-text-secondary);
+}
+
+html[data-romdoc-surface="dashboard"] .romdoc-help-text {
+  color: var(--rd-text-muted);
 }
 
 html[data-romdoc-surface="dashboard"][data-theme="dark"] input,
 html[data-romdoc-surface="dashboard"][data-theme="dark"] select,
-html[data-romdoc-surface="dashboard"][data-theme="dark"] textarea {
+html[data-romdoc-surface="dashboard"][data-theme="dark"] textarea,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-input,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-select,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-textarea {
   border-color: var(--rd-border-strong);
   background-color: var(--rd-surface);
   color: var(--rd-text-primary);
@@ -83,33 +209,402 @@ html[data-romdoc-surface="dashboard"][data-theme="dark"] textarea {
 html[data-romdoc-surface="dashboard"][data-theme="dark"] input::placeholder,
 html[data-romdoc-surface="dashboard"][data-theme="dark"] textarea::placeholder {
   color: var(--rd-text-muted);
+  opacity: 1;
 }
 
+html[data-romdoc-surface="dashboard"][data-theme="dark"] input:disabled,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] select:disabled,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] textarea:disabled,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-input:disabled,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-select:disabled,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-textarea:disabled {
+  background-color: var(--rd-surface-muted);
+  color: var(--rd-text-muted);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] option {
+  background: var(--rd-surface);
+  color: var(--rd-text-primary);
+}
+
+html[data-romdoc-surface="dashboard"] input[type="checkbox"],
+html[data-romdoc-surface="dashboard"] input[type="radio"] {
+  accent-color: #036661;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] input:-webkit-autofill,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] input:-webkit-autofill:hover,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--rd-text-primary);
+  -webkit-box-shadow: 0 0 0 1000px var(--rd-surface) inset;
+  caret-color: var(--rd-text-primary);
+}
+
+/* --------------------------------------------------------------------------
+   Buttons and segmented controls
+---------------------------------------------------------------------------- */
+
+html[data-romdoc-surface="dashboard"] .romdoc-button-secondary,
+html[data-romdoc-surface="dashboard"] .romdoc-button-muted,
+html[data-romdoc-surface="dashboard"] .romdoc-button-danger-outline {
+  background-color: var(--rd-surface);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-button-secondary {
+  border-color: #32a39b;
+  background: var(--rd-surface);
+  color: #70d2ca;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-button-secondary:hover:not(:disabled):not([aria-disabled="true"]) {
+  border-color: #70d2ca;
+  background: rgba(3, 102, 97, 0.22);
+  color: #b6f0eb;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-button-muted {
+  border-color: var(--rd-border-strong);
+  background: var(--rd-surface);
+  color: var(--rd-text-secondary);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-button-muted:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--rd-surface-muted);
+  color: var(--rd-text-primary);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-button-danger-outline {
+  background: var(--rd-surface);
+  color: #fca5a5;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-button-danger-outline:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--rd-danger-bg);
+  color: #fecaca;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-segmented-control {
+  background: var(--rd-surface-muted);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-segmented-button {
+  color: var(--rd-text-secondary);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-segmented-button:hover {
+  background: var(--rd-surface-raised);
+  color: var(--rd-text-primary);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-segmented-button[aria-pressed="true"] {
+  background: var(--rd-surface-raised);
+  color: #70d2ca;
+  box-shadow: var(--rd-shadow-sm);
+}
+
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-preference-option[aria-pressed="true"] {
+  border-color: #70d2ca !important;
+  background: rgba(3, 102, 97, 0.28) !important;
+  color: #b6f0eb !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-preference-option[aria-pressed="true"] .romdoc-preference-check {
+  background: #70d2ca !important;
+  color: #071113 !important;
+}
+
+/* --------------------------------------------------------------------------
+   Tables and data grids
+---------------------------------------------------------------------------- */
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] table {
+  color: var(--rd-text-primary);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] thead,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] thead.bg-gray-50,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] thead.bg-gray-100 {
+  background: var(--rd-surface-muted) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] th {
+  color: var(--rd-text-secondary);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] tbody tr {
+  border-color: var(--rd-border);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] tbody tr:hover,
 html[data-romdoc-surface="dashboard"][data-theme="dark"] .hover\:bg-gray-50:hover,
-html[data-romdoc-surface="dashboard"][data-theme="dark"] .hover\:bg-gray-100:hover {
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .hover\:bg-gray-100:hover,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .hover\:bg-slate-50:hover {
   background-color: var(--rd-surface-muted) !important;
 }
 
-html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-button-secondary,
-html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-button-muted,
-html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-button-danger-outline {
-  background-color: var(--rd-surface);
+/* --------------------------------------------------------------------------
+   Status badges, alerts and notices
+---------------------------------------------------------------------------- */
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-status-pending,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-amber-50,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-amber-100,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-yellow-50,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-yellow-100 {
+  background-color: var(--rd-warning-bg) !important;
 }
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-amber-200,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-amber-300,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-yellow-200 {
+  border-color: var(--rd-warning-border) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-amber-700,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-amber-800,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-amber-900,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-amber-950,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-yellow-700,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-yellow-800,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-status-pending {
+  color: var(--rd-warning-text) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-status-confirmed,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-green-50,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-green-100,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-emerald-50,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-emerald-100 {
+  background-color: var(--rd-success-bg) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-green-200,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-green-300,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-emerald-200 {
+  border-color: var(--rd-success-border) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-green-700,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-green-800,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-green-900,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-emerald-700,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-emerald-800,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-status-confirmed {
+  color: var(--rd-success-text) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-status-rescheduled,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-blue-50,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-blue-100,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-sky-50,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-sky-100 {
+  background-color: var(--rd-info-bg) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-blue-200,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-blue-300,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-sky-200 {
+  border-color: var(--rd-info-border) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-blue-700,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-blue-800,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-blue-900,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-sky-700,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-sky-800,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-status-rescheduled {
+  color: var(--rd-info-text) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-status-cancelled,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-red-50,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-red-100,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-rose-50,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-rose-100 {
+  background-color: var(--rd-danger-bg) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-red-200,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-red-300,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .border-rose-200 {
+  border-color: var(--rd-danger-border) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-red-600,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-red-700,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-red-800,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-red-900,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-rose-700,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-rose-800,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-status-cancelled {
+  color: var(--rd-danger-text) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-status-completed,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-gray-200,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-slate-200 {
+  border-color: var(--rd-neutral-border) !important;
+  background-color: var(--rd-neutral-bg) !important;
+  color: var(--rd-neutral-text) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-status-no-show,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-orange-50,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-orange-100 {
+  border-color: #7c4a21 !important;
+  background-color: #382412 !important;
+  color: #fed7aa !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-notice-info {
+  border-color: var(--rd-info-border);
+  background: var(--rd-info-bg);
+  color: var(--rd-info-text);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-notice-success {
+  border-color: var(--rd-success-border);
+  background: var(--rd-success-bg);
+  color: var(--rd-success-text);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-notice-warning {
+  border-color: var(--rd-warning-border);
+  background: var(--rd-warning-bg);
+  color: var(--rd-warning-text);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .romdoc-notice-danger {
+  border-color: var(--rd-danger-border);
+  background: var(--rd-danger-bg);
+  color: var(--rd-danger-text);
+}
+
+/* --------------------------------------------------------------------------
+   Accordion, month selector and dialog foundations
+---------------------------------------------------------------------------- */
+
+.romdoc-accordion {
+  border-color: var(--rd-border);
+  background: var(--rd-surface);
+  color: var(--rd-text-primary);
+  box-shadow: var(--rd-shadow-sm);
+}
+
+.romdoc-accordion-trigger:hover {
+  background: var(--rd-surface-muted);
+}
+
+.romdoc-accordion-icon {
+  border-color: var(--rd-border-strong);
+  background: var(--rd-surface-muted);
+  color: var(--rd-text-secondary);
+}
+
+.romdoc-accordion-content {
+  border-color: var(--rd-border);
+}
+
+.romdoc-month-selector-control,
+.romdoc-month-selector-dialog {
+  border-color: var(--rd-border-strong);
+  background: var(--rd-surface);
+  color: var(--rd-text-primary);
+}
+
+.romdoc-month-selector-control {
+  box-shadow: var(--rd-shadow-sm);
+}
+
+.romdoc-month-selector-dialog {
+  border-color: var(--rd-border);
+  box-shadow: var(--rd-shadow-dialog);
+}
+
+.romdoc-month-selector-button {
+  color: var(--rd-text-secondary);
+}
+
+.romdoc-month-selector-button:hover:not(:disabled),
+.romdoc-month-selector-year-button:hover:not(:disabled),
+.romdoc-month-selector-option:hover:not(:disabled) {
+  background: var(--rd-surface-muted);
+  color: var(--rd-text-primary);
+}
+
+.romdoc-month-selector-button:disabled,
+.romdoc-month-selector-option:disabled {
+  background: var(--rd-surface-muted);
+  color: var(--rd-text-muted);
+  opacity: 0.55;
+}
+
+.romdoc-month-selector-option[aria-pressed="true"] {
+  background: #036661;
+  color: #ffffff;
+}
+
+html[data-romdoc-surface="dashboard"] [role="dialog"] {
+  color: var(--rd-text-primary);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] [role="dialog"].bg-white,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] [role="dialog"] .bg-white {
+  background-color: var(--rd-surface-raised) !important;
+}
+
+/* --------------------------------------------------------------------------
+   Shadows, overlays and scrollbars
+---------------------------------------------------------------------------- */
 
 html[data-romdoc-surface="dashboard"][data-theme="dark"] .shadow-sm,
 html[data-romdoc-surface="dashboard"][data-theme="dark"] .shadow-md,
 html[data-romdoc-surface="dashboard"][data-theme="dark"] .shadow-lg,
-html[data-romdoc-surface="dashboard"][data-theme="dark"] .shadow-xl {
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.24) !important;
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .shadow-xl,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .shadow-2xl {
+  box-shadow: var(--rd-shadow-card) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-black\/40,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-black\/50,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-black\/60 {
+  background-color: var(--rd-overlay) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] {
+  scrollbar-color: var(--rd-border-strong) var(--rd-dashboard-bg);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] ::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] ::-webkit-scrollbar-track {
+  background: var(--rd-dashboard-bg);
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] ::-webkit-scrollbar-thumb {
+  border: 3px solid var(--rd-dashboard-bg);
+  border-radius: 9999px;
+  background: var(--rd-border-strong);
 }
 
 @media (prefers-reduced-motion: no-preference) {
   html[data-romdoc-surface="dashboard"] body,
   html[data-romdoc-surface="dashboard"] .bg-white,
-  html[data-romdoc-surface="dashboard"] .bg-gray-50 {
+  html[data-romdoc-surface="dashboard"] .bg-gray-50,
+  html[data-romdoc-surface="dashboard"] .romdoc-card,
+  html[data-romdoc-surface="dashboard"] .romdoc-card-compact,
+  html[data-romdoc-surface="dashboard"] .romdoc-accordion,
+  html[data-romdoc-surface="dashboard"] input,
+  html[data-romdoc-surface="dashboard"] select,
+  html[data-romdoc-surface="dashboard"] textarea {
     transition:
       background-color 180ms ease,
       border-color 180ms ease,
-      color 180ms ease;
+      color 180ms ease,
+      box-shadow 180ms ease;
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import type { AppLocale } from "@/lib/i18n/app-locale";
 
@@ -84,6 +84,7 @@ export default function ClinicManagerMonthSelector({
   const router = useRouter();
   const searchParams = useSearchParams();
   const copy = COPY[locale];
+  const dialogId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [visibleYear, setVisibleYear] = useState(Number(value.slice(0, 4)));
   const containerRef = useRef<HTMLDivElement>(null);
@@ -142,16 +143,21 @@ export default function ClinicManagerMonthSelector({
   const nextDisabled = Boolean(maxMonth && nextValue > maxMonth);
 
   return (
-    <div ref={containerRef} className={`relative ${className}`.trim()}>
-      <span className="text-sm font-semibold text-gray-700">{copy.month}</span>
+    <div
+      ref={containerRef}
+      className={`romdoc-month-selector relative ${className}`.trim()}
+    >
+      <span className="text-sm font-semibold text-[var(--rd-text-secondary)]">
+        {copy.month}
+      </span>
 
-      <div className="mt-[5px] flex min-h-11 w-full overflow-hidden rounded-[10px] border border-gray-300 bg-white">
+      <div className="romdoc-month-selector-control mt-[5px] flex min-h-11 w-full overflow-hidden rounded-[10px] border">
         <button
           type="button"
           onClick={() => navigate(previousValue)}
           aria-label={copy.previousMonth}
           title={copy.previousMonth}
-          className="romdoc-focus-ring flex w-11 shrink-0 items-center justify-center border-r border-gray-200 text-gray-500 transition hover:bg-gray-50 hover:text-gray-900"
+          className="romdoc-month-selector-button romdoc-focus-ring flex w-11 shrink-0 items-center justify-center border-r border-[var(--rd-border)] transition"
         >
           <svg
             viewBox="0 0 24 24"
@@ -174,14 +180,15 @@ export default function ClinicManagerMonthSelector({
           onClick={() => setIsOpen((current) => !current)}
           aria-haspopup="dialog"
           aria-expanded={isOpen}
+          aria-controls={dialogId}
           aria-label={copy.chooseMonth}
-          className="romdoc-focus-ring flex min-w-0 flex-1 items-center justify-between gap-3 px-[13px] text-left text-sm font-semibold capitalize text-gray-900 transition hover:bg-gray-50"
+          className="romdoc-month-selector-button romdoc-focus-ring flex min-w-0 flex-1 items-center justify-between gap-3 px-[13px] text-left text-sm font-semibold capitalize text-[var(--rd-text-primary)] transition"
         >
           <span className="truncate">{formatMonthLabel(value, locale)}</span>
           <svg
             viewBox="0 0 24 24"
             aria-hidden="true"
-            className={`h-4 w-4 shrink-0 text-gray-500 transition-transform ${
+            className={`h-4 w-4 shrink-0 text-[var(--rd-text-muted)] transition-transform ${
               isOpen ? "rotate-180" : ""
             }`}
             fill="none"
@@ -202,7 +209,7 @@ export default function ClinicManagerMonthSelector({
           disabled={nextDisabled}
           aria-label={copy.nextMonth}
           title={copy.nextMonth}
-          className="romdoc-focus-ring flex w-11 shrink-0 items-center justify-center border-l border-gray-200 text-gray-500 transition hover:bg-gray-50 hover:text-gray-900 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-300"
+          className="romdoc-month-selector-button romdoc-focus-ring flex w-11 shrink-0 items-center justify-center border-l border-[var(--rd-border)] transition disabled:cursor-not-allowed"
         >
           <svg
             viewBox="0 0 24 24"
@@ -221,11 +228,12 @@ export default function ClinicManagerMonthSelector({
         </button>
       </div>
 
-      {isOpen && (
+      {isOpen ? (
         <div
+          id={dialogId}
           role="dialog"
           aria-label={copy.chooseMonth}
-          className="absolute left-0 top-full z-30 mt-[8px] w-full min-w-[280px] rounded-[16px] border border-gray-200 bg-white p-[13px] shadow-lg"
+          className="romdoc-month-selector-dialog absolute left-0 top-full z-30 mt-[8px] w-full min-w-[280px] rounded-[16px] border p-[13px]"
         >
           <div className="flex items-center justify-between gap-[8px]">
             <button
@@ -233,19 +241,21 @@ export default function ClinicManagerMonthSelector({
               onClick={() => setVisibleYear((year) => year - 1)}
               aria-label={copy.previousYear}
               title={copy.previousYear}
-              className="romdoc-focus-ring flex h-9 w-9 items-center justify-center rounded-[9px] text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
+              className="romdoc-month-selector-year-button romdoc-focus-ring flex h-9 w-9 items-center justify-center rounded-[9px] text-[var(--rd-text-secondary)] transition"
             >
               ←
             </button>
 
-            <p className="text-sm font-bold text-gray-900">{visibleYear}</p>
+            <p className="text-sm font-bold text-[var(--rd-text-primary)]">
+              {visibleYear}
+            </p>
 
             <button
               type="button"
               onClick={() => setVisibleYear((year) => year + 1)}
               aria-label={copy.nextYear}
               title={copy.nextYear}
-              className="romdoc-focus-ring flex h-9 w-9 items-center justify-center rounded-[9px] text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
+              className="romdoc-month-selector-year-button romdoc-focus-ring flex h-9 w-9 items-center justify-center rounded-[9px] text-[var(--rd-text-secondary)] transition"
             >
               →
             </button>
@@ -267,11 +277,7 @@ export default function ClinicManagerMonthSelector({
                   onClick={() => navigate(candidate)}
                   disabled={disabled}
                   aria-pressed={selected}
-                  className={`romdoc-focus-ring rounded-[9px] px-[8px] py-[8px] text-sm font-semibold capitalize transition disabled:cursor-not-allowed disabled:text-gray-300 ${
-                    selected
-                      ? "bg-[#036661] text-white"
-                      : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                  }`}
+                  className="romdoc-month-selector-option romdoc-focus-ring rounded-[9px] px-[8px] py-[8px] text-sm font-semibold capitalize text-[var(--rd-text-secondary)] transition disabled:cursor-not-allowed"
                 >
                   {monthName}
                 </button>
@@ -279,7 +285,7 @@ export default function ClinicManagerMonthSelector({
             })}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
