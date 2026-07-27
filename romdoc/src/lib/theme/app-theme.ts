@@ -14,6 +14,25 @@ export const DASHBOARD_PATH_PREFIXES = [
   "/patient-dashboard",
 ] as const;
 
+/**
+ * Authenticated workflow pages that live outside the dashboard URL trees.
+ * They should inherit the dashboard appearance, but they should not receive
+ * the standalone dashboard footer automatically.
+ */
+export const PROTECTED_WORKFLOW_PATH_PREFIXES = [
+  "/appointments",
+  "/medical-folder",
+] as const;
+
+function matchesPathPrefix(
+  pathname: string,
+  prefixes: readonly string[]
+) {
+  return prefixes.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
+
 export function normalizeAppAppearance(
   value: string | null | undefined
 ): AppAppearance {
@@ -25,8 +44,13 @@ export function normalizeAppAppearance(
 }
 
 export function isDashboardPath(pathname: string) {
-  return DASHBOARD_PATH_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  return matchesPathPrefix(pathname, DASHBOARD_PATH_PREFIXES);
+}
+
+export function isDarkSurfacePath(pathname: string) {
+  return (
+    isDashboardPath(pathname) ||
+    matchesPathPrefix(pathname, PROTECTED_WORKFLOW_PATH_PREFIXES)
   );
 }
 
@@ -70,7 +94,7 @@ export function storeAppAppearance(appearance: AppAppearance) {
   try {
     window.localStorage.setItem(APP_APPEARANCE_STORAGE_KEY, appearance);
   } catch {
-    // The visual preference still applies for the current page when storage is unavailable.
+    // The preference still applies to the current page if storage is blocked.
   }
 
   applyAppAppearance(appearance);

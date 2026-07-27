@@ -43,7 +43,9 @@ const themeInitializationScript = `
       "/clinic-manager-dashboard",
       "/doctor-dashboard",
       "/staff-dashboard",
-      "/patient-dashboard"
+      "/patient-dashboard",
+      "/appointments",
+      "/medical-folder"
     ];
     var isDashboard = dashboardPrefixes.some(function (prefix) {
       return path === prefix || path.indexOf(prefix + "/") === 0;

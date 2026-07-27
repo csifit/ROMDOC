@@ -838,3 +838,40 @@ html[data-romdoc-surface="dashboard"][data-theme="dark"] progress::-moz-progress
     color: #111827 !important;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Phase 3.1: protected workflow pages and final contrast corrections
+---------------------------------------------------------------------------- */
+
+/* Patient-authored and Doctor-authored conversation text. */
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .text-blue-950 {
+  color: var(--rd-info-text) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-blue-50 .whitespace-pre-line,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-blue-50 .whitespace-pre-wrap,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] article .whitespace-pre-wrap {
+  color: var(--rd-text-primary) !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .bg-\[\#036661\]\/5 {
+  background-color: rgba(112, 210, 202, 0.09) !important;
+}
+
+/* Tailwind hover utilities keep the literal hover class in the DOM. The
+   explicit rule avoids pale text on a pale Sign out hover background. */
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .hover\:bg-red-50:hover {
+  background-color: #fecaca !important;
+  color: #7f1d1d !important;
+}
+
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .hover\:bg-red-50:hover svg,
+html[data-romdoc-surface="dashboard"][data-theme="dark"] .hover\:bg-red-50:hover span {
+  color: #7f1d1d !important;
+}
+
+/* Protected standalone pages use the same footer and page surfaces as the
+   dashboards without changing their URL or permission model. */
+html[data-romdoc-surface="dashboard"][data-theme="dark"] footer.bg-white {
+  background-color: var(--rd-surface) !important;
+}

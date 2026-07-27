@@ -1,3 +1,4 @@
+import ClinicOrganizationBillingEditor from "@/components/admin/clinic-organization-billing-editor";
 import type { AppLocale } from "@/lib/i18n/app-locale";
 import {
   getPlatformOperatorClinics,
@@ -23,8 +24,14 @@ type BillingProfile = {
   organization_id: string;
   company_name: string;
   tax_id: string;
+  trade_register_number: string | null;
+  billing_address: string;
+  billing_city: string;
+  billing_county: string;
+  billing_country: string;
   billing_email: string;
   is_vat_payer: boolean;
+  vat_number: string | null;
 };
 
 type OrganizationMember = {
@@ -122,38 +129,11 @@ function statusClasses(status: string) {
   }
 }
 
-function currencyLabel(locale: AppLocale) {
-  if (locale === "de") return "Währung";
-  if (locale === "en") return "Currency";
-  return "Monedă";
-}
-
-function monthlyPriceLabel(locale: AppLocale) {
-  if (locale === "de") return "Preis pro abgedecktem Arzt / Monat";
-  if (locale === "en") return "Price per covered Doctor / month";
-  return "Preț per medic acoperit / lună";
-}
-
-function vatLabel(locale: AppLocale) {
-  if (locale === "de") return "MwSt.";
-  if (locale === "en") return "VAT";
-  return "TVA";
-}
-
-function estimateLabel(locale: AppLocale) {
-  if (locale === "de") return "Geschätzter Monatsbetrag";
-  if (locale === "en") return "Estimated monthly amount";
-  return "Estimare lunară";
-}
-
-function operationalNotice(locale: AppLocale) {
-  if (locale === "de") {
-    return "Die Schätzung verwendet die aktuell konfigurierten globalen Preise. Die Buchhaltungsrechnung wird separat in SAGA erstellt.";
-  }
-  if (locale === "en") {
-    return "The estimate uses the currently configured global prices. The accounting invoice is created separately in SAGA.";
-  }
-  return "Estimarea folosește tarifele globale configurate în prezent. Factura contabilă este creată separat în SAGA.";
+function localLabel(
+  locale: AppLocale,
+  values: { ro: string; en: string; de: string }
+) {
+  return values[locale];
 }
 
 export default async function ClinicOrganizationsOverview({ locale }: Props) {
@@ -177,7 +157,9 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
       .order("created_at", { ascending: false }),
     admin
       .from("clinic_organization_billing_profiles")
-      .select("organization_id, company_name, tax_id, billing_email, is_vat_payer"),
+      .select(
+        "organization_id, company_name, tax_id, trade_register_number, billing_address, billing_city, billing_county, billing_country, billing_email, is_vat_payer, vat_number"
+      ),
     admin
       .from("clinic_organization_members")
       .select("organization_id, profile_id, member_role, status"),
@@ -208,6 +190,12 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
     );
   }
 
+  if (billingProfilesResult.error) {
+    console.error(
+      "Clinic organization billing profiles query failed:",
+      billingProfilesResult.error
+    );
+  }
   if (billingSettingsResult.error) {
     console.error(
       "Clinic organization billing settings query failed:",
@@ -219,12 +207,14 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
     (organizationsResult.data ?? []) as ClinicOrganization[];
   const billingProfiles =
     (billingProfilesResult.data ?? []) as BillingProfile[];
-  const members = (membersResult.data ?? []) as OrganizationMember[];
+  const members =
+    (membersResult.data ?? []) as OrganizationMember[];
   const clinicLinks =
     (clinicLinksResult.data ?? []) as OrganizationClinicLink[];
   const doctorRelationships =
     (doctorRelationshipsResult.data ?? []) as DoctorRelationship[];
-  const settings = (billingSettingsResult.data ?? null) as BillingSettings | null;
+  const settings =
+    (billingSettingsResult.data ?? null) as BillingSettings | null;
 
   const profileIds = Array.from(
     new Set(members.map((member) => member.profile_id).filter(Boolean))
@@ -233,29 +223,39 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
     new Set(clinicLinks.map((link) => link.clinic_id).filter(Boolean))
   );
 
-  const [profilesResult, clinicsResult, translationsResult] = await Promise.all([
-    profileIds.length
-      ? admin
-          .from("profiles")
-          .select("id, first_name, last_name, role, account_status")
-          .in("id", profileIds)
-      : Promise.resolve({ data: [], error: null }),
-    clinicIds.length
-      ? admin.from("clinics").select("id, slug, status").in("id", clinicIds)
-      : Promise.resolve({ data: [], error: null }),
-    clinicIds.length
-      ? admin
-          .from("clinic_translations")
-          .select("clinic_id, locale, name")
-          .in("clinic_id", clinicIds)
-      : Promise.resolve({ data: [], error: null }),
-  ]);
+  const [profilesResult, clinicsResult, translationsResult] =
+    await Promise.all([
+      profileIds.length
+        ? admin
+            .from("profiles")
+            .select("id, first_name, last_name, role, account_status")
+            .in("id", profileIds)
+        : Promise.resolve({ data: [], error: null }),
+      clinicIds.length
+        ? admin
+            .from("clinics")
+            .select("id, slug, status")
+            .in("id", clinicIds)
+        : Promise.resolve({ data: [], error: null }),
+      clinicIds.length
+        ? admin
+            .from("clinic_translations")
+            .select("clinic_id, locale, name")
+            .in("clinic_id", clinicIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
 
   if (profilesResult.error) {
-    console.error("Clinic organization profiles query failed:", profilesResult.error);
+    console.error(
+      "Clinic organization profiles query failed:",
+      profilesResult.error
+    );
   }
   if (clinicsResult.error) {
-    console.error("Clinic organization clinics query failed:", clinicsResult.error);
+    console.error(
+      "Clinic organization clinics query failed:",
+      clinicsResult.error
+    );
   }
   if (translationsResult.error) {
     console.error(
@@ -286,23 +286,30 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
     settings?.clinic_doctor_monthly_price_ron,
     60
   );
-  const vatRate = Math.min(1, numberOrFallback(settings?.vat_rate, 0.21));
+  const vatRate = Math.min(
+    1,
+    numberOrFallback(settings?.vat_rate, 0.21)
+  );
   const currency = settings?.billing_currency === "RON" ? "RON" : "EUR";
 
   const clinicName = (clinicId: string) => {
     const requested = translations.find(
       (translation) =>
-        translation.clinic_id === clinicId && translation.locale === locale
+        translation.clinic_id === clinicId &&
+        translation.locale === locale
     );
     const romanian = translations.find(
       (translation) =>
-        translation.clinic_id === clinicId && translation.locale === "ro"
+        translation.clinic_id === clinicId &&
+        translation.locale === "ro"
     );
+
     return (
       requested?.name ??
       romanian?.name ??
-      translations.find((translation) => translation.clinic_id === clinicId)
-        ?.name ??
+      translations.find(
+        (translation) => translation.clinic_id === clinicId
+      )?.name ??
       clinicsById.get(clinicId)?.slug ??
       copy.common.addressUnavailable
     );
@@ -396,6 +403,32 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
     return statuses[status] ?? copy.organizations.statuses.pending;
   };
 
+  const currencyText = localLabel(locale, {
+    ro: "Monedă",
+    en: "Currency",
+    de: "Währung",
+  });
+  const monthlyPriceText = localLabel(locale, {
+    ro: "Preț per medic acoperit / lună",
+    en: "Price per covered Doctor / month",
+    de: "Preis pro abgedecktem Arzt / Monat",
+  });
+  const vatText = localLabel(locale, {
+    ro: "TVA",
+    en: "VAT",
+    de: "MwSt.",
+  });
+  const estimateText = localLabel(locale, {
+    ro: "Estimare lunară",
+    en: "Estimated monthly amount",
+    de: "Geschätzter Monatsbetrag",
+  });
+  const operationalText = localLabel(locale, {
+    ro: "Estimarea folosește tarifele globale configurate în prezent. Factura contabilă este creată separat în SAGA.",
+    en: "The estimate uses the currently configured global prices. The accounting invoice is created separately in SAGA.",
+    de: "Die Schätzung verwendet die aktuell konfigurierten globalen Preise. Die Buchhaltungsrechnung wird separat in SAGA erstellt.",
+  });
+
   return (
     <section className="space-y-[21px] rounded-2xl border border-gray-200 bg-white p-[21px] shadow-sm">
       <div>
@@ -409,7 +442,7 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
           {copy.organizations.description}
         </p>
         <p className="mt-[8px] text-sm text-gray-500">
-          {currencyLabel(locale)}: {currency}
+          {currencyText}: {currency}
         </p>
       </div>
 
@@ -436,15 +469,14 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
 
       <div className="rounded-2xl border border-[#036661]/20 bg-[#036661]/5 p-[13px] text-sm text-gray-700">
         <p>
-          <span className="font-semibold">{currencyLabel(locale)}:</span>{" "}
-          {currency}
+          <span className="font-semibold">{currencyText}:</span> {currency}
         </p>
         <p className="mt-[5px]">
-          <span className="font-semibold">{monthlyPriceLabel(locale)}:</span>{" "}
+          <span className="font-semibold">{monthlyPriceText}:</span>{" "}
           {formatCurrency(doctorMonthlyPrice)}
         </p>
         <p className="mt-[5px]">
-          <span className="font-semibold">{vatLabel(locale)}:</span>{" "}
+          <span className="font-semibold">{vatText}:</span>{" "}
           {formatPercent(vatRate)}
         </p>
       </div>
@@ -457,7 +489,7 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
         <div className="space-y-[13px]">
           {organizations.map((organization) => {
             const summary = summaries.get(organization.id) ?? emptySummary();
-            const billing = billingByOrganization.get(organization.id);
+            const billing = billingByOrganization.get(organization.id) ?? null;
             const estimatedNet =
               summary.activeCoveredDoctorCount * doctorMonthlyPrice;
             const estimatedGross = estimatedNet + estimatedNet * vatRate;
@@ -548,6 +580,9 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
                           <p className="mt-[5px] text-xs text-gray-500">
                             {copy.organizations.labels.taxId}: {billing.tax_id}
                           </p>
+                          <p className="mt-[5px] text-xs text-gray-500">
+                            {billing.billing_city} · {billing.billing_country}
+                          </p>
                         </>
                       ) : (
                         <p className="mt-[5px] text-sm text-gray-500">
@@ -555,11 +590,21 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
                         </p>
                       )}
                       <p className="mt-[8px] text-xs text-gray-500">
-                        {currencyLabel(locale)}: {currency}
+                        {currencyText}: {currency}
                       </p>
                       <p className="mt-[5px] text-xs font-semibold text-gray-700">
-                        {estimateLabel(locale)}: {formatCurrency(estimatedGross)}
+                        {estimateText}: {formatCurrency(estimatedGross)}
                       </p>
+
+                      <ClinicOrganizationBillingEditor
+                        locale={locale}
+                        organizationId={organization.id}
+                        organizationName={organization.name}
+                        contactName={organization.contact_name}
+                        contactEmail={organization.contact_email}
+                        contactPhone={organization.contact_phone}
+                        billingProfile={billing}
+                      />
                     </div>
                   </div>
 
@@ -590,7 +635,7 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
       )}
 
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-[13px] text-sm leading-6 text-amber-900">
-        {operationalNotice(locale)}
+        {operationalText}
       </div>
     </section>
   );

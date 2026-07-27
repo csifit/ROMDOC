@@ -7,7 +7,7 @@ import {
   APP_APPEARANCE_CHANGE_EVENT,
   APP_APPEARANCE_STORAGE_KEY,
   applyAppAppearance,
-  isDashboardPath,
+  isDarkSurfacePath,
   normalizeAppAppearance,
   readStoredAppAppearance,
 } from "@/lib/theme/app-theme";
@@ -16,7 +16,7 @@ export default function ThemeRuntime() {
   const pathname = usePathname();
 
   useEffect(() => {
-    document.documentElement.dataset.romdocSurface = isDashboardPath(pathname)
+    document.documentElement.dataset.romdocSurface = isDarkSurfacePath(pathname)
       ? "dashboard"
       : "public";
   }, [pathname]);

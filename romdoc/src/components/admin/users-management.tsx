@@ -1,6 +1,5 @@
 "use client";
 
-import Button from "@/components/ui/button";
 import { useLocale } from "next-intl";
 import {
   type ChangeEvent,
@@ -10,6 +9,8 @@ import {
   useState,
 } from "react";
 
+import Button from "@/components/ui/button";
+import TablePagination from "@/components/ui/table-pagination";
 import { normalizeAppLocale } from "@/lib/i18n/app-locale";
 import {
   getPlatformOperatorAccess,
@@ -37,8 +38,23 @@ type ManagedUser = {
   is_current_operator?: boolean;
 };
 
+type Pagination = {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+};
+
+type Metrics = {
+  total: number;
+  active: number;
+  blocked: number;
+};
+
 type ApiResponse = {
   users?: ManagedUser[];
+  pagination?: Pagination;
+  metrics?: Metrics;
   operatorRole?: "admin" | "manager";
   capabilities?: {
     canSuspendUsers: boolean;
@@ -106,15 +122,10 @@ function formatDateTime(
   value: string | null,
   locale: ReturnType<typeof normalizeAppLocale>
 ) {
-  if (!value) {
-    return "—";
-  }
+  if (!value) return "—";
 
   const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "—";
-  }
+  if (Number.isNaN(date.getTime())) return "—";
 
   return new Intl.DateTimeFormat(PLATFORM_OPERATOR_LOCALE_TAGS[locale], {
     day: "2-digit",
@@ -129,23 +140,43 @@ function formatDateTime(
 export default function UsersManagement() {
   const locale = normalizeAppLocale(useLocale());
   const copy = getPlatformOperatorAccess(locale);
-
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [statusFilter, setStatusFilter] =
     useState<StatusFilter>("all");
-
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [pagination, setPagination] = useState<Pagination>({
+    page: 1,
+    pageSize: 25,
+    totalItems: 0,
+    totalPages: 1,
+  });
+  const [metrics, setMetrics] = useState<Metrics>({
+    total: 0,
+    active: 0,
+    blocked: 0,
+  });
   const [capabilities, setCapabilities] = useState({
     canSuspendUsers: false,
     canChangePrivilegedRoles: false,
   });
-
   const [isLoading, setIsLoading] = useState(true);
   const [changingUserId, setChangingUserId] =
     useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setPage(1);
+      setDebouncedSearch(search.trim());
+    }, 350);
+
+    return () => window.clearTimeout(timeout);
+  }, [search]);
 
   const resolveApiMessage = useCallback(
     (payload: ApiResponse, fallback: string) =>
@@ -164,11 +195,23 @@ export default function UsersManagement() {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch("/api/admin/users", {
-        method: "GET",
-        cache: "no-store",
+      const parameters = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+        locale,
       });
 
+      if (debouncedSearch) parameters.set("search", debouncedSearch);
+      if (roleFilter !== "all") parameters.set("role", roleFilter);
+      if (statusFilter !== "all") parameters.set("status", statusFilter);
+
+      const response = await fetch(
+        `/api/admin/users/list?${parameters.toString()}`,
+        {
+          method: "GET",
+          cache: "no-store",
+        }
+      );
       const result = (await response.json()) as ApiResponse;
 
       if (!response.ok) {
@@ -181,13 +224,32 @@ export default function UsersManagement() {
         );
       }
 
+      const nextPagination = result.pagination ?? {
+        page,
+        pageSize,
+        totalItems: result.users?.length ?? 0,
+        totalPages: 1,
+      };
+
       setUsers(result.users ?? []);
+      setPagination(nextPagination);
+      setMetrics(
+        result.metrics ?? {
+          total: 0,
+          active: 0,
+          blocked: 0,
+        }
+      );
       setCapabilities(
         result.capabilities ?? {
           canSuspendUsers: false,
           canChangePrivilegedRoles: false,
         }
       );
+
+      if (nextPagination.page !== page) {
+        setPage(nextPagination.page);
+      }
     } catch (loadError) {
       setError(
         loadError instanceof Error
@@ -197,84 +259,30 @@ export default function UsersManagement() {
     } finally {
       setIsLoading(false);
     }
-  }, [locale]);
+  }, [debouncedSearch, locale, page, pageSize, roleFilter, statusFilter]);
 
   useEffect(() => {
     void loadUsers();
   }, [loadUsers]);
 
-  const filteredUsers = useMemo(() => {
-    const normalizedSearch = search
-      .trim()
-      .toLocaleLowerCase(PLATFORM_OPERATOR_LOCALE_TAGS[locale]);
-
-    return users.filter((user) => {
-      if (roleFilter !== "all" && user.role !== roleFilter) {
-        return false;
-      }
-
-      if (
-        statusFilter !== "all" &&
-        user.account_status !== statusFilter
-      ) {
-        return false;
-      }
-
-      if (!normalizedSearch) {
-        return true;
-      }
-
-      return [
-        user.first_name,
-        user.last_name,
-        getFullName(user, copy.common.nameUnavailable),
-        user.email,
-        user.phone,
-        getPlatformOperatorRoleLabel(locale, user.role),
-      ]
-        .filter(Boolean)
-        .some((value) =>
-          value
-            ?.toLocaleLowerCase(PLATFORM_OPERATOR_LOCALE_TAGS[locale])
-            .includes(normalizedSearch)
-        );
-    });
-  }, [
-    copy.common.nameUnavailable,
-    locale,
-    roleFilter,
-    search,
-    statusFilter,
-    users,
-  ]);
-
   async function changeUserStatus(user: ManagedUser) {
     const action =
       user.account_status === "blocked" ? "unblock" : "block";
-
     const account =
       user.email ?? getFullName(user, copy.common.nameUnavailable);
-
     let reason = "";
 
     if (action === "block") {
       const enteredReason = window.prompt(
         replaceTokens(copy.users.actions.blockPrompt, { account })
       );
-
-      if (!enteredReason || enteredReason.trim().length < 3) {
-        return;
-      }
-
+      if (!enteredReason || enteredReason.trim().length < 3) return;
       reason = enteredReason.trim();
     } else {
       const confirmed = window.confirm(
         replaceTokens(copy.users.actions.unblockConfirm, { account })
       );
-
-      if (!confirmed) {
-        return;
-      }
+      if (!confirmed) return;
     }
 
     setError(null);
@@ -284,16 +292,13 @@ export default function UsersManagement() {
     try {
       const response = await fetch("/api/admin/users", {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user.id,
           action,
           reason,
         }),
       });
-
       const result = (await response.json()) as ApiResponse;
 
       if (!response.ok) {
@@ -308,7 +313,6 @@ export default function UsersManagement() {
       setSuccess(
         resolveApiMessage(result, copy.users.messages.statusUpdated)
       );
-
       await loadUsers();
     } catch (actionError) {
       setError(
@@ -321,82 +325,51 @@ export default function UsersManagement() {
     }
   }
 
-  const activeCount = users.filter(
-    (user) => user.account_status === "active"
-  ).length;
-
-  const blockedCount = users.filter(
-    (user) => user.account_status === "blocked"
-  ).length;
-
   const filtersActive =
     Boolean(search.trim()) ||
     roleFilter !== "all" ||
     statusFilter !== "all";
 
-  const roleOptions: Array<{
-    value: Exclude<RoleFilter, "all">;
-    label: string;
-  }> = [
-    {
-      value: "patient",
-      label: copy.users.filters.roleOptions.patient,
-    },
-    {
-      value: "doctor_applicant",
-      label: copy.users.filters.roleOptions.doctor_applicant,
-    },
-    {
-      value: "doctor",
-      label: copy.users.filters.roleOptions.doctor,
-    },
-    {
-      value: "staff",
-      label: copy.users.filters.roleOptions.staff,
-    },
-    {
-      value: "clinic_manager",
-      label: copy.users.filters.roleOptions.clinic_manager,
-    },
-    {
-      value: "manager",
-      label: copy.users.filters.roleOptions.manager,
-    },
-    {
-      value: "admin",
-      label: copy.users.filters.roleOptions.admin,
-    },
-  ];
+  const roleOptions = useMemo(
+    () =>
+      [
+        "patient",
+        "doctor_applicant",
+        "doctor",
+        "staff",
+        "clinic_manager",
+        "manager",
+        "admin",
+      ].map((value) => ({
+        value: value as Exclude<RoleFilter, "all">,
+        label:
+          copy.users.filters.roleOptions[
+            value as keyof typeof copy.users.filters.roleOptions
+          ],
+      })),
+    [copy.users.filters.roleOptions]
+  );
 
   return (
     <div className="space-y-[21px]">
       <section className="grid gap-[13px] sm:grid-cols-3">
-        <div className="rounded-[13px] border border-gray-200 bg-white p-[21px] shadow-sm">
-          <p className="text-sm font-semibold text-gray-500">
-            {copy.users.metrics.total}
-          </p>
-          <p className="mt-[8px] text-3xl font-bold text-gray-900">
-            {users.length}
-          </p>
-        </div>
-
-        <div className="rounded-[13px] border border-gray-200 bg-white p-[21px] shadow-sm">
-          <p className="text-sm font-semibold text-gray-500">
-            {copy.users.metrics.active}
-          </p>
-          <p className="mt-[8px] text-3xl font-bold text-green-700">
-            {activeCount}
-          </p>
-        </div>
-
-        <div className="rounded-[13px] border border-gray-200 bg-white p-[21px] shadow-sm">
-          <p className="text-sm font-semibold text-gray-500">
-            {copy.users.metrics.blocked}
-          </p>
-          <p className="mt-[8px] text-3xl font-bold text-red-700">
-            {blockedCount}
-          </p>
-        </div>
+        {[
+          [copy.users.metrics.total, metrics.total, "text-gray-900"],
+          [copy.users.metrics.active, metrics.active, "text-green-700"],
+          [copy.users.metrics.blocked, metrics.blocked, "text-red-700"],
+        ].map(([label, value, valueClass]) => (
+          <div
+            key={String(label)}
+            className="rounded-[13px] border border-gray-200 bg-white p-[21px] shadow-sm"
+          >
+            <p className="text-sm font-semibold text-gray-500">
+              {label}
+            </p>
+            <p className={`mt-[8px] text-3xl font-bold ${valueClass}`}>
+              {value}
+            </p>
+          </div>
+        ))}
       </section>
 
       <section className="rounded-[13px] border border-gray-200 bg-white p-[21px] shadow-sm">
@@ -412,7 +385,7 @@ export default function UsersManagement() {
                 setSearch(event.target.value)
               }
               placeholder={copy.users.filters.searchPlaceholder}
-              className="romdoc-focus-ring w-full rounded-[13px] border border-gray-300 px-[13px] py-[13px]"
+              className="romdoc-focus-ring w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] text-gray-900"
             />
           </label>
 
@@ -422,10 +395,11 @@ export default function UsersManagement() {
             </span>
             <select
               value={roleFilter}
-              onChange={(event: ChangeEvent<HTMLSelectElement>) =>
-                setRoleFilter(event.target.value as RoleFilter)
-              }
-              className="romdoc-focus-ring w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px]"
+              onChange={(event: ChangeEvent<HTMLSelectElement>) => {
+                setPage(1);
+                setRoleFilter(event.target.value as RoleFilter);
+              }}
+              className="romdoc-focus-ring w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] text-gray-900"
             >
               <option value="all">{copy.users.filters.allRoles}</option>
               {roleOptions.map((option) => (
@@ -442,10 +416,11 @@ export default function UsersManagement() {
             </span>
             <select
               value={statusFilter}
-              onChange={(event: ChangeEvent<HTMLSelectElement>) =>
-                setStatusFilter(event.target.value as StatusFilter)
-              }
-              className="romdoc-focus-ring w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px]"
+              onChange={(event: ChangeEvent<HTMLSelectElement>) => {
+                setPage(1);
+                setStatusFilter(event.target.value as StatusFilter);
+              }}
+              className="romdoc-focus-ring w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] text-gray-900"
             >
               <option value="all">
                 {copy.users.filters.allStatuses}
@@ -464,10 +439,12 @@ export default function UsersManagement() {
             disabled={!filtersActive}
             onClick={() => {
               setSearch("");
+              setDebouncedSearch("");
               setRoleFilter("all");
               setStatusFilter("all");
+              setPage(1);
             }}
-            className="romdoc-focus-ring rounded-[13px] border border-gray-300 px-[13px] py-[13px] text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+            className="romdoc-focus-ring rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {copy.common.resetFilters}
           </button>
@@ -475,8 +452,8 @@ export default function UsersManagement() {
 
         <p className="mt-[8px] text-xs text-gray-500">
           {replaceTokens(copy.users.filters.showing, {
-            filtered: filteredUsers.length,
-            total: users.length,
+            filtered: pagination.totalItems,
+            total: metrics.total,
           })}
         </p>
       </section>
@@ -504,178 +481,182 @@ export default function UsersManagement() {
           <div className="p-[21px] text-sm text-gray-600">
             {copy.users.table.loading}
           </div>
-        ) : filteredUsers.length === 0 ? (
+        ) : users.length === 0 ? (
           <div className="p-[21px] text-sm text-gray-600">
             {copy.users.table.empty}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 text-left text-sm">
-              <thead className="bg-gray-50">
-                <tr className="text-gray-600">
-                  <th className="px-[13px] py-[13px] font-semibold">
-                    {copy.users.table.user}
-                  </th>
-                  <th className="px-[13px] py-[13px] font-semibold">
-                    {copy.users.table.role}
-                  </th>
-                  <th className="px-[13px] py-[13px] font-semibold">
-                    {copy.users.table.emailVerified}
-                  </th>
-                  <th className="px-[13px] py-[13px] font-semibold">
-                    {copy.users.table.status}
-                  </th>
-                  <th className="px-[13px] py-[13px] font-semibold">
-                    {copy.users.table.registered}
-                  </th>
-                  <th className="px-[13px] py-[13px] font-semibold">
-                    {copy.users.table.lastSignIn}
-                  </th>
-                  <th className="px-[13px] py-[13px] text-right font-semibold">
-                    {copy.users.table.action}
-                  </th>
-                </tr>
-              </thead>
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 text-left text-sm">
+                <thead className="bg-gray-50">
+                  <tr className="text-gray-600">
+                    <th className="px-[13px] py-[13px] font-semibold">
+                      {copy.users.table.user}
+                    </th>
+                    <th className="px-[13px] py-[13px] font-semibold">
+                      {copy.users.table.role}
+                    </th>
+                    <th className="px-[13px] py-[13px] font-semibold">
+                      {copy.users.table.emailVerified}
+                    </th>
+                    <th className="px-[13px] py-[13px] font-semibold">
+                      {copy.users.table.status}
+                    </th>
+                    <th className="px-[13px] py-[13px] font-semibold">
+                      {copy.users.table.registered}
+                    </th>
+                    <th className="px-[13px] py-[13px] font-semibold">
+                      {copy.users.table.lastSignIn}
+                    </th>
+                    <th className="px-[13px] py-[13px] text-right font-semibold">
+                      {copy.users.table.action}
+                    </th>
+                  </tr>
+                </thead>
 
-              <tbody className="divide-y divide-gray-100">
-                {filteredUsers.map((user) => {
-                  const isChanging = changingUserId === user.id;
+                <tbody className="divide-y divide-gray-100">
+                  {users.map((user) => {
+                    const isChanging = changingUserId === user.id;
+                    const isProtectedRole =
+                      user.role === "admin" || user.role === "manager";
+                    const canChangeStatus =
+                      capabilities.canSuspendUsers &&
+                      !isProtectedRole &&
+                      !user.is_current_operator &&
+                      !user.is_current_admin;
 
-                  const isProtectedRole =
-                    user.role === "admin" || user.role === "manager";
-
-                  const canChangeStatus =
-                    capabilities.canSuspendUsers &&
-                    !isProtectedRole &&
-                    !user.is_current_operator &&
-                    !user.is_current_admin;
-
-                  return (
-                    <tr
-                      key={user.id}
-                      className={
-                        user.account_status === "blocked"
-                          ? "bg-red-50/40"
-                          : ""
-                      }
-                    >
-                      <td className="px-[13px] py-[13px] align-top">
-                        <p className="font-semibold text-gray-900">
-                          {getFullName(
-                            user,
-                            copy.common.nameUnavailable
-                          )}
-                        </p>
-
-                        <p className="mt-[5px] text-xs text-gray-600">
-                          {user.email ?? copy.common.emailUnavailable}
-                        </p>
-
-                        {user.phone && (
-                          <p className="mt-[5px] text-xs text-gray-500">
-                            {user.phone}
+                    return (
+                      <tr
+                        key={user.id}
+                        className={
+                          user.account_status === "blocked"
+                            ? "bg-red-50/40"
+                            : ""
+                        }
+                      >
+                        <td className="px-[13px] py-[13px] align-top">
+                          <p className="font-semibold text-gray-900">
+                            {getFullName(
+                              user,
+                              copy.common.nameUnavailable
+                            )}
                           </p>
-                        )}
-
-                        {user.blocked_reason && (
-                          <p className="mt-[8px] max-w-xs text-xs leading-5 text-red-700">
-                            {copy.common.reason}: {user.blocked_reason}
+                          <p className="mt-[5px] text-xs text-gray-600">
+                            {user.email ?? copy.common.emailUnavailable}
                           </p>
-                        )}
-                      </td>
-
-                      <td className="px-[13px] py-[13px] align-top">
-                        <span
-                          className={`inline-flex rounded-full px-[13px] py-[5px] text-xs font-semibold ${getRoleClasses(
-                            user.role
-                          )}`}
-                        >
-                          {getPlatformOperatorRoleLabel(
-                            locale,
-                            user.role
+                          {user.phone && (
+                            <p className="mt-[5px] text-xs text-gray-500">
+                              {user.phone}
+                            </p>
                           )}
-                        </span>
-                      </td>
-
-                      <td className="px-[13px] py-[13px] align-top">
-                        <span
-                          className={`inline-flex rounded-full px-[13px] py-[5px] text-xs font-semibold ${
-                            user.email_verified
-                              ? "bg-green-100 text-green-800"
-                              : "bg-amber-100 text-amber-900"
-                          }`}
-                        >
-                          {user.email_verified
-                            ? copy.users.table.verified
-                            : copy.users.table.unverified}
-                        </span>
-                      </td>
-
-                      <td className="px-[13px] py-[13px] align-top">
-                        <span
-                          className={`inline-flex rounded-full px-[13px] py-[5px] text-xs font-semibold ${
-                            user.account_status === "blocked"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-green-100 text-green-800"
-                          }`}
-                        >
-                          {getPlatformOperatorAccountStatusLabel(
-                            locale,
-                            user.account_status
+                          {user.blocked_reason && (
+                            <p className="mt-[8px] max-w-xs text-xs leading-5 text-red-700">
+                              {copy.common.reason}: {user.blocked_reason}
+                            </p>
                           )}
-                        </span>
+                        </td>
 
-                        {user.blocked_at && (
-                          <p className="mt-[8px] text-xs text-gray-500">
-                            {formatDateTime(user.blocked_at, locale)}
-                          </p>
-                        )}
-                      </td>
-
-                      <td className="whitespace-nowrap px-[13px] py-[13px] align-top text-gray-600">
-                        {formatDateTime(user.created_at, locale)}
-                      </td>
-
-                      <td className="whitespace-nowrap px-[13px] py-[13px] align-top text-gray-600">
-                        {formatDateTime(user.last_sign_in_at, locale)}
-                      </td>
-
-                      <td className="px-[13px] py-[13px] text-right align-top">
-                        {canChangeStatus ? (
-                          <Button
-                            type="button"
-                            disabled={isChanging}
-                            onClick={() => void changeUserStatus(user)}
-                            variant={
-                              user.account_status === "blocked"
-                                ? "primary"
-                                : "danger-outline"
-                            }
-                            size="sm"
-                          >
-                            {isChanging
-                              ? copy.users.actions.updating
-                              : user.account_status === "blocked"
-                                ? copy.users.actions.unblock
-                                : copy.users.actions.block}
-                          </Button>
-                        ) : (
+                        <td className="px-[13px] py-[13px] align-top">
                           <span
-                            title={
-                              copy.users.table.protectedExplanation
-                            }
-                            className="text-xs font-semibold text-gray-400"
+                            className={`inline-flex rounded-full px-[13px] py-[5px] text-xs font-semibold ${getRoleClasses(
+                              user.role
+                            )}`}
                           >
-                            {copy.common.protected}
+                            {getPlatformOperatorRoleLabel(
+                              locale,
+                              user.role
+                            )}
                           </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        </td>
+
+                        <td className="px-[13px] py-[13px] align-top">
+                          <span
+                            className={`inline-flex rounded-full px-[13px] py-[5px] text-xs font-semibold ${
+                              user.email_verified
+                                ? "bg-green-100 text-green-800"
+                                : "bg-amber-100 text-amber-900"
+                            }`}
+                          >
+                            {user.email_verified
+                              ? copy.users.table.verified
+                              : copy.users.table.unverified}
+                          </span>
+                        </td>
+
+                        <td className="px-[13px] py-[13px] align-top">
+                          <span
+                            className={`inline-flex rounded-full px-[13px] py-[5px] text-xs font-semibold ${
+                              user.account_status === "blocked"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-green-100 text-green-800"
+                            }`}
+                          >
+                            {getPlatformOperatorAccountStatusLabel(
+                              locale,
+                              user.account_status
+                            )}
+                          </span>
+                          {user.blocked_at && (
+                            <p className="mt-[8px] text-xs text-gray-500">
+                              {formatDateTime(user.blocked_at, locale)}
+                            </p>
+                          )}
+                        </td>
+
+                        <td className="whitespace-nowrap px-[13px] py-[13px] align-top text-gray-600">
+                          {formatDateTime(user.created_at, locale)}
+                        </td>
+                        <td className="whitespace-nowrap px-[13px] py-[13px] align-top text-gray-600">
+                          {formatDateTime(user.last_sign_in_at, locale)}
+                        </td>
+                        <td className="px-[13px] py-[13px] text-right align-top">
+                          {canChangeStatus ? (
+                            <Button
+                              type="button"
+                              disabled={isChanging}
+                              onClick={() => void changeUserStatus(user)}
+                              variant={
+                                user.account_status === "blocked"
+                                  ? "primary"
+                                  : "danger-outline"
+                              }
+                              size="sm"
+                            >
+                              {isChanging
+                                ? copy.users.actions.updating
+                                : user.account_status === "blocked"
+                                  ? copy.users.actions.unblock
+                                  : copy.users.actions.block}
+                            </Button>
+                          ) : (
+                            <span
+                              title={copy.users.table.protectedExplanation}
+                              className="text-xs font-semibold text-gray-400"
+                            >
+                              {copy.common.protected}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <TablePagination
+              locale={locale}
+              page={pagination.page}
+              pageSize={pagination.pageSize}
+              totalItems={pagination.totalItems}
+              onPageChange={setPage}
+              onPageSizeChange={(nextPageSize) => {
+                setPage(1);
+                setPageSize(nextPageSize);
+              }}
+            />
+          </>
         )}
       </section>
     </div>
