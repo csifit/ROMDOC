@@ -875,3 +875,485 @@ html[data-romdoc-surface="dashboard"][data-theme="dark"] .hover\:bg-red-50:hover
 html[data-romdoc-surface="dashboard"][data-theme="dark"] footer.bg-white {
   background-color: var(--rd-surface) !important;
 }
+
+/* --------------------------------------------------------------------------
+   Phase 4: public pages
+
+   The same Light / Dark / System preference now styles public RomDoc pages.
+   Public routes keep their own warmer visual identity while using the shared
+   semantic surfaces, typography, borders and status colours.
+---------------------------------------------------------------------------- */
+
+html[data-romdoc-surface="public"][data-theme="dark"] {
+  color-scheme: dark;
+
+  --background-directory: #0b1416;
+  --background-card: #132023;
+  --background-form: #132023;
+
+  --rd-dashboard-bg: #0b1416;
+  --rd-surface: #132023;
+  --rd-surface-muted: #19292c;
+  --rd-surface-soft: #172326;
+  --rd-surface-raised: #18272a;
+  --rd-footer-panel: #101c1e;
+
+  --rd-text-primary: #f3f4f6;
+  --rd-text-secondary: #c1cbcd;
+  --rd-text-muted: #94a3a8;
+  --rd-text-inverse: #071113;
+
+  --rd-border: #2c3c40;
+  --rd-border-strong: #405257;
+  --rd-overlay: rgba(0, 0, 0, 0.72);
+
+  --rd-info-bg: #102a43;
+  --rd-info-border: #24547a;
+  --rd-info-text: #bfdbfe;
+  --rd-success-bg: #102c24;
+  --rd-success-border: #28624f;
+  --rd-success-text: #bbf7d0;
+  --rd-warning-bg: #33270f;
+  --rd-warning-border: #755b1c;
+  --rd-warning-text: #fde68a;
+  --rd-danger-bg: #351719;
+  --rd-danger-border: #7c3035;
+  --rd-danger-text: #fecaca;
+  --rd-neutral-bg: #243135;
+  --rd-neutral-border: #46585d;
+  --rd-neutral-text: #d1d5db;
+
+  --rd-shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.22);
+  --rd-shadow-card:
+    0 1px 2px rgba(0, 0, 0, 0.26),
+    0 13px 34px rgba(0, 0, 0, 0.2);
+  --rd-shadow-dialog: 0 34px 89px rgba(0, 0, 0, 0.48);
+
+  --romdoc-color-surface: var(--rd-surface);
+  --romdoc-color-surface-soft: var(--rd-surface-muted);
+  --romdoc-color-page: var(--rd-dashboard-bg);
+  --romdoc-color-text: var(--rd-text-primary);
+  --romdoc-color-text-muted: var(--rd-text-secondary);
+  --romdoc-color-border: var(--rd-border-strong);
+  --romdoc-color-border-soft: var(--rd-border);
+  --romdoc-shadow-card: var(--rd-shadow-card);
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"],
+html[data-romdoc-surface="public"][data-theme="dark"] body {
+  background-color: var(--rd-dashboard-bg);
+  color: var(--rd-text-primary);
+}
+
+/* Public page backgrounds, cards, navigation and translucent surfaces. */
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-white {
+  background-color: var(--rd-surface) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-white\/95,
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-white\/90,
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-white\/80,
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-white\/70 {
+  background-color: rgba(19, 32, 35, 0.94) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-gray-50,
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-gray-50\/60,
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-gray-100,
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-gray-200,
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-slate-50,
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-slate-100 {
+  background-color: var(--rd-surface-muted) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-\[\#F0EEE9\],
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-\[\#F8FBFA\],
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-\[\#F9FAFB\] {
+  background-color: var(--rd-dashboard-bg) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-card,
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-card-compact {
+  border-color: var(--rd-border);
+  background: var(--rd-surface);
+  color: var(--rd-text-primary);
+  box-shadow: var(--rd-shadow-card);
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-panel-muted,
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-empty-state {
+  border-color: var(--rd-border);
+  background: var(--rd-surface-muted);
+  color: var(--rd-text-primary);
+}
+
+/* Typography and RomDoc accents. */
+html[data-romdoc-surface="public"][data-theme="dark"] .text-gray-950,
+html[data-romdoc-surface="public"][data-theme="dark"] .text-gray-900,
+html[data-romdoc-surface="public"][data-theme="dark"] .text-gray-800,
+html[data-romdoc-surface="public"][data-theme="dark"] .text-slate-950,
+html[data-romdoc-surface="public"][data-theme="dark"] .text-slate-900,
+html[data-romdoc-surface="public"][data-theme="dark"] .text-slate-800 {
+  color: var(--rd-text-primary) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .text-gray-700,
+html[data-romdoc-surface="public"][data-theme="dark"] .text-gray-600,
+html[data-romdoc-surface="public"][data-theme="dark"] .text-slate-700,
+html[data-romdoc-surface="public"][data-theme="dark"] .text-slate-600 {
+  color: var(--rd-text-secondary) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .text-gray-500,
+html[data-romdoc-surface="public"][data-theme="dark"] .text-gray-400,
+html[data-romdoc-surface="public"][data-theme="dark"] .text-slate-500,
+html[data-romdoc-surface="public"][data-theme="dark"] .text-slate-400 {
+  color: var(--rd-text-muted) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .text-\[\#036661\] {
+  color: #70d2ca !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .text-\[\#9A4F35\] {
+  color: #e6a38d !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .hover\:text-\[\#036661\]:hover,
+html[data-romdoc-surface="public"][data-theme="dark"] .hover\:text-gray-950:hover,
+html[data-romdoc-surface="public"][data-theme="dark"] .hover\:text-gray-900:hover {
+  color: #8be1da !important;
+}
+
+/* Borders, dividers and shadows. */
+html[data-romdoc-surface="public"][data-theme="dark"] .border-gray-100,
+html[data-romdoc-surface="public"][data-theme="dark"] .border-gray-200,
+html[data-romdoc-surface="public"][data-theme="dark"] .border-slate-100,
+html[data-romdoc-surface="public"][data-theme="dark"] .border-slate-200 {
+  border-color: var(--rd-border) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .border-gray-300,
+html[data-romdoc-surface="public"][data-theme="dark"] .border-slate-300,
+html[data-romdoc-surface="public"][data-theme="dark"] .border-white\/70 {
+  border-color: var(--rd-border-strong) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .border-\[\#036661\],
+html[data-romdoc-surface="public"][data-theme="dark"] .hover\:border-\[\#036661\]:hover {
+  border-color: #32a39b !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
+html[data-romdoc-surface="public"][data-theme="dark"] .divide-gray-200 > :not([hidden]) ~ :not([hidden]),
+html[data-romdoc-surface="public"][data-theme="dark"] .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--rd-border) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] hr,
+html[data-romdoc-surface="public"][data-theme="dark"] .border-t,
+html[data-romdoc-surface="public"][data-theme="dark"] .border-b,
+html[data-romdoc-surface="public"][data-theme="dark"] .border-l,
+html[data-romdoc-surface="public"][data-theme="dark"] .border-r {
+  border-color: var(--rd-border);
+}
+
+/* Hover surfaces used by cards, directory links, header and sidebar items. */
+html[data-romdoc-surface="public"][data-theme="dark"] .hover\:bg-white:hover {
+  background-color: var(--rd-surface-raised) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .hover\:bg-gray-50:hover,
+html[data-romdoc-surface="public"][data-theme="dark"] .hover\:bg-gray-100:hover,
+html[data-romdoc-surface="public"][data-theme="dark"] .hover\:bg-white\/70:hover {
+  background-color: var(--rd-surface-muted) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-\[\#036661\]\/5 {
+  background-color: rgba(112, 210, 202, 0.08) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-\[\#036661\]\/10 {
+  background-color: rgba(112, 210, 202, 0.13) !important;
+}
+
+/* Public forms, booking controls and authentication fields. */
+html[data-romdoc-surface="public"][data-theme="dark"] input,
+html[data-romdoc-surface="public"][data-theme="dark"] select,
+html[data-romdoc-surface="public"][data-theme="dark"] textarea,
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-input,
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-select,
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-textarea {
+  border-color: var(--rd-border-strong);
+  background-color: var(--rd-surface);
+  color: var(--rd-text-primary);
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] input::placeholder,
+html[data-romdoc-surface="public"][data-theme="dark"] textarea::placeholder {
+  color: var(--rd-text-muted);
+  opacity: 1;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] input:disabled,
+html[data-romdoc-surface="public"][data-theme="dark"] select:disabled,
+html[data-romdoc-surface="public"][data-theme="dark"] textarea:disabled {
+  background-color: var(--rd-surface-muted);
+  color: var(--rd-text-muted);
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] option {
+  background: var(--rd-surface);
+  color: var(--rd-text-primary);
+}
+
+html[data-romdoc-surface="public"] input[type="checkbox"],
+html[data-romdoc-surface="public"] input[type="radio"] {
+  accent-color: #036661;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] input[type="date"],
+html[data-romdoc-surface="public"][data-theme="dark"] input[type="time"],
+html[data-romdoc-surface="public"][data-theme="dark"] input[type="datetime-local"],
+html[data-romdoc-surface="public"][data-theme="dark"] input[type="month"] {
+  color-scheme: dark;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] input::-webkit-calendar-picker-indicator {
+  filter: invert(0.84) sepia(0.08) saturate(0.45);
+  opacity: 0.9;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] input:-webkit-autofill,
+html[data-romdoc-surface="public"][data-theme="dark"] input:-webkit-autofill:hover,
+html[data-romdoc-surface="public"][data-theme="dark"] input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--rd-text-primary);
+  -webkit-box-shadow: 0 0 0 1000px var(--rd-surface) inset;
+  caret-color: var(--rd-text-primary);
+}
+
+/* Shared buttons on public pages. */
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-button-secondary {
+  border-color: #32a39b;
+  background: var(--rd-surface);
+  color: #70d2ca;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-button-secondary:hover:not(:disabled):not([aria-disabled="true"]) {
+  border-color: #70d2ca;
+  background: rgba(112, 210, 202, 0.12);
+  color: #a7f3ed;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-button-muted {
+  border-color: var(--rd-border-strong);
+  background: var(--rd-surface);
+  color: var(--rd-text-secondary);
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-button-muted:hover:not(:disabled):not([aria-disabled="true"]) {
+  border-color: #70d2ca;
+  background: var(--rd-surface-muted);
+  color: var(--rd-text-primary);
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-button-danger-outline {
+  background: var(--rd-surface);
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-segmented-control {
+  background: var(--rd-surface-muted);
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-segmented-button {
+  color: var(--rd-text-secondary);
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-segmented-button:hover {
+  background: var(--rd-surface-raised);
+  color: var(--rd-text-primary);
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-segmented-button[aria-pressed="true"] {
+  background: var(--rd-surface-raised);
+  color: #70d2ca;
+}
+
+/* Semantic notices, status colours and public informational cards. */
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-blue-50,
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-notice-info {
+  border-color: var(--rd-info-border) !important;
+  background-color: var(--rd-info-bg) !important;
+  color: var(--rd-info-text) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-green-50,
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-notice-success {
+  border-color: var(--rd-success-border) !important;
+  background-color: var(--rd-success-bg) !important;
+  color: var(--rd-success-text) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-amber-50,
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-yellow-50,
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-notice-warning {
+  border-color: var(--rd-warning-border) !important;
+  background-color: var(--rd-warning-bg) !important;
+  color: var(--rd-warning-text) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-red-50,
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-notice-danger {
+  border-color: var(--rd-danger-border) !important;
+  background-color: var(--rd-danger-bg) !important;
+  color: var(--rd-danger-text) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .text-blue-950,
+html[data-romdoc-surface="public"][data-theme="dark"] .text-blue-900,
+html[data-romdoc-surface="public"][data-theme="dark"] .text-blue-800,
+html[data-romdoc-surface="public"][data-theme="dark"] .text-blue-700 {
+  color: var(--rd-info-text) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .text-green-900,
+html[data-romdoc-surface="public"][data-theme="dark"] .text-green-800,
+html[data-romdoc-surface="public"][data-theme="dark"] .text-green-700 {
+  color: var(--rd-success-text) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .text-amber-950,
+html[data-romdoc-surface="public"][data-theme="dark"] .text-amber-900,
+html[data-romdoc-surface="public"][data-theme="dark"] .text-amber-800,
+html[data-romdoc-surface="public"][data-theme="dark"] .text-yellow-900,
+html[data-romdoc-surface="public"][data-theme="dark"] .text-yellow-800 {
+  color: var(--rd-warning-text) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .text-red-900,
+html[data-romdoc-surface="public"][data-theme="dark"] .text-red-800,
+html[data-romdoc-surface="public"][data-theme="dark"] .text-red-700 {
+  color: var(--rd-danger-text) !important;
+}
+
+/* Public header, sidebar, footer drawers, cookie surfaces and dialogs. */
+html[data-romdoc-surface="public"][data-theme="dark"] header.sticky {
+  border-color: var(--rd-border) !important;
+  background-color: rgba(16, 28, 30, 0.94) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] aside,
+html[data-romdoc-surface="public"][data-theme="dark"] dialog,
+html[data-romdoc-surface="public"][data-theme="dark"] [role="dialog"],
+html[data-romdoc-surface="public"][data-theme="dark"] [aria-modal="true"] {
+  border-color: var(--rd-border);
+  background: var(--rd-surface-raised);
+  color: var(--rd-text-primary);
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-black\/40,
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-black\/50,
+html[data-romdoc-surface="public"][data-theme="dark"] .bg-black\/60 {
+  background-color: var(--rd-overlay) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] footer.bg-white {
+  background-color: var(--rd-surface) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-preference-option {
+  border-color: var(--rd-border-strong);
+}
+
+/* Google Maps remains in Google's standard cartographic rendering so road and
+   place labels retain their tested contrast. RomDoc-owned overlays, popup
+   content and controls follow the selected appearance. */
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-map-popup {
+  color: var(--rd-text-primary);
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-map-popup-city {
+  color: #70d2ca;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-map-popup-address {
+  color: var(--rd-text-secondary);
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-map-popup-stats span {
+  background: var(--rd-surface-muted);
+  color: var(--rd-text-secondary);
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .romdoc-map-popup-secondary {
+  border-color: #32a39b;
+  background: var(--rd-surface);
+  color: #70d2ca;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .gm-style .gm-style-iw-c,
+html[data-romdoc-surface="public"][data-theme="dark"] .gm-style .gm-style-iw-d {
+  background: var(--rd-surface-raised) !important;
+  color: var(--rd-text-primary) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .gm-style .gm-style-iw-tc::after {
+  background: var(--rd-surface-raised) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .gm-style .gm-ui-hover-effect {
+  filter: invert(1) grayscale(1);
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .gm-style .gm-control-active,
+html[data-romdoc-surface="public"][data-theme="dark"] .gm-style .gm-fullscreen-control {
+  background: var(--rd-surface-raised) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] .gm-style .gm-control-active img,
+html[data-romdoc-surface="public"][data-theme="dark"] .gm-style .gm-fullscreen-control img {
+  filter: invert(0.86);
+}
+
+/* Public document-like content and disclosure sections. */
+html[data-romdoc-surface="public"][data-theme="dark"] details {
+  color: var(--rd-text-primary);
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] details > summary {
+  color: var(--rd-text-primary);
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] details > summary:hover,
+html[data-romdoc-surface="public"][data-theme="dark"] details[open] > summary {
+  background-color: var(--rd-surface-muted) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] dl dt {
+  color: var(--rd-text-muted) !important;
+}
+
+html[data-romdoc-surface="public"][data-theme="dark"] dl dd {
+  color: var(--rd-text-primary) !important;
+}
+
+html[data-romdoc-surface="public"] .overflow-x-auto,
+html[data-romdoc-surface="public"] .overflow-y-auto {
+  scrollbar-color: var(--rd-border-strong) transparent;
+}
+
+/* Keep browser print output and legal-page printing light and readable. */
+@media print {
+  html[data-romdoc-surface="public"] {
+    color-scheme: light;
+  }
+
+  html[data-romdoc-surface="public"] body,
+  html[data-romdoc-surface="public"] main,
+  html[data-romdoc-surface="public"] .bg-white,
+  html[data-romdoc-surface="public"] .romdoc-card,
+  html[data-romdoc-surface="public"] .romdoc-card-compact {
+    background: #ffffff !important;
+    color: #111827 !important;
+  }
+}
