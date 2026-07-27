@@ -208,7 +208,7 @@ export async function loadDoctorContractDashboard(
 ): Promise<ContractDashboardView> {
   const { data: doctor, error: doctorError } = await supabase
     .from("doctors")
-    .select("id, slug, profiles(first_name,last_name)")
+    .select("id, slug, owner_profile:profiles!doctors_profile_id_fkey(first_name,last_name)")
     .eq("profile_id", profileId)
     .maybeSingle();
 
@@ -217,7 +217,9 @@ export async function loadDoctorContractDashboard(
     return { audience: "doctor", subjectLabel: "Doctor", assignments: [] };
   }
 
-  const profile = firstRelation<Record<string, any>>((doctor as any).profiles ?? null);
+  const profile = firstRelation<Record<string, any>>(
+    (doctor as any).owner_profile ?? null
+  );
   const subjectName = displayName(
     profile?.first_name,
     profile?.last_name,

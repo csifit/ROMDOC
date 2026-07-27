@@ -68,19 +68,33 @@ export default function DoctorDashboardSidebar({
   const [isSigningOut, setIsSigningOut] = useState(false);
   const homeHref = `/${locale}`;
 
-  const navigationItems = useMemo<NavigationItem[]>(() => [
-    { href: "/doctor-dashboard", label: t("profileSetup"), icon: "▦" },
-    { href: "/doctor-dashboard/inbox", label: t("inbox"), icon: "✉" },
-    { href: "/doctor-dashboard/appointments", label: t("appointments"), icon: "□" },
-    { href: "/doctor-dashboard/calendar", label: t("calendar"), icon: "◷" },
-    { href: "/doctor-dashboard/availability", label: t("availability"), icon: "◴" },
-    { href: "/doctor-dashboard/profile", label: t("servicesProfile"), icon: "☤" },
-    { href: "/doctor-dashboard/clinics", label: t("clinic"), icon: "⌂" },
-    { href: "/doctor-dashboard/staff", label: t("staff"), icon: "◉" },
-    { href: "/doctor-dashboard/contract", label: CONTRACT_LABEL[locale], icon: "§" },
-    { href: "/doctor-dashboard/security", label: t("security"), icon: "◇" },
-    { href: homeHref, label: t("home"), icon: "⌂" },
-  ], [homeHref, locale, t]);
+  const navigationItems = useMemo<NavigationItem[]>(() => {
+    const items: NavigationItem[] = [
+      { href: "/doctor-dashboard", label: t("profileSetup"), icon: "▦" },
+      { href: "/doctor-dashboard/inbox", label: t("inbox"), icon: "✉" },
+      { href: "/doctor-dashboard/appointments", label: t("appointments"), icon: "□" },
+      { href: "/doctor-dashboard/calendar", label: t("calendar"), icon: "◷" },
+      { href: "/doctor-dashboard/availability", label: t("availability"), icon: "◴" },
+      { href: "/doctor-dashboard/profile", label: t("servicesProfile"), icon: "☤" },
+      { href: "/doctor-dashboard/clinics", label: t("clinic"), icon: "⌂" },
+      { href: "/doctor-dashboard/staff", label: t("staff"), icon: "◉" },
+    ];
+
+    if (!isClinicSubAccount) {
+      items.push({
+        href: "/doctor-dashboard/contract",
+        label: CONTRACT_LABEL[locale],
+        icon: "§",
+      });
+    }
+
+    items.push(
+      { href: "/doctor-dashboard/security", label: t("security"), icon: "◇" },
+      { href: homeHref, label: t("home"), icon: "⌂" }
+    );
+
+    return items;
+  }, [homeHref, isClinicSubAccount, locale, t]);
 
   async function handleSignOut() {
     if (isSigningOut) return;
