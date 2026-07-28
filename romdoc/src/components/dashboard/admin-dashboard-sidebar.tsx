@@ -13,6 +13,7 @@ import PlatformOperatorDashboardShell, {
 } from "@/components/dashboard/platform-operator-dashboard-shell";
 import {
   normalizeAppLocale,
+  type AppLocale,
 } from "@/lib/i18n/app-locale";
 
 type AdminDashboardSidebarProps = {
@@ -20,6 +21,12 @@ type AdminDashboardSidebarProps = {
   userEmail: string;
   roleLabel: string;
   children: ReactNode;
+};
+
+const CONTRACTS_LABEL: Record<AppLocale, string> = {
+  ro: "Contracte",
+  en: "Contracts",
+  de: "Verträge",
 };
 
 const NAVIGATION_ITEMS = [
@@ -113,6 +120,14 @@ const NAVIGATION_ITEMS = [
   },
   {
     href:
+      "/admin/contracts",
+    labelKey:
+      null,
+    icon:
+      "invoices",
+  },
+  {
+    href:
       "/admin/privacy",
     labelKey:
       "privacy",
@@ -162,9 +177,13 @@ export default function AdminDashboardSidebar({
           href:
             item.href,
           label:
-            t(
-              `navigation.${item.labelKey}`
-            ),
+            item.labelKey
+              ? t(
+                  `navigation.${item.labelKey}`
+                )
+              : CONTRACTS_LABEL[
+                  locale
+                ],
           icon:
             item.icon,
         })
