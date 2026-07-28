@@ -190,6 +190,14 @@ export async function PATCH(request: NextRequest) {
 
     return contractApiError("Acțiunea solicitată nu este validă.", 400);
   } catch (error) {
-    return contractApiError(errorMessage(error), 500);
+    const message = errorMessage(error);
+    const status =
+      message.includes("still differ from the accepted contractual price") ||
+      message.includes("does not contain accepted contractual price values") ||
+      message.includes("does not contain contractual price values") ||
+      message.includes("accepted contract evidence could not be found")
+        ? 409
+        : 500;
+    return contractApiError(message, status);
   }
 }

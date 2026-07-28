@@ -2,6 +2,17 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import {
+  compareContractAndOperationalPrices,
+  createEffectiveOperationalPriceTerms,
+  hasAcceptedContractPriceTerms,
+  normalizeAcceptedContractPriceTerms,
+  type ContractPriceComparisonStatus,
+  type ContractPriceDifference,
+  type ContractPriceTerms,
+  type EffectiveOperationalPriceTerms,
+} from "@/lib/contracts/contract-price-comparison";
+
 export type AdminContractLocale = "ro" | "en" | "de";
 export type AdminContractClientType =
   | "independent_doctor"
@@ -67,6 +78,7 @@ export type AdminContractAssignment = {
   status: string;
   acceptanceRequired: boolean;
   commercialTerms: Record<string, unknown>;
+  acceptedCommercialTerms: Record<string, unknown> | null;
   paymentDeadlineDays: number;
   assignedAt: string;
   notifiedAt: string | null;
@@ -99,8 +111,12 @@ export type AdminContractPriceUpdate = {
   clientName: string;
   packageVersion: string;
   acceptedAt: string | null;
-  commercialTerms: Record<string, unknown>;
-  operationalTerms: Record<string, unknown> | null;
+  comparisonStatus: ContractPriceComparisonStatus;
+  acceptedTerms: ContractPriceTerms;
+  operationalTerms: EffectiveOperationalPriceTerms;
+  differences: ContractPriceDifference[];
+  pricingHref: string;
+  hasLegacyUnverifiedConfirmation: boolean;
 };
 
 export type AdminContractManagementData = {
@@ -166,6 +182,7 @@ export async function loadAdminContractManagementData(
     eventsResult,
     deliveriesResult,
     billingTermsResult,
+    billingSettingsResult,
   ] = await Promise.all([
     admin
       .from("contract_documents")
@@ -208,7 +225,7 @@ export async function loadAdminContractManagementData(
     admin
       .from("contract_acceptances")
       .select(
-        "id, assignment_id, representative_name, representative_capacity, accepted_at, acceptance_evidence_hash"
+        "id, assignment_id, representative_name, representative_capacity, commercial_terms_snapshot, accepted_at, acceptance_evidence_hash"
       )
       .order("accepted_at", { ascending: false }),
     admin
@@ -216,7 +233,7 @@ export async function loadAdminContractManagementData(
       .select("acceptance_id, status"),
     admin
       .from("contract_events")
-      .select("assignment_id, event_type, created_at")
+      .select("assignment_id, event_type, event_data, created_at")
       .in("event_type", ["price_update_pending", "price_applied"])
       .order("created_at", { ascending: true }),
     admin
@@ -225,8 +242,15 @@ export async function loadAdminContractManagementData(
     admin
       .from("client_billing_terms")
       .select(
-        "client_type, doctor_id, clinic_organization_id, subscription_unit_price, sms_unit_price, currency, vat_rate, effective_from, effective_until"
+        "id, client_type, doctor_id, clinic_organization_id, subscription_unit_price, sms_unit_price, currency, vat_rate, effective_from, effective_until, updated_at"
       ),
+    admin
+      .from("clinic_billing_settings")
+      .select(
+        "clinic_doctor_monthly_price_ron, sms_unit_price_ron, vat_rate, billing_currency"
+      )
+      .eq("id", 1)
+      .maybeSingle(),
   ]);
 
   assertQuery(documentsResult.error, "Contract documents query failed");
@@ -244,6 +268,7 @@ export async function loadAdminContractManagementData(
   assertQuery(eventsResult.error, "Contract price events query failed");
   assertQuery(deliveriesResult.error, "Contract notifications query failed");
   assertQuery(billingTermsResult.error, "Manual client pricing query failed");
+  assertQuery(billingSettingsResult.error, "Global billing settings query failed");
 
   const doctorRows = (doctorsResult.data ?? []) as Row[];
   const profileIds = doctorRows
@@ -433,6 +458,9 @@ export async function loadAdminContractManagementData(
       status: String(row.status),
       acceptanceRequired: Boolean(row.acceptance_required),
       commercialTerms: objectValue(row.commercial_terms),
+      acceptedCommercialTerms: acceptance
+        ? objectValue(acceptance.commercial_terms_snapshot)
+        : null,
       paymentDeadlineDays: Number(row.payment_deadline_days ?? 30),
       assignedAt: String(row.assigned_at),
       notifiedAt: row.notified_at ? String(row.notified_at) : null,
@@ -474,22 +502,48 @@ export async function loadAdminContractManagementData(
 
   const priceState = new Map<
     string,
-    { pending: boolean; applied: boolean }
+    { pending: boolean; verifiedApplied: boolean; legacyApplied: boolean }
   >();
   for (const row of (eventsResult.data ?? []) as Row[]) {
     const assignmentId = String(row.assignment_id);
     const current = priceState.get(assignmentId) ?? {
       pending: false,
-      applied: false,
+      verifiedApplied: false,
+      legacyApplied: false,
     };
     if (row.event_type === "price_update_pending") current.pending = true;
-    if (row.event_type === "price_applied") current.applied = true;
+    if (row.event_type === "price_applied") {
+      const eventData = objectValue(row.event_data);
+      if (eventData.comparisonVerified === true) {
+        current.verifiedApplied = true;
+      } else {
+        current.legacyApplied = true;
+      }
+    }
     priceState.set(assignmentId, current);
   }
 
-  const operationalTermsMap = new Map<
+  const settings = (billingSettingsResult.data ?? {}) as Row;
+  const globalSubscriptionUnitPrice = Number(
+    settings.clinic_doctor_monthly_price_ron ?? 60
+  );
+  const globalSmsUnitPrice = Number(settings.sms_unit_price_ron ?? 0.3);
+  const globalVatRate = Number(settings.vat_rate ?? 0.21);
+  const globalCurrency =
+    settings.billing_currency === "RON" ? ("RON" as const) : ("EUR" as const);
+
+  const operationalOverrideMap = new Map<
     string,
-    Record<string, unknown>
+    {
+      id: string;
+      subscriptionUnitPrice: number | null;
+      smsUnitPrice: number | null;
+      currency: "RON" | "EUR";
+      vatRate: number | null;
+      effectiveFrom: string | null;
+      effectiveUntil: string | null;
+      updatedAt: string | null;
+    }
   >();
 
   for (const row of (billingTermsResult.data ?? []) as Row[]) {
@@ -505,41 +559,85 @@ export async function loadAdminContractManagementData(
 
     if (!clientId || clientId === "null") continue;
 
-    operationalTermsMap.set(
-      `${clientType}:${clientId}`,
-      {
-        subscriptionUnitPrice:
-          row.subscription_unit_price,
-        smsUnitPrice:
-          row.sms_unit_price,
-        currency: row.currency,
-        vatRate: row.vat_rate,
-        effectiveFrom:
-          row.effective_from,
-        effectiveUntil:
-          row.effective_until,
-      }
-    );
+    operationalOverrideMap.set(`${clientType}:${clientId}`, {
+      id: String(row.id),
+      subscriptionUnitPrice:
+        row.subscription_unit_price === null
+          ? null
+          : Number(row.subscription_unit_price),
+      smsUnitPrice:
+        row.sms_unit_price === null ? null : Number(row.sms_unit_price),
+      currency: row.currency === "RON" ? "RON" : "EUR",
+      vatRate: row.vat_rate === null ? null : Number(row.vat_rate),
+      effectiveFrom: row.effective_from ? String(row.effective_from) : null,
+      effectiveUntil: row.effective_until ? String(row.effective_until) : null,
+      updatedAt: row.updated_at ? String(row.updated_at) : null,
+    });
   }
 
   const priceUpdates: AdminContractPriceUpdate[] = assignments
     .filter((assignment) => {
       const state = priceState.get(assignment.id);
-      return state?.pending === true && state.applied === false;
+      return state?.pending === true && state.verifiedApplied === false;
     })
-    .map((assignment) => ({
-      assignmentId: assignment.id,
-      clientId: assignment.clientId,
-      clientType: assignment.clientType,
-      clientName: assignment.clientName,
-      packageVersion: assignment.packageVersion,
-      acceptedAt: assignment.acceptedAt,
-      commercialTerms: assignment.commercialTerms,
-      operationalTerms:
-        operationalTermsMap.get(
-          `${assignment.clientType}:${assignment.clientId}`
-        ) ?? null,
-    }));
+    .map((assignment) => {
+      const acceptedTerms = normalizeAcceptedContractPriceTerms(
+        assignment.acceptedCommercialTerms ?? assignment.commercialTerms
+      );
+      if (!hasAcceptedContractPriceTerms(acceptedTerms)) return null;
+
+      const comparisonDate = (
+        assignment.effectiveAt ??
+        assignment.acceptedAt ??
+        new Date().toISOString()
+      ).slice(0, 10);
+      const operationalTerms = createEffectiveOperationalPriceTerms({
+        comparisonDate,
+        globalSubscriptionUnitPrice:
+          Number.isFinite(globalSubscriptionUnitPrice)
+            ? globalSubscriptionUnitPrice
+            : 60,
+        globalSmsUnitPrice: Number.isFinite(globalSmsUnitPrice)
+          ? globalSmsUnitPrice
+          : 0.3,
+        globalCurrency,
+        globalVatRate: Number.isFinite(globalVatRate) ? globalVatRate : 0.21,
+        override:
+          operationalOverrideMap.get(
+            `${assignment.clientType}:${assignment.clientId}`
+          ) ?? null,
+      });
+      const differences = compareContractAndOperationalPrices(
+        acceptedTerms,
+        operationalTerms
+      );
+      const comparisonStatus: ContractPriceComparisonStatus =
+        differences.length === 0 ? "ready_to_confirm" : "needs_update";
+      return {
+        assignmentId: assignment.id,
+        clientId: assignment.clientId,
+        clientType: assignment.clientType,
+        clientName: assignment.clientName,
+        packageVersion: assignment.packageVersion,
+        acceptedAt: assignment.acceptedAt,
+        comparisonStatus,
+        acceptedTerms,
+        operationalTerms,
+        differences,
+        pricingHref: "/admin/invoices",
+        hasLegacyUnverifiedConfirmation:
+          priceState.get(assignment.id)?.legacyApplied === true,
+      } satisfies AdminContractPriceUpdate;
+    })
+    .filter(
+      (item): item is AdminContractPriceUpdate => item !== null
+    )
+    .sort((first, second) => {
+      if (first.comparisonStatus !== second.comparisonStatus) {
+        return first.comparisonStatus === "needs_update" ? -1 : 1;
+      }
+      return (second.acceptedAt ?? "").localeCompare(first.acceptedAt ?? "");
+    });
 
   return {
     documents,

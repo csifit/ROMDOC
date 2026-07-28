@@ -164,14 +164,40 @@ const COPY = {
       pdf: "PDF",
     },
     prices: {
-      title: "Tarife acceptate care necesită aplicare manuală",
+      title: "Reconciliere tarife acceptate",
       description:
-        "RomDoc nu schimbă automat client_billing_terms. Actualizați prețul din pagina Facturi, apoi confirmați aici că operațiunea manuală a fost efectuată.",
-      terms: "Condiții acceptate",
-      operational: "Tarif operațional configurat acum",
-      noOverride: "Nu există o configurație individuală; facturarea folosește tarifele globale.",
+        "RomDoc compară tarifele contractuale acceptate cu tarifele operaționale folosite la facturare. Nicio valoare nu este modificată automat.",
+      needsUpdate: "Necesită actualizare manuală",
+      readyToConfirm: "Valorile corespund — gata de confirmare",
+      needsUpdateCount: "Necesită actualizare",
+      readyCount: "Gata de confirmare",
+      accepted: "Valoare contractuală acceptată",
+      operational: "Valoare operațională curentă",
+      result: "Comparație",
+      matched: "Identic",
+      different: "Diferit",
+      source: "Sursa tarifului operațional",
+      sourceGlobal: "Tarife globale",
+      sourceOverride: "Configurație individuală",
+      comparisonDate: "Data contractuală verificată",
+      overridePeriod: "Perioada configurației individuale",
+      noDateLimit: "fără limită",
+      overrideOutsidePeriod:
+        "Configurația individuală există, dar nu este aplicabilă la data contractuală. Comparația folosește tarifele globale.",
+      differences: "Diferențe identificate",
+      noDifferences: "Toate valorile contractuale urmărite corespund configurației operaționale.",
+      legacyWarning:
+        "Există o confirmare veche fără comparație verificată. Confirmați din nou după verificarea valorilor.",
+      updateFirst:
+        "Butonul de confirmare devine disponibil numai după ce valorile operaționale corespund contractului acceptat.",
       empty:
-        "Nu există actualizări contractuale de tarif în așteptarea aplicării manuale.",
+        "Nu există actualizări contractuale de tarif în așteptarea reconcilierii.",
+      fields: {
+        subscriptionUnitPrice: "Abonament",
+        smsUnitPrice: "SMS / unitate",
+        currency: "Monedă",
+        vatRate: "TVA",
+      },
     },
   },
   en: {
@@ -276,13 +302,39 @@ const COPY = {
       pdf: "PDF",
     },
     prices: {
-      title: "Accepted prices awaiting manual application",
+      title: "Accepted-price reconciliation",
       description:
-        "RomDoc never changes client_billing_terms automatically. Update the price on the Invoices page, then confirm here that the manual operation was completed.",
-      terms: "Accepted terms",
-      operational: "Currently configured operational price",
-      noOverride: "No individual override exists; billing currently uses the global rates.",
-      empty: "There are no contractual price updates awaiting manual application.",
+        "RomDoc compares accepted contractual prices with the operational prices used for billing. No value is changed automatically.",
+      needsUpdate: "Manual update required",
+      readyToConfirm: "Values match — ready to confirm",
+      needsUpdateCount: "Needs update",
+      readyCount: "Ready to confirm",
+      accepted: "Accepted contractual value",
+      operational: "Current operational value",
+      result: "Comparison",
+      matched: "Match",
+      different: "Different",
+      source: "Operational price source",
+      sourceGlobal: "Global rates",
+      sourceOverride: "Individual configuration",
+      comparisonDate: "Contract comparison date",
+      overridePeriod: "Individual configuration period",
+      noDateLimit: "no limit",
+      overrideOutsidePeriod:
+        "An individual configuration exists but does not apply on the contract date. The comparison uses the global rates.",
+      differences: "Detected differences",
+      noDifferences: "All tracked contractual values match the operational configuration.",
+      legacyWarning:
+        "An earlier confirmation exists without a verified comparison. Confirm again after reviewing the values.",
+      updateFirst:
+        "Confirmation becomes available only after the operational values match the accepted contract.",
+      empty: "There are no contractual price updates awaiting reconciliation.",
+      fields: {
+        subscriptionUnitPrice: "Subscription",
+        smsUnitPrice: "SMS / unit",
+        currency: "Currency",
+        vatRate: "VAT",
+      },
     },
   },
   de: {
@@ -387,13 +439,39 @@ const COPY = {
       pdf: "PDF",
     },
     prices: {
-      title: "Angenommene Preise zur manuellen Anwendung",
+      title: "Abgleich angenommener Preise",
       description:
-        "RomDoc ändert client_billing_terms niemals automatisch. Aktualisieren Sie den Preis auf der Rechnungsseite und bestätigen Sie anschließend hier den manuellen Vorgang.",
-      terms: "Angenommene Bedingungen",
-      operational: "Aktuell konfigurierter operativer Preis",
-      noOverride: "Keine individuelle Überschreibung vorhanden; die Abrechnung verwendet die globalen Tarife.",
-      empty: "Keine vertraglichen Preisaktualisierungen warten auf manuelle Anwendung.",
+        "RomDoc vergleicht die angenommenen Vertragspreise mit den operativen Abrechnungspreisen. Es wird kein Wert automatisch geändert.",
+      needsUpdate: "Manuelle Aktualisierung erforderlich",
+      readyToConfirm: "Werte stimmen überein — Bestätigung möglich",
+      needsUpdateCount: "Aktualisierung nötig",
+      readyCount: "Bestätigungsbereit",
+      accepted: "Angenommener Vertragswert",
+      operational: "Aktueller operativer Wert",
+      result: "Vergleich",
+      matched: "Identisch",
+      different: "Abweichend",
+      source: "Quelle des operativen Preises",
+      sourceGlobal: "Globale Tarife",
+      sourceOverride: "Individuelle Konfiguration",
+      comparisonDate: "Geprüftes Vertragsdatum",
+      overridePeriod: "Zeitraum der individuellen Konfiguration",
+      noDateLimit: "ohne Begrenzung",
+      overrideOutsidePeriod:
+        "Eine individuelle Konfiguration ist vorhanden, gilt jedoch am Vertragsdatum nicht. Der Vergleich verwendet die globalen Tarife.",
+      differences: "Ermittelte Unterschiede",
+      noDifferences: "Alle verfolgten Vertragswerte entsprechen der operativen Konfiguration.",
+      legacyWarning:
+        "Eine frühere Bestätigung ohne geprüften Vergleich ist vorhanden. Bestätigen Sie nach der Prüfung erneut.",
+      updateFirst:
+        "Die Bestätigung wird erst verfügbar, wenn die operativen Werte dem angenommenen Vertrag entsprechen.",
+      empty: "Keine vertraglichen Preisaktualisierungen warten auf den Abgleich.",
+      fields: {
+        subscriptionUnitPrice: "Abonnement",
+        smsUnitPrice: "SMS / Einheit",
+        currency: "Währung",
+        vatRate: "MwSt.",
+      },
     },
   },
 } as const;
@@ -445,6 +523,16 @@ function formatDate(value: string | null, locale: AppLocale) {
   ).format(date);
 }
 
+function formatDateOnly(value: string | null, locale: AppLocale) {
+  if (!value) return "—";
+  const date = new Date(`${value.slice(0, 10)}T12:00:00Z`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(
+    locale === "ro" ? "ro-RO" : locale === "de" ? "de-DE" : "en-GB",
+    { dateStyle: "medium", timeZone: "UTC" }
+  ).format(date);
+}
+
 function termsFromFields(input: {
   subscriptionPrice: string;
   smsPrice: string;
@@ -479,17 +567,26 @@ function termsFromFields(input: {
   return result;
 }
 
-function termsText(terms: Record<string, unknown>) {
-  const entries = Object.entries(terms).filter(
-    ([, value]) =>
-      value !== null &&
-      value !== undefined &&
-      value !== ""
-  );
-  if (entries.length === 0) return "—";
-  return entries
-    .map(([key, value]) => `${key}: ${String(value)}`)
-    .join(" · ");
+function formatPriceValue(
+  field: string,
+  value: unknown,
+  locale: AppLocale,
+  currency: string
+) {
+  if (value === null || value === undefined || value === "") return "—";
+  if (field === "currency") return String(value);
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return String(value);
+  if (field === "vatRate") {
+    return `${new Intl.NumberFormat(
+      locale === "ro" ? "ro-RO" : locale === "de" ? "de-DE" : "en-GB",
+      { maximumFractionDigits: 4 }
+    ).format(numeric * 100)}%`;
+  }
+  return `${new Intl.NumberFormat(
+    locale === "ro" ? "ro-RO" : locale === "de" ? "de-DE" : "en-GB",
+    { minimumFractionDigits: 0, maximumFractionDigits: 4 }
+  ).format(numeric)} ${currency}`;
 }
 
 function clientKey(client: AdminContractClient) {
@@ -532,6 +629,20 @@ export default function AdminContractManagement({ locale, data }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [tab, setTab] = useState<Tab>("clients");
+
+  useEffect(() => {
+    const requestedTab = new URLSearchParams(window.location.search).get("tab");
+    if (
+      requestedTab === "clients" ||
+      requestedTab === "templates" ||
+      requestedTab === "amendments" ||
+      requestedTab === "acceptances" ||
+      requestedTab === "prices"
+    ) {
+      setTab(requestedTab);
+    }
+  }, []);
+
   const [notice, setNotice] = useState<Notice>(null);
   const [downloadingAcceptanceId, setDownloadingAcceptanceId] =
     useState<string | null>(null);
@@ -814,6 +925,13 @@ export default function AdminContractManagement({ locale, data }: Props) {
     );
   }
 
+  const priceNeedsUpdateCount = data.priceUpdates.filter(
+    (item) => item.comparisonStatus === "needs_update"
+  ).length;
+  const priceReadyCount = data.priceUpdates.filter(
+    (item) => item.comparisonStatus === "ready_to_confirm"
+  ).length;
+
   const tabItems: { key: Tab; label: string; count?: number }[] = [
     { key: "clients", label: copy.tabs.clients, count: data.assignments.length },
     { key: "templates", label: copy.tabs.templates },
@@ -937,9 +1055,9 @@ export default function AdminContractManagement({ locale, data }: Props) {
                     value={assignmentClientIds}
                     onChange={(event) =>
                       setAssignmentClientIds(
-                        Array.from(event.currentTarget.selectedOptions).map(
-                          (option) => option.value
-                        )
+                        Array.from(
+                          event.currentTarget.selectedOptions as HTMLCollectionOf<HTMLOptionElement>
+                        ).map((option) => option.value)
                       )
                     }
                     className="input min-h-[144px]"
@@ -1123,7 +1241,9 @@ export default function AdminContractManagement({ locale, data }: Props) {
               <Input label={copy.common.title} value={packageForm.title} setValue={(value) => setPackageForm((current) => ({ ...current, title: value }))} />
               <Input label={copy.common.effectiveAt} value={packageForm.effectiveAt} setValue={(value) => setPackageForm((current) => ({ ...current, effectiveAt: value }))} type="datetime-local" />
             </div>
-            <Field label={copy.templates.packageDocuments} className="mt-[13px]"><select multiple value={packageForm.documentIds} onChange={(event) => setPackageForm((current) => ({ ...current, documentIds: Array.from(event.currentTarget.selectedOptions).map((option) => option.value) }))} className="input min-h-[233px]">{compatibleDocuments.map((item) => <option key={item.id} value={item.id}>{item.title} — {item.version}</option>)}</select></Field>
+            <Field label={copy.templates.packageDocuments} className="mt-[13px]"><select multiple value={packageForm.documentIds} onChange={(event) => setPackageForm((current) => ({ ...current, documentIds: Array.from(
+                  event.currentTarget.selectedOptions as HTMLCollectionOf<HTMLOptionElement>
+                ).map((option) => option.value) }))} className="input min-h-[233px]">{compatibleDocuments.map((item) => <option key={item.id} value={item.id}>{item.title} — {item.version}</option>)}</select></Field>
             <div className="mt-[13px]"><Check checked={packageForm.requiresAcceptance} setChecked={(value) => setPackageForm((current) => ({ ...current, requiresAcceptance: value }))} label={packageForm.requiresAcceptance ? copy.common.acceptanceRequired : copy.common.noticeOnly} /></div>
             <p className="mt-[8px] text-xs font-semibold text-[#036661]">{copy.common.paymentDeadline}</p>
             <div className="mt-[21px] flex flex-wrap gap-[8px]">
@@ -1174,7 +1294,9 @@ export default function AdminContractManagement({ locale, data }: Props) {
                 <Input label={copy.common.effectiveAt} value={amendmentEffectiveAt} setValue={setAmendmentEffectiveAt} type="datetime-local" />
                 <Field label={copy.clients.scope}><select value={amendmentScope} onChange={(event) => setAmendmentScope(event.target.value as "all" | "selected")} className="input"><option value="selected">{copy.common.selected}</option><option value="all">{copy.common.all}</option></select></Field>
               </div>
-              {amendmentScope === "selected" ? <Field label={copy.common.client} className="mt-[13px]"><select multiple value={amendmentClientIds} onChange={(event) => setAmendmentClientIds(Array.from(event.currentTarget.selectedOptions).map((option) => option.value))} className="input min-h-[144px]">{amendmentClients.map((client) => <option key={clientKey(client)} value={client.id}>{client.name} — {client.email ?? "—"}</option>)}</select></Field> : <p className="mt-[13px] text-sm text-gray-600">{amendmentClients.length} {copy.common.client.toLowerCase()}</p>}
+              {amendmentScope === "selected" ? <Field label={copy.common.client} className="mt-[13px]"><select multiple value={amendmentClientIds} onChange={(event) => setAmendmentClientIds(Array.from(
+                  event.currentTarget.selectedOptions as HTMLCollectionOf<HTMLOptionElement>
+                ).map((option) => option.value))} className="input min-h-[144px]">{amendmentClients.map((client) => <option key={clientKey(client)} value={client.id}>{client.name} — {client.email ?? "—"}</option>)}</select></Field> : <p className="mt-[13px] text-sm text-gray-600">{amendmentClients.length} {copy.common.client.toLowerCase()}</p>}
               <div className="mt-[13px] space-y-[8px]">
                 <Check checked={amendmentRequiresAcceptance} setChecked={setAmendmentRequiresAcceptance} label={amendmentRequiresAcceptance ? copy.common.acceptanceRequired : copy.common.noticeOnly} />
                 <Check checked={amendmentKeepTerms} setChecked={setAmendmentKeepTerms} label={amendmentKeepTerms ? copy.amendments.keepTerms : copy.amendments.replaceTerms} />
@@ -1240,8 +1362,208 @@ export default function AdminContractManagement({ locale, data }: Props) {
       {tab === "prices" ? (
         <section className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
           <h2 className="text-xl font-bold text-gray-950">{copy.prices.title}</h2>
-          <p className="mt-[8px] max-w-4xl text-sm leading-6 text-gray-600">{copy.prices.description}</p>
-          {data.priceUpdates.length === 0 ? <Empty text={copy.prices.empty} /> : <div className="mt-[13px] space-y-[13px]">{data.priceUpdates.map((item) => <article key={item.assignmentId} className="rounded-[13px] border border-amber-200 bg-amber-50 p-[13px]"><div className="flex flex-col justify-between gap-[13px] lg:flex-row lg:items-center"><div><p className="font-bold text-gray-950">{item.clientName}</p><p className="mt-[5px] text-sm text-gray-700">{copy.common.version}: {item.packageVersion} · {formatDate(item.acceptedAt, locale)}</p><p className="mt-[8px] text-xs leading-5 text-gray-600">{copy.prices.terms}: {termsText(item.commercialTerms)}</p><p className="mt-[5px] text-xs leading-5 text-gray-600">{copy.prices.operational}: {item.operationalTerms ? termsText(item.operationalTerms) : copy.prices.noOverride}</p></div><div className="flex flex-wrap gap-[8px]"><Link href="/admin/invoices" className="button-secondary">{copy.common.openPricing}</Link><button type="button" disabled={isPending} onClick={() => run(() => api("/api/admin/contracts/assignments", "PATCH", { action: "mark_price_applied", assignmentId: item.assignmentId }))} className="button-primary">{copy.common.markApplied}</button></div></div></article>)}</div>}
+          <p className="mt-[8px] max-w-4xl text-sm leading-6 text-gray-600">
+            {copy.prices.description}
+          </p>
+
+          <div className="mt-[21px] grid gap-[13px] sm:grid-cols-2">
+            <div className="rounded-[13px] border border-amber-200 bg-amber-50 p-[13px]">
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
+                {copy.prices.needsUpdateCount}
+              </p>
+              <p className="mt-[5px] text-2xl font-bold text-amber-950">
+                {priceNeedsUpdateCount}
+              </p>
+            </div>
+            <div className="rounded-[13px] border border-emerald-200 bg-emerald-50 p-[13px]">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
+                {copy.prices.readyCount}
+              </p>
+              <p className="mt-[5px] text-2xl font-bold text-emerald-950">
+                {priceReadyCount}
+              </p>
+            </div>
+          </div>
+
+          {data.priceUpdates.length === 0 ? (
+            <Empty text={copy.prices.empty} />
+          ) : (
+            <div className="mt-[21px] space-y-[13px]">
+              {data.priceUpdates.map((item) => {
+                const isReady = item.comparisonStatus === "ready_to_confirm";
+                const trackedFields = [
+                  "subscriptionUnitPrice",
+                  "smsUnitPrice",
+                  "currency",
+                  "vatRate",
+                ].filter((field) =>
+                  Object.prototype.hasOwnProperty.call(item.acceptedTerms, field)
+                );
+                const differentFields = new Set(
+                  item.differences.map((difference) => difference.field)
+                );
+                const acceptedCurrency =
+                  typeof item.acceptedTerms.currency === "string"
+                    ? item.acceptedTerms.currency
+                    : item.operationalTerms.currency;
+
+                return (
+                  <article
+                    key={item.assignmentId}
+                    className={`rounded-[21px] border p-[21px] ${
+                      isReady
+                        ? "border-emerald-200 bg-emerald-50/60"
+                        : "border-amber-200 bg-amber-50/70"
+                    }`}
+                  >
+                    <div className="flex flex-col justify-between gap-[13px] lg:flex-row lg:items-start">
+                      <div>
+                        <p className="font-bold text-gray-950">{item.clientName}</p>
+                        <p className="mt-[5px] text-sm text-gray-700">
+                          {copy.common.version}: {item.packageVersion} · {formatDate(item.acceptedAt, locale)}
+                        </p>
+                        <div className="mt-[8px] flex flex-wrap items-center gap-[8px]">
+                          <span
+                            className={`inline-flex rounded-full border px-[8px] py-[4px] text-xs font-semibold ${
+                              isReady
+                                ? "border-emerald-200 bg-white text-emerald-800"
+                                : "border-amber-300 bg-white text-amber-900"
+                            }`}
+                          >
+                            {isReady
+                              ? copy.prices.readyToConfirm
+                              : copy.prices.needsUpdate}
+                          </span>
+                          <span className="text-xs text-gray-600">
+                            {copy.prices.source}: {item.operationalTerms.source === "client_override"
+                              ? copy.prices.sourceOverride
+                              : copy.prices.sourceGlobal}
+                          </span>
+                          <span className="text-xs text-gray-600">
+                            {copy.prices.comparisonDate}: {formatDateOnly(
+                              item.operationalTerms.comparisonDate,
+                              locale
+                            )}
+                          </span>
+                        </div>
+                        {item.operationalTerms.overrideId ? (
+                          <p className="mt-[8px] text-xs leading-5 text-gray-600">
+                            {copy.prices.overridePeriod}: {item.operationalTerms.overrideEffectiveFrom
+                              ? formatDateOnly(item.operationalTerms.overrideEffectiveFrom, locale)
+                              : copy.prices.noDateLimit} — {item.operationalTerms.overrideEffectiveUntil
+                              ? formatDateOnly(item.operationalTerms.overrideEffectiveUntil, locale)
+                              : copy.prices.noDateLimit}
+                          </p>
+                        ) : null}
+                        {item.operationalTerms.overrideId &&
+                        !item.operationalTerms.overrideApplies ? (
+                          <p className="mt-[8px] rounded-[13px] border border-amber-300 bg-white p-[13px] text-xs leading-5 text-amber-950">
+                            {copy.prices.overrideOutsidePeriod}
+                          </p>
+                        ) : null}
+                      </div>
+
+                      <div className="flex flex-wrap gap-[8px]">
+                        <Link href={item.pricingHref} className="button-secondary">
+                          {copy.common.openPricing}
+                        </Link>
+                        <button
+                          type="button"
+                          disabled={isPending || !isReady}
+                          title={!isReady ? copy.prices.updateFirst : undefined}
+                          onClick={() =>
+                            run(() =>
+                              api("/api/admin/contracts/assignments", "PATCH", {
+                                action: "mark_price_applied",
+                                assignmentId: item.assignmentId,
+                              })
+                            )
+                          }
+                          className="button-primary"
+                        >
+                          {copy.common.markApplied}
+                        </button>
+                      </div>
+                    </div>
+
+                    {item.hasLegacyUnverifiedConfirmation ? (
+                      <p className="mt-[13px] rounded-[13px] border border-amber-300 bg-white p-[13px] text-sm text-amber-950">
+                        {copy.prices.legacyWarning}
+                      </p>
+                    ) : null}
+
+                    <div className="mt-[13px] overflow-x-auto rounded-[13px] border border-gray-200 bg-white">
+                      <table className="min-w-full text-left text-sm">
+                        <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500">
+                          <tr>
+                            <th className="px-[13px] py-[13px]">{copy.prices.differences}</th>
+                            <th className="px-[13px] py-[13px]">{copy.prices.accepted}</th>
+                            <th className="px-[13px] py-[13px]">{copy.prices.operational}</th>
+                            <th className="px-[13px] py-[13px]">{copy.prices.result}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {trackedFields.map((field) => {
+                            const different = differentFields.has(
+                              field as "subscriptionUnitPrice" | "smsUnitPrice" | "currency" | "vatRate"
+                            );
+                            const acceptedValue = item.acceptedTerms[
+                              field as keyof typeof item.acceptedTerms
+                            ];
+                            const operationalValue = item.operationalTerms[
+                              field as keyof typeof item.operationalTerms
+                            ];
+                            return (
+                              <tr key={field}>
+                                <td className="px-[13px] py-[13px] font-semibold text-gray-900">
+                                  {copy.prices.fields[
+                                    field as keyof typeof copy.prices.fields
+                                  ]}
+                                </td>
+                                <td className="px-[13px] py-[13px] text-gray-700">
+                                  {formatPriceValue(
+                                    field,
+                                    acceptedValue,
+                                    locale,
+                                    acceptedCurrency
+                                  )}
+                                </td>
+                                <td className="px-[13px] py-[13px] text-gray-700">
+                                  {formatPriceValue(
+                                    field,
+                                    operationalValue,
+                                    locale,
+                                    item.operationalTerms.currency
+                                  )}
+                                </td>
+                                <td className="px-[13px] py-[13px]">
+                                  <span
+                                    className={`inline-flex rounded-full px-[8px] py-[4px] text-xs font-semibold ${
+                                      different
+                                        ? "bg-amber-100 text-amber-900"
+                                        : "bg-emerald-100 text-emerald-800"
+                                    }`}
+                                  >
+                                    {different
+                                      ? copy.prices.different
+                                      : copy.prices.matched}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <p className="mt-[13px] text-xs leading-5 text-gray-600">
+                      {isReady ? copy.prices.noDifferences : copy.prices.updateFirst}
+                    </p>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </section>
       ) : null}
 
