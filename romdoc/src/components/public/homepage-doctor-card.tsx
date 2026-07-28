@@ -91,6 +91,11 @@ export default function HomepageDoctorCard({
         )
       : null;
 
+  const displayedRating =
+    doctor.reviewCount === 0
+      ? 5
+      : doctor.averageRating;
+
   return (
     <article className="flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-6">
       <div className="flex items-start gap-4">
@@ -170,7 +175,7 @@ export default function HomepageDoctorCard({
       <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600">
         <span>
           <span className="font-semibold text-gray-900">
-            {doctor.averageRating.toFixed(
+            {displayedRating.toFixed(
               1
             )}
           </span>{" "}
