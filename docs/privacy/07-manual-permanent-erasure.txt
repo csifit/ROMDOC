@@ -1,0 +1,40 @@
+-- =====================================================
+-- MANUAL USAGE — DO NOT PLACE REAL UUIDS IN MIGRATION HISTORY
+-- =====================================================
+--
+-- 1. Preview:
+--
+
+select public.preview_permanent_user_removal(
+  '00000000-0000-0000-0000-000000000000'::uuid
+);
+
+--
+-- 2. Delete every physical object listed under storageObjects by using:
+--    Supabase Dashboard -> Storage.
+--
+-- 3. Preview again. storageObjects must be [].
+--
+-- 4. Execute:
+--
+
+select public.permanently_remove_romdoc_user(
+  '00000000-0000-0000-0000-000000000000'::uuid,
+  'DELETE ROMDOC USER 00000000-0000-0000-0000-000000000000',
+  false
+);
+
+--
+-- The third argument must remain false unless:
+--   - accepted contract evidence exists for the account;
+--   - legal review authorises deleting that acceptance evidence;
+--   - every accepted PDF listed by preview was removed from Storage.
+--
+-- 5. Run the preview once more and preserve only the minimal privacy
+--    request completion record outside the erased user profile.
+--
+-- Auth-only invited Doctor:
+--   Use the Auth UUID. The toolkit resolves the Doctor through
+--   doctor_invitations.auth_user_id/email even when public.profiles is absent
+--   and doctors.profile_id is NULL.
+-- =====================================================
