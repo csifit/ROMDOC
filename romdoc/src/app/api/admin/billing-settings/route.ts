@@ -108,9 +108,9 @@ export async function GET(): Promise<Response> {
     code: PLATFORM_OPERATOR_BILLING_CODES.settingsLoaded,
     settings: {
       subscriptionPriceRon: Number(
-        data?.clinic_doctor_monthly_price_ron ?? 60
+        data?.clinic_doctor_monthly_price_ron ?? 20
       ),
-      smsPriceRon: Number(data?.sms_unit_price_ron ?? 0.3),
+      smsPriceRon: Number(data?.sms_unit_price_ron ?? 0.1),
       vatRate: Number(data?.vat_rate ?? 0.21),
       billingCurrency:
         data?.billing_currency === "RON" || data?.billing_currency === "EUR"

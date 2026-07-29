@@ -97,7 +97,7 @@ type SmsPayer = {
   clinicOrganizationId: string | null;
 };
 
-const DEFAULT_SMS_UNIT_COST_MINOR = 30;
+const DEFAULT_SMS_UNIT_COST_MINOR = 10;
 
 function firstRelation<T>(value: T | T[] | null): T | null {
   return Array.isArray(value) ? value[0] ?? null : value;
@@ -350,7 +350,7 @@ async function logSmsDelivery({
     error_message: result.errorMessage?.slice(0, 2000) ?? null,
     invoice_status: result.sent ? "uninvoiced" : "not_billable",
     unit_cost_minor: unitCostMinor,
-    currency: "RON",
+    currency: "EUR",
     payer_type: result.sent ? payer.payerType : "not_billable",
     payer_clinic_organization_id:
       result.sent && payer.payerType === "clinic_organization"

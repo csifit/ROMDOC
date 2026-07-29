@@ -258,8 +258,8 @@ type ClientInvoiceRow = {
 };
 
 const DEFAULT_RATES: PlatformBillingRates = {
-  subscriptionPriceRon: 60,
-  smsPriceRon: 0.3,
+  subscriptionPriceRon: 20,
+  smsPriceRon: 0.1,
   vatRate: 0.21,
   updatedAt: null,
   updatedByProfileId: null,

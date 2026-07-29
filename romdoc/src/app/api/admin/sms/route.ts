@@ -10,7 +10,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export const runtime = "nodejs";
 
 const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
-const DEFAULT_SMS_UNIT_COST_MINOR = 30;
+const DEFAULT_SMS_UNIT_COST_MINOR = 10;
 const DEFAULT_SMS_CURRENCY: PlatformBillingCurrency = "EUR";
 
 type SmsPatchBody = {
