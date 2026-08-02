@@ -41,21 +41,104 @@ export const MEDICAL_PROFILE_FIELDS = [
   },
 ] as const;
 
+/**
+ * The current UI keeps rendering the original ten fields until Step 88A.2.
+ * Database and API code use this expanded list immediately.
+ */
+export const EXPANDED_MEDICAL_PROFILE_FIELDS = [
+  ...MEDICAL_PROFILE_FIELDS.slice(0, 3),
+  {
+    key: "medical_alerts",
+    label: "Alerte medicale",
+  },
+  ...MEDICAL_PROFILE_FIELDS.slice(3),
+  {
+    key: "organ_donation_preference",
+    label: "Preferință privind donarea de organe",
+  },
+] as const;
+
 export type MedicalProfileFieldKey =
-  (typeof MEDICAL_PROFILE_FIELDS)[number]["key"];
+  (typeof EXPANDED_MEDICAL_PROFILE_FIELDS)[number]["key"];
 
 export type MedicalProfileValue =
   Record<string, string>;
 
+export type MedicalProfileModifierRole =
+  | "patient"
+  | "doctor"
+  | "staff"
+  | "admin"
+  | "manager"
+  | "clinic_manager"
+  | "doctor_applicant"
+  | null;
+
 export type MedicalProfileEntry = {
   fieldKey: MedicalProfileFieldKey;
   value: MedicalProfileValue;
-  lastModifiedByDoctor: string | null;
+  lastModifiedByName?: string | null;
+  lastModifiedByRole?: MedicalProfileModifierRole;
   lastModifiedAt: string | null;
+
+  /**
+   * Temporary backwards-compatible alias used by the Step 55 UI.
+   * Step 88A.2 will replace it with the neutral modifier fields above.
+   */
+  lastModifiedByDoctor: string | null;
 };
+
+export type MedicalProfilePatientIdentity = {
+  profileId: string;
+  firstName: string | null;
+  lastName: string | null;
+  legalName: string;
+};
+
+export type MedicalProfileViewerRole =
+  | "patient"
+  | "doctor"
+  | "staff";
+
+export type MedicalProfilePermissions = {
+  viewerRole: MedicalProfileViewerRole;
+  canEditClinicalFields: boolean;
+  canEditOrganDonationPreference: boolean;
+};
+
+export const ORGAN_DONATION_PREFERENCES = [
+  "not_specified",
+  "wishes_to_donate",
+  "does_not_wish_to_donate",
+  "undecided",
+] as const;
+
+export type OrganDonationPreference =
+  (typeof ORGAN_DONATION_PREFERENCES)[number];
+
+export const CLINICAL_MEDICAL_PROFILE_FIELD_KEYS =
+  new Set<MedicalProfileFieldKey>([
+    "date_of_birth",
+    "sex",
+    "blood_group",
+    "medical_alerts",
+    "allergies",
+    "current_medications",
+    "chronic_conditions",
+    "previous_surgeries",
+    "implants_and_medical_devices",
+    "emergency_contact",
+    "family_doctor",
+  ]);
+
+export const PATIENT_DECLARATION_FIELD_KEYS =
+  new Set<MedicalProfileFieldKey>([
+    "organ_donation_preference",
+  ]);
 
 const TEXT_FIELD_KEYS =
   new Set<MedicalProfileFieldKey>([
+    "medical_alerts",
     "allergies",
     "current_medications",
     "chronic_conditions",
@@ -108,6 +191,33 @@ function validDate(value: string) {
   );
 }
 
+export function isMedicalProfileFieldKey(
+  value: unknown
+): value is MedicalProfileFieldKey {
+  return (
+    typeof value === "string" &&
+    EXPANDED_MEDICAL_PROFILE_FIELDS.some(
+      (field) => field.key === value
+    )
+  );
+}
+
+export function isClinicalMedicalProfileField(
+  fieldKey: MedicalProfileFieldKey
+) {
+  return CLINICAL_MEDICAL_PROFILE_FIELD_KEYS.has(
+    fieldKey
+  );
+}
+
+export function isPatientDeclarationField(
+  fieldKey: MedicalProfileFieldKey
+) {
+  return PATIENT_DECLARATION_FIELD_KEYS.has(
+    fieldKey
+  );
+}
+
 export function emptyMedicalProfileValue(
   fieldKey: MedicalProfileFieldKey
 ): MedicalProfileValue {
@@ -136,6 +246,12 @@ export function emptyMedicalProfileValue(
         name: "",
         clinic: "",
         phone: "",
+      };
+
+    case "organ_donation_preference":
+      return {
+        preference:
+          "not_specified",
       };
 
     default:
@@ -314,6 +430,38 @@ export function validateMedicalProfileValue(
     };
   }
 
+  if (
+    fieldKey ===
+    "organ_donation_preference"
+  ) {
+    const preference =
+      cleanText(
+        input.preference,
+        40
+      ) ||
+      "not_specified";
+
+    if (
+      !ORGAN_DONATION_PREFERENCES.includes(
+        preference as
+          OrganDonationPreference
+      )
+    ) {
+      return {
+        value: null,
+        error:
+          "Preferința privind donarea de organe nu este validă.",
+      };
+    }
+
+    return {
+      value: {
+        preference,
+      },
+      error: null,
+    };
+  }
+
   return {
     value: null,
     error:
@@ -443,6 +591,26 @@ export function medicalProfileSummary(
         "Necompletat"
       );
 
+    case "organ_donation_preference": {
+      switch (
+        value.preference as
+          OrganDonationPreference
+      ) {
+        case "wishes_to_donate":
+          return "Dorește să doneze";
+
+        case "does_not_wish_to_donate":
+          return "Nu dorește să doneze";
+
+        case "undecided":
+          return "Nehotărât";
+
+        case "not_specified":
+        default:
+          return "Nespecificat";
+      }
+    }
+
     default: {
       const text =
         value.text?.trim() ?? "";
@@ -465,7 +633,7 @@ export function medicalProfileFieldLabel(
   fieldKey: MedicalProfileFieldKey
 ) {
   return (
-    MEDICAL_PROFILE_FIELDS.find(
+    EXPANDED_MEDICAL_PROFILE_FIELDS.find(
       (field) =>
         field.key === fieldKey
     )?.label ?? fieldKey

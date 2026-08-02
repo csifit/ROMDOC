@@ -4,10 +4,17 @@ import {
 } from "next/server";
 
 import {
-  MEDICAL_PROFILE_FIELDS,
+  EXPANDED_MEDICAL_PROFILE_FIELDS,
   emptyMedicalProfileValue,
+  isClinicalMedicalProfileField,
+  isMedicalProfileFieldKey,
+  isPatientDeclarationField,
   type MedicalProfileEntry,
   type MedicalProfileFieldKey,
+  type MedicalProfileModifierRole,
+  type MedicalProfilePatientIdentity,
+  type MedicalProfilePermissions,
+  type MedicalProfileViewerRole,
   validateMedicalProfileValue,
 } from "@/lib/patient-medical-profile";
 import {
@@ -32,7 +39,9 @@ const ALLOWED_APPOINTMENT_STATUSES =
 
 type ActiveProfile = {
   id: string;
-  role: "patient" | "doctor" | "staff";
+  role: MedicalProfileViewerRole;
+  firstName: string | null;
+  lastName: string | null;
 };
 
 type MedicalProfileRow = {
@@ -42,21 +51,96 @@ type MedicalProfileRow = {
   last_modified_at: string;
 };
 
+type ModifierProfileRow = {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  role: string;
+};
+
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value
   );
 }
 
-function isMedicalProfileFieldKey(
-  value: unknown
-): value is MedicalProfileFieldKey {
-  return (
-    typeof value === "string" &&
-    MEDICAL_PROFILE_FIELDS.some(
-      (field) => field.key === value
-    )
-  );
+function normalizeModifierRole(
+  value: string
+): MedicalProfileModifierRole {
+  switch (value) {
+    case "patient":
+    case "doctor":
+    case "staff":
+    case "admin":
+    case "manager":
+    case "clinic_manager":
+    case "doctor_applicant":
+      return value;
+
+    default:
+      return null;
+  }
+}
+
+function buildLegalName(
+  firstName: string | null,
+  lastName: string | null
+) {
+  return [
+    firstName,
+    lastName,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
+
+function modifierDisplayName(
+  profile: ModifierProfileRow
+) {
+  const name =
+    buildLegalName(
+      profile.first_name,
+      profile.last_name
+    );
+
+  if (
+    profile.role === "doctor"
+  ) {
+    return name
+      ? `Dr. ${name}`
+      : "Medic RomDoc";
+  }
+
+  if (name) {
+    return name;
+  }
+
+  if (
+    profile.role === "patient"
+  ) {
+    return "Pacient";
+  }
+
+  if (
+    profile.role === "staff"
+  ) {
+    return "Personal autorizat";
+  }
+
+  return "Utilizator RomDoc";
+}
+
+function permissionsForRole(
+  role: MedicalProfileViewerRole
+): MedicalProfilePermissions {
+  return {
+    viewerRole: role,
+    canEditClinicalFields:
+      role === "doctor",
+    canEditOrganDonationPreference:
+      role === "patient",
+  };
 }
 
 async function requireActiveProfile(): Promise<
@@ -110,7 +194,9 @@ async function requireActiveProfile(): Promise<
     error: profileError,
   } = await supabase
     .from("profiles")
-    .select("id, role, account_status")
+    .select(
+      "id, role, account_status, first_name, last_name"
+    )
     .eq("id", user.id)
     .maybeSingle();
 
@@ -118,9 +204,11 @@ async function requireActiveProfile(): Promise<
     profileError ||
     !profile ||
     profile.account_status !== "active" ||
-    !["patient", "doctor", "staff"].includes(
-      profile.role
-    )
+    ![
+      "patient",
+      "doctor",
+      "staff",
+    ].includes(profile.role)
   ) {
     return {
       supabase: null,
@@ -139,7 +227,13 @@ async function requireActiveProfile(): Promise<
     supabase,
     profile: {
       id: profile.id,
-      role: profile.role,
+      role:
+        profile.role as
+          MedicalProfileViewerRole,
+      firstName:
+        profile.first_name,
+      lastName:
+        profile.last_name,
     },
     response: null,
   };
@@ -173,7 +267,9 @@ async function resolveDoctorPatient(
     error: appointmentError,
   } = await admin
     .from("appointments")
-    .select("id, patient_profile_id, status")
+    .select(
+      "id, patient_profile_id, status"
+    )
     .eq("id", appointmentId)
     .eq("doctor_id", doctor.id)
     .maybeSingle();
@@ -225,21 +321,48 @@ async function resolveStaffPatient(
   };
 }
 
-function doctorDisplayName(
-  firstName: string | null,
-  lastName: string | null
-) {
-  const name = [
-    firstName,
-    lastName,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
+async function loadPatientIdentity(
+  patientProfileId: string
+): Promise<MedicalProfilePatientIdentity> {
+  const admin = createAdminClient();
 
-  return name
-    ? `Dr. ${name}`
-    : "Medic RomDoc";
+  const {
+    data: patient,
+    error,
+  } = await admin
+    .from("profiles")
+    .select(
+      "id, role, first_name, last_name"
+    )
+    .eq("id", patientProfileId)
+    .eq("role", "patient")
+    .maybeSingle();
+
+  if (error || !patient) {
+    if (error) {
+      console.error(
+        "Patient medical profile identity query failed:",
+        error
+      );
+    }
+
+    throw new Error(
+      "Identitatea pacientului nu a putut fi încărcată."
+    );
+  }
+
+  return {
+    profileId: patient.id,
+    firstName:
+      patient.first_name,
+    lastName:
+      patient.last_name,
+    legalName:
+      buildLegalName(
+        patient.first_name,
+        patient.last_name
+      ) || "Pacient",
+  };
 }
 
 async function loadEntries(
@@ -248,11 +371,16 @@ async function loadEntries(
   const admin = createAdminClient();
 
   const { data, error } = await admin
-    .from("patient_medical_profile_entries")
+    .from(
+      "patient_medical_profile_entries"
+    )
     .select(
       "field_key, value, last_modified_by_profile_id, last_modified_at"
     )
-    .eq("patient_profile_id", patientProfileId);
+    .eq(
+      "patient_profile_id",
+      patientProfileId
+    );
 
   if (error) {
     console.error(
@@ -271,7 +399,8 @@ async function loadEntries(
   const modifierIds = Array.from(
     new Set(
       rows.map(
-        (row) => row.last_modified_by_profile_id
+        (row) =>
+          row.last_modified_by_profile_id
       )
     )
   );
@@ -279,13 +408,21 @@ async function loadEntries(
   const modifierNames =
     new Map<string, string>();
 
+  const modifierRoles =
+    new Map<
+      string,
+      MedicalProfileModifierRole
+    >();
+
   if (modifierIds.length > 0) {
     const {
       data: profiles,
       error: profilesError,
     } = await admin
       .from("profiles")
-      .select("id, first_name, last_name")
+      .select(
+        "id, first_name, last_name, role"
+      )
       .in("id", modifierIds);
 
     if (profilesError) {
@@ -294,12 +431,22 @@ async function loadEntries(
         profilesError
       );
     } else {
-      for (const modifier of profiles ?? []) {
+      for (
+        const modifier of
+        (profiles ?? []) as
+          ModifierProfileRow[]
+      ) {
         modifierNames.set(
           modifier.id,
-          doctorDisplayName(
-            modifier.first_name,
-            modifier.last_name
+          modifierDisplayName(
+            modifier
+          )
+        );
+
+        modifierRoles.set(
+          modifier.id,
+          normalizeModifierRole(
+            modifier.role
           )
         );
       }
@@ -316,57 +463,122 @@ async function loadEntries(
     ])
   );
 
-  return MEDICAL_PROFILE_FIELDS.map(
+  return EXPANDED_MEDICAL_PROFILE_FIELDS.map(
     (field): MedicalProfileEntry => {
-      const row = rowsByKey.get(field.key);
+      const row =
+        rowsByKey.get(field.key);
 
       if (!row) {
         return {
           fieldKey: field.key,
-          value: emptyMedicalProfileValue(
-            field.key
-          ),
-          lastModifiedByDoctor: null,
+          value:
+            emptyMedicalProfileValue(
+              field.key
+            ),
+          lastModifiedByName: null,
+          lastModifiedByRole: null,
           lastModifiedAt: null,
+          lastModifiedByDoctor: null,
         };
       }
+
+      const modifierName =
+        modifierNames.get(
+          row.last_modified_by_profile_id
+        ) ?? "Utilizator RomDoc";
 
       return {
         fieldKey: field.key,
         value:
           row.value ??
-          emptyMedicalProfileValue(field.key),
-        lastModifiedByDoctor:
-          modifierNames.get(
+          emptyMedicalProfileValue(
+            field.key
+          ),
+        lastModifiedByName:
+          modifierName,
+        lastModifiedByRole:
+          modifierRoles.get(
             row.last_modified_by_profile_id
-          ) ?? "Medic RomDoc",
-        lastModifiedAt: row.last_modified_at,
+          ) ?? null,
+        lastModifiedAt:
+          row.last_modified_at,
+        lastModifiedByDoctor:
+          modifierName,
       };
     }
   );
 }
 
+async function loadProfileResponse(
+  patientProfileId: string,
+  viewerRole:
+    MedicalProfileViewerRole
+) {
+  const [
+    entries,
+    patient,
+  ] = await Promise.all([
+    loadEntries(
+      patientProfileId
+    ),
+    loadPatientIdentity(
+      patientProfileId
+    ),
+  ]);
+
+  return {
+    entries,
+    patient,
+    permissions:
+      permissionsForRole(
+        viewerRole
+      ),
+  };
+}
+
 export async function GET(
   request: NextRequest
 ): Promise<Response> {
-  const authorization = await requireActiveProfile();
+  const authorization =
+    await requireActiveProfile();
 
-  if (authorization.response) {
-    return authorization.response;
+  if (
+    authorization.response ||
+    !authorization.profile ||
+    !authorization.supabase
+  ) {
+    return (
+      authorization.response ??
+      NextResponse.json(
+        {
+          error:
+            "Contul nu are acces la profilul medical.",
+        },
+        { status: 403 }
+      )
+    );
   }
 
-  let patientProfileId = authorization.profile.id;
+  const { profile } =
+    authorization;
 
-  if (authorization.profile.role === "doctor") {
+  let patientProfileId =
+    profile.id;
+
+  if (
+    profile.role ===
+    "doctor"
+  ) {
     const appointmentId =
       request.nextUrl.searchParams
         .get("appointmentId")
         ?.trim() ?? "";
 
-    const access = await resolveDoctorPatient(
-      authorization.profile.id,
-      appointmentId
-    );
+    const access =
+      await resolveDoctorPatient(
+        profile.id,
+        appointmentId
+      );
 
     if (!access) {
       return NextResponse.json(
@@ -378,18 +590,23 @@ export async function GET(
       );
     }
 
-    patientProfileId = access.patientProfileId;
+    patientProfileId =
+      access.patientProfileId;
   }
 
-  if (authorization.profile.role === "staff") {
+  if (
+    profile.role ===
+    "staff"
+  ) {
     const appointmentId =
       request.nextUrl.searchParams
         .get("appointmentId")
         ?.trim() ?? "";
 
-    const access = await resolveStaffPatient(
-      appointmentId
-    );
+    const access =
+      await resolveStaffPatient(
+        appointmentId
+      );
 
     if (!access) {
       return NextResponse.json(
@@ -401,19 +618,23 @@ export async function GET(
       );
     }
 
-    patientProfileId = access.patientProfileId;
+    patientProfileId =
+      access.patientProfileId;
   }
 
   try {
-    const entries = await loadEntries(
-      patientProfileId
-    );
+    const payload =
+      await loadProfileResponse(
+        patientProfileId,
+        profile.role
+      );
 
     return NextResponse.json(
-      { entries },
+      payload,
       {
         headers: {
-          "Cache-Control": "no-store",
+          "Cache-Control":
+            "no-store",
         },
       }
     );
@@ -433,17 +654,39 @@ export async function GET(
 export async function PATCH(
   request: NextRequest
 ): Promise<Response> {
-  const authorization = await requireActiveProfile();
+  const authorization =
+    await requireActiveProfile();
 
-  if (authorization.response) {
-    return authorization.response;
+  if (
+    authorization.response ||
+    !authorization.profile ||
+    !authorization.supabase
+  ) {
+    return (
+      authorization.response ??
+      NextResponse.json(
+        {
+          error:
+            "Contul nu are acces la profilul medical.",
+        },
+        { status: 403 }
+      )
+    );
   }
 
-  if (authorization.profile.role !== "doctor") {
+  const {
+    profile,
+    supabase,
+  } = authorization;
+
+  if (
+    profile.role ===
+    "staff"
+  ) {
     return NextResponse.json(
       {
         error:
-          "Numai medicii autorizați pot modifica profilul medical.",
+          "Personalul autorizat poate consulta profilul medical, dar nu îl poate modifica.",
       },
       { status: 403 }
     );
@@ -465,34 +708,35 @@ export async function PATCH(
   } catch {
     return NextResponse.json(
       {
-        error: "Datele trimise nu sunt valide.",
+        error:
+          "Datele trimise nu sunt valide.",
       },
       { status: 400 }
     );
   }
 
-  const appointmentId =
-    typeof body.appointmentId === "string"
-      ? body.appointmentId.trim()
-      : "";
-
   if (
-    !isUuid(appointmentId) ||
-    !isMedicalProfileFieldKey(body.fieldKey)
+    !isMedicalProfileFieldKey(
+      body.fieldKey
+    )
   ) {
     return NextResponse.json(
       {
         error:
-          "Programarea sau secțiunea selectată nu este validă.",
+          "Secțiunea selectată nu este validă.",
       },
       { status: 400 }
     );
   }
 
-  const validation = validateMedicalProfileValue(
-    body.fieldKey,
-    body.value
-  );
+  const fieldKey =
+    body.fieldKey;
+
+  const validation =
+    validateMedicalProfileValue(
+      fieldKey,
+      body.value
+    );
 
   if (validation.error) {
     return NextResponse.json(
@@ -503,62 +747,153 @@ export async function PATCH(
     );
   }
 
-  const access = await resolveDoctorPatient(
-    authorization.profile.id,
-    appointmentId
-  );
+  let patientProfileId =
+    profile.id;
 
-  if (!access) {
-    return NextResponse.json(
-      {
-        error:
-          "Nu ai acces la profilul medical pentru această programare.",
-      },
-      { status: 403 }
-    );
+  if (
+    profile.role ===
+    "patient"
+  ) {
+    if (
+      !isPatientDeclarationField(
+        fieldKey
+      )
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Pacientul poate modifica numai declarațiile personale permise.",
+        },
+        { status: 403 }
+      );
+    }
+
+    const { error: updateError } =
+      await supabase.rpc(
+        "update_own_organ_donation_preference",
+        {
+          target_value:
+            validation.value,
+        }
+      );
+
+    if (updateError) {
+      console.error(
+        "Patient organ-donation preference update failed:",
+        updateError
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "Preferința privind donarea de organe nu a putut fi salvată.",
+        },
+        { status: 500 }
+      );
+    }
   }
 
-  const { error: updateError } =
-    await authorization.supabase.rpc(
-      "update_patient_medical_profile_entry",
-      {
-        target_patient_profile_id:
-          access.patientProfileId,
-        target_appointment_id: appointmentId,
-        target_field_key: body.fieldKey,
-        target_value: validation.value,
-      }
-    );
+  if (
+    profile.role ===
+    "doctor"
+  ) {
+    if (
+      !isClinicalMedicalProfileField(
+        fieldKey
+      )
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Această declarație aparține pacientului și nu poate fi modificată de medic.",
+        },
+        { status: 403 }
+      );
+    }
 
-  if (updateError) {
-    console.error(
-      "Patient medical profile update failed:",
-      updateError
-    );
+    const appointmentId =
+      typeof body.appointmentId ===
+        "string"
+        ? body.appointmentId.trim()
+        : "";
 
-    return NextResponse.json(
-      {
-        error:
-          "Secțiunea profilului medical nu a putut fi salvată.",
-      },
-      { status: 500 }
-    );
+    if (!isUuid(appointmentId)) {
+      return NextResponse.json(
+        {
+          error:
+            "Programarea selectată nu este validă.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const access =
+      await resolveDoctorPatient(
+        profile.id,
+        appointmentId
+      );
+
+    if (!access) {
+      return NextResponse.json(
+        {
+          error:
+            "Nu ai acces la profilul medical pentru această programare.",
+        },
+        { status: 403 }
+      );
+    }
+
+    patientProfileId =
+      access.patientProfileId;
+
+    const { error: updateError } =
+      await supabase.rpc(
+        "update_patient_medical_profile_entry",
+        {
+          target_patient_profile_id:
+            patientProfileId,
+          target_appointment_id:
+            appointmentId,
+          target_field_key:
+            fieldKey,
+          target_value:
+            validation.value,
+        }
+      );
+
+    if (updateError) {
+      console.error(
+        "Patient medical profile update failed:",
+        updateError
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "Secțiunea profilului medical nu a putut fi salvată.",
+        },
+        { status: 500 }
+      );
+    }
   }
 
   try {
-    const entries = await loadEntries(
-      access.patientProfileId
-    );
+    const payload =
+      await loadProfileResponse(
+        patientProfileId,
+        profile.role
+      );
 
     return NextResponse.json(
       {
-        entries,
+        ...payload,
         message:
-          "Informația medicală a fost salvată.",
+          "Informația profilului medical a fost salvată.",
       },
       {
         headers: {
-          "Cache-Control": "no-store",
+          "Cache-Control":
+            "no-store",
         },
       }
     );
