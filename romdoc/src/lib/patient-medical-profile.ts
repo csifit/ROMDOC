@@ -12,6 +12,10 @@ export const MEDICAL_PROFILE_FIELDS = [
     label: "Grupa sanguină",
   },
   {
+    key: "medical_alerts",
+    label: "Alerte medicale",
+  },
+  {
     key: "allergies",
     label: "Alergii",
   },
@@ -39,24 +43,18 @@ export const MEDICAL_PROFILE_FIELDS = [
     key: "family_doctor",
     label: "Medic de familie",
   },
-] as const;
-
-/**
- * The current UI keeps rendering the original ten fields until Step 88A.2.
- * Database and API code use this expanded list immediately.
- */
-export const EXPANDED_MEDICAL_PROFILE_FIELDS = [
-  ...MEDICAL_PROFILE_FIELDS.slice(0, 3),
-  {
-    key: "medical_alerts",
-    label: "Alerte medicale",
-  },
-  ...MEDICAL_PROFILE_FIELDS.slice(3),
   {
     key: "organ_donation_preference",
     label: "Preferință privind donarea de organe",
   },
 ] as const;
+
+/**
+ * Backwards-compatible export retained for code installed during Step 88A.1.
+ * New code should use MEDICAL_PROFILE_FIELDS.
+ */
+export const EXPANDED_MEDICAL_PROFILE_FIELDS =
+  MEDICAL_PROFILE_FIELDS;
 
 export type MedicalProfileFieldKey =
   (typeof EXPANDED_MEDICAL_PROFILE_FIELDS)[number]["key"];
@@ -77,15 +75,9 @@ export type MedicalProfileModifierRole =
 export type MedicalProfileEntry = {
   fieldKey: MedicalProfileFieldKey;
   value: MedicalProfileValue;
-  lastModifiedByName?: string | null;
-  lastModifiedByRole?: MedicalProfileModifierRole;
+  lastModifiedByName: string | null;
+  lastModifiedByRole: MedicalProfileModifierRole;
   lastModifiedAt: string | null;
-
-  /**
-   * Temporary backwards-compatible alias used by the Step 55 UI.
-   * Step 88A.2 will replace it with the neutral modifier fields above.
-   */
-  lastModifiedByDoctor: string | null;
 };
 
 export type MedicalProfilePatientIdentity = {
@@ -196,7 +188,7 @@ export function isMedicalProfileFieldKey(
 ): value is MedicalProfileFieldKey {
   return (
     typeof value === "string" &&
-    EXPANDED_MEDICAL_PROFILE_FIELDS.some(
+    MEDICAL_PROFILE_FIELDS.some(
       (field) => field.key === value
     )
   );
@@ -633,7 +625,7 @@ export function medicalProfileFieldLabel(
   fieldKey: MedicalProfileFieldKey
 ) {
   return (
-    EXPANDED_MEDICAL_PROFILE_FIELDS.find(
+    MEDICAL_PROFILE_FIELDS.find(
       (field) =>
         field.key === fieldKey
     )?.label ?? fieldKey

@@ -4,7 +4,7 @@ import {
 } from "next/server";
 
 import {
-  EXPANDED_MEDICAL_PROFILE_FIELDS,
+  MEDICAL_PROFILE_FIELDS,
   emptyMedicalProfileValue,
   isClinicalMedicalProfileField,
   isMedicalProfileFieldKey,
@@ -104,31 +104,13 @@ function modifierDisplayName(
       profile.last_name
     );
 
-  if (
-    profile.role === "doctor"
-  ) {
-    return name
-      ? `Dr. ${name}`
-      : "Medic RomDoc";
+  if (!name) {
+    return null;
   }
 
-  if (name) {
-    return name;
-  }
-
-  if (
-    profile.role === "patient"
-  ) {
-    return "Pacient";
-  }
-
-  if (
-    profile.role === "staff"
-  ) {
-    return "Personal autorizat";
-  }
-
-  return "Utilizator RomDoc";
+  return profile.role === "doctor"
+    ? `Dr. ${name}`
+    : name;
 }
 
 function permissionsForRole(
@@ -361,7 +343,7 @@ async function loadPatientIdentity(
       buildLegalName(
         patient.first_name,
         patient.last_name
-      ) || "Pacient",
+      ),
   };
 }
 
@@ -436,12 +418,17 @@ async function loadEntries(
         (profiles ?? []) as
           ModifierProfileRow[]
       ) {
-        modifierNames.set(
-          modifier.id,
+        const displayName =
           modifierDisplayName(
             modifier
-          )
-        );
+          );
+
+        if (displayName) {
+          modifierNames.set(
+            modifier.id,
+            displayName
+          );
+        }
 
         modifierRoles.set(
           modifier.id,
@@ -463,7 +450,7 @@ async function loadEntries(
     ])
   );
 
-  return EXPANDED_MEDICAL_PROFILE_FIELDS.map(
+  return MEDICAL_PROFILE_FIELDS.map(
     (field): MedicalProfileEntry => {
       const row =
         rowsByKey.get(field.key);
@@ -478,14 +465,13 @@ async function loadEntries(
           lastModifiedByName: null,
           lastModifiedByRole: null,
           lastModifiedAt: null,
-          lastModifiedByDoctor: null,
         };
       }
 
       const modifierName =
         modifierNames.get(
           row.last_modified_by_profile_id
-        ) ?? "Utilizator RomDoc";
+        ) ?? null;
 
       return {
         fieldKey: field.key,
@@ -502,8 +488,6 @@ async function loadEntries(
           ) ?? null,
         lastModifiedAt:
           row.last_modified_at,
-        lastModifiedByDoctor:
-          modifierName,
       };
     }
   );

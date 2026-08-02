@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 
+import EmergencyMedicalSummary from "@/components/medical-folder/emergency-medical-summary";
 import {
   type AppLocale,
   normalizeAppLocale,
@@ -19,9 +20,15 @@ import {
   MEDICAL_PROFILE_FIELDS,
   calculateAge,
   emptyMedicalProfileValue,
+  isClinicalMedicalProfileField,
+  isPatientDeclarationField,
   type MedicalProfileEntry,
   type MedicalProfileFieldKey,
+  type MedicalProfileModifierRole,
+  type MedicalProfilePatientIdentity,
+  type MedicalProfilePermissions,
   type MedicalProfileValue,
+  type OrganDonationPreference,
 } from "@/lib/patient-medical-profile";
 
 type Props = {
@@ -31,6 +38,8 @@ type Props = {
 
 type ProfileResponse = {
   entries?: MedicalProfileEntry[];
+  patient?: MedicalProfilePatientIdentity;
+  permissions?: MedicalProfilePermissions;
   message?: string;
   error?: string;
 };
@@ -173,15 +182,11 @@ function FieldEditor({
             </option>
 
             <option value="male">
-              {t(
-                "male"
-              )}
+              {t("male")}
             </option>
 
             <option value="female">
-              {t(
-                "female"
-              )}
+              {t("female")}
             </option>
           </select>
         </label>
@@ -265,15 +270,11 @@ function FieldEditor({
               </option>
 
               <option value="positive">
-                {t(
-                  "positive"
-                )}
+                {t("positive")}
               </option>
 
               <option value="negative">
-                {t(
-                  "negative"
-                )}
+                {t("negative")}
               </option>
 
               <option value="unknown">
@@ -291,9 +292,7 @@ function FieldEditor({
         <div className="grid gap-[13px] sm:grid-cols-3">
           <label className="block">
             <span className="text-sm font-semibold text-gray-700">
-              {t(
-                "name"
-              )}
+              {t("name")}
             </span>
 
             <input
@@ -338,9 +337,7 @@ function FieldEditor({
 
           <label className="block">
             <span className="text-sm font-semibold text-gray-700">
-              {t(
-                "phone"
-              )}
+              {t("phone")}
             </span>
 
             <input
@@ -366,9 +363,7 @@ function FieldEditor({
         <div className="grid gap-[13px] sm:grid-cols-3">
           <label className="block">
             <span className="text-sm font-semibold text-gray-700">
-              {t(
-                "name"
-              )}
+              {t("name")}
             </span>
 
             <input
@@ -389,9 +384,7 @@ function FieldEditor({
 
           <label className="block">
             <span className="text-sm font-semibold text-gray-700">
-              {t(
-                "clinic"
-              )}
+              {t("clinic")}
             </span>
 
             <input
@@ -412,9 +405,7 @@ function FieldEditor({
 
           <label className="block">
             <span className="text-sm font-semibold text-gray-700">
-              {t(
-                "phone"
-              )}
+              {t("phone")}
             </span>
 
             <input
@@ -432,6 +423,63 @@ function FieldEditor({
               className={inputClasses}
             />
           </label>
+        </div>
+      );
+
+    case "organ_donation_preference":
+      return (
+        <div>
+          <label className="block">
+            <span className="text-sm font-semibold text-gray-700">
+              {t(
+                "fields.organ_donation_preference"
+              )}
+            </span>
+
+            <select
+              value={
+                value.preference ??
+                "not_specified"
+              }
+              onChange={(event) =>
+                setValue(
+                  "preference",
+                  event.target.value
+                )
+              }
+              className={inputClasses}
+            >
+              <option value="not_specified">
+                {t(
+                  "organDonation.values.not_specified"
+                )}
+              </option>
+
+              <option value="wishes_to_donate">
+                {t(
+                  "organDonation.values.wishes_to_donate"
+                )}
+              </option>
+
+              <option value="does_not_wish_to_donate">
+                {t(
+                  "organDonation.values.does_not_wish_to_donate"
+                )}
+              </option>
+
+              <option value="undecided">
+                {t(
+                  "organDonation.values.undecided"
+                )}
+              </option>
+            </select>
+          </label>
+
+          <p className="mt-[8px] text-xs leading-5 text-blue-900">
+            {t(
+              "organDonation.declarationNotice"
+            )}
+          </p>
         </div>
       );
 
@@ -454,11 +502,23 @@ function FieldEditor({
                 event.target.value
               )
             }
-            rows={5}
+            rows={
+              fieldKey ===
+              "medical_alerts"
+                ? 4
+                : 5
+            }
             maxLength={5000}
-            placeholder={t(
-              "listPlaceholder"
-            )}
+            placeholder={
+              fieldKey ===
+              "medical_alerts"
+                ? t(
+                    "medicalAlertsPlaceholder"
+                  )
+                : t(
+                    "listPlaceholder"
+                  )
+            }
             className={`${inputClasses} resize-y`}
           />
         </label>
@@ -486,6 +546,20 @@ export default function PatientMedicalProfile({
   ] = useState<
     MedicalProfileEntry[]
   >([]);
+
+  const [
+    patient,
+    setPatient,
+  ] = useState<
+    MedicalProfilePatientIdentity | null
+  >(null);
+
+  const [
+    permissions,
+    setPermissions,
+  ] = useState<
+    MedicalProfilePermissions | null
+  >(null);
 
   const [
     isLoading,
@@ -529,6 +603,32 @@ export default function PatientMedicalProfile({
       )}`;
     }, [appointmentId]);
 
+  const legacyDoctorEditing =
+    Boolean(
+      editable &&
+      appointmentId
+    );
+
+  const viewerRole =
+    permissions?.viewerRole ??
+    (
+      legacyDoctorEditing
+        ? "doctor"
+        : appointmentId
+          ? "staff"
+          : "patient"
+    );
+
+  const canEditClinicalFields =
+    permissions
+      ?.canEditClinicalFields ??
+    legacyDoctorEditing;
+
+  const canEditOrganDonationPreference =
+    permissions
+      ?.canEditOrganDonationPreference ??
+    false;
+
   const loadProfile =
     useCallback(async () => {
       setIsLoading(true);
@@ -562,6 +662,15 @@ export default function PatientMedicalProfile({
         setEntries(
           payload.entries ?? []
         );
+
+        setPatient(
+          payload.patient ?? null
+        );
+
+        setPermissions(
+          payload.permissions ??
+          null
+        );
       } catch (loadError) {
         setError(
           loadError instanceof Error
@@ -583,9 +692,44 @@ export default function PatientMedicalProfile({
     void loadProfile();
   }, [loadProfile]);
 
+  function canEditField(
+    fieldKey: MedicalProfileFieldKey
+  ) {
+    if (
+      isPatientDeclarationField(
+        fieldKey
+      )
+    ) {
+      return (
+        canEditOrganDonationPreference
+      );
+    }
+
+    if (
+      isClinicalMedicalProfileField(
+        fieldKey
+      )
+    ) {
+      return (
+        canEditClinicalFields &&
+        Boolean(appointmentId)
+      );
+    }
+
+    return false;
+  }
+
   function startEditing(
     entry: MedicalProfileEntry
   ) {
+    if (
+      !canEditField(
+        entry.fieldKey
+      )
+    ) {
+      return;
+    }
+
     setEditingField(
       entry.fieldKey
     );
@@ -601,8 +745,9 @@ export default function PatientMedicalProfile({
     fieldKey: MedicalProfileFieldKey
   ) {
     if (
-      !editable ||
-      !appointmentId
+      !canEditField(
+        fieldKey
+      )
     ) {
       return;
     }
@@ -647,6 +792,16 @@ export default function PatientMedicalProfile({
         payload.entries ?? []
       );
 
+      setPatient(
+        payload.patient ??
+        patient
+      );
+
+      setPermissions(
+        payload.permissions ??
+        permissions
+      );
+
       setEditingField(null);
       setDraftValue({});
     } catch (saveError) {
@@ -660,6 +815,21 @@ export default function PatientMedicalProfile({
     } finally {
       setSavingField(null);
     }
+  }
+
+  function getOrganDonationLabel(
+    value: MedicalProfileValue
+  ) {
+    const preference =
+      (
+        value.preference ??
+        "not_specified"
+      ) as
+        OrganDonationPreference;
+
+    return t(
+      `organDonation.values.${preference}`
+    );
   }
 
   function getSummary(
@@ -702,17 +872,13 @@ export default function PatientMedicalProfile({
         if (
           value.sex === "male"
         ) {
-          return t(
-            "male"
-          );
+          return t("male");
         }
 
         if (
           value.sex === "female"
         ) {
-          return t(
-            "female"
-          );
+          return t("female");
         }
 
         return t(
@@ -760,6 +926,13 @@ export default function PatientMedicalProfile({
           value.name ||
           t(
             "notCompletedShort"
+          )
+        );
+
+      case "organ_donation_preference":
+        return (
+          getOrganDonationLabel(
+            value
           )
         );
 
@@ -836,13 +1009,9 @@ export default function PatientMedicalProfile({
 
         const rh =
           value.rh === "positive"
-            ? t(
-                "positive"
-              )
+            ? t("positive")
             : value.rh === "negative"
-              ? t(
-                  "negative"
-                )
+              ? t("negative")
               : t(
                   "unknownMasculine"
                 );
@@ -851,9 +1020,7 @@ export default function PatientMedicalProfile({
           <dl className="grid gap-[13px] sm:grid-cols-2">
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                {t(
-                  "group"
-                )}
+                {t("group")}
               </dt>
 
               <dd className="mt-[5px] text-gray-900">
@@ -885,9 +1052,7 @@ export default function PatientMedicalProfile({
           <dl className="grid gap-[13px] sm:grid-cols-3">
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                {t(
-                  "name"
-                )}
+                {t("name")}
               </dt>
 
               <dd className="mt-[5px] text-gray-900">
@@ -913,9 +1078,7 @@ export default function PatientMedicalProfile({
 
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                {t(
-                  "phone"
-                )}
+                {t("phone")}
               </dt>
 
               <dd className="mt-[5px] text-gray-900">
@@ -932,9 +1095,7 @@ export default function PatientMedicalProfile({
           <dl className="grid gap-[13px] sm:grid-cols-3">
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                {t(
-                  "name"
-                )}
+                {t("name")}
               </dt>
 
               <dd className="mt-[5px] text-gray-900">
@@ -946,9 +1107,7 @@ export default function PatientMedicalProfile({
 
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                {t(
-                  "clinic"
-                )}
+                {t("clinic")}
               </dt>
 
               <dd className="mt-[5px] text-gray-900">
@@ -960,9 +1119,7 @@ export default function PatientMedicalProfile({
 
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                {t(
-                  "phone"
-                )}
+                {t("phone")}
               </dt>
 
               <dd className="mt-[5px] text-gray-900">
@@ -972,6 +1129,51 @@ export default function PatientMedicalProfile({
               </dd>
             </div>
           </dl>
+        );
+
+      case "medical_alerts": {
+        const text =
+          value.text?.trim() ?? "";
+
+        return (
+          <div
+            className={
+              text
+                ? "rounded-[13px] border border-red-300 bg-red-50 p-[13px]"
+                : "rounded-[13px] border border-emerald-200 bg-emerald-50 p-[13px]"
+            }
+          >
+            <p
+              className={
+                text
+                  ? "whitespace-pre-wrap text-sm font-semibold leading-6 text-red-950"
+                  : "text-sm font-semibold leading-6 text-emerald-950"
+              }
+            >
+              {text ||
+                t(
+                  "emergencySummary.noMedicalAlerts"
+                )}
+            </p>
+          </div>
+        );
+      }
+
+      case "organ_donation_preference":
+        return (
+          <div className="rounded-[13px] border border-blue-200 bg-blue-50 p-[13px]">
+            <p className="font-semibold text-blue-950">
+              {getOrganDonationLabel(
+                value
+              )}
+            </p>
+
+            <p className="mt-[8px] text-xs leading-5 text-blue-900">
+              {t(
+                "organDonation.declarationNotice"
+              )}
+            </p>
+          </div>
         );
 
       default:
@@ -985,31 +1187,54 @@ export default function PatientMedicalProfile({
     }
   }
 
+  function modifierRoleLabel(
+    role:
+      MedicalProfileModifierRole
+  ) {
+    switch (role) {
+      case "patient":
+      case "doctor":
+      case "staff":
+      case "admin":
+      case "manager":
+      case "clinic_manager":
+      case "doctor_applicant":
+        return t(
+          `modifierRoles.${role}`
+        );
+
+      default:
+        return t(
+          "modifierRoles.unknown"
+        );
+    }
+  }
+
+  const descriptionKey =
+    canEditClinicalFields
+      ? "doctorEditableDescription"
+      : canEditOrganDonationPreference
+        ? "patientEditableDescription"
+        : "readOnlyDescription";
+
   return (
     <section className="mt-[34px] overflow-hidden rounded-[21px] border border-gray-200 bg-white shadow-sm">
       <div className="border-b border-gray-200 p-[21px] sm:p-[34px]">
         <p className="text-sm font-semibold text-[#036661]">
-          {t(
-            "eyebrow"
-          )}
+          {t("eyebrow")}
         </p>
 
         <h2 className="mt-[5px] text-2xl font-bold text-gray-900">
-          {t(
-            "title"
-          )}
+          {t("title")}
         </h2>
 
         <p className="mt-[8px] max-w-3xl text-sm leading-6 text-gray-600">
           {t(
             "description"
+          )}{" "}
+          {t(
+            descriptionKey
           )}
-
-          {editable
-            ? ` ${t(
-                "editableDescription"
-              )}`
-            : ""}
         </p>
       </div>
 
@@ -1024,187 +1249,260 @@ export default function PatientMedicalProfile({
 
       {isLoading ? (
         <div className="p-[21px] text-sm text-gray-600">
-          {t(
-            "loading"
-          )}
+          {t("loading")}
         </div>
       ) : (
-        <div className="divide-y divide-gray-200">
-          {MEDICAL_PROFILE_FIELDS.map(
-            (field) => {
-              const entry =
-                entries.find(
-                  (item) =>
-                    item.fieldKey ===
-                    field.key
-                ) ?? {
-                  fieldKey:
-                    field.key,
-                  value:
-                    emptyMedicalProfileValue(
+        <>
+          <EmergencyMedicalSummary
+            entries={entries}
+            patient={patient}
+            locale={locale}
+          />
+
+          <div className="divide-y divide-gray-200">
+            {MEDICAL_PROFILE_FIELDS.map(
+              (field) => {
+                const entry =
+                  entries.find(
+                    (item) =>
+                      item.fieldKey ===
                       field.key
-                    ),
-                  lastModifiedByDoctor:
-                    null,
-                  lastModifiedAt:
-                    null,
-                };
+                  ) ?? {
+                    fieldKey:
+                      field.key,
+                    value:
+                      emptyMedicalProfileValue(
+                        field.key
+                      ),
+                    lastModifiedByName:
+                      null,
+                    lastModifiedByRole:
+                      null,
+                    lastModifiedAt:
+                      null,
+                  };
 
-              const isEditing =
-                editingField ===
-                field.key;
+                const isEditing =
+                  editingField ===
+                  field.key;
 
-              return (
-                <details
-                  key={field.key}
-                  className="group"
-                >
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-[13px] px-[21px] py-[13px] transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#036661] [&::-webkit-details-marker]:hidden">
-                    <span className="min-w-0">
-                      <span className="block font-semibold text-gray-900">
-                        {t(
-                          `fields.${field.key}`
-                        )}
-                      </span>
+                const fieldIsEditable =
+                  canEditField(
+                    field.key
+                  );
 
-                      <span className="mt-[5px] block truncate text-sm text-gray-500">
-                        {getSummary(
-                          field.key,
-                          entry.value
-                        )}
-                      </span>
-                    </span>
+                const isMedicalAlert =
+                  field.key ===
+                  "medical_alerts";
 
-                    <svg
-                      aria-hidden="true"
-                      viewBox="0 0 20 20"
-                      fill="none"
-                      className="h-[21px] w-[21px] shrink-0 text-gray-500 transition-transform group-open:rotate-180"
+                const isPatientDeclaration =
+                  field.key ===
+                  "organ_donation_preference";
+
+                return (
+                  <details
+                    key={field.key}
+                    className="group"
+                  >
+                    <summary
+                      className={
+                        isMedicalAlert
+                          ? "flex cursor-pointer list-none items-center justify-between gap-[13px] bg-red-50 px-[21px] py-[13px] transition-colors hover:bg-red-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-600 [&::-webkit-details-marker]:hidden"
+                          : isPatientDeclaration
+                            ? "flex cursor-pointer list-none items-center justify-between gap-[13px] bg-blue-50 px-[21px] py-[13px] transition-colors hover:bg-blue-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 [&::-webkit-details-marker]:hidden"
+                            : "flex cursor-pointer list-none items-center justify-between gap-[13px] px-[21px] py-[13px] transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#036661] [&::-webkit-details-marker]:hidden"
+                      }
                     >
-                      <path
-                        d="m5 7.5 5 5 5-5"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </summary>
+                      <span className="min-w-0">
+                        <span
+                          className={
+                            isMedicalAlert
+                              ? "block font-semibold text-red-950"
+                              : isPatientDeclaration
+                                ? "block font-semibold text-blue-950"
+                                : "block font-semibold text-gray-900"
+                          }
+                        >
+                          {t(
+                            `fields.${field.key}`
+                          )}
+                        </span>
 
-                  <div className="border-t border-gray-100 bg-gray-50/60 px-[21px] py-[21px]">
-                    {isEditing ? (
-                      <div>
-                        <FieldEditor
-                          fieldKey={
-                            field.key
+                        <span
+                          className={
+                            isMedicalAlert
+                              ? "mt-[5px] block truncate text-sm text-red-800"
+                              : isPatientDeclaration
+                                ? "mt-[5px] block truncate text-sm text-blue-800"
+                                : "mt-[5px] block truncate text-sm text-gray-500"
                           }
-                          value={
-                            draftValue
-                          }
-                          onChange={
-                            setDraftValue
-                          }
+                        >
+                          {getSummary(
+                            field.key,
+                            entry.value
+                          )}
+                        </span>
+                      </span>
+
+                      <svg
+                        aria-hidden="true"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        className="h-[21px] w-[21px] shrink-0 text-gray-500 transition-transform group-open:rotate-180"
+                      >
+                        <path
+                          d="m5 7.5 5 5 5-5"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                         />
+                      </svg>
+                    </summary>
 
-                        <div className="mt-[13px] flex flex-wrap gap-[8px]">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void saveField(
-                                field.key
-                              )
-                            }
-                            disabled={
-                              savingField ===
+                    <div className="border-t border-gray-100 bg-gray-50/60 px-[21px] py-[21px]">
+                      {isEditing ? (
+                        <div>
+                          <FieldEditor
+                            fieldKey={
                               field.key
                             }
-                            className="romdoc-button romdoc-button-primary romdoc-button-sm"
-                          >
-                            {savingField ===
-                            field.key
-                              ? t(
-                                  "saving"
-                                )
-                              : t(
-                                  "save"
-                                )}
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingField(
-                                null
-                              );
-                              setDraftValue(
-                                {}
-                              );
-                              setError("");
-                            }}
-                            disabled={
-                              savingField ===
-                              field.key
+                            value={
+                              draftValue
                             }
-                            className="romdoc-button romdoc-button-secondary romdoc-button-sm"
-                          >
-                            {t(
-                              "cancel"
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        {renderFullValue(
-                          field.key,
-                          entry.value
-                        )}
+                            onChange={
+                              setDraftValue
+                            }
+                          />
 
-                        <div className="mt-[13px] flex flex-col justify-between gap-[13px] border-t border-gray-200 pt-[13px] sm:flex-row sm:items-center">
-                          <p className="text-xs text-gray-500">
-                            {entry.lastModifiedByDoctor &&
-                            entry.lastModifiedAt
-                              ? t(
-                                  "lastModified",
-                                  {
-                                    doctor:
-                                      entry.lastModifiedByDoctor,
-                                    date:
-                                      formatAuditDate(
-                                        entry.lastModifiedAt,
-                                        locale
-                                      ),
-                                  }
-                                )
-                              : t(
-                                  "noChanges"
-                                )}
-                          </p>
-
-                          {editable && (
+                          <div className="mt-[13px] flex flex-wrap gap-[8px]">
                             <button
                               type="button"
                               onClick={() =>
-                                startEditing(
-                                  entry
+                                void saveField(
+                                  field.key
                                 )
                               }
-                              className="w-fit text-sm font-semibold text-[#036661] underline-offset-4 hover:underline"
+                              disabled={
+                                savingField ===
+                                field.key
+                              }
+                              className="romdoc-button romdoc-button-primary romdoc-button-sm"
+                            >
+                              {savingField ===
+                              field.key
+                                ? t(
+                                    "saving"
+                                  )
+                                : t(
+                                    "save"
+                                  )}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingField(
+                                  null
+                                );
+                                setDraftValue(
+                                  {}
+                                );
+                                setError("");
+                              }}
+                              disabled={
+                                savingField ===
+                                field.key
+                              }
+                              className="romdoc-button romdoc-button-secondary romdoc-button-sm"
                             >
                               {t(
-                                "edit"
+                                "cancel"
                               )}
                             </button>
-                          )}
+                          </div>
                         </div>
-                      </>
-                    )}
-                  </div>
-                </details>
-              );
-            }
-          )}
-        </div>
+                      ) : (
+                        <>
+                          {renderFullValue(
+                            field.key,
+                            entry.value
+                          )}
+
+                          <div className="mt-[13px] flex flex-col justify-between gap-[13px] border-t border-gray-200 pt-[13px] sm:flex-row sm:items-center">
+                            <p className="text-xs text-gray-500">
+                              {entry.lastModifiedAt
+                                ? entry.lastModifiedByName
+                                  ? t(
+                                      "lastModifiedWithRole",
+                                      {
+                                        name:
+                                          entry.lastModifiedByName,
+                                        role:
+                                          modifierRoleLabel(
+                                            entry.lastModifiedByRole
+                                          ),
+                                        date:
+                                          formatAuditDate(
+                                            entry.lastModifiedAt,
+                                            locale
+                                          ),
+                                      }
+                                    )
+                                  : t(
+                                      "lastModified",
+                                      {
+                                        name:
+                                          modifierRoleLabel(
+                                            entry.lastModifiedByRole
+                                          ),
+                                        date:
+                                          formatAuditDate(
+                                            entry.lastModifiedAt,
+                                            locale
+                                          ),
+                                      }
+                                    )
+                                : t(
+                                    "noChanges"
+                                  )}
+                            </p>
+
+                            {fieldIsEditable && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  startEditing(
+                                    entry
+                                  )
+                                }
+                                className="w-fit text-sm font-semibold text-[#036661] underline-offset-4 hover:underline"
+                              >
+                                {t(
+                                  "edit"
+                                )}
+                              </button>
+                            )}
+                          </div>
+
+                          {isPatientDeclaration &&
+                            viewerRole !==
+                              "patient" && (
+                              <p className="mt-[13px] text-xs leading-5 text-blue-900">
+                                {t(
+                                  "organDonation.readOnlyForProfessionals"
+                                )}
+                              </p>
+                            )}
+                        </>
+                      )}
+                    </div>
+                  </details>
+                );
+              }
+            )}
+          </div>
+        </>
       )}
     </section>
   );

@@ -663,13 +663,16 @@
         "descriptionWithName": "{name}, hier finden Sie Ihr medizinisches Profil sowie Dokumente und Notizen, die von Ihren Ärzten hinzugefügt wurden.",
         "description": "Hier finden Sie Ihr medizinisches Profil sowie Dokumente und Notizen, die von Ihren Ärzten hinzugefügt wurden.",
         "back": "Zurück zu den Terminen",
-        "privacyNotice": "Die Informationen und Dateien sind privat. Das medizinische Profil darf nur von einem Arzt geändert werden, der über einen RomDoc-Termin rechtmäßigen Zugriff hat."
+        "privacyNotice": "Die Informationen und Dateien sind privat. Klinische Daten dürfen nur von einem Arzt geändert werden, der über einen RomDoc-Termin rechtmäßigen Zugriff hat. Der Patient darf ausschließlich seine persönliche Präferenz zur Organspende aktualisieren."
       },
       "profile": {
         "eyebrow": "Wesentliche Informationen",
         "title": "Medizinisches Profil",
-        "description": "Öffnen Sie jeden Abschnitt, um die vollständigen Informationen einzusehen.",
-        "editableDescription": "Sie können jeden Abschnitt einzeln bearbeiten.",
+        "description": "Die Notfallübersicht und die folgenden Abschnitte führen die wesentlichen medizinischen Informationen zusammen.",
+        "editableDescription": "Sie können jeden zulässigen Abschnitt einzeln bearbeiten.",
+        "doctorEditableDescription": "Sie können die für diesen Termin zulässigen klinischen Informationen einzeln bearbeiten.",
+        "patientEditableDescription": "Sie können die klinischen Informationen einsehen und ausschließlich Ihre persönliche Präferenz zur Organspende aktualisieren.",
+        "readOnlyDescription": "Dieses Profil steht nur zur Einsicht zur Verfügung.",
         "loadError": "Das medizinische Profil konnte nicht geladen werden.",
         "saveError": "Die medizinische Information konnte nicht gespeichert werden.",
         "loading": "Medizinisches Profil wird geladen...",
@@ -691,23 +694,55 @@
         "positive": "Positiv",
         "negative": "Negativ",
         "listPlaceholder": "Geben Sie gegebenenfalls einen Eintrag pro Zeile ein.",
+        "medicalAlertsPlaceholder": "Tragen Sie nur erhebliche Risiken, Gegenanzeigen oder Erkrankungen ein, die sofortige Aufmerksamkeit erfordern.",
         "saving": "Wird gespeichert...",
         "save": "Speichern",
         "cancel": "Abbrechen",
-        "lastModified": "Zuletzt geändert von {doctor} am {date}.",
+        "lastModified": "Zuletzt geändert von {name} am {date}.",
+        "lastModifiedWithRole": "Zuletzt geändert von {name} ({role}) am {date}.",
         "noChanges": "Es wurden noch keine Änderungen erfasst.",
         "edit": "Bearbeiten",
         "fields": {
           "date_of_birth": "Geburtsdatum",
           "sex": "Geschlecht",
           "blood_group": "Blutgruppe",
+          "medical_alerts": "Medizinische Warnhinweise",
           "allergies": "Allergien",
           "current_medications": "Aktuelle Medikamente",
           "chronic_conditions": "Chronische Erkrankungen",
           "previous_surgeries": "Frühere Operationen",
           "implants_and_medical_devices": "Implantate und medizinische Geräte",
           "emergency_contact": "Notfallkontakt",
-          "family_doctor": "Hausarzt"
+          "family_doctor": "Hausarzt",
+          "organ_donation_preference": "Präferenz zur Organspende"
+        },
+        "organDonation": {
+          "values": {
+            "not_specified": "Nicht angegeben",
+            "wishes_to_donate": "Möchte spenden",
+            "does_not_wish_to_donate": "Möchte nicht spenden",
+            "undecided": "Unentschieden"
+          },
+          "declarationNotice": "Vom Patienten angegebene Information. Sie ersetzt keine Registrierung oder Erklärung in einem offiziellen nationalen Register.",
+          "readOnlyForProfessionals": "Diese Präferenz gehört dem Patienten und kann nur über das Patientenkonto geändert werden."
+        },
+        "modifierRoles": {
+          "patient": "Patient",
+          "doctor": "Arzt",
+          "staff": "medizinisches Personal",
+          "admin": "Administrator",
+          "manager": "Plattformmanager",
+          "clinic_manager": "Klinikmanager",
+          "doctor_applicant": "Arztbewerber",
+          "unknown": "Benutzer"
+        },
+        "emergencySummary": {
+          "eyebrow": "Schnellübersicht",
+          "title": "Medizinische Notfallübersicht",
+          "description": "Wesentliche Informationen werden zur schnellen Einsicht an einer Stelle angezeigt. Prüfen Sie stets die Quelle und das Datum der letzten Änderung.",
+          "legalName": "Rechtlicher Name",
+          "noMedicalAlerts": "Es sind keine medizinischen Warnhinweise erfasst.",
+          "officialRecordDisclaimer": "Die medizinische Akte von RomDoc ist weder die CNAS-Gesundheitskarte noch die elektronische Gesundheitsakte (DES) oder eine offizielle medizinische CNAS-Akte."
         }
       },
       "documents": {

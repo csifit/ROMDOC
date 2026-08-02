@@ -663,13 +663,16 @@
         "descriptionWithName": "{name}, this is where you can review your medical profile, documents and notes added by your doctors.",
         "description": "This is where you can review your medical profile, documents and notes added by your doctors.",
         "back": "Back to appointments",
-        "privacyNotice": "The information and files are private. The medical profile may be changed only by a doctor who has legitimate access through a RomDoc appointment."
+        "privacyNotice": "The information and files are private. Clinical data may be changed only by a doctor who has legitimate access through a RomDoc appointment. The patient may update only their personal organ-donation preference."
       },
       "profile": {
         "eyebrow": "Essential information",
         "title": "Medical profile",
-        "description": "Open each section to review the complete information.",
-        "editableDescription": "You can edit each section separately.",
+        "description": "The emergency summary and sections below bring together the essential medical information.",
+        "editableDescription": "You may edit each permitted section separately.",
+        "doctorEditableDescription": "You may edit the permitted clinical information separately for this appointment.",
+        "patientEditableDescription": "You may review the clinical information and update only your personal organ-donation preference.",
+        "readOnlyDescription": "This profile is available for review only.",
         "loadError": "The medical profile could not be loaded.",
         "saveError": "The medical information could not be saved.",
         "loading": "Loading the medical profile...",
@@ -691,23 +694,55 @@
         "positive": "Positive",
         "negative": "Negative",
         "listPlaceholder": "Enter one item per line where appropriate.",
+        "medicalAlertsPlaceholder": "Record only major risks, contraindications or conditions that require immediate attention.",
         "saving": "Saving...",
         "save": "Save",
         "cancel": "Cancel",
-        "lastModified": "Last modified by {doctor} on {date}.",
+        "lastModified": "Last modified by {name} on {date}.",
+        "lastModifiedWithRole": "Last modified by {name} ({role}) on {date}.",
         "noChanges": "No changes have been recorded yet.",
         "edit": "Edit",
         "fields": {
           "date_of_birth": "Date of birth",
           "sex": "Sex",
           "blood_group": "Blood group",
+          "medical_alerts": "Medical alerts",
           "allergies": "Allergies",
           "current_medications": "Current medications",
           "chronic_conditions": "Chronic conditions",
           "previous_surgeries": "Previous surgeries",
           "implants_and_medical_devices": "Implants and medical devices",
           "emergency_contact": "Emergency contact",
-          "family_doctor": "Family doctor"
+          "family_doctor": "Family doctor",
+          "organ_donation_preference": "Organ-donation preference"
+        },
+        "organDonation": {
+          "values": {
+            "not_specified": "Not specified",
+            "wishes_to_donate": "Wishes to donate",
+            "does_not_wish_to_donate": "Does not wish to donate",
+            "undecided": "Undecided"
+          },
+          "declarationNotice": "Patient-declared information. This does not replace registration or a declaration in an official national register.",
+          "readOnlyForProfessionals": "This preference belongs to the patient and may be changed only from the patient account."
+        },
+        "modifierRoles": {
+          "patient": "patient",
+          "doctor": "doctor",
+          "staff": "medical staff",
+          "admin": "administrator",
+          "manager": "platform manager",
+          "clinic_manager": "clinic manager",
+          "doctor_applicant": "doctor applicant",
+          "unknown": "user"
+        },
+        "emergencySummary": {
+          "eyebrow": "Quick summary",
+          "title": "Emergency medical summary",
+          "description": "Essential information displayed in one place for quick review. Always verify the source and date of the latest change.",
+          "legalName": "Legal name",
+          "noMedicalAlerts": "No medical alerts are recorded.",
+          "officialRecordDisclaimer": "The RomDoc Medical Folder is not the CNAS health card, the Electronic Health Record (DES), or an official CNAS medical record."
         }
       },
       "documents": {

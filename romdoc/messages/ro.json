@@ -663,13 +663,16 @@
         "descriptionWithName": "{name}, aici găsești profilul medical, documentele și notele adăugate de medicii tăi.",
         "description": "Aici găsești profilul medical, documentele și notele adăugate de medicii tăi.",
         "back": "Înapoi la programări",
-        "privacyNotice": "Informațiile și fișierele sunt private. Profilul medical poate fi modificat numai de un medic care are acces legitim printr-o programare RomDoc."
+        "privacyNotice": "Informațiile și fișierele sunt private. Datele clinice pot fi modificate numai de un medic care are acces legitim printr-o programare RomDoc. Pacientul își poate actualiza doar preferința personală privind donarea de organe."
       },
       "profile": {
         "eyebrow": "Informații esențiale",
         "title": "Profil medical",
-        "description": "Deschide fiecare secțiune pentru a vedea informațiile complete.",
-        "editableDescription": "Poți modifica fiecare secțiune separat.",
+        "description": "Rezumatul de urgență și secțiunile de mai jos reunesc informațiile medicale esențiale.",
+        "editableDescription": "Poți modifica fiecare secțiune permisă separat.",
+        "doctorEditableDescription": "Poți modifica separat informațiile clinice permise pentru această programare.",
+        "patientEditableDescription": "Poți consulta datele clinice și îți poți actualiza numai preferința personală privind donarea de organe.",
+        "readOnlyDescription": "Acest profil este disponibil numai pentru consultare.",
         "loadError": "Profilul medical nu a putut fi încărcat.",
         "saveError": "Informația medicală nu a putut fi salvată.",
         "loading": "Se încarcă profilul medical...",
@@ -691,23 +694,55 @@
         "positive": "Pozitiv",
         "negative": "Negativ",
         "listPlaceholder": "Câte un element pe rând, dacă este cazul.",
+        "medicalAlertsPlaceholder": "Notează numai riscurile majore, contraindicațiile sau afecțiunile care necesită atenție imediată.",
         "saving": "Se salvează...",
         "save": "Salvează",
         "cancel": "Renunță",
-        "lastModified": "Ultima modificare de {doctor}, la {date}.",
+        "lastModified": "Ultima modificare de {name}, la {date}.",
+        "lastModifiedWithRole": "Ultima modificare de {name} ({role}), la {date}.",
         "noChanges": "Nu există încă modificări înregistrate.",
         "edit": "Editează",
         "fields": {
           "date_of_birth": "Data nașterii",
           "sex": "Sex",
           "blood_group": "Grupa sanguină",
+          "medical_alerts": "Alerte medicale",
           "allergies": "Alergii",
           "current_medications": "Medicamente curente",
           "chronic_conditions": "Afecțiuni cronice",
           "previous_surgeries": "Intervenții chirurgicale anterioare",
           "implants_and_medical_devices": "Implanturi și dispozitive medicale",
           "emergency_contact": "Contact de urgență",
-          "family_doctor": "Medic de familie"
+          "family_doctor": "Medic de familie",
+          "organ_donation_preference": "Preferință privind donarea de organe"
+        },
+        "organDonation": {
+          "values": {
+            "not_specified": "Nespecificat",
+            "wishes_to_donate": "Dorește să doneze",
+            "does_not_wish_to_donate": "Nu dorește să doneze",
+            "undecided": "Nehotărât"
+          },
+          "declarationNotice": "Informație declarată de pacient. Aceasta nu înlocuiește înregistrarea sau declarația într-un registru național oficial.",
+          "readOnlyForProfessionals": "Această preferință aparține pacientului și poate fi modificată numai din contul pacientului."
+        },
+        "modifierRoles": {
+          "patient": "pacient",
+          "doctor": "medic",
+          "staff": "personal medical",
+          "admin": "administrator",
+          "manager": "manager platformă",
+          "clinic_manager": "manager clinică",
+          "doctor_applicant": "solicitant medic",
+          "unknown": "utilizator"
+        },
+        "emergencySummary": {
+          "eyebrow": "Rezumat rapid",
+          "title": "Rezumat medical pentru urgență",
+          "description": "Informații esențiale afișate într-un singur loc pentru consultare rapidă. Verifică întotdeauna sursa și data ultimei modificări.",
+          "legalName": "Nume legal",
+          "noMedicalAlerts": "Nu sunt înregistrate alerte medicale.",
+          "officialRecordDisclaimer": "Dosarul Medical RomDoc nu este cardul de sănătate CNAS, Dosarul Electronic de Sănătate (DES) sau o evidență medicală oficială CNAS."
         }
       },
       "documents": {
