@@ -663,7 +663,8 @@
         "descriptionWithName": "{name}, hier finden Sie Ihr medizinisches Profil sowie Dokumente und Notizen, die von Ihren Ärzten hinzugefügt wurden.",
         "description": "Hier finden Sie Ihr medizinisches Profil sowie Dokumente und Notizen, die von Ihren Ärzten hinzugefügt wurden.",
         "back": "Zurück zu den Terminen",
-        "privacyNotice": "Die Informationen und Dateien sind privat. Klinische Daten dürfen nur von einem Arzt geändert werden, der über einen RomDoc-Termin rechtmäßigen Zugriff hat. Der Patient darf ausschließlich seine persönliche Präferenz zur Organspende aktualisieren."
+        "privacyNotice": "Die Informationen und Dateien sind privat. Klinische Daten dürfen nur von einem Arzt geändert werden, der über einen RomDoc-Termin rechtmäßigen Zugriff hat. Der Patient darf ausschließlich seine persönliche Präferenz zur Organspende aktualisieren.",
+        "manageSharing": "Freigaben verwalten"
       },
       "profile": {
         "eyebrow": "Wesentliche Informationen",
@@ -798,12 +799,24 @@
         "history": "Zugriffsverlauf",
         "noHistory": "Es gibt noch keine Zugriffsereignisse.",
         "events": {
-          "created": "Dokument erstellt",
+          "created": "Berechtigung erstellt",
           "shared": "Dokument geteilt",
           "share_revoked": "Freigabe widerrufen",
           "viewed": "Dokument angesehen",
           "downloaded": "Dokument heruntergeladen",
-          "soft_deleted": "Dokument gelöscht"
+          "soft_deleted": "Dokument gelöscht",
+          "bound_to_doctor": "Berechtigung an einen Arzt gebunden",
+          "qr_scanned": "QR-Code gescannt",
+          "link_opened": "Sicherer Link geöffnet",
+          "folder_viewed": "Akte eingesehen",
+          "document_viewed": "Dokument eingesehen",
+          "document_downloaded": "Dokument heruntergeladen",
+          "email_sent": "Freigabe-E-Mail gesendet",
+          "revoked": "Berechtigung widerrufen",
+          "expired": "Berechtigung abgelaufen",
+          "consumed": "Berechtigung verwendet",
+          "access_denied": "Zugriff verweigert",
+          "pin_failed": "Falscher Sicherheitscode"
         },
         "roles": {
           "patient": "Patient",
@@ -811,6 +824,151 @@
           "staff": "Medizinisches Personal",
           "admin": "RomDoc",
           "system": "System"
+        },
+        "page": {
+          "eyebrow": "Kontrolle durch den Patienten",
+          "title": "Medizinische Akte freigeben",
+          "description": "Wählen Sie genau aus, welche Informationen eingesehen werden dürfen, wie lange der Zugriff gültig bleibt und ob Dokumente heruntergeladen werden dürfen.",
+          "back": "Zurück zur medizinischen Akte",
+          "securityNotice": "Die Freigabe ist ausschließlich zur Ansicht bestimmt. Sie erlaubt keine Änderungen am medizinischen Profil, kein Hochladen oder Löschen von Dokumenten und keine Unterzeichnung medizinischer Notizen.",
+          "futureNotice": "Sichere Links, QR-Codes und der Versand per E-Mail sind noch nicht aktiv. In dieser Phase können Sie Berechtigungen konfigurieren, widerrufen und deren Verlauf prüfen."
+        },
+        "form": {
+          "eyebrow": "Neue Berechtigung",
+          "title": "Freigabe konfigurieren",
+          "description": "Erstellen Sie eine zeitlich begrenzte Berechtigung. Der Zugriff endet automatisch bei Ablauf oder sofort nach einem Widerruf.",
+          "scopeLabel": "Welche Informationen möchten Sie freigeben?",
+          "durationLabel": "Wie lange soll der Zugriff gültig sein?",
+          "accessModeLabel": "Wie oft darf die Berechtigung verwendet werden?",
+          "downloadsLabel": "Herunterladen von Dokumenten erlauben",
+          "downloadsDescription": "Nur verfügbar, wenn die vollständige Akte oder ausgewählte Dokumente freigegeben werden.",
+          "consentNotice": "Mit der Erstellung bestätigen Sie, dass Sie Inhalt und Zugriffszeitraum freiwillig gewählt haben. Sie können die Berechtigung jederzeit widerrufen.",
+          "create": "Berechtigung erstellen",
+          "creating": "Wird erstellt..."
+        },
+        "scopes": {
+          "emergency_summary": "Medizinische Notfallübersicht",
+          "medical_profile": "Vollständiges medizinisches Profil",
+          "complete_folder": "Vollständige medizinische Akte",
+          "selected_documents": "Ausgewählte Dokumente"
+        },
+        "scopeDescriptions": {
+          "emergency_summary": "Nur die wesentlichen Angaben aus der medizinischen Notfallübersicht.",
+          "medical_profile": "Alle Abschnitte des medizinischen Profils, ohne die Dokumente der Akte.",
+          "complete_folder": "Das medizinische Profil und alle verfügbaren Dokumente der Akte.",
+          "selected_documents": "Nur die unten ausgewählten Dokumente."
+        },
+        "durations": {
+          "600": "10 Minuten",
+          "3600": "1 Stunde",
+          "86400": "24 Stunden",
+          "604800": "7 Tage"
+        },
+        "accessModes": {
+          "one_time": "Einmalige Verwendung",
+          "multiple": "Mehrfache Verwendung"
+        },
+        "accessModeDescriptions": {
+          "one_time": "Die Berechtigung wird nach dem ersten erfolgreichen Zugriff verbraucht.",
+          "multiple": "Die Berechtigung kann bis zum Ablauf oder Widerruf mehrfach verwendet werden."
+        },
+        "documents": {
+          "title": "Dokumente auswählen",
+          "description": "Sie können bis zu 50 vorhandene, aktive Dokumente einschließen.",
+          "selectedCount": "{count, plural, =0 {Keine Dokumente ausgewählt} =1 {1 Dokument ausgewählt} other {# Dokumente ausgewählt}}",
+          "empty": "Ihre medizinische Akte enthält noch keine auswählbaren Dokumente."
+        },
+        "list": {
+          "eyebrow": "Meine Berechtigungen",
+          "title": "Erstellte Freigaben",
+          "description": "Prüfen Sie aktive Berechtigungen sowie den Verlauf abgelaufener, verwendeter oder widerrufener Berechtigungen.",
+          "activeCount": "{count, plural, =0 {Keine aktive Berechtigung} =1 {1 aktive Berechtigung} other {# aktive Berechtigungen}}",
+          "loading": "Freigaben werden geladen...",
+          "emptyTitle": "Sie haben noch keine Freigabe erstellt",
+          "emptyDescription": "Konfigurieren Sie Ihre erste Berechtigung mit dem obigen Formular.",
+          "grantTitle": "Erstellt am {date}",
+          "noRecipientLink": "Für diese Berechtigung ist noch kein Empfängerlink oder QR-Code verfügbar."
+        },
+        "statuses": {
+          "active": "Aktiv",
+          "revoked": "Widerrufen",
+          "expired": "Abgelaufen",
+          "consumed": "Verwendet"
+        },
+        "labels": {
+          "expires": "Läuft ab",
+          "duration": "Dauer",
+          "customDuration": "Benutzerdefinierte Dauer",
+          "accessMode": "Zugriffsmodus",
+          "accessCount": "Erfolgreiche Zugriffe",
+          "downloads": "Downloads",
+          "doctorBinding": "Arztbindung",
+          "bound": "An einen RomDoc-Arzt gebunden",
+          "notBound": "Nicht gebunden",
+          "lastAccess": "Letzter Zugriff",
+          "revokedAt": "Widerrufen am",
+          "selectedDocuments": "{count, plural, =1 {1 enthaltenes Dokument} other {# enthaltene Dokumente}}"
+        },
+        "actions": {
+          "revoke": "Widerrufen",
+          "revoking": "Wird widerrufen...",
+          "viewHistory": "Verlauf anzeigen",
+          "hideHistory": "Verlauf ausblenden",
+          "loadingHistory": "Verlauf wird geladen..."
+        },
+        "audit": {
+          "title": "Berechtigungsverlauf",
+          "loading": "Ereignisse werden geladen...",
+          "empty": "Es wurden noch keine Ereignisse aufgezeichnet.",
+          "actorAndChannel": "{actor} · {channel}",
+          "document": "Dokument: {title}"
+        },
+        "actorRoles": {
+          "patient": "Patient",
+          "doctor": "Arzt",
+          "staff": "Medizinisches Personal",
+          "system": "RomDoc-System",
+          "anonymous": "Nicht angemeldeter Empfänger",
+          "external_provider": "Externer Anbieter"
+        },
+        "channels": {
+          "patient_dashboard": "Patientenbereich",
+          "secure_link": "Sicherer Link",
+          "qr": "QR-Code",
+          "email": "E-Mail",
+          "nfc": "NFC",
+          "doctor_mobile": "Mobile Arztanwendung",
+          "system": "Automatischer Prozess"
+        },
+        "common": {
+          "yes": "Erlaubt",
+          "no": "Nicht erlaubt"
+        },
+        "messages": {
+          "created": "Die Berechtigung wurde erstellt.",
+          "revoked": "Die Berechtigung wurde widerrufen."
+        },
+        "errors": {
+          "load_failed": "Die Freigabeseite konnte nicht geladen werden.",
+          "documents_load_failed": "Die Dokumente konnten nicht geladen werden.",
+          "authentication_required": "Sie müssen angemeldet sein.",
+          "active_patient_account_required": "Ein aktives Patientenkonto mit bestätigter E-Mail-Adresse ist erforderlich.",
+          "invalid_request": "Die übermittelten Daten sind ungültig.",
+          "invalid_share_grant_id": "Die ausgewählte Freigabe ist ungültig.",
+          "invalid_scope": "Der ausgewählte Informationsumfang ist ungültig.",
+          "invalid_duration": "Der Zugriffszeitraum ist ungültig.",
+          "invalid_access_mode": "Der Zugriffsmodus ist ungültig.",
+          "downloads_not_available": "Dokumentdownloads sind für diese Auswahl nicht verfügbar.",
+          "selected_documents_required": "Wählen Sie mindestens ein Dokument aus.",
+          "too_many_selected_documents": "Es dürfen höchstens 50 Dokumente ausgewählt werden.",
+          "documents_not_allowed": "Dokumente dürfen nur bei der Freigabe ausgewählter Dokumente gewählt werden.",
+          "invalid_document_id": "Eines der ausgewählten Dokumente ist ungültig.",
+          "selected_document_unavailable": "Ein oder mehrere ausgewählte Dokumente sind nicht mehr verfügbar.",
+          "share_grant_not_found": "Die Freigabe wurde nicht gefunden.",
+          "share_grant_create_failed": "Die Freigabe konnte nicht erstellt werden.",
+          "share_grant_list_failed": "Die Freigaben konnten nicht geladen werden.",
+          "share_grant_revoke_failed": "Die Freigabe konnte nicht widerrufen werden.",
+          "share_audit_load_failed": "Der Freigabeverlauf konnte nicht geladen werden."
         }
       }
     },

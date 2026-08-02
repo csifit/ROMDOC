@@ -56,8 +56,7 @@ export default async function PatientFolderPage() {
   }
 
   if (
-    !user
-      .email_confirmed_at
+    !user.email_confirmed_at
   ) {
     const parameters =
       new URLSearchParams({
@@ -68,9 +67,7 @@ export default async function PatientFolderPage() {
           "/patient-dashboard/folder",
       });
 
-    if (
-      user.email
-    ) {
+    if (user.email) {
       parameters.set(
         "email",
         user.email
@@ -159,14 +156,25 @@ export default async function PatientFolderPage() {
               </p>
             </div>
 
-            <Link
-              href="/patient-dashboard"
-              className="romdoc-button romdoc-button-secondary romdoc-button-sm"
-            >
-              {t(
-                "back"
-              )}
-            </Link>
+            <div className="flex flex-wrap gap-[8px]">
+              <Link
+                href="/patient-dashboard/folder/sharing"
+                className="romdoc-button romdoc-button-primary romdoc-button-sm"
+              >
+                {t(
+                  "manageSharing"
+                )}
+              </Link>
+
+              <Link
+                href="/patient-dashboard"
+                className="romdoc-button romdoc-button-secondary romdoc-button-sm"
+              >
+                {t(
+                  "back"
+                )}
+              </Link>
+            </div>
           </div>
 
           <div className="mt-[21px] rounded-[13px] border border-blue-200 bg-blue-50 p-[13px] text-sm leading-6 text-blue-950">

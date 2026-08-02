@@ -663,7 +663,8 @@
         "descriptionWithName": "{name}, aici găsești profilul medical, documentele și notele adăugate de medicii tăi.",
         "description": "Aici găsești profilul medical, documentele și notele adăugate de medicii tăi.",
         "back": "Înapoi la programări",
-        "privacyNotice": "Informațiile și fișierele sunt private. Datele clinice pot fi modificate numai de un medic care are acces legitim printr-o programare RomDoc. Pacientul își poate actualiza doar preferința personală privind donarea de organe."
+        "privacyNotice": "Informațiile și fișierele sunt private. Datele clinice pot fi modificate numai de un medic care are acces legitim printr-o programare RomDoc. Pacientul își poate actualiza doar preferința personală privind donarea de organe.",
+        "manageSharing": "Administrează partajarea"
       },
       "profile": {
         "eyebrow": "Informații esențiale",
@@ -798,12 +799,24 @@
         "history": "Istoric acces",
         "noHistory": "Nu există încă evenimente de acces.",
         "events": {
-          "created": "Document creat",
+          "created": "Permisiune creată",
           "shared": "Document partajat",
           "share_revoked": "Partajare revocată",
           "viewed": "Document consultat",
           "downloaded": "Document descărcat",
-          "soft_deleted": "Document șters"
+          "soft_deleted": "Document șters",
+          "bound_to_doctor": "Permisiune asociată unui medic",
+          "qr_scanned": "Cod QR scanat",
+          "link_opened": "Link securizat deschis",
+          "folder_viewed": "Dosar consultat",
+          "document_viewed": "Document consultat",
+          "document_downloaded": "Document descărcat",
+          "email_sent": "E-mail de partajare trimis",
+          "revoked": "Permisiune revocată",
+          "expired": "Permisiune expirată",
+          "consumed": "Permisiune utilizată",
+          "access_denied": "Acces refuzat",
+          "pin_failed": "Cod de securitate greșit"
         },
         "roles": {
           "patient": "Pacient",
@@ -811,6 +824,151 @@
           "staff": "Personal medical",
           "admin": "RomDoc",
           "system": "Sistem"
+        },
+        "page": {
+          "eyebrow": "Controlul pacientului",
+          "title": "Partajarea Dosarului medical",
+          "description": "Alege exact ce informații pot fi consultate, cât timp rămâne permis accesul și dacă documentele pot fi descărcate.",
+          "back": "Înapoi la Dosarul medical",
+          "securityNotice": "Partajarea este doar pentru consultare. Nu permite modificarea profilului medical, încărcarea sau ștergerea documentelor și nici semnarea notelor medicale.",
+          "futureNotice": "Linkurile securizate, codurile QR și trimiterea prin e-mail nu sunt încă active. În această etapă poți configura, revoca și verifica istoricul permisiunilor."
+        },
+        "form": {
+          "eyebrow": "Permisiune nouă",
+          "title": "Configurează o partajare",
+          "description": "Creează o permisiune temporară și limitată. Accesul încetează automat la expirare sau imediat după revocare.",
+          "scopeLabel": "Ce informații dorești să partajezi?",
+          "durationLabel": "Cât timp este valabil accesul?",
+          "accessModeLabel": "De câte ori poate fi folosit?",
+          "downloadsLabel": "Permite descărcarea documentelor",
+          "downloadsDescription": "Disponibil numai când partajezi Dosarul complet sau documente selectate.",
+          "consentNotice": "Prin crearea permisiunii confirmi că ai ales în mod voluntar conținutul și perioada de acces. Permisiunea poate fi revocată oricând.",
+          "create": "Creează permisiunea",
+          "creating": "Se creează..."
+        },
+        "scopes": {
+          "emergency_summary": "Rezumat medical pentru urgență",
+          "medical_profile": "Profil medical complet",
+          "complete_folder": "Dosar medical complet",
+          "selected_documents": "Documente selectate"
+        },
+        "scopeDescriptions": {
+          "emergency_summary": "Doar informațiile esențiale din Rezumatul medical pentru urgență.",
+          "medical_profile": "Toate secțiunile Profilului medical, fără documentele din Dosar.",
+          "complete_folder": "Profilul medical și toate documentele disponibile din Dosar.",
+          "selected_documents": "Numai documentele pe care le selectezi mai jos."
+        },
+        "durations": {
+          "600": "10 minute",
+          "3600": "1 oră",
+          "86400": "24 de ore",
+          "604800": "7 zile"
+        },
+        "accessModes": {
+          "one_time": "O singură utilizare",
+          "multiple": "Utilizări multiple"
+        },
+        "accessModeDescriptions": {
+          "one_time": "Permisiunea se consumă după prima accesare reușită.",
+          "multiple": "Permisiunea poate fi folosită de mai multe ori până la expirare sau revocare."
+        },
+        "documents": {
+          "title": "Selectează documentele",
+          "description": "Poți include cel mult 50 de documente existente și active.",
+          "selectedCount": "{count, plural, =0 {Niciun document selectat} =1 {1 document selectat} other {# documente selectate}}",
+          "empty": "Dosarul medical nu conține încă documente care pot fi selectate."
+        },
+        "list": {
+          "eyebrow": "Permisiunile mele",
+          "title": "Partajări create",
+          "description": "Consultă permisiunile active și istoricul celor expirate, consumate sau revocate.",
+          "activeCount": "{count, plural, =0 {Nicio permisiune activă} =1 {1 permisiune activă} other {# permisiuni active}}",
+          "loading": "Se încarcă partajările...",
+          "emptyTitle": "Nu ai creat încă nicio partajare",
+          "emptyDescription": "Configurează prima permisiune folosind formularul de mai sus.",
+          "grantTitle": "Creată la {date}",
+          "noRecipientLink": "Această permisiune nu are încă un link sau cod QR pentru destinatar."
+        },
+        "statuses": {
+          "active": "Activă",
+          "revoked": "Revocată",
+          "expired": "Expirată",
+          "consumed": "Utilizată"
+        },
+        "labels": {
+          "expires": "Expiră",
+          "duration": "Durată",
+          "customDuration": "Durată personalizată",
+          "accessMode": "Mod de acces",
+          "accessCount": "Accesări reușite",
+          "downloads": "Descărcări",
+          "doctorBinding": "Asociere cu medic",
+          "bound": "Asociată unui medic RomDoc",
+          "notBound": "Neasociată",
+          "lastAccess": "Ultima accesare",
+          "revokedAt": "Revocată la",
+          "selectedDocuments": "{count, plural, =1 {1 document inclus} other {# documente incluse}}"
+        },
+        "actions": {
+          "revoke": "Revocă",
+          "revoking": "Se revocă...",
+          "viewHistory": "Vezi istoricul",
+          "hideHistory": "Ascunde istoricul",
+          "loadingHistory": "Se încarcă istoricul..."
+        },
+        "audit": {
+          "title": "Istoricul permisiunii",
+          "loading": "Se încarcă evenimentele...",
+          "empty": "Nu există încă evenimente înregistrate.",
+          "actorAndChannel": "{actor} · {channel}",
+          "document": "Document: {title}"
+        },
+        "actorRoles": {
+          "patient": "Pacient",
+          "doctor": "Medic",
+          "staff": "Personal medical",
+          "system": "Sistem RomDoc",
+          "anonymous": "Destinatar neautentificat",
+          "external_provider": "Furnizor extern"
+        },
+        "channels": {
+          "patient_dashboard": "Panoul pacientului",
+          "secure_link": "Link securizat",
+          "qr": "Cod QR",
+          "email": "E-mail",
+          "nfc": "NFC",
+          "doctor_mobile": "Aplicația mobilă a medicului",
+          "system": "Proces automat"
+        },
+        "common": {
+          "yes": "Permise",
+          "no": "Nepermise"
+        },
+        "messages": {
+          "created": "Permisiunea a fost creată.",
+          "revoked": "Permisiunea a fost revocată."
+        },
+        "errors": {
+          "load_failed": "Pagina de partajare nu a putut fi încărcată.",
+          "documents_load_failed": "Documentele nu au putut fi încărcate.",
+          "authentication_required": "Trebuie să fii autentificat.",
+          "active_patient_account_required": "Este necesar un cont activ de pacient cu e-mail confirmat.",
+          "invalid_request": "Datele trimise nu sunt valide.",
+          "invalid_share_grant_id": "Partajarea selectată nu este validă.",
+          "invalid_scope": "Tipul informațiilor partajate nu este valid.",
+          "invalid_duration": "Perioada de acces nu este validă.",
+          "invalid_access_mode": "Modul de acces nu este valid.",
+          "downloads_not_available": "Descărcarea documentelor nu este disponibilă pentru această selecție.",
+          "selected_documents_required": "Selectează cel puțin un document.",
+          "too_many_selected_documents": "Pot fi selectate cel mult 50 de documente.",
+          "documents_not_allowed": "Documentele pot fi selectate numai pentru partajarea documentelor alese.",
+          "invalid_document_id": "Unul dintre documentele selectate nu este valid.",
+          "selected_document_unavailable": "Unul sau mai multe documente selectate nu mai sunt disponibile.",
+          "share_grant_not_found": "Partajarea nu a fost găsită.",
+          "share_grant_create_failed": "Partajarea nu a putut fi creată.",
+          "share_grant_list_failed": "Partajările nu au putut fi încărcate.",
+          "share_grant_revoke_failed": "Partajarea nu a putut fi revocată.",
+          "share_audit_load_failed": "Istoricul partajării nu a putut fi încărcat."
         }
       }
     },

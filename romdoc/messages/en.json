@@ -663,7 +663,8 @@
         "descriptionWithName": "{name}, this is where you can review your medical profile, documents and notes added by your doctors.",
         "description": "This is where you can review your medical profile, documents and notes added by your doctors.",
         "back": "Back to appointments",
-        "privacyNotice": "The information and files are private. Clinical data may be changed only by a doctor who has legitimate access through a RomDoc appointment. The patient may update only their personal organ-donation preference."
+        "privacyNotice": "The information and files are private. Clinical data may be changed only by a doctor who has legitimate access through a RomDoc appointment. The patient may update only their personal organ-donation preference.",
+        "manageSharing": "Manage sharing"
       },
       "profile": {
         "eyebrow": "Essential information",
@@ -798,12 +799,24 @@
         "history": "Access history",
         "noHistory": "There are no access events yet.",
         "events": {
-          "created": "Document created",
+          "created": "Permission created",
           "shared": "Document shared",
           "share_revoked": "Sharing revoked",
           "viewed": "Document viewed",
           "downloaded": "Document downloaded",
-          "soft_deleted": "Document deleted"
+          "soft_deleted": "Document deleted",
+          "bound_to_doctor": "Permission bound to a doctor",
+          "qr_scanned": "QR code scanned",
+          "link_opened": "Secure link opened",
+          "folder_viewed": "Folder reviewed",
+          "document_viewed": "Document reviewed",
+          "document_downloaded": "Document downloaded",
+          "email_sent": "Sharing email sent",
+          "revoked": "Permission revoked",
+          "expired": "Permission expired",
+          "consumed": "Permission used",
+          "access_denied": "Access denied",
+          "pin_failed": "Incorrect security code"
         },
         "roles": {
           "patient": "Patient",
@@ -811,6 +824,151 @@
           "staff": "Medical staff",
           "admin": "RomDoc",
           "system": "System"
+        },
+        "page": {
+          "eyebrow": "Patient control",
+          "title": "Share your Medical Folder",
+          "description": "Choose exactly which information may be reviewed, how long access remains valid, and whether documents may be downloaded.",
+          "back": "Back to Medical Folder",
+          "securityNotice": "Sharing is view-only. It does not allow changes to the medical profile, document uploads or deletion, or the signing of medical notes.",
+          "futureNotice": "Secure links, QR codes and email delivery are not active yet. At this stage you can configure, revoke and review the history of permissions."
+        },
+        "form": {
+          "eyebrow": "New permission",
+          "title": "Configure a share",
+          "description": "Create temporary, limited permission. Access ends automatically when it expires or immediately when you revoke it.",
+          "scopeLabel": "What would you like to share?",
+          "durationLabel": "How long should access remain valid?",
+          "accessModeLabel": "How many times may it be used?",
+          "downloadsLabel": "Allow document downloads",
+          "downloadsDescription": "Available only when sharing the complete Folder or selected documents.",
+          "consentNotice": "By creating this permission, you confirm that you voluntarily selected the content and access period. You may revoke it at any time.",
+          "create": "Create permission",
+          "creating": "Creating..."
+        },
+        "scopes": {
+          "emergency_summary": "Emergency medical summary",
+          "medical_profile": "Complete medical profile",
+          "complete_folder": "Complete Medical Folder",
+          "selected_documents": "Selected documents"
+        },
+        "scopeDescriptions": {
+          "emergency_summary": "Only the essential information in the Emergency medical summary.",
+          "medical_profile": "All Medical Profile sections, without the documents in the Folder.",
+          "complete_folder": "The Medical Profile and all available Folder documents.",
+          "selected_documents": "Only the documents you select below."
+        },
+        "durations": {
+          "600": "10 minutes",
+          "3600": "1 hour",
+          "86400": "24 hours",
+          "604800": "7 days"
+        },
+        "accessModes": {
+          "one_time": "One use",
+          "multiple": "Multiple uses"
+        },
+        "accessModeDescriptions": {
+          "one_time": "The permission is consumed after the first successful access.",
+          "multiple": "The permission may be used repeatedly until expiration or revocation."
+        },
+        "documents": {
+          "title": "Select documents",
+          "description": "You may include up to 50 existing, active documents.",
+          "selectedCount": "{count, plural, =0 {No documents selected} =1 {1 document selected} other {# documents selected}}",
+          "empty": "Your Medical Folder does not yet contain documents that can be selected."
+        },
+        "list": {
+          "eyebrow": "My permissions",
+          "title": "Created shares",
+          "description": "Review active permissions and the history of expired, consumed or revoked permissions.",
+          "activeCount": "{count, plural, =0 {No active permissions} =1 {1 active permission} other {# active permissions}}",
+          "loading": "Loading shares...",
+          "emptyTitle": "You have not created any shares yet",
+          "emptyDescription": "Configure your first permission using the form above.",
+          "grantTitle": "Created on {date}",
+          "noRecipientLink": "This permission does not yet have a recipient link or QR code."
+        },
+        "statuses": {
+          "active": "Active",
+          "revoked": "Revoked",
+          "expired": "Expired",
+          "consumed": "Used"
+        },
+        "labels": {
+          "expires": "Expires",
+          "duration": "Duration",
+          "customDuration": "Custom duration",
+          "accessMode": "Access mode",
+          "accessCount": "Successful accesses",
+          "downloads": "Downloads",
+          "doctorBinding": "Doctor binding",
+          "bound": "Bound to a RomDoc doctor",
+          "notBound": "Not bound",
+          "lastAccess": "Last access",
+          "revokedAt": "Revoked on",
+          "selectedDocuments": "{count, plural, =1 {1 included document} other {# included documents}}"
+        },
+        "actions": {
+          "revoke": "Revoke",
+          "revoking": "Revoking...",
+          "viewHistory": "View history",
+          "hideHistory": "Hide history",
+          "loadingHistory": "Loading history..."
+        },
+        "audit": {
+          "title": "Permission history",
+          "loading": "Loading events...",
+          "empty": "No events have been recorded yet.",
+          "actorAndChannel": "{actor} · {channel}",
+          "document": "Document: {title}"
+        },
+        "actorRoles": {
+          "patient": "Patient",
+          "doctor": "Doctor",
+          "staff": "Medical staff",
+          "system": "RomDoc system",
+          "anonymous": "Unauthenticated recipient",
+          "external_provider": "External provider"
+        },
+        "channels": {
+          "patient_dashboard": "Patient dashboard",
+          "secure_link": "Secure link",
+          "qr": "QR code",
+          "email": "Email",
+          "nfc": "NFC",
+          "doctor_mobile": "Doctor mobile app",
+          "system": "Automated process"
+        },
+        "common": {
+          "yes": "Allowed",
+          "no": "Not allowed"
+        },
+        "messages": {
+          "created": "The permission was created.",
+          "revoked": "The permission was revoked."
+        },
+        "errors": {
+          "load_failed": "The sharing page could not be loaded.",
+          "documents_load_failed": "The documents could not be loaded.",
+          "authentication_required": "You must be signed in.",
+          "active_patient_account_required": "An active patient account with a confirmed email address is required.",
+          "invalid_request": "The submitted data is invalid.",
+          "invalid_share_grant_id": "The selected share is invalid.",
+          "invalid_scope": "The selected information scope is invalid.",
+          "invalid_duration": "The access period is invalid.",
+          "invalid_access_mode": "The access mode is invalid.",
+          "downloads_not_available": "Document downloads are not available for this selection.",
+          "selected_documents_required": "Select at least one document.",
+          "too_many_selected_documents": "No more than 50 documents may be selected.",
+          "documents_not_allowed": "Documents may be selected only when sharing selected documents.",
+          "invalid_document_id": "One of the selected documents is invalid.",
+          "selected_document_unavailable": "One or more selected documents are no longer available.",
+          "share_grant_not_found": "The share was not found.",
+          "share_grant_create_failed": "The share could not be created.",
+          "share_grant_list_failed": "The shares could not be loaded.",
+          "share_grant_revoke_failed": "The share could not be revoked.",
+          "share_audit_load_failed": "The sharing history could not be loaded."
         }
       }
     },
