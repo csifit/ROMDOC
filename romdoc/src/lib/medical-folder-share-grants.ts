@@ -28,6 +28,10 @@ export type MedicalFolderShareDurationSeconds =
 
 export const MEDICAL_FOLDER_SHARE_EVENT_TYPES = [
   "created",
+  "token_issued",
+  "token_rotated",
+  "recipient_session_started",
+  "recipient_session_closed",
   "bound_to_doctor",
   "qr_scanned",
   "link_opened",
@@ -69,6 +73,35 @@ export const MEDICAL_FOLDER_SHARE_CHANNELS = [
 
 export type MedicalFolderShareChannel =
   (typeof MEDICAL_FOLDER_SHARE_CHANNELS)[number];
+
+export const MEDICAL_FOLDER_RECIPIENT_CHANNELS = [
+  "secure_link",
+  "qr",
+  "email",
+  "nfc",
+  "doctor_mobile",
+] as const;
+
+export type MedicalFolderRecipientChannel =
+  (typeof MEDICAL_FOLDER_RECIPIENT_CHANNELS)[number];
+
+export const MEDICAL_FOLDER_RECIPIENT_TYPES = [
+  "anonymous",
+  "doctor",
+  "external_provider",
+] as const;
+
+export type MedicalFolderRecipientType =
+  (typeof MEDICAL_FOLDER_RECIPIENT_TYPES)[number];
+
+export const MEDICAL_FOLDER_SHARE_TOKEN_PREFIX =
+  "rdsh_" as const;
+
+export const MEDICAL_FOLDER_RECIPIENT_SESSION_PREFIX =
+  "rdsess_" as const;
+
+export const MEDICAL_FOLDER_RECIPIENT_SESSION_TTL_SECONDS =
+  15 * 60;
 
 export type MedicalFolderShareGrantStatus =
   | "active"
@@ -127,6 +160,93 @@ export type MedicalFolderShareAuditEvent =
   MedicalFolderShareEvent & {
     documentTitle: string | null;
   };
+
+export type MedicalFolderShareTokenMetadata = {
+  id: string;
+  shareGrantId: string;
+  tokenHint: string;
+  issuedByProfileId: string | null;
+  issuedAt: string;
+  exchangeCount: number;
+  lastExchangedAt: string | null;
+  invalidatedAt: string | null;
+  invalidationReason:
+    | "rotated"
+    | "grant_revoked"
+    | "grant_expired"
+    | "grant_consumed"
+    | "manual"
+    | null;
+  updatedAt: string;
+};
+
+export type IssuedMedicalFolderShareToken = {
+  shareToken: string;
+  tokenHint: string;
+  issuedAt: string;
+};
+
+export type MedicalFolderRecipientSessionMetadata = {
+  id: string;
+  shareGrantId: string;
+  shareTokenId: string;
+  sessionHint: string;
+  recipientType: MedicalFolderRecipientType;
+  actorProfileId: string | null;
+  actorDoctorId: string | null;
+  accessChannel: MedicalFolderRecipientChannel;
+  startedAt: string;
+  expiresAt: string;
+  lastSeenAt: string;
+  closedAt: string | null;
+  closeReason:
+    | "expired"
+    | "grant_revoked"
+    | "manual"
+    | null;
+  updatedAt: string;
+};
+
+export type BegunMedicalFolderRecipientSession = {
+  recipientSessionToken: string;
+  sessionExpiresAt: string;
+  shareGrantId: string;
+  shareScope: MedicalFolderShareScope;
+  accessMode: MedicalFolderShareAccessMode;
+  allowDocumentDownloads: boolean;
+  recipientType: MedicalFolderRecipientType;
+};
+
+export type MedicalFolderRecipientAccessContext = {
+  recipientSessionId: string;
+  shareGrantId: string;
+  patientProfileId: string;
+  shareScope: MedicalFolderShareScope;
+  accessMode: MedicalFolderShareAccessMode;
+  allowDocumentDownloads: boolean;
+  recipientType: MedicalFolderRecipientType;
+  actorProfileId: string | null;
+  actorDoctorId: string | null;
+  accessChannel: MedicalFolderRecipientChannel;
+  sessionExpiresAt: string;
+  selectedDocumentIds: string[];
+};
+
+export type MedicalFolderRecipientAccessErrorCode =
+  | "invalid_share_token"
+  | "share_grant_revoked"
+  | "share_grant_expired"
+  | "share_grant_consumed"
+  | "share_requires_bound_doctor"
+  | "share_bound_to_another_doctor"
+  | "invalid_recipient_identity"
+  | "invalid_recipient_channel"
+  | "invalid_recipient_session"
+  | "recipient_session_expired"
+  | "share_scope_excludes_documents"
+  | "document_not_shared"
+  | "document_not_available"
+  | "document_download_not_allowed";
 
 export type CreateMedicalFolderShareGrantInput = {
   shareScope: MedicalFolderShareScope;
@@ -204,11 +324,51 @@ export type MedicalFolderShareAuditResponse = {
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+const SHARE_TOKEN_PATTERN =
+  /^rdsh_[a-f0-9]{64}$/;
+
+const RECIPIENT_SESSION_TOKEN_PATTERN =
+  /^rdsess_[a-f0-9]{64}$/;
+
 export function isUuid(value: unknown): value is string {
   return (
     typeof value === "string" &&
     UUID_PATTERN.test(value.trim())
   );
+}
+
+export function isMedicalFolderShareToken(
+  value: unknown
+): value is string {
+  return (
+    typeof value === "string" &&
+    SHARE_TOKEN_PATTERN.test(value)
+  );
+}
+
+export function isMedicalFolderRecipientSessionToken(
+  value: unknown
+): value is string {
+  return (
+    typeof value === "string" &&
+    RECIPIENT_SESSION_TOKEN_PATTERN.test(value)
+  );
+}
+
+export function medicalFolderShareTokenHint(
+  value: string
+) {
+  return isMedicalFolderShareToken(value)
+    ? value.slice(0, 13)
+    : null;
+}
+
+export function medicalFolderRecipientSessionHint(
+  value: string
+) {
+  return isMedicalFolderRecipientSessionToken(value)
+    ? value.slice(0, 15)
+    : null;
 }
 
 export function isMedicalFolderShareScope(
@@ -254,6 +414,23 @@ export function isMedicalFolderShareEventType(
       (eventType) => eventType === value
     )
   );
+}
+
+export function isMedicalFolderRecipientChannel(
+  value: unknown
+): value is MedicalFolderRecipientChannel {
+  return (
+    typeof value === "string" &&
+    MEDICAL_FOLDER_RECIPIENT_CHANNELS.some(
+      (channel) => channel === value
+    )
+  );
+}
+
+export function isEmergencySummaryShare(
+  scope: MedicalFolderShareScope
+) {
+  return scope === "emergency_summary";
 }
 
 export function shareScopeContainsDocuments(
@@ -425,8 +602,8 @@ export function defaultMedicalFolderShareGrantInput():
   CreateMedicalFolderShareGrantInput {
   return {
     shareScope: "emergency_summary",
-    durationSeconds: 3_600,
-    accessMode: "one_time",
+    durationSeconds: 86_400,
+    accessMode: "multiple",
     allowDocumentDownloads: false,
     documentIds: [],
   };
