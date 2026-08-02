@@ -108,6 +108,26 @@ export type MedicalFolderShareEvent = {
   createdAt: string;
 };
 
+export type MedicalFolderShareSelectedDocument = {
+  id: string;
+  title: string;
+  documentType: string;
+  contentFormat: string;
+  createdAt: string;
+};
+
+export type MedicalFolderShareGrantListItem =
+  MedicalFolderShareGrant & {
+    status: MedicalFolderShareGrantStatus;
+    selectedDocuments:
+      MedicalFolderShareSelectedDocument[];
+  };
+
+export type MedicalFolderShareAuditEvent =
+  MedicalFolderShareEvent & {
+    documentTitle: string | null;
+  };
+
 export type CreateMedicalFolderShareGrantInput = {
   shareScope: MedicalFolderShareScope;
   durationSeconds: MedicalFolderShareDurationSeconds;
@@ -134,8 +154,62 @@ export type MedicalFolderShareValidationResult =
         | "invalid_document_id";
     };
 
+export type MedicalFolderShareApiErrorCode =
+  | "authentication_required"
+  | "active_patient_account_required"
+  | "invalid_request"
+  | "invalid_share_grant_id"
+  | "invalid_scope"
+  | "invalid_duration"
+  | "invalid_access_mode"
+  | "downloads_not_available"
+  | "selected_documents_required"
+  | "too_many_selected_documents"
+  | "documents_not_allowed"
+  | "invalid_document_id"
+  | "selected_document_unavailable"
+  | "share_grant_not_found"
+  | "share_grant_create_failed"
+  | "share_grant_list_failed"
+  | "share_grant_revoke_failed"
+  | "share_audit_load_failed";
+
+export type MedicalFolderShareApiError = {
+  error: MedicalFolderShareApiErrorCode;
+  message: string;
+};
+
+export type MedicalFolderShareGrantListResponse = {
+  grants: MedicalFolderShareGrantListItem[];
+  options: {
+    scopes: readonly MedicalFolderShareScope[];
+    durations:
+      readonly MedicalFolderShareDurationSeconds[];
+    accessModes:
+      readonly MedicalFolderShareAccessMode[];
+  };
+};
+
+export type MedicalFolderShareGrantMutationResponse = {
+  success: true;
+  grant: MedicalFolderShareGrantListItem;
+  revoked?: boolean;
+};
+
+export type MedicalFolderShareAuditResponse = {
+  grant: MedicalFolderShareGrantListItem;
+  events: MedicalFolderShareAuditEvent[];
+};
+
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isUuid(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    UUID_PATTERN.test(value.trim())
+  );
+}
 
 export function isMedicalFolderShareScope(
   value: unknown
