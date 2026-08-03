@@ -32,6 +32,7 @@ const localeNeutralPrefixes = [
   "/doctor-application",
   "/appointments",
   "/medical-folder",
+  "/share",
   "/check-email",
   "/forgot-password",
   "/reset-password",
