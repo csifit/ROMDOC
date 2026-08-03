@@ -835,7 +835,7 @@
           "description": "Wählen Sie genau aus, welche Informationen eingesehen werden dürfen, wie lange der Zugriff gültig bleibt und ob Dokumente heruntergeladen werden dürfen.",
           "back": "Zurück zur medizinischen Akte",
           "securityNotice": "Die Freigabe ist ausschließlich zur Ansicht bestimmt. Sie erlaubt keine Änderungen am medizinischen Profil, kein Hochladen oder Löschen von Dokumenten und keine Unterzeichnung medizinischer Notizen.",
-          "futureNotice": "Sichere Links und QR-Codes sind aktiv. Der Zugriff ist schreibgeschützt und kann jederzeit widerrufen werden."
+          "futureNotice": "Sichere Links, QR-Codes und der E-Mail-Versand sind aktiv. Der Zugriff ist schreibgeschützt und kann jederzeit widerrufen werden."
         },
         "form": {
           "eyebrow": "Neue Berechtigung",
@@ -992,6 +992,31 @@
           "qrAlt": "QR-Code zum Öffnen der freigegebenen medizinischen Informationen",
           "scan": "Für direkten Zugriff scannen",
           "securityNotice": "Der vollständige Link wird nur jetzt angezeigt. RomDoc speichert ausschließlich seinen kryptografischen Fingerabdruck. Ein neuer Link macht den vorherigen ungültig."
+        },
+        "email": {
+          "title": "Per E-Mail senden",
+          "description": "Senden Sie denselben sicheren Link an eine vertrauenswürdige Person. Durch den Versand wird der Link weder neu erstellt noch ungültig.",
+          "placeholder": "adresse@beispiel.de",
+          "send": "E-Mail senden",
+          "sending": "Wird gesendet...",
+          "sent": "Die E-Mail mit dem sicheren Link wurde gesendet.",
+          "invalid": "Geben Sie eine gültige E-Mail-Adresse ein.",
+          "sendError": "Die E-Mail konnte nicht gesendet werden.",
+          "privacyNotice": "RomDoc speichert die vollständige E-Mail-Adresse des Empfängers nicht im Freigabeverlauf. Senden Sie den Link nicht an Personen, denen Sie nicht vertrauen.",
+          "errors": {
+            "authentication_required": "Sie müssen angemeldet sein.",
+            "active_patient_account_required": "Ein aktives Patientenkonto mit bestätigter E-Mail-Adresse ist erforderlich.",
+            "invalid_request": "Die übermittelten Daten sind ungültig.",
+            "invalid_email": "Die E-Mail-Adresse ist ungültig.",
+            "invalid_share_grant_id": "Die ausgewählte Freigabe ist ungültig.",
+            "invalid_share_token": "Der sichere Link ist nicht mehr aktiv. Erstellen Sie einen neuen Link.",
+            "share_grant_not_found": "Die Freigabe wurde nicht gefunden.",
+            "share_grant_revoked": "Die Freigabe wurde widerrufen.",
+            "share_grant_expired": "Die Freigabe ist abgelaufen.",
+            "share_grant_consumed": "Die einmalige Freigabe wurde bereits verwendet.",
+            "email_configuration_missing": "Der E-Mail-Dienst ist nicht konfiguriert.",
+            "email_send_failed": "Die E-Mail konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
+          }
         }
       }
     },

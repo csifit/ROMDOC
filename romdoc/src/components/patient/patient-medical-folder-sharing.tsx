@@ -68,10 +68,20 @@ type ShareTokenApiError = {
 };
 
 type GeneratedShare = {
+  shareToken: string;
   linkUrl: string;
   qrDataUrl: string;
   tokenHint: string;
 };
+
+type ShareEmailApiPayload =
+  | {
+      success: true;
+    }
+  | {
+      error: string;
+      message: string;
+    };
 
 const INTL_LOCALE:
   Record<AppLocale, string> = {
@@ -133,6 +143,34 @@ const STATUS_CLASSES = {
   consumed:
     "border-blue-200 bg-blue-50 text-blue-800",
 } as const;
+
+const EMAIL_ERROR_KEYS:
+  Record<string, string> = {
+    authentication_required:
+      "email.errors.authentication_required",
+    active_patient_account_required:
+      "email.errors.active_patient_account_required",
+    invalid_request:
+      "email.errors.invalid_request",
+    invalid_email:
+      "email.errors.invalid_email",
+    invalid_share_grant_id:
+      "email.errors.invalid_share_grant_id",
+    invalid_share_token:
+      "email.errors.invalid_share_token",
+    share_grant_not_found:
+      "email.errors.share_grant_not_found",
+    share_grant_revoked:
+      "email.errors.share_grant_revoked",
+    share_grant_expired:
+      "email.errors.share_grant_expired",
+    share_grant_consumed:
+      "email.errors.share_grant_consumed",
+    email_configuration_missing:
+      "email.errors.email_configuration_missing",
+    email_send_failed:
+      "email.errors.email_send_failed",
+  };
 
 function formatDateTime(
   value: string,
@@ -361,6 +399,20 @@ export default function PatientMedicalFolderSharing() {
   const [
     copyingGrantId,
     setCopyingGrantId,
+  ] = useState<
+    string | null
+  >(null);
+
+  const [
+    recipientEmails,
+    setRecipientEmails,
+  ] = useState<
+    Record<string, string>
+  >({});
+
+  const [
+    sendingEmailGrantId,
+    setSendingEmailGrantId,
   ] = useState<
     string | null
   >(null);
@@ -902,6 +954,8 @@ export default function PatientMedicalFolderSharing() {
         (current) => ({
           ...current,
           [grantId]: {
+            shareToken:
+              payload.shareToken,
             linkUrl,
             qrDataUrl,
             tokenHint:
@@ -972,6 +1026,127 @@ export default function PatientMedicalFolderSharing() {
       );
     } finally {
       setCopyingGrantId(
+        null
+      );
+    }
+  }
+
+  async function sendShareEmail(
+    grantId: string,
+    shareToken: string
+  ) {
+    const recipientEmail =
+      recipientEmails[
+        grantId
+      ]?.trim() ?? "";
+
+    if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        recipientEmail
+      )
+    ) {
+      setError(
+        t(
+          "email.invalid"
+        )
+      );
+      return;
+    }
+
+    setSendingEmailGrantId(
+      grantId
+    );
+    setError("");
+    setSuccess("");
+
+    try {
+      const response =
+        await fetch(
+          "/api/patient/folder/share-email",
+          {
+            method:
+              "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                shareGrantId:
+                  grantId,
+                shareToken,
+                recipientEmail,
+                locale,
+              }),
+          }
+        );
+
+      const payload =
+        await response
+          .json() as
+          ShareEmailApiPayload;
+
+      if (
+        !response.ok ||
+        !("success" in payload)
+      ) {
+        const errorKey =
+          "error" in payload
+            ? EMAIL_ERROR_KEYS[
+                payload.error
+              ]
+            : null;
+
+        throw new Error(
+          errorKey
+            ? t(
+                errorKey
+              )
+            : t(
+                "email.sendError"
+              )
+        );
+      }
+
+      setRecipientEmails(
+        (current) => ({
+          ...current,
+          [grantId]:
+            "",
+        })
+      );
+
+      setAudits(
+        (current) => {
+          const next = {
+            ...current,
+          };
+
+          delete next[
+            grantId
+          ];
+
+          return next;
+        }
+      );
+
+      setSuccess(
+        t(
+          "email.sent"
+        )
+      );
+    } catch (
+      sendError
+    ) {
+      setError(
+        sendError instanceof Error
+          ? sendError.message
+          : t(
+              "email.sendError"
+            )
+      );
+    } finally {
+      setSendingEmailGrantId(
         null
       );
     }
@@ -1858,6 +2033,94 @@ export default function PatientMedicalFolderSharing() {
                                       "tokens.downloadQr"
                                     )}
                                   </a>
+                                </div>
+
+                                <div className="mt-[17px] rounded-[13px] border border-gray-200 bg-gray-50 p-[13px]">
+                                  <label
+                                    htmlFor={`share-email-${grant.id}`}
+                                    className="text-xs font-bold text-gray-700"
+                                  >
+                                    {t(
+                                      "email.title"
+                                    )}
+                                  </label>
+
+                                  <p className="mt-[5px] text-xs leading-5 text-gray-500">
+                                    {t(
+                                      "email.description"
+                                    )}
+                                  </p>
+
+                                  <div className="mt-[10px] flex flex-col gap-[8px] sm:flex-row">
+                                    <input
+                                      id={`share-email-${grant.id}`}
+                                      type="email"
+                                      inputMode="email"
+                                      autoComplete="email"
+                                      value={
+                                        recipientEmails[
+                                          grant.id
+                                        ] ?? ""
+                                      }
+                                      onChange={(
+                                        event: {
+                                          target: {
+                                            value: string;
+                                          };
+                                        }
+                                      ) =>
+                                        setRecipientEmails(
+                                          (current) => ({
+                                            ...current,
+                                            [grant.id]:
+                                              event.target
+                                                .value,
+                                          })
+                                        )
+                                      }
+                                      placeholder={t(
+                                        "email.placeholder"
+                                      )}
+                                      className="romdoc-focus-ring min-w-0 flex-1 rounded-[10px] border border-gray-300 bg-white px-[13px] py-[10px] text-sm text-gray-900"
+                                    />
+
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        void sendShareEmail(
+                                          grant.id,
+                                          generatedShares[
+                                            grant.id
+                                          ].shareToken
+                                        )
+                                      }
+                                      disabled={
+                                        sendingEmailGrantId ===
+                                          grant.id ||
+                                        !(
+                                          recipientEmails[
+                                            grant.id
+                                          ]?.trim()
+                                        )
+                                      }
+                                      className="romdoc-button romdoc-button-primary romdoc-button-sm"
+                                    >
+                                      {sendingEmailGrantId ===
+                                      grant.id
+                                        ? t(
+                                            "email.sending"
+                                          )
+                                        : t(
+                                            "email.send"
+                                          )}
+                                    </button>
+                                  </div>
+
+                                  <p className="mt-[8px] text-xs leading-5 text-gray-500">
+                                    {t(
+                                      "email.privacyNotice"
+                                    )}
+                                  </p>
                                 </div>
 
                                 <p className="mt-[13px] text-xs leading-5 text-gray-500">

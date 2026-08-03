@@ -835,7 +835,7 @@
           "description": "Alege exact ce informații pot fi consultate, cât timp rămâne permis accesul și dacă documentele pot fi descărcate.",
           "back": "Înapoi la Dosarul medical",
           "securityNotice": "Partajarea este doar pentru consultare. Nu permite modificarea profilului medical, încărcarea sau ștergerea documentelor și nici semnarea notelor medicale.",
-          "futureNotice": "Linkurile securizate și codurile QR sunt active. Accesul este numai pentru vizualizare și poate fi revocat oricând."
+          "futureNotice": "Linkurile securizate, codurile QR și trimiterea prin e-mail sunt active. Accesul este numai pentru citire și poate fi revocat oricând."
         },
         "form": {
           "eyebrow": "Permisiune nouă",
@@ -992,6 +992,31 @@
           "qrAlt": "Cod QR pentru accesarea informațiilor medicale partajate",
           "scan": "Scanează pentru acces direct",
           "securityNotice": "Linkul complet este afișat numai acum. RomDoc păstrează doar amprenta criptografică. La o nouă generare, linkul anterior devine invalid."
+        },
+        "email": {
+          "title": "Trimite prin e-mail",
+          "description": "Trimite același link securizat unei persoane de încredere. Linkul nu este regenerat și nu devine invalid prin trimitere.",
+          "placeholder": "adresa@exemplu.ro",
+          "send": "Trimite e-mailul",
+          "sending": "Se trimite...",
+          "sent": "E-mailul cu linkul securizat a fost trimis.",
+          "invalid": "Introdu o adresă de e-mail validă.",
+          "sendError": "E-mailul nu a putut fi trimis.",
+          "privacyNotice": "RomDoc nu salvează adresa completă a destinatarului în istoricul partajării. Nu trimite linkul unei persoane în care nu ai încredere.",
+          "errors": {
+            "authentication_required": "Trebuie să fii autentificat.",
+            "active_patient_account_required": "Este necesar un cont activ de pacient cu e-mail confirmat.",
+            "invalid_request": "Datele trimise nu sunt valide.",
+            "invalid_email": "Adresa de e-mail nu este validă.",
+            "invalid_share_grant_id": "Partajarea selectată nu este validă.",
+            "invalid_share_token": "Linkul securizat nu mai este activ. Generează un link nou.",
+            "share_grant_not_found": "Partajarea nu a fost găsită.",
+            "share_grant_revoked": "Partajarea a fost revocată.",
+            "share_grant_expired": "Partajarea a expirat.",
+            "share_grant_consumed": "Partajarea cu o singură utilizare a fost deja folosită.",
+            "email_configuration_missing": "Serviciul de e-mail nu este configurat.",
+            "email_send_failed": "E-mailul nu a putut fi trimis. Încearcă din nou."
+          }
         }
       }
     },

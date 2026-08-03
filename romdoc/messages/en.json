@@ -835,7 +835,7 @@
           "description": "Choose exactly which information may be reviewed, how long access remains valid, and whether documents may be downloaded.",
           "back": "Back to Medical Folder",
           "securityNotice": "Sharing is view-only. It does not allow changes to the medical profile, document uploads or deletion, or the signing of medical notes.",
-          "futureNotice": "Secure links and QR codes are active. Access is view-only and can be revoked at any time."
+          "futureNotice": "Secure links, QR codes and email delivery are active. Access is read-only and may be revoked at any time."
         },
         "form": {
           "eyebrow": "New permission",
@@ -992,6 +992,31 @@
           "qrAlt": "QR code for opening shared medical information",
           "scan": "Scan for direct access",
           "securityNotice": "The complete link is shown only now. RomDoc stores only its cryptographic fingerprint. Generating another link invalidates the previous one."
+        },
+        "email": {
+          "title": "Send by email",
+          "description": "Send the same secure link to a trusted person. Sending it does not regenerate or invalidate the link.",
+          "placeholder": "address@example.com",
+          "send": "Send email",
+          "sending": "Sending...",
+          "sent": "The email containing the secure link was sent.",
+          "invalid": "Enter a valid email address.",
+          "sendError": "The email could not be sent.",
+          "privacyNotice": "RomDoc does not save the recipient's complete email address in the sharing history. Do not send the link to someone you do not trust.",
+          "errors": {
+            "authentication_required": "You must be signed in.",
+            "active_patient_account_required": "An active Patient account with a confirmed email address is required.",
+            "invalid_request": "The submitted information is invalid.",
+            "invalid_email": "The email address is invalid.",
+            "invalid_share_grant_id": "The selected share is invalid.",
+            "invalid_share_token": "The secure link is no longer active. Generate a new link.",
+            "share_grant_not_found": "The share was not found.",
+            "share_grant_revoked": "The share has been revoked.",
+            "share_grant_expired": "The share has expired.",
+            "share_grant_consumed": "The one-time share has already been used.",
+            "email_configuration_missing": "The email service is not configured.",
+            "email_send_failed": "The email could not be sent. Please try again."
+          }
         }
       }
     },
