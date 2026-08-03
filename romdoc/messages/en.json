@@ -1281,7 +1281,8 @@
         "closeMenu": "Close menu",
         "clinicAccountNotice": "Clinic doctor account. The subscription and SMS services are managed by the clinic.",
         "signOut": "Sign out",
-        "signingOut": "Signing out..."
+        "signingOut": "Signing out...",
+        "devices": "Linked devices"
       },
       "home": {
         "accountMissing": "The account is active, but the doctor profile could not be found. Check the subscription activation or contact RomDoc support.",
@@ -3112,5 +3113,135 @@
     },
     "permanentReadOnlyNotice": "This is permanent, read-only access to the Emergency Medical Summary. It does not allow changes or access to medical documents.",
     "permanentAccess": "Permanent access until the Patient deactivates or replaces the QR code."
+  },
+  "DoctorLinkedDevices": {
+    "dashboard": {
+      "eyebrow": "RomDoc Doctor Mobile",
+      "title": "Linked devices",
+      "description": "Link the phones that will later scan Patient QR codes. Each phone receives a separate credential and can be revoked immediately.",
+      "activeCount": "{count} of {maximum} active devices",
+      "actions": {
+        "refresh": "Refresh list",
+        "refreshing": "Refreshing..."
+      },
+      "pairing": {
+        "title": "Link a phone",
+        "description": "First sign in on the phone with the same Doctor account, then generate and scan the pairing code.",
+        "steps": {
+          "signIn": "1. Open RomDoc on the phone and sign in with this Doctor account.",
+          "generate": "2. Generate the pairing QR on this screen.",
+          "scan": "3. Scan the code with the phone camera.",
+          "confirm": "4. Name and confirm the phone within two minutes."
+        },
+        "generate": "Generate pairing code",
+        "generating": "Generating...",
+        "replace": "Generate another code",
+        "limitReached": "You have reached the three-device limit. Revoke a device before linking another one.",
+        "qrAlt": "Temporary QR code for linking a phone to the Doctor account",
+        "expiresIn": "Code expires in {seconds} seconds",
+        "tokenHint": "Identifier: …{hint}",
+        "securityNotice": "The code is single-use and stays only in this page's memory. Generating a new code invalidates the previous one.",
+        "expiredTitle": "The code expired",
+        "expiredDescription": "Generate a new code and scan it after signing in on the phone."
+      },
+      "security": {
+        "title": "Device protection",
+        "hash": "RomDoc stores only the device credential hash.",
+        "cookie": "The raw credential is stored in an HttpOnly cookie and is unavailable to JavaScript.",
+        "revocation": "Dashboard revocation blocks the phone immediately.",
+        "viewOnly": "A linked device does not automatically receive Medical Folder editing rights.",
+        "scannerNext": "Camera access and Medical Folder scanning will be added separately in Step 88E."
+      },
+      "list": {
+        "eyebrow": "Trusted devices",
+        "title": "Active phones",
+        "loading": "Loading devices...",
+        "emptyTitle": "No phones are linked",
+        "emptyDescription": "Generate the first pairing code after signing in on the phone."
+      },
+      "statuses": {
+        "active": "Active",
+        "revoked": "Revoked"
+      },
+      "labels": {
+        "linkedAt": "Linked at",
+        "lastUsed": "Last used",
+        "neverUsed": "Not used yet",
+        "credentialHint": "Credential identifier"
+      },
+      "revoke": {
+        "action": "Revoke",
+        "revoking": "Revoking...",
+        "confirm": "Revoke “{name}”? The phone will immediately lose RomDoc Doctor Mobile access."
+      },
+      "revoked": {
+        "title": "Revoked devices",
+        "revokedAt": "Revoked at {date}"
+      },
+      "messages": {
+        "refreshed": "The device list was refreshed.",
+        "pairingCreated": "The temporary pairing code was generated.",
+        "revoked": "“{name}” was revoked.",
+        "revokedAll": "All active devices were revoked."
+      },
+      "errors": {
+        "load": "Linked devices could not be loaded.",
+        "generate": "The pairing code could not be generated.",
+        "revoke": "The device could not be revoked.",
+        "revokeAll": "The devices could not be revoked."
+      },
+      "revokeAll": {
+        "action": "Revoke all devices",
+        "revoking": "Revoking all...",
+        "confirm": "Revoke all active devices? Every phone will immediately lose RomDoc Doctor Mobile access."
+      }
+    },
+    "pairingPage": {
+      "loading": "Preparing pairing...",
+      "title": "Link this phone",
+      "description": "Confirm that this phone will become a trusted RomDoc device for your Doctor account.",
+      "deviceNameLabel": "Device name",
+      "deviceNamePlaceholder": "For example: Clinic phone",
+      "deviceNameHelp": "Use a name that is easy to recognise in the device list.",
+      "sameAccountNotice": "You must be signed in on the phone with the same Doctor account that generated the QR code.",
+      "connect": "Link phone",
+      "connecting": "Linking...",
+      "signInNotice": "The phone is not signed in with an active Doctor account.",
+      "signInAction": "Sign in to RomDoc",
+      "signInRegenerate": "After signing in, return to the computer and generate a new code; the current code expires in two minutes.",
+      "securityNotice": "The pairing code is temporary and contains no medical information. The phone's permanent credential is stored in an HttpOnly cookie.",
+      "messages": {
+        "connected": "“{name}” was linked."
+      },
+      "errors": {
+        "invalid": "The pairing code is missing or invalid.",
+        "failed": "The phone could not be linked."
+      }
+    },
+    "mobile": {
+      "loading": "Checking device...",
+      "notLinkedTitle": "Phone not linked",
+      "notLinkedDescription": "Link this phone from the Linked devices page in the Doctor dashboard.",
+      "openDashboard": "Open Doctor dashboard",
+      "title": "RomDoc Doctor Mobile",
+      "active": "Active device",
+      "connectedFor": "Linked for {doctor}",
+      "deviceName": "Device",
+      "linkedAt": "Linked at",
+      "credentialHint": "Credential identifier",
+      "scannerTitle": "Medical Folder scanner",
+      "scannerDescription": "The phone is verified and ready for the future Patient share QR scanning feature.",
+      "scannerComing": "Scanner available in Step 88E",
+      "securityTitle": "Manage this phone",
+      "securityDescription": "You can remove the local credential. The device must be linked again before using RomDoc Doctor Mobile.",
+      "remove": "Remove this device",
+      "removing": "Removing...",
+      "removeConfirm": "Remove this phone from the linked RomDoc devices?",
+      "removed": "The device was removed.",
+      "errors": {
+        "notLinked": "This phone is not linked or access was revoked.",
+        "remove": "The device could not be removed."
+      }
+    }
   }
 }

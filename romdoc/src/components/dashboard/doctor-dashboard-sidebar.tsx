@@ -78,6 +78,7 @@ export default function DoctorDashboardSidebar({
       { href: "/doctor-dashboard/profile", label: t("servicesProfile"), icon: "☤" },
       { href: "/doctor-dashboard/clinics", label: t("clinic"), icon: "⌂" },
       { href: "/doctor-dashboard/staff", label: t("staff"), icon: "◉" },
+      { href: "/doctor-dashboard/devices", label: t("devices"), icon: "▣" },
     ];
 
     if (!isClinicSubAccount) {

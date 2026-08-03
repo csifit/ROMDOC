@@ -27,6 +27,7 @@ const localeNeutralPrefixes = [
   "/manager-dashboard",
   "/clinic-manager-dashboard",
   "/doctor-dashboard",
+  "/doctor-mobile",
   "/staff-dashboard",
   "/patient-dashboard",
   "/doctor-application",

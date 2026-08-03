@@ -1281,7 +1281,8 @@
         "closeMenu": "Închide meniul",
         "clinicAccountNotice": "Cont medic clinică. Abonamentul și SMS-urile sunt gestionate de clinică.",
         "signOut": "Deconectare",
-        "signingOut": "Se deconectează..."
+        "signingOut": "Se deconectează...",
+        "devices": "Dispozitive conectate"
       },
       "home": {
         "accountMissing": "Contul este activ, dar profilul de medic nu a putut fi găsit. Verifică activarea abonamentului sau contactează suportul RomDoc.",
@@ -3112,5 +3113,135 @@
     },
     "permanentReadOnlyNotice": "Acesta este un acces permanent, numai pentru vizualizare, la Rezumatul medical de urgență. Nu permite modificări și nu oferă acces la documentele medicale.",
     "permanentAccess": "Acces permanent, valabil până când pacientul dezactivează sau înlocuiește codul QR."
+  },
+  "DoctorLinkedDevices": {
+    "dashboard": {
+      "eyebrow": "RomDoc Doctor Mobile",
+      "title": "Dispozitive conectate",
+      "description": "Conectează telefoanele pe care le vei folosi ulterior pentru scanarea codurilor QR ale pacienților. Fiecare telefon primește o acreditare separată și poate fi revocat imediat.",
+      "activeCount": "{count} din {maximum} dispozitive active",
+      "actions": {
+        "refresh": "Actualizează lista",
+        "refreshing": "Se actualizează..."
+      },
+      "pairing": {
+        "title": "Conectează un telefon",
+        "description": "Autentifică-te mai întâi pe telefon cu același cont de medic, apoi generează și scanează codul de conectare.",
+        "steps": {
+          "signIn": "1. Deschide RomDoc pe telefon și autentifică-te cu acest cont de medic.",
+          "generate": "2. Generează codul QR de conectare pe acest ecran.",
+          "scan": "3. Scanează codul cu camera telefonului.",
+          "confirm": "4. Denumește și confirmă telefonul în maximum două minute."
+        },
+        "generate": "Generează cod de conectare",
+        "generating": "Se generează...",
+        "replace": "Generează alt cod",
+        "limitReached": "Ai atins limita de trei dispozitive active. Revocă un dispozitiv înainte de a conecta altul.",
+        "qrAlt": "Cod QR temporar pentru conectarea telefonului la contul de medic",
+        "expiresIn": "Codul expiră în {seconds} secunde",
+        "tokenHint": "Identificator: …{hint}",
+        "securityNotice": "Codul este valabil o singură dată și este păstrat numai în memoria acestei pagini. Generarea unui cod nou îl invalidează pe cel anterior.",
+        "expiredTitle": "Codul a expirat",
+        "expiredDescription": "Generează un cod nou și scanează-l după ce ești autentificat pe telefon."
+      },
+      "security": {
+        "title": "Protecția dispozitivelor",
+        "hash": "RomDoc stochează numai hashul acreditării dispozitivului.",
+        "cookie": "Acreditarea brută este salvată într-un cookie HttpOnly și nu este disponibilă JavaScriptului.",
+        "revocation": "Revocarea din dashboard blochează telefonul imediat.",
+        "viewOnly": "Un dispozitiv conectat nu primește automat drept de editare asupra Dosarului Medical.",
+        "scannerNext": "Camera și scanarea Dosarului Medical vor fi adăugate separat în Step 88E."
+      },
+      "list": {
+        "eyebrow": "Dispozitive de încredere",
+        "title": "Telefoane active",
+        "loading": "Se încarcă dispozitivele...",
+        "emptyTitle": "Nu există telefoane conectate",
+        "emptyDescription": "Generează primul cod de conectare după ce te-ai autentificat pe telefon."
+      },
+      "statuses": {
+        "active": "Activ",
+        "revoked": "Revocat"
+      },
+      "labels": {
+        "linkedAt": "Conectat la",
+        "lastUsed": "Ultima utilizare",
+        "neverUsed": "Nu a fost folosit încă",
+        "credentialHint": "Identificator acreditare"
+      },
+      "revoke": {
+        "action": "Revocă",
+        "revoking": "Se revocă...",
+        "confirm": "Revoci dispozitivul „{name}”? Telefonul va pierde imediat accesul RomDoc Doctor Mobile."
+      },
+      "revoked": {
+        "title": "Dispozitive revocate",
+        "revokedAt": "Revocat la {date}"
+      },
+      "messages": {
+        "refreshed": "Lista dispozitivelor a fost actualizată.",
+        "pairingCreated": "Codul temporar de conectare a fost generat.",
+        "revoked": "Dispozitivul „{name}” a fost revocat.",
+        "revokedAll": "Toate dispozitivele active au fost revocate."
+      },
+      "errors": {
+        "load": "Dispozitivele conectate nu au putut fi încărcate.",
+        "generate": "Codul de conectare nu a putut fi generat.",
+        "revoke": "Dispozitivul nu a putut fi revocat.",
+        "revokeAll": "Dispozitivele nu au putut fi revocate."
+      },
+      "revokeAll": {
+        "action": "Revocă toate dispozitivele",
+        "revoking": "Se revocă toate...",
+        "confirm": "Revoci toate dispozitivele active? Toate telefoanele vor pierde imediat accesul RomDoc Doctor Mobile."
+      }
+    },
+    "pairingPage": {
+      "loading": "Se pregătește conectarea...",
+      "title": "Conectează acest telefon",
+      "description": "Confirmă că acest telefon va deveni un dispozitiv RomDoc de încredere pentru contul tău de medic.",
+      "deviceNameLabel": "Numele dispozitivului",
+      "deviceNamePlaceholder": "De exemplu: Telefon cabinet",
+      "deviceNameHelp": "Folosește un nume ușor de recunoscut în lista dispozitivelor.",
+      "sameAccountNotice": "Trebuie să fii autentificat pe telefon cu același cont de medic care a generat codul QR.",
+      "connect": "Conectează telefonul",
+      "connecting": "Se conectează...",
+      "signInNotice": "Telefonul nu este autentificat cu un cont activ de medic.",
+      "signInAction": "Autentifică-te în RomDoc",
+      "signInRegenerate": "După autentificare, revino pe computer și generează un cod nou; codul curent expiră în două minute.",
+      "securityNotice": "Codul de conectare este temporar și nu conține date medicale. Acreditarea permanentă a telefonului este salvată într-un cookie HttpOnly.",
+      "messages": {
+        "connected": "Dispozitivul „{name}” a fost conectat."
+      },
+      "errors": {
+        "invalid": "Codul de conectare lipsește sau nu este valid.",
+        "failed": "Telefonul nu a putut fi conectat."
+      }
+    },
+    "mobile": {
+      "loading": "Se verifică dispozitivul...",
+      "notLinkedTitle": "Telefon neconectat",
+      "notLinkedDescription": "Conectează acest telefon din pagina Dispozitive conectate a dashboardului de medic.",
+      "openDashboard": "Deschide dashboardul de medic",
+      "title": "RomDoc Doctor Mobile",
+      "active": "Dispozitiv activ",
+      "connectedFor": "Conectat pentru {doctor}",
+      "deviceName": "Dispozitiv",
+      "linkedAt": "Conectat la",
+      "credentialHint": "Identificator acreditare",
+      "scannerTitle": "Scanner Dosar Medical",
+      "scannerDescription": "Telefonul este verificat și pregătit pentru viitoarea funcție de scanare a codurilor QR partajate de pacienți.",
+      "scannerComing": "Scanner disponibil în Step 88E",
+      "securityTitle": "Gestionează acest telefon",
+      "securityDescription": "Poți elimina acreditarea locală. Dispozitivul va trebui conectat din nou înainte de a utiliza RomDoc Doctor Mobile.",
+      "remove": "Elimină acest dispozitiv",
+      "removing": "Se elimină...",
+      "removeConfirm": "Elimini acest telefon din lista dispozitivelor RomDoc conectate?",
+      "removed": "Dispozitivul a fost eliminat.",
+      "errors": {
+        "notLinked": "Acest telefon nu este conectat sau accesul a fost revocat.",
+        "remove": "Dispozitivul nu a putut fi eliminat."
+      }
+    }
   }
 }

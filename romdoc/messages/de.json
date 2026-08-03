@@ -1281,7 +1281,8 @@
         "closeMenu": "Menü schließen",
         "clinicAccountNotice": "Klinikarztkonto. Das Abonnement und die SMS-Dienste werden von der Klinik verwaltet.",
         "signOut": "Abmelden",
-        "signingOut": "Abmeldung..."
+        "signingOut": "Abmeldung...",
+        "devices": "Verknüpfte Geräte"
       },
       "home": {
         "accountMissing": "Das Konto ist aktiv, aber das Arztprofil konnte nicht gefunden werden. Prüfen Sie die Aktivierung des Abonnements oder wenden Sie sich an den RomDoc-Support.",
@@ -3112,5 +3113,135 @@
     },
     "permanentReadOnlyNotice": "Dies ist ein dauerhafter, schreibgeschützter Zugriff auf die medizinische Notfallübersicht. Änderungen und der Zugriff auf medizinische Dokumente sind nicht möglich.",
     "permanentAccess": "Dauerhafter Zugriff, bis der Patient den QR-Code deaktiviert oder ersetzt."
+  },
+  "DoctorLinkedDevices": {
+    "dashboard": {
+      "eyebrow": "RomDoc Doctor Mobile",
+      "title": "Verknüpfte Geräte",
+      "description": "Verknüpfen Sie die Telefone, die später Patienten-QR-Codes scannen. Jedes Telefon erhält einen eigenen Zugang und kann sofort widerrufen werden.",
+      "activeCount": "{count} von {maximum} aktiven Geräten",
+      "actions": {
+        "refresh": "Liste aktualisieren",
+        "refreshing": "Wird aktualisiert..."
+      },
+      "pairing": {
+        "title": "Telefon verknüpfen",
+        "description": "Melden Sie sich zuerst auf dem Telefon mit demselben Arztkonto an und erzeugen und scannen Sie danach den Kopplungscode.",
+        "steps": {
+          "signIn": "1. Öffnen Sie RomDoc auf dem Telefon und melden Sie sich mit diesem Arztkonto an.",
+          "generate": "2. Erzeugen Sie den Kopplungs-QR-Code auf diesem Bildschirm.",
+          "scan": "3. Scannen Sie den Code mit der Telefonkamera.",
+          "confirm": "4. Benennen und bestätigen Sie das Telefon innerhalb von zwei Minuten."
+        },
+        "generate": "Kopplungscode erzeugen",
+        "generating": "Wird erzeugt...",
+        "replace": "Anderen Code erzeugen",
+        "limitReached": "Die Grenze von drei aktiven Geräten ist erreicht. Widerrufen Sie zuerst ein Gerät.",
+        "qrAlt": "Temporärer QR-Code zum Verknüpfen eines Telefons mit dem Arztkonto",
+        "expiresIn": "Code läuft in {seconds} Sekunden ab",
+        "tokenHint": "Kennung: …{hint}",
+        "securityNotice": "Der Code ist nur einmal gültig und bleibt ausschließlich im Speicher dieser Seite. Ein neuer Code macht den vorherigen ungültig.",
+        "expiredTitle": "Der Code ist abgelaufen",
+        "expiredDescription": "Erzeugen Sie einen neuen Code und scannen Sie ihn nach der Anmeldung auf dem Telefon."
+      },
+      "security": {
+        "title": "Geräteschutz",
+        "hash": "RomDoc speichert nur den Hash des Gerätezugangs.",
+        "cookie": "Der rohe Zugang wird in einem HttpOnly-Cookie gespeichert und ist für JavaScript nicht verfügbar.",
+        "revocation": "Ein Widerruf im Dashboard sperrt das Telefon sofort.",
+        "viewOnly": "Ein verknüpftes Gerät erhält nicht automatisch Bearbeitungsrechte für die Medizinische Akte.",
+        "scannerNext": "Kamerazugriff und Scannen der Medizinischen Akte werden separat in Schritt 88E ergänzt."
+      },
+      "list": {
+        "eyebrow": "Vertrauenswürdige Geräte",
+        "title": "Aktive Telefone",
+        "loading": "Geräte werden geladen...",
+        "emptyTitle": "Keine Telefone verknüpft",
+        "emptyDescription": "Erzeugen Sie den ersten Kopplungscode, nachdem Sie sich auf dem Telefon angemeldet haben."
+      },
+      "statuses": {
+        "active": "Aktiv",
+        "revoked": "Widerrufen"
+      },
+      "labels": {
+        "linkedAt": "Verknüpft am",
+        "lastUsed": "Zuletzt verwendet",
+        "neverUsed": "Noch nicht verwendet",
+        "credentialHint": "Zugangskennung"
+      },
+      "revoke": {
+        "action": "Widerrufen",
+        "revoking": "Wird widerrufen...",
+        "confirm": "„{name}“ widerrufen? Das Telefon verliert sofort den Zugriff auf RomDoc Doctor Mobile."
+      },
+      "revoked": {
+        "title": "Widerrufene Geräte",
+        "revokedAt": "Widerrufen am {date}"
+      },
+      "messages": {
+        "refreshed": "Die Geräteliste wurde aktualisiert.",
+        "pairingCreated": "Der temporäre Kopplungscode wurde erzeugt.",
+        "revoked": "„{name}“ wurde widerrufen.",
+        "revokedAll": "Alle aktiven Geräte wurden widerrufen."
+      },
+      "errors": {
+        "load": "Die verknüpften Geräte konnten nicht geladen werden.",
+        "generate": "Der Kopplungscode konnte nicht erzeugt werden.",
+        "revoke": "Das Gerät konnte nicht widerrufen werden.",
+        "revokeAll": "Die Geräte konnten nicht widerrufen werden."
+      },
+      "revokeAll": {
+        "action": "Alle Geräte widerrufen",
+        "revoking": "Alle werden widerrufen...",
+        "confirm": "Alle aktiven Geräte widerrufen? Sämtliche Telefone verlieren sofort den Zugriff auf RomDoc Doctor Mobile."
+      }
+    },
+    "pairingPage": {
+      "loading": "Kopplung wird vorbereitet...",
+      "title": "Dieses Telefon verknüpfen",
+      "description": "Bestätigen Sie, dass dieses Telefon ein vertrauenswürdiges RomDoc-Gerät für Ihr Arztkonto wird.",
+      "deviceNameLabel": "Gerätename",
+      "deviceNamePlaceholder": "Zum Beispiel: Praxistelefon",
+      "deviceNameHelp": "Verwenden Sie einen Namen, der in der Geräteliste leicht erkennbar ist.",
+      "sameAccountNotice": "Sie müssen auf dem Telefon mit demselben Arztkonto angemeldet sein, das den QR-Code erzeugt hat.",
+      "connect": "Telefon verknüpfen",
+      "connecting": "Wird verknüpft...",
+      "signInNotice": "Das Telefon ist nicht mit einem aktiven Arztkonto angemeldet.",
+      "signInAction": "Bei RomDoc anmelden",
+      "signInRegenerate": "Melden Sie sich an, kehren Sie zum Computer zurück und erzeugen Sie einen neuen Code; der aktuelle Code läuft nach zwei Minuten ab.",
+      "securityNotice": "Der Kopplungscode ist temporär und enthält keine medizinischen Informationen. Der dauerhafte Gerätezugang wird in einem HttpOnly-Cookie gespeichert.",
+      "messages": {
+        "connected": "„{name}“ wurde verknüpft."
+      },
+      "errors": {
+        "invalid": "Der Kopplungscode fehlt oder ist ungültig.",
+        "failed": "Das Telefon konnte nicht verknüpft werden."
+      }
+    },
+    "mobile": {
+      "loading": "Gerät wird geprüft...",
+      "notLinkedTitle": "Telefon nicht verknüpft",
+      "notLinkedDescription": "Verknüpfen Sie dieses Telefon auf der Seite Verknüpfte Geräte im Arzt-Dashboard.",
+      "openDashboard": "Arzt-Dashboard öffnen",
+      "title": "RomDoc Doctor Mobile",
+      "active": "Aktives Gerät",
+      "connectedFor": "Verknüpft für {doctor}",
+      "deviceName": "Gerät",
+      "linkedAt": "Verknüpft am",
+      "credentialHint": "Zugangskennung",
+      "scannerTitle": "Scanner für die Medizinische Akte",
+      "scannerDescription": "Das Telefon ist verifiziert und für die zukünftige Scan-Funktion von Patientenfreigaben vorbereitet.",
+      "scannerComing": "Scanner verfügbar in Schritt 88E",
+      "securityTitle": "Dieses Telefon verwalten",
+      "securityDescription": "Sie können den lokalen Zugang entfernen. Das Gerät muss erneut verknüpft werden, bevor RomDoc Doctor Mobile verwendet werden kann.",
+      "remove": "Dieses Gerät entfernen",
+      "removing": "Wird entfernt...",
+      "removeConfirm": "Dieses Telefon aus den verknüpften RomDoc-Geräten entfernen?",
+      "removed": "Das Gerät wurde entfernt.",
+      "errors": {
+        "notLinked": "Dieses Telefon ist nicht verknüpft oder der Zugriff wurde widerrufen.",
+        "remove": "Das Gerät konnte nicht entfernt werden."
+      }
+    }
   }
 }
