@@ -9,6 +9,7 @@ import {
   getSafeInvitationFailure,
   validateDoctorInvitationInput,
 } from "@/lib/admin/doctor-invitations";
+import { sendDoctorInvitationEmail } from "@/lib/admin/send-doctor-invitation-email";
 import {
   PLATFORM_OPERATOR_DOCTOR_CODES as CODE,
 } from "@/lib/api/platform-operator-doctor-codes";
@@ -34,9 +35,7 @@ type DoctorInvitationRow = {
   first_name: string;
   last_name: string;
   locale: "ro" | "en";
-  personal_message:
-    | string
-    | null;
+  personal_message: string | null;
   complimentary_months: number;
   status:
     | "draft"
@@ -46,59 +45,31 @@ type DoctorInvitationRow = {
     | "cancelled"
     | "failed";
   invited_by_profile_id: string;
-  auth_user_id:
-    | string
-    | null;
-  accepted_profile_id:
-    | string
-    | null;
-  doctor_id:
-    | string
-    | null;
-  sent_at:
-    | string
-    | null;
-  accepted_at:
-    | string
-    | null;
-  expires_at:
-    | string
-    | null;
-  cancelled_at:
-    | string
-    | null;
-  failure_code:
-    | string
-    | null;
-  failure_message:
-    | string
-    | null;
+  auth_user_id: string | null;
+  accepted_profile_id: string | null;
+  doctor_id: string | null;
+  sent_at: string | null;
+  accepted_at: string | null;
+  expires_at: string | null;
+  cancelled_at: string | null;
+  failure_code: string | null;
+  failure_message: string | null;
   created_at: string;
   updated_at: string;
 };
 
-function json(
-  body: unknown,
-  status = 200
-) {
-  return NextResponse.json(
-    body,
-    {
-      status,
-      headers:
-        NO_STORE_HEADERS,
-    }
-  );
+function json(body: unknown, status = 200) {
+  return NextResponse.json(body, {
+    status,
+    headers: NO_STORE_HEADERS,
+  });
 }
 
 function failure(
   code: string,
   error: string,
   status: number,
-  extra: Record<
-    string,
-    unknown
-  > = {}
+  extra: Record<string, unknown> = {}
 ) {
   return json(
     {
@@ -110,11 +81,7 @@ function failure(
   );
 }
 
-function getValidationCode(
-  field:
-    | string
-    | undefined
-) {
+function getValidationCode(field: string | undefined) {
   switch (field) {
     case "email":
       return CODE.doctorInvitationEmailInvalid;
@@ -131,49 +98,35 @@ function getValidationCode(
   }
 }
 
-export async function GET(
-  request: NextRequest
-): Promise<Response> {
-  const authorization =
-    await requirePlatformOperatorAal2Api();
+export async function GET(request: NextRequest): Promise<Response> {
+  const authorization = await requirePlatformOperatorAal2Api();
 
-  if (
-    authorization.response
-  ) {
+  if (authorization.response) {
     return authorization.response;
   }
 
-  const adminOnly =
-    requireAdministratorCapability(
-      authorization.role,
-      "Doar administratorii pot consulta invitațiile medicilor."
-    );
+  const adminOnly = requireAdministratorCapability(
+    authorization.role,
+    "Doar administratorii pot consulta invitațiile medicilor."
+  );
 
   if (adminOnly) {
     return adminOnly;
   }
 
   const requestedStatus =
-    request.nextUrl.searchParams
-      .get("status")
-      ?.trim() ?? "";
+    request.nextUrl.searchParams.get("status")?.trim() ?? "";
 
-  const allowedStatuses =
-    new Set([
-      "draft",
-      "sent",
-      "accepted",
-      "expired",
-      "cancelled",
-      "failed",
-    ]);
+  const allowedStatuses = new Set([
+    "draft",
+    "sent",
+    "accepted",
+    "expired",
+    "cancelled",
+    "failed",
+  ]);
 
-  if (
-    requestedStatus &&
-    !allowedStatuses.has(
-      requestedStatus
-    )
-  ) {
+  if (requestedStatus && !allowedStatuses.has(requestedStatus)) {
     return failure(
       CODE.doctorInvitationStatusFilterInvalid,
       "Filtrul de statut nu este valid.",
@@ -181,13 +134,10 @@ export async function GET(
     );
   }
 
-  const admin =
-    createAdminClient();
+  const admin = createAdminClient();
 
   let query = admin
-    .from(
-      "doctor_invitations"
-    )
+    .from("doctor_invitations")
     .select(`
       id,
       email,
@@ -211,33 +161,17 @@ export async function GET(
       created_at,
       updated_at
     `)
-    .order(
-      "created_at",
-      {
-        ascending:
-          false,
-      }
-    )
+    .order("created_at", { ascending: false })
     .limit(200);
 
   if (requestedStatus) {
-    query =
-      query.eq(
-        "status",
-        requestedStatus
-      );
+    query = query.eq("status", requestedStatus);
   }
 
-  const {
-    data,
-    error,
-  } = await query;
+  const { data, error } = await query;
 
   if (error) {
-    console.error(
-      "Doctor invitations query failed:",
-      error
-    );
+    console.error("Doctor invitations query failed:", error);
 
     return failure(
       CODE.doctorInvitationsLoadFailed,
@@ -247,30 +181,22 @@ export async function GET(
   }
 
   return json({
-    code:
-      CODE.doctorInvitationsLoaded,
-    invitations:
-      (data ?? []) as DoctorInvitationRow[],
+    code: CODE.doctorInvitationsLoaded,
+    invitations: (data ?? []) as DoctorInvitationRow[],
   });
 }
 
-export async function POST(
-  request: NextRequest
-): Promise<Response> {
-  const authorization =
-    await requirePlatformOperatorAal2Api();
+export async function POST(request: NextRequest): Promise<Response> {
+  const authorization = await requirePlatformOperatorAal2Api();
 
-  if (
-    authorization.response
-  ) {
+  if (authorization.response) {
     return authorization.response;
   }
 
-  const adminOnly =
-    requireAdministratorCapability(
-      authorization.role,
-      "Doar administratorii pot invita medici."
-    );
+  const adminOnly = requireAdministratorCapability(
+    authorization.role,
+    "Doar administratorii pot invita medici."
+  );
 
   if (adminOnly) {
     return adminOnly;
@@ -279,8 +205,7 @@ export async function POST(
   let body: unknown;
 
   try {
-    body =
-      await request.json();
+    body = await request.json();
   } catch {
     return failure(
       CODE.invalidJson,
@@ -289,60 +214,33 @@ export async function POST(
     );
   }
 
-  const validation =
-    validateDoctorInvitationInput(
-      body
-    );
+  const validation = validateDoctorInvitationInput(body);
 
   if (!validation.ok) {
     return failure(
-      getValidationCode(
-        validation.field
-      ),
+      getValidationCode(validation.field),
       validation.error,
       400,
       {
-        field:
-          validation.field ??
-          null,
+        field: validation.field ?? null,
       }
     );
   }
 
-  const input =
-    validation.value;
-  const admin =
-    createAdminClient();
+  const input = validation.value;
+  const admin = createAdminClient();
 
   const {
     data: existingInvitation,
-    error:
-      existingInvitationError,
+    error: existingInvitationError,
   } = await admin
-    .from(
-      "doctor_invitations"
-    )
-    .select(`
-      id,
-      status,
-      created_at
-    `)
-    .eq(
-      "normalized_email",
-      input.email
-    )
-    .in(
-      "status",
-      [
-        "draft",
-        "sent",
-      ]
-    )
+    .from("doctor_invitations")
+    .select("id, status, created_at")
+    .eq("normalized_email", input.email)
+    .in("status", ["draft", "sent"])
     .maybeSingle();
 
-  if (
-    existingInvitationError
-  ) {
+  if (existingInvitationError) {
     console.error(
       "Doctor invitation duplicate check failed:",
       existingInvitationError
@@ -355,52 +253,35 @@ export async function POST(
     );
   }
 
-  if (
-    existingInvitation
-  ) {
+  if (existingInvitation) {
     return failure(
       CODE.doctorInvitationExists,
       "Există deja o invitație activă pentru această adresă de e-mail.",
       409,
       {
-        invitationId:
-          existingInvitation.id,
+        invitationId: existingInvitation.id,
       }
     );
   }
 
-  const expiresAt =
-    getDoctorInvitationExpiryDate();
+  const expiresAt = getDoctorInvitationExpiryDate();
 
   const {
     data: invitation,
-    error:
-      invitationInsertError,
+    error: invitationInsertError,
   } = await admin
-    .from(
-      "doctor_invitations"
-    )
+    .from("doctor_invitations")
     .insert({
-      email:
-        input.email,
-      first_name:
-        input.firstName,
-      last_name:
-        input.lastName,
-      locale:
-        input.locale,
-      personal_message:
-        input.personalMessage,
-      complimentary_months:
-        input.complimentaryMonths,
-      status:
-        "draft",
-      invited_by_profile_id:
-        authorization.profileId,
-      redirect_path:
-        "/auth/doctor-invitation",
-      expires_at:
-        expiresAt,
+      email: input.email,
+      first_name: input.firstName,
+      last_name: input.lastName,
+      locale: input.locale,
+      personal_message: input.personalMessage,
+      complimentary_months: input.complimentaryMonths,
+      status: "draft",
+      invited_by_profile_id: authorization.profileId,
+      redirect_path: "/auth/doctor-invitation",
+      expires_at: expiresAt,
     })
     .select(`
       id,
@@ -418,18 +299,13 @@ export async function POST(
     `)
     .single();
 
-  if (
-    invitationInsertError ||
-    !invitation
-  ) {
+  if (invitationInsertError || !invitation) {
     console.error(
       "Doctor invitation insert failed:",
       invitationInsertError
     );
 
-    const duplicate =
-      invitationInsertError?.code ===
-      "23505";
+    const duplicate = invitationInsertError?.code === "23505";
 
     return failure(
       duplicate
@@ -438,40 +314,24 @@ export async function POST(
       duplicate
         ? "Există deja o invitație activă pentru această adresă de e-mail."
         : "Invitația medicului nu a putut fi creată.",
-      duplicate
-        ? 409
-        : 500
+      duplicate ? 409 : 500
     );
   }
 
-  const {
-    error: createdEventError,
-  } = await admin
-    .from(
-      "doctor_invitation_events"
-    )
+  const { error: createdEventError } = await admin
+    .from("doctor_invitation_events")
     .insert({
-      invitation_id:
-        invitation.id,
-      actor_profile_id:
-        authorization.profileId,
-      event_type:
-        "invitation_created",
+      invitation_id: invitation.id,
+      actor_profile_id: authorization.profileId,
+      event_type: "invitation_created",
       event_data: {
-        locale:
-          input.locale,
-        complimentaryMonths:
-          input.complimentaryMonths,
-        hasPersonalMessage:
-          Boolean(
-            input.personalMessage
-          ),
+        locale: input.locale,
+        complimentaryMonths: input.complimentaryMonths,
+        hasPersonalMessage: Boolean(input.personalMessage),
       },
     });
 
-  if (
-    createdEventError
-  ) {
+  if (createdEventError) {
     console.error(
       "Doctor invitation created-event insert failed:",
       createdEventError
@@ -481,51 +341,28 @@ export async function POST(
   let redirectTo: string;
 
   try {
-    redirectTo =
-      getDoctorInvitationRedirectUrl();
-  } catch (
-    configurationError
-  ) {
-    const safeFailure =
-      getSafeInvitationFailure(
-        configurationError
-      );
+    redirectTo = getDoctorInvitationRedirectUrl();
+  } catch (configurationError) {
+    const safeFailure = getSafeInvitationFailure(configurationError);
 
     await admin
-      .from(
-        "doctor_invitations"
-      )
+      .from("doctor_invitations")
       .update({
-        status:
-          "failed",
-        failure_code:
-          safeFailure.code,
-        failure_message:
-          safeFailure.message,
+        status: "failed",
+        failure_code: safeFailure.code,
+        failure_message: safeFailure.message,
       })
-      .eq(
-        "id",
-        invitation.id
-      );
+      .eq("id", invitation.id);
 
-    await admin
-      .from(
-        "doctor_invitation_events"
-      )
-      .insert({
-        invitation_id:
-          invitation.id,
-        actor_profile_id:
-          authorization.profileId,
-        event_type:
-          "invitation_send_failed",
-        event_data: {
-          code:
-            safeFailure.code,
-        },
-        reason:
-          safeFailure.message,
-      });
+    await admin.from("doctor_invitation_events").insert({
+      invitation_id: invitation.id,
+      actor_profile_id: authorization.profileId,
+      event_type: "invitation_send_failed",
+      event_data: {
+        code: safeFailure.code,
+      },
+      reason: safeFailure.message,
+    });
 
     console.error(
       "Doctor invitation configuration failed:",
@@ -537,157 +374,156 @@ export async function POST(
       "Invitația a fost înregistrată, dar configurația URL-ului aplicației lipsește.",
       500,
       {
-        invitationId:
-          invitation.id,
+        invitationId: invitation.id,
       }
     );
   }
 
   const {
-    data: authInvitation,
-    error:
-      authInvitationError,
-  } =
-    await admin.auth.admin.inviteUserByEmail(
-      input.email,
+    data: linkData,
+    error: linkError,
+  } = await admin.auth.admin.generateLink({
+    type: "invite",
+    email: input.email,
+    options: {
+      redirectTo,
+      data: {
+        invitation_type: "doctor",
+        doctor_invitation_id: invitation.id,
+        first_name: input.firstName,
+        last_name: input.lastName,
+        locale: input.locale,
+        personal_message: input.personalMessage,
+        complimentary_months: input.complimentaryMonths,
+      },
+    },
+  });
+
+  const actionLink = linkData?.properties?.action_link ?? null;
+  const authUserId = linkData?.user?.id ?? null;
+
+  if (linkError || !actionLink || !authUserId) {
+    const safeFailure = getSafeInvitationFailure(
+      linkError ?? new Error("Supabase did not return an invitation link.")
+    );
+
+    await admin
+      .from("doctor_invitations")
+      .update({
+        status: "failed",
+        auth_user_id: authUserId,
+        failure_code: safeFailure.code,
+        failure_message: safeFailure.message,
+      })
+      .eq("id", invitation.id);
+
+    await admin.from("doctor_invitation_events").insert({
+      invitation_id: invitation.id,
+      actor_profile_id: authorization.profileId,
+      event_type: "invitation_send_failed",
+      event_data: {
+        code: safeFailure.code,
+      },
+      reason: safeFailure.message,
+    });
+
+    console.error("Supabase doctor invitation link failed:", linkError);
+
+    return failure(
+      CODE.doctorInvitationSendFailed,
+      "Invitația a fost înregistrată, dar linkul securizat nu a putut fi creat.",
+      502,
       {
-        redirectTo,
-        data: {
-          invitation_type:
-            "doctor",
-          doctor_invitation_id:
-            invitation.id,
-          first_name:
-            input.firstName,
-          last_name:
-            input.lastName,
-          locale:
-            input.locale,
-          personal_message:
-            input.personalMessage,
-          complimentary_months:
-            input.complimentaryMonths,
-        },
+        invitationId: invitation.id,
       }
     );
+  }
 
-  if (
-    authInvitationError
-  ) {
-    const safeFailure =
-      getSafeInvitationFailure(
-        authInvitationError
-      );
-    const now =
-      new Date().toISOString();
+  const { error: linkStoreError } = await admin
+    .from("doctor_invitations")
+    .update({
+      auth_user_id: authUserId,
+      invitation_action_link: actionLink,
+    })
+    .eq("id", invitation.id);
 
-    const {
-      error:
-        failedUpdateError,
-    } = await admin
-      .from(
-        "doctor_invitations"
-      )
-      .update({
-        status:
-          "failed",
-        failure_code:
-          safeFailure.code,
-        failure_message:
-          safeFailure.message,
-        updated_at:
-          now,
-      })
-      .eq(
-        "id",
-        invitation.id
-      );
-
-    if (
-      failedUpdateError
-    ) {
-      console.error(
-        "Doctor invitation failed-status update failed:",
-        failedUpdateError
-      );
-    }
-
-    const {
-      error:
-        failedEventError,
-    } = await admin
-      .from(
-        "doctor_invitation_events"
-      )
-      .insert({
-        invitation_id:
-          invitation.id,
-        actor_profile_id:
-          authorization.profileId,
-        event_type:
-          "invitation_send_failed",
-        event_data: {
-          code:
-            safeFailure.code,
-        },
-        reason:
-          safeFailure.message,
-      });
-
-    if (
-      failedEventError
-    ) {
-      console.error(
-        "Doctor invitation failure-event insert failed:",
-        failedEventError
-      );
-    }
-
+  if (linkStoreError) {
     console.error(
-      "Supabase doctor invitation failed:",
-      authInvitationError
+      "Doctor invitation link storage failed:",
+      linkStoreError
     );
+
+    return failure(
+      CODE.doctorInvitationStateUpdateFailed,
+      "Linkul a fost creat, dar nu a putut fi salvat în siguranță.",
+      500,
+      {
+        invitationId: invitation.id,
+      }
+    );
+  }
+
+  const emailResult = await sendDoctorInvitationEmail({
+    email: input.email,
+    firstName: input.firstName,
+    lastName: input.lastName,
+    locale: input.locale,
+    personalMessage: input.personalMessage,
+    complimentaryMonths: input.complimentaryMonths,
+    expiresAt,
+    actionLink,
+  });
+
+  if (!emailResult.sent) {
+    const safeFailure = getSafeInvitationFailure(
+      new Error(emailResult.error)
+    );
+
+    await admin
+      .from("doctor_invitations")
+      .update({
+        status: "failed",
+        failure_code: safeFailure.code,
+        failure_message: safeFailure.message,
+      })
+      .eq("id", invitation.id);
+
+    await admin.from("doctor_invitation_events").insert({
+      invitation_id: invitation.id,
+      actor_profile_id: authorization.profileId,
+      event_type: "invitation_send_failed",
+      event_data: {
+        code: safeFailure.code,
+      },
+      reason: safeFailure.message,
+    });
 
     return failure(
       CODE.doctorInvitationSendFailed,
       "Invitația a fost înregistrată, dar e-mailul nu a putut fi trimis.",
       502,
       {
-        invitationId:
-          invitation.id,
+        invitationId: invitation.id,
       }
     );
   }
 
-  const authUserId =
-    authInvitation.user?.id ??
-    null;
-  const sentAt =
-    new Date().toISOString();
+  const sentAt = new Date().toISOString();
 
   const {
     data: sentInvitation,
     error: sentUpdateError,
   } = await admin
-    .from(
-      "doctor_invitations"
-    )
+    .from("doctor_invitations")
     .update({
-      status:
-        "sent",
-      auth_user_id:
-        authUserId,
-      sent_at:
-        sentAt,
-      failure_code:
-        null,
-      failure_message:
-        null,
+      status: "sent",
+      auth_user_id: authUserId,
+      provider_message_id: emailResult.providerMessageId,
+      sent_at: sentAt,
+      failure_code: null,
+      failure_message: null,
     })
-    .eq(
-      "id",
-      invitation.id
-    )
+    .eq("id", invitation.id)
     .select(`
       id,
       email,
@@ -706,10 +542,7 @@ export async function POST(
     `)
     .single();
 
-  if (
-    sentUpdateError ||
-    !sentInvitation
-  ) {
+  if (sentUpdateError || !sentInvitation) {
     console.error(
       "Doctor invitation sent-status update failed:",
       sentUpdateError
@@ -717,38 +550,30 @@ export async function POST(
 
     return failure(
       CODE.doctorInvitationStateUpdateFailed,
-      "E-mailul de invitație a fost trimis, dar starea internă nu a putut fi actualizată. Verifică manual invitația înainte de retrimitere.",
+      "E-mailul a fost trimis, dar starea internă nu a putut fi actualizată. Verifică invitația înainte de retrimitere.",
       500,
       {
-        invitationId:
-          invitation.id,
+        invitationId: invitation.id,
       }
     );
   }
 
-  const {
-    error: sentEventError,
-  } = await admin
-    .from(
-      "doctor_invitation_events"
-    )
+  const { error: sentEventError } = await admin
+    .from("doctor_invitation_events")
     .insert({
-      invitation_id:
-        invitation.id,
-      actor_profile_id:
-        authorization.profileId,
-      event_type:
-        "invitation_sent",
+      invitation_id: invitation.id,
+      actor_profile_id: authorization.profileId,
+      event_type: "invitation_sent",
       event_data: {
         authUserId,
         redirectTo,
         expiresAt,
+        providerMessageId: emailResult.providerMessageId,
+        manualLinkAvailable: true,
       },
     });
 
-  if (
-    sentEventError
-  ) {
+  if (sentEventError) {
     console.error(
       "Doctor invitation sent-event insert failed:",
       sentEventError
@@ -757,12 +582,9 @@ export async function POST(
 
   return json(
     {
-      code:
-        CODE.doctorInvitationSent,
-      message:
-        "Invitația medicului a fost trimisă.",
-      invitation:
-        sentInvitation,
+      code: CODE.doctorInvitationSent,
+      message: "Invitația medicului a fost trimisă.",
+      invitation: sentInvitation,
     },
     201
   );
