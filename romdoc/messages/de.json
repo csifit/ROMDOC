@@ -3243,5 +3243,35 @@
         "remove": "Das Gerät konnte nicht entfernt werden."
       }
     }
+  },
+  "DoctorMobileScanner": {
+    "title": "QR-Scanner für die medizinische Akte",
+    "description": "Scannen Sie einen vom Patienten ausgestellten RomDoc-QR-Code, um die freigegebenen Informationen auf diesem verknüpften Gerät zu öffnen.",
+    "noAppointmentNotice": "Es ist kein Termin erforderlich. Die Berechtigung wird direkt vom Patienten über den Freigabe-QR-Code oder den sicheren Link erteilt.",
+    "startCamera": "Kamera starten",
+    "startingCamera": "Kamera wird gestartet...",
+    "stopCamera": "Kamera stoppen",
+    "chooseImage": "Aus Bild scannen",
+    "manualLabel": "Oder sicheren Link einfügen",
+    "manualHelp": "Sie können den vollständigen RomDoc-Link oder das rdsh_-/rdem_-Token einfügen.",
+    "manualPlaceholder": "https://www.romdoc.fit/share/medical-folder#token=...",
+    "openShare": "Freigegebene Informationen öffnen",
+    "opening": "Zugriff wird geprüft...",
+    "privacy": "Die Kamera wird erst nach dem Drücken der Schaltfläche verwendet. Der Code wird nur zur Prüfung an RomDoc gesendet und nicht im Browser-Speicher gespeichert.",
+    "scanAnother": "Anderen Code scannen",
+    "errors": {
+      "invalidCode": "Der gescannte Code ist kein gültiger RomDoc-QR-Code für die medizinische Akte.",
+      "openFailed": "Die freigegebenen Informationen konnten nicht geöffnet werden.",
+      "camera": "Die Kamera konnte nicht gestartet werden. Prüfen Sie die Browserberechtigung oder verwenden Sie ein Bild.",
+      "cameraWithReason": "Die Kamera konnte nicht gestartet werden: {reason}",
+      "file": "Das Bild enthält keinen lesbaren RomDoc-QR-Code.",
+      "fileWithReason": "Das Bild konnte nicht gescannt werden: {reason}"
+    },
+    "result": {
+      "authorized": "Vom Patienten autorisierter Zugriff",
+      "patient": "Patient: {name}",
+      "noAppointment": "Dieser Zugriff wird durch die Freigabe des Patienten gewährt und hängt nicht von einem angefragten oder bestätigten Termin ab.",
+      "readOnly": "Nur Lesezugriff. Medizinische Informationen können weiterhin nur über autorisierte klinische RomDoc-Abläufe bearbeitet werden."
+    }
   }
 }

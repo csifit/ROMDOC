@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 
+import DoctorMobileScanner from "@/components/doctor-mobile/doctor-mobile-scanner";
 import {
   type DoctorDeviceApiError,
   type DoctorDeviceMutationResponse,
@@ -71,7 +72,6 @@ export default function DoctorMobileHome() {
     normalizeAppLocale(
       useLocale()
     );
-
   const t =
     useTranslations(
       "DoctorLinkedDevices.mobile"
@@ -84,25 +84,21 @@ export default function DoctorMobileHome() {
     DoctorMobileDeviceResponse |
     null
   >(null);
-
   const [
     isLoading,
     setIsLoading,
   ] = useState(true);
-
   const [
     isRemoving,
     setIsRemoving,
   ] = useState(false);
-
   const [
     error,
     setError,
   ] = useState("");
 
   useEffect(() => {
-    let cancelled =
-      false;
+    let cancelled = false;
 
     async function loadDevice() {
       try {
@@ -114,10 +110,8 @@ export default function DoctorMobileHome() {
               cache: "no-store",
             }
           );
-
         const payload =
-          await response
-            .json() as
+          await response.json() as
             MobilePayload;
 
         if (
@@ -135,9 +129,7 @@ export default function DoctorMobileHome() {
         if (!cancelled) {
           setDevice(payload);
         }
-      } catch (
-        loadError
-      ) {
+      } catch (loadError) {
         if (!cancelled) {
           setError(
             loadError instanceof Error
@@ -181,10 +173,8 @@ export default function DoctorMobileHome() {
             cache: "no-store",
           }
         );
-
       const payload =
-        await response
-          .json() as
+        await response.json() as
           MobilePayload;
 
       if (
@@ -199,12 +189,8 @@ export default function DoctorMobileHome() {
       }
 
       setDevice(null);
-      setError(
-        t("removed")
-      );
-    } catch (
-      removeError
-    ) {
+      setError(t("removed"));
+    } catch (removeError) {
       setError(
         removeError instanceof Error
           ? removeError.message
@@ -260,7 +246,7 @@ export default function DoctorMobileHome() {
 
   return (
     <main className="min-h-screen bg-[#F0EEE9] px-[13px] py-[34px] sm:px-[21px] sm:py-[55px]">
-      <div className="mx-auto max-w-xl space-y-[21px]">
+      <div className="mx-auto max-w-4xl space-y-[21px]">
         <header className="rounded-[21px] border border-emerald-200 bg-white p-[21px] shadow-sm sm:p-[34px]">
           <div className="flex items-center justify-between gap-[13px]">
             <div>
@@ -287,7 +273,7 @@ export default function DoctorMobileHome() {
             )}
           </p>
 
-          <dl className="mt-[21px] grid gap-[13px] border-t border-gray-200 pt-[17px] text-sm sm:grid-cols-2">
+          <dl className="mt-[21px] grid gap-[13px] border-t border-gray-200 pt-[17px] text-sm sm:grid-cols-3">
             <div>
               <dt className="text-gray-500">
                 {t("deviceName")}
@@ -322,21 +308,7 @@ export default function DoctorMobileHome() {
           </dl>
         </header>
 
-        <section className="rounded-[21px] border border-blue-200 bg-blue-50 p-[21px] shadow-sm">
-          <h2 className="text-xl font-bold text-blue-950">
-            {t("scannerTitle")}
-          </h2>
-          <p className="mt-[8px] text-sm leading-6 text-blue-900">
-            {t("scannerDescription")}
-          </p>
-          <button
-            type="button"
-            disabled
-            className="romdoc-button romdoc-button-secondary mt-[17px] cursor-not-allowed opacity-60"
-          >
-            {t("scannerComing")}
-          </button>
-        </section>
+        <DoctorMobileScanner />
 
         <section className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
           <h2 className="text-xl font-bold text-gray-900">

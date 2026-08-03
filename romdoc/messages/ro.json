@@ -3243,5 +3243,35 @@
         "remove": "Dispozitivul nu a putut fi eliminat."
       }
     }
+  },
+  "DoctorMobileScanner": {
+    "title": "Scanner QR pentru Dosarul medical",
+    "description": "Scanează un cod QR RomDoc emis de pacient pentru a deschide informațiile partajate pe acest dispozitiv asociat.",
+    "noAppointmentNotice": "Nu este necesară o programare. Autorizația este acordată direct de pacient prin codul QR sau linkul de partajare.",
+    "startCamera": "Pornește camera",
+    "startingCamera": "Pornire cameră...",
+    "stopCamera": "Oprește camera",
+    "chooseImage": "Scanează din imagine",
+    "manualLabel": "Sau lipește linkul securizat",
+    "manualHelp": "Poți lipi linkul complet RomDoc sau tokenul rdsh_ / rdem_.",
+    "manualPlaceholder": "https://www.romdoc.fit/share/medical-folder#token=...",
+    "openShare": "Deschide informațiile partajate",
+    "opening": "Se verifică accesul...",
+    "privacy": "Camera este folosită numai după apăsarea butonului. Codul este trimis către RomDoc doar pentru validare și nu este salvat în memoria browserului.",
+    "scanAnother": "Scanează alt cod",
+    "errors": {
+      "invalidCode": "Codul scanat nu este un cod QR RomDoc valid pentru Dosarul medical.",
+      "openFailed": "Informațiile partajate nu au putut fi deschise.",
+      "camera": "Camera nu a putut fi pornită. Verifică permisiunea browserului sau folosește o imagine.",
+      "cameraWithReason": "Camera nu a putut fi pornită: {reason}",
+      "file": "Imaginea nu conține un cod QR RomDoc lizibil.",
+      "fileWithReason": "Imaginea nu a putut fi scanată: {reason}"
+    },
+    "result": {
+      "authorized": "Acces autorizat de pacient",
+      "patient": "Pacient: {name}",
+      "noAppointment": "Acest acces este acordat prin partajarea pacientului și nu depinde de existența unei programări confirmate sau solicitate.",
+      "readOnly": "Acces numai pentru vizualizare. Editarea informațiilor medicale rămâne disponibilă numai prin fluxurile clinice autorizate RomDoc."
+    }
   }
 }

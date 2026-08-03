@@ -3243,5 +3243,35 @@
         "remove": "The device could not be removed."
       }
     }
+  },
+  "DoctorMobileScanner": {
+    "title": "Medical Folder QR scanner",
+    "description": "Scan a RomDoc QR code issued by the patient to open the shared information on this linked device.",
+    "noAppointmentNotice": "No appointment is required. Authorization is granted directly by the patient through the sharing QR code or secure link.",
+    "startCamera": "Start camera",
+    "startingCamera": "Starting camera...",
+    "stopCamera": "Stop camera",
+    "chooseImage": "Scan from image",
+    "manualLabel": "Or paste the secure link",
+    "manualHelp": "You may paste the complete RomDoc link or the rdsh_ / rdem_ token.",
+    "manualPlaceholder": "https://www.romdoc.fit/share/medical-folder#token=...",
+    "openShare": "Open shared information",
+    "opening": "Verifying access...",
+    "privacy": "The camera is used only after you press the button. The code is sent to RomDoc only for validation and is not stored in browser storage.",
+    "scanAnother": "Scan another code",
+    "errors": {
+      "invalidCode": "The scanned code is not a valid RomDoc Medical Folder QR code.",
+      "openFailed": "The shared information could not be opened.",
+      "camera": "The camera could not be started. Check the browser permission or use an image.",
+      "cameraWithReason": "The camera could not be started: {reason}",
+      "file": "The image does not contain a readable RomDoc QR code.",
+      "fileWithReason": "The image could not be scanned: {reason}"
+    },
+    "result": {
+      "authorized": "Access authorized by the patient",
+      "patient": "Patient: {name}",
+      "noAppointment": "This access is granted by the patient's share and does not depend on a requested or confirmed appointment.",
+      "readOnly": "View-only access. Editing medical information remains available only through authorized RomDoc clinical workflows."
+    }
   }
 }
