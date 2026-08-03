@@ -810,13 +810,17 @@
           "link_opened": "Link securizat deschis",
           "folder_viewed": "Dosar consultat",
           "document_viewed": "Document consultat",
-          "document_downloaded": "Document descărcat",
+          "document_downloaded": "Link de descărcare generat",
           "email_sent": "E-mail de partajare trimis",
           "revoked": "Permisiune revocată",
           "expired": "Permisiune expirată",
           "consumed": "Permisiune utilizată",
           "access_denied": "Acces refuzat",
-          "pin_failed": "Cod de securitate greșit"
+          "pin_failed": "Cod de securitate greșit",
+          "token_issued": "Link securizat generat",
+          "token_rotated": "Link securizat înlocuit",
+          "recipient_session_started": "Sesiune securizată începută",
+          "recipient_session_closed": "Sesiune securizată închisă"
         },
         "roles": {
           "patient": "Pacient",
@@ -831,7 +835,7 @@
           "description": "Alege exact ce informații pot fi consultate, cât timp rămâne permis accesul și dacă documentele pot fi descărcate.",
           "back": "Înapoi la Dosarul medical",
           "securityNotice": "Partajarea este doar pentru consultare. Nu permite modificarea profilului medical, încărcarea sau ștergerea documentelor și nici semnarea notelor medicale.",
-          "futureNotice": "Linkurile securizate, codurile QR și trimiterea prin e-mail nu sunt încă active. În această etapă poți configura, revoca și verifica istoricul permisiunilor."
+          "futureNotice": "Linkurile securizate și codurile QR sunt active. Accesul este numai pentru vizualizare și poate fi revocat oricând."
         },
         "form": {
           "eyebrow": "Permisiune nouă",
@@ -969,6 +973,25 @@
           "share_grant_list_failed": "Partajările nu au putut fi încărcate.",
           "share_grant_revoke_failed": "Partajarea nu a putut fi revocată.",
           "share_audit_load_failed": "Istoricul partajării nu a putut fi încărcat."
+        },
+        "tokens": {
+          "title": "Link și cod QR",
+          "description": "Generează un link și un cod QR pentru informațiile selectate. Generarea unui link nou îl invalidează imediat pe cel anterior.",
+          "emergencyDescription": "Generează un link și un cod QR pentru Rezumatul medical de urgență. Persoana care scanează nu are nevoie de cont, autentificare de medic sau cod PIN.",
+          "generate": "Generează link și QR",
+          "generating": "Se generează...",
+          "generated": "Linkul și codul QR au fost generate.",
+          "generatedAndCopied": "Linkul și codul QR au fost generate, iar linkul a fost copiat.",
+          "generateError": "Linkul și codul QR nu au putut fi generate.",
+          "linkLabel": "Link securizat",
+          "copy": "Copiază linkul",
+          "copying": "Se copiază...",
+          "copied": "Linkul a fost copiat.",
+          "copyError": "Linkul nu a putut fi copiat automat.",
+          "downloadQr": "Descarcă QR",
+          "qrAlt": "Cod QR pentru accesarea informațiilor medicale partajate",
+          "scan": "Scanează pentru acces direct",
+          "securityNotice": "Linkul complet este afișat numai acum. RomDoc păstrează doar amprenta criptografică. La o nouă generare, linkul anterior devine invalid."
         }
       }
     },
@@ -2931,6 +2954,38 @@
       "passwordUpdated": "Parola a fost actualizată.",
       "passwordCreated": "Parola a fost creată. Vei fi redirecționat către contul tău.",
       "passwordSaveFailed": "Parola nu a putut fi salvată."
+    }
+  },
+  "MedicalFolderSharePublic": {
+    "loading": "Se încarcă informațiile medicale partajate...",
+    "errorTitle": "Informațiile nu pot fi deschise",
+    "patientFallback": "Pacient",
+    "sharedFor": "Informații partajate pentru {name}",
+    "readOnlyNotice": "Acest acces este temporar și numai pentru vizualizare. Nu permite modificarea profilului medical, încărcarea sau ștergerea documentelor.",
+    "expires": "Acces valabil până la {date}",
+    "footer": "RomDoc nu este registrul medical național și nu înlocuiește evaluarea medicală de urgență.",
+    "scopes": {
+      "emergency_summary": "Rezumat medical de urgență",
+      "medical_profile": "Profil medical partajat",
+      "complete_folder": "Dosar medical partajat",
+      "selected_documents": "Documente medicale partajate"
+    },
+    "errors": {
+      "missing": "Linkul nu conține un cod de acces valid.",
+      "invalid": "Linkul securizat nu este valid.",
+      "notFound": "Partajarea nu a fost găsită.",
+      "revoked": "Pacientul a revocat această partajare.",
+      "expired": "Această partajare a expirat.",
+      "consumed": "Linkul cu o singură utilizare a fost deja deschis.",
+      "failed": "Informațiile partajate nu au putut fi încărcate."
+    },
+    "documents": {
+      "title": "Documente medicale",
+      "text": "Notă",
+      "file": "Fișier",
+      "download": "Descarcă",
+      "downloadDisabled": "Descărcarea nu este permisă",
+      "empty": "Documentele selectate nu mai sunt disponibile."
     }
   }
 }

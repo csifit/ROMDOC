@@ -810,13 +810,17 @@
           "link_opened": "Secure link opened",
           "folder_viewed": "Folder reviewed",
           "document_viewed": "Document reviewed",
-          "document_downloaded": "Document downloaded",
+          "document_downloaded": "Document download link issued",
           "email_sent": "Sharing email sent",
           "revoked": "Permission revoked",
           "expired": "Permission expired",
           "consumed": "Permission used",
           "access_denied": "Access denied",
-          "pin_failed": "Incorrect security code"
+          "pin_failed": "Incorrect security code",
+          "token_issued": "Secure link generated",
+          "token_rotated": "Secure link replaced",
+          "recipient_session_started": "Secure session started",
+          "recipient_session_closed": "Secure session closed"
         },
         "roles": {
           "patient": "Patient",
@@ -831,7 +835,7 @@
           "description": "Choose exactly which information may be reviewed, how long access remains valid, and whether documents may be downloaded.",
           "back": "Back to Medical Folder",
           "securityNotice": "Sharing is view-only. It does not allow changes to the medical profile, document uploads or deletion, or the signing of medical notes.",
-          "futureNotice": "Secure links, QR codes and email delivery are not active yet. At this stage you can configure, revoke and review the history of permissions."
+          "futureNotice": "Secure links and QR codes are active. Access is view-only and can be revoked at any time."
         },
         "form": {
           "eyebrow": "New permission",
@@ -969,6 +973,25 @@
           "share_grant_list_failed": "The shares could not be loaded.",
           "share_grant_revoke_failed": "The share could not be revoked.",
           "share_audit_load_failed": "The sharing history could not be loaded."
+        },
+        "tokens": {
+          "title": "Link and QR code",
+          "description": "Generate a link and QR code for the selected information. Generating a new link immediately invalidates the previous one.",
+          "emergencyDescription": "Generate a link and QR code for the Emergency medical summary. The person scanning it does not need an account, Doctor sign-in or PIN.",
+          "generate": "Generate link and QR",
+          "generating": "Generating...",
+          "generated": "The link and QR code were generated.",
+          "generatedAndCopied": "The link and QR code were generated, and the link was copied.",
+          "generateError": "The link and QR code could not be generated.",
+          "linkLabel": "Secure link",
+          "copy": "Copy link",
+          "copying": "Copying...",
+          "copied": "The link was copied.",
+          "copyError": "The link could not be copied automatically.",
+          "downloadQr": "Download QR",
+          "qrAlt": "QR code for opening shared medical information",
+          "scan": "Scan for direct access",
+          "securityNotice": "The complete link is shown only now. RomDoc stores only its cryptographic fingerprint. Generating another link invalidates the previous one."
         }
       }
     },
@@ -2931,6 +2954,38 @@
       "passwordUpdated": "Your password has been updated.",
       "passwordCreated": "Your password has been created. You will be redirected to your account.",
       "passwordSaveFailed": "The password could not be saved."
+    }
+  },
+  "MedicalFolderSharePublic": {
+    "loading": "Loading shared medical information...",
+    "errorTitle": "The information cannot be opened",
+    "patientFallback": "Patient",
+    "sharedFor": "Information shared for {name}",
+    "readOnlyNotice": "This access is temporary and view-only. It does not permit changes to the medical profile or document uploads and deletion.",
+    "expires": "Access valid until {date}",
+    "footer": "RomDoc is not the national medical record and does not replace an emergency medical assessment.",
+    "scopes": {
+      "emergency_summary": "Emergency medical summary",
+      "medical_profile": "Shared medical profile",
+      "complete_folder": "Shared Medical Folder",
+      "selected_documents": "Shared medical documents"
+    },
+    "errors": {
+      "missing": "The link does not contain a valid access code.",
+      "invalid": "The secure link is not valid.",
+      "notFound": "The share was not found.",
+      "revoked": "The patient has revoked this share.",
+      "expired": "This share has expired.",
+      "consumed": "The one-time link has already been opened.",
+      "failed": "The shared information could not be loaded."
+    },
+    "documents": {
+      "title": "Medical documents",
+      "text": "Note",
+      "file": "File",
+      "download": "Download",
+      "downloadDisabled": "Downloading is not allowed",
+      "empty": "The selected documents are no longer available."
     }
   }
 }

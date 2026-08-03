@@ -810,13 +810,17 @@
           "link_opened": "Sicherer Link geöffnet",
           "folder_viewed": "Akte eingesehen",
           "document_viewed": "Dokument eingesehen",
-          "document_downloaded": "Dokument heruntergeladen",
+          "document_downloaded": "Download-Link für Dokument erstellt",
           "email_sent": "Freigabe-E-Mail gesendet",
           "revoked": "Berechtigung widerrufen",
           "expired": "Berechtigung abgelaufen",
           "consumed": "Berechtigung verwendet",
           "access_denied": "Zugriff verweigert",
-          "pin_failed": "Falscher Sicherheitscode"
+          "pin_failed": "Falscher Sicherheitscode",
+          "token_issued": "Sicherer Link erstellt",
+          "token_rotated": "Sicherer Link ersetzt",
+          "recipient_session_started": "Sichere Sitzung gestartet",
+          "recipient_session_closed": "Sichere Sitzung geschlossen"
         },
         "roles": {
           "patient": "Patient",
@@ -831,7 +835,7 @@
           "description": "Wählen Sie genau aus, welche Informationen eingesehen werden dürfen, wie lange der Zugriff gültig bleibt und ob Dokumente heruntergeladen werden dürfen.",
           "back": "Zurück zur medizinischen Akte",
           "securityNotice": "Die Freigabe ist ausschließlich zur Ansicht bestimmt. Sie erlaubt keine Änderungen am medizinischen Profil, kein Hochladen oder Löschen von Dokumenten und keine Unterzeichnung medizinischer Notizen.",
-          "futureNotice": "Sichere Links, QR-Codes und der Versand per E-Mail sind noch nicht aktiv. In dieser Phase können Sie Berechtigungen konfigurieren, widerrufen und deren Verlauf prüfen."
+          "futureNotice": "Sichere Links und QR-Codes sind aktiv. Der Zugriff ist schreibgeschützt und kann jederzeit widerrufen werden."
         },
         "form": {
           "eyebrow": "Neue Berechtigung",
@@ -969,6 +973,25 @@
           "share_grant_list_failed": "Die Freigaben konnten nicht geladen werden.",
           "share_grant_revoke_failed": "Die Freigabe konnte nicht widerrufen werden.",
           "share_audit_load_failed": "Der Freigabeverlauf konnte nicht geladen werden."
+        },
+        "tokens": {
+          "title": "Link und QR-Code",
+          "description": "Erstellen Sie einen Link und QR-Code für die ausgewählten Informationen. Ein neuer Link macht den vorherigen sofort ungültig.",
+          "emergencyDescription": "Erstellen Sie einen Link und QR-Code für die medizinische Notfallübersicht. Die scannende Person benötigt kein Konto, keine Arztanmeldung und keine PIN.",
+          "generate": "Link und QR erstellen",
+          "generating": "Wird erstellt...",
+          "generated": "Link und QR-Code wurden erstellt.",
+          "generatedAndCopied": "Link und QR-Code wurden erstellt und der Link wurde kopiert.",
+          "generateError": "Link und QR-Code konnten nicht erstellt werden.",
+          "linkLabel": "Sicherer Link",
+          "copy": "Link kopieren",
+          "copying": "Wird kopiert...",
+          "copied": "Der Link wurde kopiert.",
+          "copyError": "Der Link konnte nicht automatisch kopiert werden.",
+          "downloadQr": "QR herunterladen",
+          "qrAlt": "QR-Code zum Öffnen der freigegebenen medizinischen Informationen",
+          "scan": "Für direkten Zugriff scannen",
+          "securityNotice": "Der vollständige Link wird nur jetzt angezeigt. RomDoc speichert ausschließlich seinen kryptografischen Fingerabdruck. Ein neuer Link macht den vorherigen ungültig."
         }
       }
     },
@@ -2931,6 +2954,38 @@
       "passwordUpdated": "Dein Passwort wurde aktualisiert.",
       "passwordCreated": "Dein Passwort wurde erstellt. Du wirst zu deinem Konto weitergeleitet.",
       "passwordSaveFailed": "Das Passwort konnte nicht gespeichert werden."
+    }
+  },
+  "MedicalFolderSharePublic": {
+    "loading": "Freigegebene medizinische Informationen werden geladen...",
+    "errorTitle": "Die Informationen können nicht geöffnet werden",
+    "patientFallback": "Patient",
+    "sharedFor": "Freigegebene Informationen für {name}",
+    "readOnlyNotice": "Dieser Zugriff ist zeitlich begrenzt und schreibgeschützt. Er erlaubt keine Änderungen am medizinischen Profil sowie kein Hochladen oder Löschen von Dokumenten.",
+    "expires": "Zugriff gültig bis {date}",
+    "footer": "RomDoc ist nicht die nationale Patientenakte und ersetzt keine medizinische Notfallbeurteilung.",
+    "scopes": {
+      "emergency_summary": "Medizinische Notfallübersicht",
+      "medical_profile": "Freigegebenes medizinisches Profil",
+      "complete_folder": "Freigegebene medizinische Akte",
+      "selected_documents": "Freigegebene medizinische Dokumente"
+    },
+    "errors": {
+      "missing": "Der Link enthält keinen gültigen Zugangscode.",
+      "invalid": "Der sichere Link ist ungültig.",
+      "notFound": "Die Freigabe wurde nicht gefunden.",
+      "revoked": "Der Patient hat diese Freigabe widerrufen.",
+      "expired": "Diese Freigabe ist abgelaufen.",
+      "consumed": "Der einmalige Link wurde bereits geöffnet.",
+      "failed": "Die freigegebenen Informationen konnten nicht geladen werden."
+    },
+    "documents": {
+      "title": "Medizinische Dokumente",
+      "text": "Notiz",
+      "file": "Datei",
+      "download": "Herunterladen",
+      "downloadDisabled": "Herunterladen ist nicht erlaubt",
+      "empty": "Die ausgewählten Dokumente sind nicht mehr verfügbar."
     }
   }
 }

@@ -10,6 +10,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import QRCode from "qrcode";
 
 import {
   defaultMedicalFolderShareGrantInput,
@@ -22,6 +23,7 @@ import {
   type MedicalFolderShareGrantListResponse,
   type MedicalFolderShareGrantMutationResponse,
   type MedicalFolderShareScope,
+  type MedicalFolderShareTokenIssueResponse,
   validateMedicalFolderShareGrantInput,
 } from "@/lib/medical-folder-share-grants";
 import {
@@ -59,6 +61,17 @@ type ShareApiPayload =
   | MedicalFolderShareApiError
   | MedicalFolderShareGrantListResponse
   | MedicalFolderShareGrantMutationResponse;
+
+type ShareTokenApiError = {
+  error: string;
+  message: string;
+};
+
+type GeneratedShare = {
+  linkUrl: string;
+  qrDataUrl: string;
+  tokenHint: string;
+};
 
 const INTL_LOCALE:
   Record<AppLocale, string> = {
@@ -191,6 +204,53 @@ function isApiError(
   );
 }
 
+async function copyText(
+  value: string
+) {
+  if (
+    navigator.clipboard &&
+    window.isSecureContext
+  ) {
+    await navigator.clipboard
+      .writeText(value);
+    return;
+  }
+
+  const textarea =
+    document.createElement(
+      "textarea"
+    );
+
+  textarea.value =
+    value;
+  textarea.readOnly =
+    true;
+  textarea.style.position =
+    "fixed";
+  textarea.style.opacity =
+    "0";
+
+  document.body
+    .appendChild(
+      textarea
+    );
+
+  textarea.select();
+
+  const copied =
+    document.execCommand(
+      "copy"
+    );
+
+  textarea.remove();
+
+  if (!copied) {
+    throw new Error(
+      "copy_failed"
+    );
+  }
+}
+
 export default function PatientMedicalFolderSharing() {
   const locale =
     normalizeAppLocale(
@@ -280,6 +340,30 @@ export default function PatientMedicalFolderSharing() {
     success,
     setSuccess,
   ] = useState("");
+
+  const [
+    generatingGrantId,
+    setGeneratingGrantId,
+  ] = useState<
+    string | null
+  >(null);
+
+  const [
+    generatedShares,
+    setGeneratedShares,
+  ] = useState<
+    Record<
+      string,
+      GeneratedShare
+    >
+  >({});
+
+  const [
+    copyingGrantId,
+    setCopyingGrantId,
+  ] = useState<
+    string | null
+  >(null);
 
   const selectedDocumentSet =
     useMemo(
@@ -689,6 +773,20 @@ export default function PatientMedicalFolderSharing() {
           )
       );
 
+      setGeneratedShares(
+        (current) => {
+          const next = {
+            ...current,
+          };
+
+          delete next[
+            grantId
+          ];
+
+          return next;
+        }
+      );
+
       setAudits(
         (current) => {
           const next = {
@@ -720,6 +818,160 @@ export default function PatientMedicalFolderSharing() {
       );
     } finally {
       setRevokingGrantId(
+        null
+      );
+    }
+  }
+
+  async function generateShare(
+    grantId: string
+  ) {
+    setGeneratingGrantId(
+      grantId
+    );
+    setError("");
+    setSuccess("");
+
+    try {
+      const response =
+        await fetch(
+          "/api/patient/folder/share-token",
+          {
+            method:
+              "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                shareGrantId:
+                  grantId,
+              }),
+          }
+        );
+
+      const payload =
+        await response
+          .json() as
+          | MedicalFolderShareTokenIssueResponse
+          | ShareTokenApiError;
+
+      if (
+        !response.ok ||
+        !("success" in payload)
+      ) {
+        throw new Error(
+          "message" in payload
+            ? payload.message
+            : t(
+                "tokens.generateError"
+              )
+        );
+      }
+
+      const baseUrl =
+        `${window.location.origin}/share/medical-folder`;
+
+      const encodedToken =
+        encodeURIComponent(
+          payload.shareToken
+        );
+
+      const linkUrl =
+        `${baseUrl}#token=${encodedToken}&channel=secure_link`;
+
+      const qrUrl =
+        `${baseUrl}#token=${encodedToken}&channel=qr`;
+
+      const qrDataUrl =
+        await QRCode
+          .toDataURL(
+            qrUrl,
+            {
+              width:
+                280,
+              margin:
+                2,
+              errorCorrectionLevel:
+                "M",
+            }
+          );
+
+      setGeneratedShares(
+        (current) => ({
+          ...current,
+          [grantId]: {
+            linkUrl,
+            qrDataUrl,
+            tokenHint:
+              payload.tokenHint,
+          },
+        })
+      );
+
+      try {
+        await copyText(
+          linkUrl
+        );
+
+        setSuccess(
+          t(
+            "tokens.generatedAndCopied"
+          )
+        );
+      } catch {
+        setSuccess(
+          t(
+            "tokens.generated"
+          )
+        );
+      }
+    } catch (
+      generateError
+    ) {
+      setError(
+        generateError instanceof Error
+          ? generateError.message
+          : t(
+              "tokens.generateError"
+            )
+      );
+    } finally {
+      setGeneratingGrantId(
+        null
+      );
+    }
+  }
+
+  async function copyShareLink(
+    grantId: string,
+    linkUrl: string
+  ) {
+    setCopyingGrantId(
+      grantId
+    );
+    setError("");
+    setSuccess("");
+
+    try {
+      await copyText(
+        linkUrl
+      );
+
+      setSuccess(
+        t(
+          "tokens.copied"
+        )
+      );
+    } catch {
+      setError(
+        t(
+          "tokens.copyError"
+        )
+      );
+    } finally {
+      setCopyingGrantId(
         null
       );
     }
@@ -1413,24 +1665,6 @@ export default function PatientMedicalFolderSharing() {
                           </dd>
                         </div>
 
-                        <div>
-                          <dt className="font-medium text-gray-500">
-                            {t(
-                              "labels.doctorBinding"
-                            )}
-                          </dt>
-
-                          <dd className="mt-[5px] font-semibold text-gray-900">
-                            {grant.boundDoctorId
-                              ? t(
-                                  "labels.bound"
-                                )
-                              : t(
-                                  "labels.notBound"
-                                )}
-                          </dd>
-                        </div>
-
                         {grant.lastAccessedAt && (
                           <div>
                             <dt className="font-medium text-gray-500">
@@ -1500,13 +1734,170 @@ export default function PatientMedicalFolderSharing() {
                         </div>
                       )}
 
-                      <div className="mt-[21px] flex flex-wrap items-center justify-between gap-[13px] border-t border-gray-200 pt-[21px]">
-                        <p className="text-xs leading-5 text-gray-500">
-                          {t(
-                            "list.noRecipientLink"
-                          )}
-                        </p>
+                      {grant.status ===
+                        "active" && (
+                        <div className="mt-[21px] rounded-[17px] border border-[#036661]/20 bg-[#036661]/5 p-[13px] sm:p-[21px]">
+                          <div className="flex flex-col justify-between gap-[13px] sm:flex-row sm:items-start">
+                            <div>
+                              <p className="font-bold text-gray-900">
+                                {t(
+                                  "tokens.title"
+                                )}
+                              </p>
 
+                              <p className="mt-[5px] max-w-2xl text-xs leading-5 text-gray-600">
+                                {grant.shareScope ===
+                                  "emergency_summary"
+                                  ? t(
+                                      "tokens.emergencyDescription"
+                                    )
+                                  : t(
+                                      "tokens.description"
+                                    )}
+                              </p>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void generateShare(
+                                  grant.id
+                                )
+                              }
+                              disabled={
+                                generatingGrantId ===
+                                grant.id
+                              }
+                              className="romdoc-button romdoc-button-primary romdoc-button-sm"
+                            >
+                              {generatingGrantId ===
+                              grant.id
+                                ? t(
+                                    "tokens.generating"
+                                  )
+                                : t(
+                                    "tokens.generate"
+                                  )}
+                            </button>
+                          </div>
+
+                          {generatedShares[
+                            grant.id
+                          ] && (
+                            <div className="mt-[17px] grid gap-[17px] rounded-[13px] border border-emerald-200 bg-white p-[13px] sm:grid-cols-[minmax(0,1fr)_280px] sm:p-[17px]">
+                              <div className="min-w-0">
+                                <label
+                                  htmlFor={`share-link-${grant.id}`}
+                                  className="text-xs font-bold text-gray-700"
+                                >
+                                  {t(
+                                    "tokens.linkLabel"
+                                  )}
+                                </label>
+
+                                <input
+                                  id={`share-link-${grant.id}`}
+                                  type="text"
+                                  readOnly
+                                  value={
+                                    generatedShares[
+                                      grant.id
+                                    ].linkUrl
+                                  }
+                                  onFocus={(
+                                    event: {
+                                      currentTarget:
+                                        HTMLInputElement;
+                                    }
+                                  ) =>
+                                    event.currentTarget
+                                      .select()
+                                  }
+                                  className="romdoc-focus-ring mt-[8px] w-full rounded-[10px] border border-gray-300 bg-gray-50 px-[13px] py-[10px] font-mono text-xs text-gray-900"
+                                />
+
+                                <div className="mt-[13px] flex flex-wrap gap-[8px]">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      void copyShareLink(
+                                        grant.id,
+                                        generatedShares[
+                                          grant.id
+                                        ].linkUrl
+                                      )
+                                    }
+                                    disabled={
+                                      copyingGrantId ===
+                                      grant.id
+                                    }
+                                    className="romdoc-button romdoc-button-secondary romdoc-button-sm"
+                                  >
+                                    {copyingGrantId ===
+                                    grant.id
+                                      ? t(
+                                          "tokens.copying"
+                                        )
+                                      : t(
+                                          "tokens.copy"
+                                        )}
+                                  </button>
+
+                                  <a
+                                    href={
+                                      generatedShares[
+                                        grant.id
+                                      ].qrDataUrl
+                                    }
+                                    download={`romdoc-${generatedShares[
+                                      grant.id
+                                    ].tokenHint}-qr.png`}
+                                    className="romdoc-button romdoc-button-secondary romdoc-button-sm"
+                                  >
+                                    {t(
+                                      "tokens.downloadQr"
+                                    )}
+                                  </a>
+                                </div>
+
+                                <p className="mt-[13px] text-xs leading-5 text-gray-500">
+                                  {t(
+                                    "tokens.securityNotice"
+                                  )}
+                                </p>
+                              </div>
+
+                              <div className="flex flex-col items-center">
+                                <img
+                                  src={
+                                    generatedShares[
+                                      grant.id
+                                    ].qrDataUrl
+                                  }
+                                  alt={t(
+                                    "tokens.qrAlt"
+                                  )}
+                                  width={
+                                    280
+                                  }
+                                  height={
+                                    280
+                                  }
+                                  className="h-auto w-full max-w-[280px] rounded-[10px] border border-gray-200 bg-white"
+                                />
+
+                                <p className="mt-[8px] text-center text-xs font-semibold text-[#036661]">
+                                  {t(
+                                    "tokens.scan"
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="mt-[21px] flex justify-end border-t border-gray-200 pt-[21px]">
                         <button
                           type="button"
                           onClick={() =>

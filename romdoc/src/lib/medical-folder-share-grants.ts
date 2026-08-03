@@ -74,34 +74,18 @@ export const MEDICAL_FOLDER_SHARE_CHANNELS = [
 export type MedicalFolderShareChannel =
   (typeof MEDICAL_FOLDER_SHARE_CHANNELS)[number];
 
-export const MEDICAL_FOLDER_RECIPIENT_CHANNELS = [
+export const MEDICAL_FOLDER_DIRECT_SHARE_CHANNELS = [
   "secure_link",
   "qr",
   "email",
   "nfc",
-  "doctor_mobile",
 ] as const;
 
-export type MedicalFolderRecipientChannel =
-  (typeof MEDICAL_FOLDER_RECIPIENT_CHANNELS)[number];
-
-export const MEDICAL_FOLDER_RECIPIENT_TYPES = [
-  "anonymous",
-  "doctor",
-  "external_provider",
-] as const;
-
-export type MedicalFolderRecipientType =
-  (typeof MEDICAL_FOLDER_RECIPIENT_TYPES)[number];
+export type MedicalFolderDirectShareChannel =
+  (typeof MEDICAL_FOLDER_DIRECT_SHARE_CHANNELS)[number];
 
 export const MEDICAL_FOLDER_SHARE_TOKEN_PREFIX =
   "rdsh_" as const;
-
-export const MEDICAL_FOLDER_RECIPIENT_SESSION_PREFIX =
-  "rdsess_" as const;
-
-export const MEDICAL_FOLDER_RECIPIENT_SESSION_TTL_SECONDS =
-  15 * 60;
 
 export type MedicalFolderShareGrantStatus =
   | "active"
@@ -186,67 +170,58 @@ export type IssuedMedicalFolderShareToken = {
   issuedAt: string;
 };
 
-export type MedicalFolderRecipientSessionMetadata = {
+export type MedicalFolderShareTokenIssueResponse = {
+  success: true;
+  shareToken: string;
+  tokenHint: string;
+  issuedAt: string;
+};
+
+export type SharedMedicalDocument = {
   id: string;
+  documentType: string;
+  title: string;
+  description: string | null;
+  contentFormat: "file" | "text";
+  contentText: string | null;
+  originalFileName: string;
+  mimeType: string;
+  fileSizeBytes: number;
+  createdAt: string;
+  doctorName: string;
+  appointmentDate: string | null;
+  downloadUrl: string | null;
+};
+
+export type DirectMedicalFolderShareResponse = {
   shareGrantId: string;
-  shareTokenId: string;
-  sessionHint: string;
-  recipientType: MedicalFolderRecipientType;
-  actorProfileId: string | null;
-  actorDoctorId: string | null;
-  accessChannel: MedicalFolderRecipientChannel;
-  startedAt: string;
+  shareScope: MedicalFolderShareScope;
+  accessMode: MedicalFolderShareAccessMode;
+  allowDocumentDownloads: boolean;
   expiresAt: string;
-  lastSeenAt: string;
-  closedAt: string | null;
-  closeReason:
-    | "expired"
-    | "grant_revoked"
-    | "manual"
-    | null;
-  updatedAt: string;
+  patient: {
+    profileId: string;
+    firstName: string | null;
+    lastName: string | null;
+    legalName: string;
+  };
+  entries: import("@/lib/patient-medical-profile").MedicalProfileEntry[];
+  documents: SharedMedicalDocument[];
 };
 
-export type BegunMedicalFolderRecipientSession = {
-  recipientSessionToken: string;
-  sessionExpiresAt: string;
-  shareGrantId: string;
-  shareScope: MedicalFolderShareScope;
-  accessMode: MedicalFolderShareAccessMode;
-  allowDocumentDownloads: boolean;
-  recipientType: MedicalFolderRecipientType;
-};
-
-export type MedicalFolderRecipientAccessContext = {
-  recipientSessionId: string;
-  shareGrantId: string;
-  patientProfileId: string;
-  shareScope: MedicalFolderShareScope;
-  accessMode: MedicalFolderShareAccessMode;
-  allowDocumentDownloads: boolean;
-  recipientType: MedicalFolderRecipientType;
-  actorProfileId: string | null;
-  actorDoctorId: string | null;
-  accessChannel: MedicalFolderRecipientChannel;
-  sessionExpiresAt: string;
-  selectedDocumentIds: string[];
-};
-
-export type MedicalFolderRecipientAccessErrorCode =
+export type DirectMedicalFolderShareErrorCode =
   | "invalid_share_token"
+  | "invalid_channel"
+  | "share_grant_not_found"
   | "share_grant_revoked"
   | "share_grant_expired"
   | "share_grant_consumed"
-  | "share_requires_bound_doctor"
-  | "share_bound_to_another_doctor"
-  | "invalid_recipient_identity"
-  | "invalid_recipient_channel"
-  | "invalid_recipient_session"
-  | "recipient_session_expired"
-  | "share_scope_excludes_documents"
-  | "document_not_shared"
-  | "document_not_available"
-  | "document_download_not_allowed";
+  | "share_open_failed";
+
+export type DirectMedicalFolderShareError = {
+  error: DirectMedicalFolderShareErrorCode;
+  message: string;
+};
 
 export type CreateMedicalFolderShareGrantInput = {
   shareScope: MedicalFolderShareScope;
@@ -327,8 +302,6 @@ const UUID_PATTERN =
 const SHARE_TOKEN_PATTERN =
   /^rdsh_[a-f0-9]{64}$/;
 
-const RECIPIENT_SESSION_TOKEN_PATTERN =
-  /^rdsess_[a-f0-9]{64}$/;
 
 export function isUuid(value: unknown): value is string {
   return (
@@ -346,15 +319,6 @@ export function isMedicalFolderShareToken(
   );
 }
 
-export function isMedicalFolderRecipientSessionToken(
-  value: unknown
-): value is string {
-  return (
-    typeof value === "string" &&
-    RECIPIENT_SESSION_TOKEN_PATTERN.test(value)
-  );
-}
-
 export function medicalFolderShareTokenHint(
   value: string
 ) {
@@ -363,13 +327,6 @@ export function medicalFolderShareTokenHint(
     : null;
 }
 
-export function medicalFolderRecipientSessionHint(
-  value: string
-) {
-  return isMedicalFolderRecipientSessionToken(value)
-    ? value.slice(0, 15)
-    : null;
-}
 
 export function isMedicalFolderShareScope(
   value: unknown
@@ -416,16 +373,17 @@ export function isMedicalFolderShareEventType(
   );
 }
 
-export function isMedicalFolderRecipientChannel(
+export function isMedicalFolderDirectShareChannel(
   value: unknown
-): value is MedicalFolderRecipientChannel {
+): value is MedicalFolderDirectShareChannel {
   return (
     typeof value === "string" &&
-    MEDICAL_FOLDER_RECIPIENT_CHANNELS.some(
+    MEDICAL_FOLDER_DIRECT_SHARE_CHANNELS.some(
       (channel) => channel === value
     )
   );
 }
+
 
 export function isEmergencySummaryShare(
   scope: MedicalFolderShareScope
