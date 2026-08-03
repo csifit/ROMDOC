@@ -8,6 +8,15 @@ export const MEDICAL_FOLDER_SHARE_SCOPES = [
 export type MedicalFolderShareScope =
   (typeof MEDICAL_FOLDER_SHARE_SCOPES)[number];
 
+export const MEDICAL_FOLDER_TEMPORARY_SHARE_SCOPES = [
+  "medical_profile",
+  "complete_folder",
+  "selected_documents",
+] as const;
+
+export type MedicalFolderTemporaryShareScope =
+  (typeof MEDICAL_FOLDER_TEMPORARY_SHARE_SCOPES)[number];
+
 export const MEDICAL_FOLDER_SHARE_ACCESS_MODES = [
   "one_time",
   "multiple",
@@ -39,6 +48,8 @@ export const MEDICAL_FOLDER_SHARE_EVENT_TYPES = [
   "document_viewed",
   "document_downloaded",
   "email_sent",
+  "deactivated",
+  "reactivated",
   "revoked",
   "expired",
   "consumed",
@@ -86,6 +97,9 @@ export type MedicalFolderDirectShareChannel =
 
 export const MEDICAL_FOLDER_SHARE_TOKEN_PREFIX =
   "rdsh_" as const;
+
+export const PERMANENT_EMERGENCY_SHARE_TOKEN_PREFIX =
+  "rdem_" as const;
 
 export type MedicalFolderShareGrantStatus =
   | "active"
@@ -198,7 +212,8 @@ export type DirectMedicalFolderShareResponse = {
   shareScope: MedicalFolderShareScope;
   accessMode: MedicalFolderShareAccessMode;
   allowDocumentDownloads: boolean;
-  expiresAt: string;
+  expiresAt: string | null;
+  isPermanent: boolean;
   patient: {
     profileId: string;
     firstName: string | null;
@@ -216,10 +231,44 @@ export type DirectMedicalFolderShareErrorCode =
   | "share_grant_revoked"
   | "share_grant_expired"
   | "share_grant_consumed"
+  | "share_disabled"
   | "share_open_failed";
 
 export type DirectMedicalFolderShareError = {
   error: DirectMedicalFolderShareErrorCode;
+  message: string;
+};
+
+
+export type PermanentEmergencyShareStatus =
+  | "active"
+  | "disabled";
+
+export type PermanentEmergencyShareCredential = {
+  grantId: string;
+  status: PermanentEmergencyShareStatus;
+  shareToken: string;
+  tokenHint: string;
+  shareUrl: string;
+  qrUrl: string;
+  accessCount: number;
+  lastAccessedAt: string | null;
+  createdAt: string;
+  disabledAt: string | null;
+};
+
+export type PermanentEmergencyShareResponse = {
+  credential: PermanentEmergencyShareCredential | null;
+};
+
+export type PermanentEmergencyShareAction =
+  | "activate"
+  | "replace"
+  | "deactivate"
+  | "reactivate";
+
+export type PermanentEmergencyShareApiError = {
+  error: string;
   message: string;
 };
 
@@ -302,6 +351,9 @@ const UUID_PATTERN =
 const SHARE_TOKEN_PATTERN =
   /^rdsh_[a-f0-9]{64}$/;
 
+const PERMANENT_EMERGENCY_SHARE_TOKEN_PATTERN =
+  /^rdem_[a-f0-9]{32}_[a-f0-9]{64}$/;
+
 
 export function isUuid(value: unknown): value is string {
   return (
@@ -319,6 +371,32 @@ export function isMedicalFolderShareToken(
   );
 }
 
+export function isPermanentEmergencyShareToken(
+  value: unknown
+): value is string {
+  return (
+    typeof value === "string" &&
+    PERMANENT_EMERGENCY_SHARE_TOKEN_PATTERN.test(value)
+  );
+}
+
+export function isAnyMedicalFolderShareToken(
+  value: unknown
+): value is string {
+  return (
+    isMedicalFolderShareToken(value) ||
+    isPermanentEmergencyShareToken(value)
+  );
+}
+
+export function permanentEmergencyShareTokenHint(
+  value: string
+) {
+  return isPermanentEmergencyShareToken(value)
+    ? value.slice(0, 13)
+    : null;
+}
+
 export function medicalFolderShareTokenHint(
   value: string
 ) {
@@ -327,6 +405,17 @@ export function medicalFolderShareTokenHint(
     : null;
 }
 
+
+export function isMedicalFolderTemporaryShareScope(
+  value: unknown
+): value is MedicalFolderTemporaryShareScope {
+  return (
+    typeof value === "string" &&
+    MEDICAL_FOLDER_TEMPORARY_SHARE_SCOPES.some(
+      (scope) => scope === value
+    )
+  );
+}
 
 export function isMedicalFolderShareScope(
   value: unknown
@@ -437,7 +526,7 @@ export function validateMedicalFolderShareGrantInput(
     documentIds?: unknown;
   }
 ): MedicalFolderShareValidationResult {
-  if (!isMedicalFolderShareScope(input.shareScope)) {
+  if (!isMedicalFolderTemporaryShareScope(input.shareScope)) {
     return {
       ok: false,
       error: "invalid_scope",
@@ -559,7 +648,7 @@ export function validateMedicalFolderShareGrantInput(
 export function defaultMedicalFolderShareGrantInput():
   CreateMedicalFolderShareGrantInput {
   return {
-    shareScope: "emergency_summary",
+    shareScope: "medical_profile",
     durationSeconds: 86_400,
     accessMode: "multiple",
     allowDocumentDownloads: false,

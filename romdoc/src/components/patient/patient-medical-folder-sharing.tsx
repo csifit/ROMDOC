@@ -12,6 +12,7 @@ import {
 } from "react";
 import QRCode from "qrcode";
 
+import PatientPermanentEmergencyShare from "@/components/patient/patient-permanent-emergency-share";
 import {
   defaultMedicalFolderShareGrantInput,
   type CreateMedicalFolderShareGrantInput,
@@ -1252,6 +1253,8 @@ export default function PatientMedicalFolderSharing() {
 
   return (
     <section className="mt-[34px] space-y-[34px]">
+      <PatientPermanentEmergencyShare />
+
       {error && (
         <div
           role="alert"
@@ -1317,7 +1320,6 @@ export default function PatientMedicalFolderSharing() {
               className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] text-sm"
             >
               {[
-                "emergency_summary",
                 "medical_profile",
                 "complete_folder",
                 "selected_documents",

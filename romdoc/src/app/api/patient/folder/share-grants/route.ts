@@ -6,7 +6,7 @@ import {
 import {
   MEDICAL_FOLDER_SHARE_ACCESS_MODES,
   MEDICAL_FOLDER_SHARE_DURATION_SECONDS,
-  MEDICAL_FOLDER_SHARE_SCOPES,
+  MEDICAL_FOLDER_TEMPORARY_SHARE_SCOPES,
   getMedicalFolderShareGrantStatus,
   isUuid,
   type MedicalFolderShareApiError,
@@ -239,6 +239,10 @@ async function loadGrantItems(
       .eq(
         "patient_profile_id",
         userId
+      )
+      .eq(
+        "is_permanent",
+        false
       );
 
   if (grantId) {
@@ -430,6 +434,7 @@ function databaseErrorCode(
 ): MedicalFolderShareApiErrorCode {
   switch (message) {
     case "invalid_medical_folder_share_scope":
+    case "emergency_summary_requires_permanent_share":
       return "invalid_scope";
 
     case "invalid_medical_folder_share_duration":
@@ -489,7 +494,7 @@ Promise<Response> {
       grants,
       options: {
         scopes:
-          MEDICAL_FOLDER_SHARE_SCOPES,
+          MEDICAL_FOLDER_TEMPORARY_SHARE_SCOPES,
         durations:
           MEDICAL_FOLDER_SHARE_DURATION_SECONDS,
         accessModes:

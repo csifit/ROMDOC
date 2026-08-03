@@ -820,7 +820,9 @@
           "token_issued": "Secure link generated",
           "token_rotated": "Secure link replaced",
           "recipient_session_started": "Secure session started",
-          "recipient_session_closed": "Secure session closed"
+          "recipient_session_closed": "Secure session closed",
+          "deactivated": "Permanent QR deactivated",
+          "reactivated": "Permanent QR reactivated"
         },
         "roles": {
           "patient": "Patient",
@@ -835,12 +837,12 @@
           "description": "Choose exactly which information may be reviewed, how long access remains valid, and whether documents may be downloaded.",
           "back": "Back to Medical Folder",
           "securityNotice": "Sharing is view-only. It does not allow changes to the medical profile, document uploads or deletion, or the signing of medical notes.",
-          "futureNotice": "Secure links, QR codes and email delivery are active. Access is read-only and may be revoked at any time."
+          "futureNotice": "The Emergency Medical Summary has a permanent QR code with no expiry. Other medical information is shared temporarily and read-only."
         },
         "form": {
           "eyebrow": "New permission",
           "title": "Configure a share",
-          "description": "Create temporary, limited permission. Access ends automatically when it expires or immediately when you revoke it.",
+          "description": "Configure temporary sharing for the Medical Profile, Complete Medical Folder or selected documents. The Emergency Medical Summary is managed separately through the permanent QR code above.",
           "scopeLabel": "What would you like to share?",
           "durationLabel": "How long should access remain valid?",
           "accessModeLabel": "How many times may it be used?",
@@ -1016,6 +1018,101 @@
             "share_grant_consumed": "The one-time share has already been used.",
             "email_configuration_missing": "The email service is not configured.",
             "email_send_failed": "The email could not be sent. Please try again."
+          }
+        },
+        "permanentEmergency": {
+          "eyebrow": "Emergency medical access",
+          "title": "Permanent QR for the Emergency Medical Summary",
+          "description": "This QR code does not expire and can be kept on a phone, printed or sent to a trusted person. It always displays the current Emergency Medical Summary.",
+          "loading": "Loading the permanent QR...",
+          "privacyTitle": "Important:",
+          "privacyNotice": "Anyone who photographs or scans the code can view the Emergency Medical Summary until you deactivate or replace it. Medical documents are not available and nothing can be edited.",
+          "inactiveTitle": "The permanent QR is not activated",
+          "inactiveDescription": "Activate it once. The same QR can then be downloaded again after every login and remains valid without an expiry date.",
+          "statuses": {
+            "active": "Permanently active",
+            "disabled": "Temporarily disabled"
+          },
+          "linkLabel": "Permanent secure link",
+          "qrAlt": "Permanent QR code for the Emergency Medical Summary",
+          "qrLoading": "Generating QR code...",
+          "scan": "Scan for the Emergency Medical Summary",
+          "disabledNotice": "The code is disabled. Reactivate it for access.",
+          "stableNotice": "The same code remains valid until you choose Replace QR.",
+          "confirmReplace": "Replacing immediately invalidates every old copy of the QR, including phone images and printed cards. Continue?",
+          "confirmDeactivate": "The QR will no longer open medical information until you reactivate it. Continue?",
+          "actions": {
+            "activate": "Activate permanent QR",
+            "activating": "Activating...",
+            "copy": "Copy link",
+            "downloadQr": "Download QR",
+            "downloadLockScreen": "Download lock-screen image",
+            "downloadPrintCard": "Download printable card",
+            "deactivate": "Deactivate",
+            "deactivating": "Deactivating...",
+            "reactivate": "Reactivate",
+            "reactivating": "Reactivating...",
+            "replace": "Replace QR",
+            "replacing": "Replacing..."
+          },
+          "labels": {
+            "availability": "Availability",
+            "permanent": "No expiry",
+            "accessCount": "Accesses",
+            "lastAccess": "Last access",
+            "never": "Never"
+          },
+          "lockScreenHelp": {
+            "title": "For your phone lock screen",
+            "description": "Download the 9:16 image and manually set it as the lock-screen wallpaper. A website cannot change your phone wallpaper automatically."
+          },
+          "email": {
+            "title": "Send the permanent code by email",
+            "description": "Send the same permanent link to a trusted person. Sending does not change or consume the QR code.",
+            "placeholder": "address@example.com",
+            "send": "Send email",
+            "sending": "Sending...",
+            "errors": {
+              "invalid": "Enter a valid email address.",
+              "token": "The permanent code is no longer valid.",
+              "notFound": "The permanent code was not found.",
+              "revoked": "The permanent code was replaced.",
+              "disabled": "Reactivate the code before sending it.",
+              "configuration": "Email or permanent-code service is not configured.",
+              "send": "The email could not be sent."
+            }
+          },
+          "messages": {
+            "activate": "The permanent QR was activated.",
+            "replace": "A new permanent QR was generated. Every old copy is now invalid.",
+            "deactivate": "The permanent QR was deactivated.",
+            "reactivate": "The permanent QR was reactivated.",
+            "copied": "The permanent link was copied.",
+            "emailSent": "The email containing the permanent link was sent."
+          },
+          "errors": {
+            "authentication": "You must be signed in.",
+            "account": "An active Patient account with confirmed email is required.",
+            "notFound": "The permanent QR was not found.",
+            "configuration": "The secure permanent-QR configuration is missing.",
+            "load": "The permanent QR could not be loaded.",
+            "action": "The action could not be completed.",
+            "qr": "The QR code could not be generated.",
+            "copy": "The link could not be copied.",
+            "image": "The image could not be generated."
+          },
+          "lockScreen": {
+            "title": "MEDICAL EMERGENCY",
+            "subtitle": "RomDoc medical summary",
+            "scan": "Scan the QR code for emergency medical information",
+            "footer": "Read-only access. This does not replace emergency medical services."
+          },
+          "printCard": {
+            "title": "Emergency Medical Summary",
+            "permanent": "Permanent QR code",
+            "scan": "Scan in an emergency",
+            "description": "The code opens the Patient’s current emergency medical information without an account or PIN.",
+            "notice": "Keep the card visible. If it is lost or photographed, replace the QR code from the RomDoc account."
           }
         }
       }
@@ -3002,7 +3099,8 @@
       "revoked": "The patient has revoked this share.",
       "expired": "This share has expired.",
       "consumed": "The one-time link has already been opened.",
-      "failed": "The shared information could not be loaded."
+      "failed": "The shared information could not be loaded.",
+      "disabled": "The Patient has temporarily disabled this emergency QR code."
     },
     "documents": {
       "title": "Medical documents",
@@ -3011,6 +3109,8 @@
       "download": "Download",
       "downloadDisabled": "Downloading is not allowed",
       "empty": "The selected documents are no longer available."
-    }
+    },
+    "permanentReadOnlyNotice": "This is permanent, read-only access to the Emergency Medical Summary. It does not allow changes or access to medical documents.",
+    "permanentAccess": "Permanent access until the Patient deactivates or replaces the QR code."
   }
 }

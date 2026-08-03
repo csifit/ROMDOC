@@ -820,7 +820,9 @@
           "token_issued": "Link securizat generat",
           "token_rotated": "Link securizat înlocuit",
           "recipient_session_started": "Sesiune securizată începută",
-          "recipient_session_closed": "Sesiune securizată închisă"
+          "recipient_session_closed": "Sesiune securizată închisă",
+          "deactivated": "Cod QR permanent dezactivat",
+          "reactivated": "Cod QR permanent reactivat"
         },
         "roles": {
           "patient": "Pacient",
@@ -835,12 +837,12 @@
           "description": "Alege exact ce informații pot fi consultate, cât timp rămâne permis accesul și dacă documentele pot fi descărcate.",
           "back": "Înapoi la Dosarul medical",
           "securityNotice": "Partajarea este doar pentru consultare. Nu permite modificarea profilului medical, încărcarea sau ștergerea documentelor și nici semnarea notelor medicale.",
-          "futureNotice": "Linkurile securizate, codurile QR și trimiterea prin e-mail sunt active. Accesul este numai pentru citire și poate fi revocat oricând."
+          "futureNotice": "Rezumatul medical de urgență are un cod QR permanent, fără termen de expirare. Celelalte informații medicale se partajează temporar și numai pentru citire."
         },
         "form": {
           "eyebrow": "Permisiune nouă",
           "title": "Configurează o partajare",
-          "description": "Creează o permisiune temporară și limitată. Accesul încetează automat la expirare sau imediat după revocare.",
+          "description": "Configurează o partajare temporară pentru Profilul medical, Dosarul medical complet sau documentele selectate. Rezumatul medical de urgență se administrează separat prin codul QR permanent de mai sus.",
           "scopeLabel": "Ce informații dorești să partajezi?",
           "durationLabel": "Cât timp este valabil accesul?",
           "accessModeLabel": "De câte ori poate fi folosit?",
@@ -1016,6 +1018,101 @@
             "share_grant_consumed": "Partajarea cu o singură utilizare a fost deja folosită.",
             "email_configuration_missing": "Serviciul de e-mail nu este configurat.",
             "email_send_failed": "E-mailul nu a putut fi trimis. Încearcă din nou."
+          }
+        },
+        "permanentEmergency": {
+          "eyebrow": "Acces medical de urgență",
+          "title": "Cod QR permanent pentru Rezumatul medical de urgență",
+          "description": "Acest cod QR nu expiră și poate fi păstrat pe telefon, tipărit sau trimis unei persoane de încredere. El afișează întotdeauna versiunea curentă a Rezumatului medical de urgență.",
+          "loading": "Se încarcă codul QR permanent...",
+          "privacyTitle": "Important:",
+          "privacyNotice": "Oricine fotografiază sau scanează codul poate vedea Rezumatul medical de urgență până când îl dezactivezi sau îl înlocuiești. Nu sunt disponibile documente medicale și nu se poate modifica nimic.",
+          "inactiveTitle": "Codul QR permanent nu este activat",
+          "inactiveDescription": "Activează-l o singură dată. După aceea, același cod poate fi descărcat din nou după fiecare autentificare și rămâne valabil fără termen de expirare.",
+          "statuses": {
+            "active": "Activ permanent",
+            "disabled": "Dezactivat temporar"
+          },
+          "linkLabel": "Link permanent securizat",
+          "qrAlt": "Cod QR permanent pentru Rezumatul medical de urgență",
+          "qrLoading": "Se generează codul QR...",
+          "scan": "Scanează pentru Rezumatul medical de urgență",
+          "disabledNotice": "Codul este dezactivat. Reactivează-l pentru acces.",
+          "stableNotice": "Același cod rămâne valabil până când alegi Înlocuiește QR.",
+          "confirmReplace": "Înlocuirea invalidează imediat toate copiile vechi ale codului QR, inclusiv imaginile de pe telefon și cardurile tipărite. Continui?",
+          "confirmDeactivate": "Codul QR nu va mai deschide informațiile medicale până când îl reactivezi. Continui?",
+          "actions": {
+            "activate": "Activează QR permanent",
+            "activating": "Se activează...",
+            "copy": "Copiază linkul",
+            "downloadQr": "Descarcă QR",
+            "downloadLockScreen": "Descarcă imagine pentru ecran blocat",
+            "downloadPrintCard": "Descarcă card pentru tipărire",
+            "deactivate": "Dezactivează",
+            "deactivating": "Se dezactivează...",
+            "reactivate": "Reactivează",
+            "reactivating": "Se reactivează...",
+            "replace": "Înlocuiește QR",
+            "replacing": "Se înlocuiește..."
+          },
+          "labels": {
+            "availability": "Disponibilitate",
+            "permanent": "Fără expirare",
+            "accessCount": "Accesări",
+            "lastAccess": "Ultima accesare",
+            "never": "Niciodată"
+          },
+          "lockScreenHelp": {
+            "title": "Pentru ecranul blocat al telefonului",
+            "description": "Descarcă imaginea 9:16 și seteaz-o manual ca fundal pentru ecranul blocat. Site-ul nu poate modifica automat fundalul telefonului."
+          },
+          "email": {
+            "title": "Trimite codul permanent prin e-mail",
+            "description": "Trimite același link permanent unei persoane de încredere. Trimiterea nu schimbă și nu consumă codul QR.",
+            "placeholder": "adresa@exemplu.ro",
+            "send": "Trimite e-mailul",
+            "sending": "Se trimite...",
+            "errors": {
+              "invalid": "Introdu o adresă de e-mail validă.",
+              "token": "Codul permanent nu mai este valid.",
+              "notFound": "Codul permanent nu a fost găsit.",
+              "revoked": "Codul permanent a fost înlocuit.",
+              "disabled": "Reactivează codul înainte de a-l trimite.",
+              "configuration": "Serviciul de e-mail sau codul permanent nu este configurat.",
+              "send": "E-mailul nu a putut fi trimis."
+            }
+          },
+          "messages": {
+            "activate": "Codul QR permanent a fost activat.",
+            "replace": "A fost generat un cod QR permanent nou. Toate copiile vechi sunt invalide.",
+            "deactivate": "Codul QR permanent a fost dezactivat.",
+            "reactivate": "Codul QR permanent a fost reactivat.",
+            "copied": "Linkul permanent a fost copiat.",
+            "emailSent": "E-mailul cu linkul permanent a fost trimis."
+          },
+          "errors": {
+            "authentication": "Trebuie să fii autentificat.",
+            "account": "Este necesar un cont activ de pacient cu e-mail confirmat.",
+            "notFound": "Codul QR permanent nu a fost găsit.",
+            "configuration": "Lipsește configurarea securizată pentru codul QR permanent.",
+            "load": "Codul QR permanent nu a putut fi încărcat.",
+            "action": "Acțiunea nu a putut fi finalizată.",
+            "qr": "Codul QR nu a putut fi generat.",
+            "copy": "Linkul nu a putut fi copiat.",
+            "image": "Imaginea nu a putut fi generată."
+          },
+          "lockScreen": {
+            "title": "URGENȚĂ MEDICALĂ",
+            "subtitle": "Rezumat medical RomDoc",
+            "scan": "Scanează codul QR pentru informațiile medicale de urgență",
+            "footer": "Acces numai pentru citire. Nu înlocuiește serviciile medicale de urgență."
+          },
+          "printCard": {
+            "title": "Rezumat medical de urgență",
+            "permanent": "Cod QR permanent",
+            "scan": "Scanează în caz de urgență",
+            "description": "Codul deschide informațiile medicale de urgență actualizate ale pacientului, fără cont și fără cod PIN.",
+            "notice": "Păstrează cardul într-un loc vizibil. Dacă este pierdut sau fotografiat, înlocuiește codul QR din contul RomDoc."
           }
         }
       }
@@ -3002,7 +3099,8 @@
       "revoked": "Pacientul a revocat această partajare.",
       "expired": "Această partajare a expirat.",
       "consumed": "Linkul cu o singură utilizare a fost deja deschis.",
-      "failed": "Informațiile partajate nu au putut fi încărcate."
+      "failed": "Informațiile partajate nu au putut fi încărcate.",
+      "disabled": "Pacientul a dezactivat temporar acest cod QR de urgență."
     },
     "documents": {
       "title": "Documente medicale",
@@ -3011,6 +3109,8 @@
       "download": "Descarcă",
       "downloadDisabled": "Descărcarea nu este permisă",
       "empty": "Documentele selectate nu mai sunt disponibile."
-    }
+    },
+    "permanentReadOnlyNotice": "Acesta este un acces permanent, numai pentru vizualizare, la Rezumatul medical de urgență. Nu permite modificări și nu oferă acces la documentele medicale.",
+    "permanentAccess": "Acces permanent, valabil până când pacientul dezactivează sau înlocuiește codul QR."
   }
 }

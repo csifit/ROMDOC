@@ -4,15 +4,19 @@ import {
 } from "next/server";
 
 import {
+  isAnyMedicalFolderShareToken,
   isMedicalFolderDirectShareChannel,
   isMedicalFolderShareScope,
-  isMedicalFolderShareToken,
+  isPermanentEmergencyShareToken,
   type DirectMedicalFolderShareErrorCode,
   type DirectMedicalFolderShareResponse,
   type MedicalFolderDirectShareChannel,
   type MedicalFolderShareScope,
   type SharedMedicalDocument,
 } from "@/lib/medical-folder-share-grants";
+import {
+  verifyPermanentEmergencyShareToken,
+} from "@/lib/medical-folder/permanent-emergency-share-token";
 import {
   MEDICAL_PROFILE_FIELDS,
   emptyMedicalProfileValue,
@@ -49,8 +53,9 @@ type OpenShareRow = {
   share_scope: string;
   access_mode: string;
   allow_document_downloads: boolean;
-  expires_at: string;
+  expires_at: string | null;
   token_hint: string;
+  is_permanent?: boolean;
   selected_document_ids:
     string[] |
     null;
@@ -229,6 +234,36 @@ function mapDatabaseError(
         "Linkul cu o singură utilizare a fost deja deschis.",
       status:
         410,
+    };
+  }
+
+  if (
+    message.includes(
+      "permanent_emergency_share_disabled"
+    )
+  ) {
+    return {
+      error:
+        "share_disabled",
+      message:
+        "Pacientul a dezactivat temporar codul QR de urgență.",
+      status:
+        410,
+    };
+  }
+
+  if (
+    message.includes(
+      "permanent_emergency_share_not_found"
+    )
+  ) {
+    return {
+      error:
+        "share_grant_not_found",
+      message:
+        "Codul QR permanent de urgență nu a fost găsit.",
+      status:
+        404,
     };
   }
 
@@ -674,7 +709,7 @@ export async function POST(
   }
 
   if (
-    !isMedicalFolderShareToken(
+    !isAnyMedicalFolderShareToken(
       body.token
     )
   ) {
@@ -699,21 +734,76 @@ export async function POST(
   const admin =
     createAdminClient();
 
-  const {
-    data:
-      rpcData,
-    error:
-      rpcError,
-  } =
-    await admin.rpc(
-      "open_medical_folder_share_token",
-      {
-        target_share_token:
-          body.token,
-        target_channel:
-          channel,
-      }
-    );
+  let rpcData:
+    unknown;
+  let rpcError:
+    { message: string } |
+    null =
+      null;
+
+  if (
+    isPermanentEmergencyShareToken(
+      body.token
+    )
+  ) {
+    let verified:
+      ReturnType<
+        typeof verifyPermanentEmergencyShareToken
+      >;
+
+    try {
+      verified =
+        verifyPermanentEmergencyShareToken(
+          body.token
+        );
+    } catch {
+      return errorResponse(
+        "share_open_failed",
+        "Serviciul pentru codul QR permanent nu este configurat.",
+        503
+      );
+    }
+
+    if (!verified) {
+      return errorResponse(
+        "invalid_share_token",
+        "Linkul securizat nu este valid.",
+        403
+      );
+    }
+
+    const result =
+      await admin.rpc(
+        "open_permanent_emergency_share_grant",
+        {
+          target_share_grant_id:
+            verified.grantId,
+          target_channel:
+            channel,
+        }
+      );
+
+    rpcData =
+      result.data;
+    rpcError =
+      result.error;
+  } else {
+    const result =
+      await admin.rpc(
+        "open_medical_folder_share_token",
+        {
+          target_share_token:
+            body.token,
+          target_channel:
+            channel,
+        }
+      );
+
+    rpcData =
+      result.data;
+    rpcError =
+      result.error;
+  }
 
   if (rpcError) {
     const mapped =
@@ -939,6 +1029,9 @@ export async function POST(
           opened.allow_document_downloads,
         expiresAt:
           opened.expires_at,
+        isPermanent:
+          opened.is_permanent ===
+            true,
         patient: {
           profileId:
             patient.id,

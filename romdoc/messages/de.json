@@ -820,7 +820,9 @@
           "token_issued": "Sicherer Link erstellt",
           "token_rotated": "Sicherer Link ersetzt",
           "recipient_session_started": "Sichere Sitzung gestartet",
-          "recipient_session_closed": "Sichere Sitzung geschlossen"
+          "recipient_session_closed": "Sichere Sitzung geschlossen",
+          "deactivated": "Dauerhafter QR-Code deaktiviert",
+          "reactivated": "Dauerhafter QR-Code reaktiviert"
         },
         "roles": {
           "patient": "Patient",
@@ -835,12 +837,12 @@
           "description": "Wählen Sie genau aus, welche Informationen eingesehen werden dürfen, wie lange der Zugriff gültig bleibt und ob Dokumente heruntergeladen werden dürfen.",
           "back": "Zurück zur medizinischen Akte",
           "securityNotice": "Die Freigabe ist ausschließlich zur Ansicht bestimmt. Sie erlaubt keine Änderungen am medizinischen Profil, kein Hochladen oder Löschen von Dokumenten und keine Unterzeichnung medizinischer Notizen.",
-          "futureNotice": "Sichere Links, QR-Codes und der E-Mail-Versand sind aktiv. Der Zugriff ist schreibgeschützt und kann jederzeit widerrufen werden."
+          "futureNotice": "Die medizinische Notfallübersicht besitzt einen dauerhaften QR-Code ohne Ablaufdatum. Andere medizinische Informationen werden zeitlich begrenzt und schreibgeschützt geteilt."
         },
         "form": {
           "eyebrow": "Neue Berechtigung",
           "title": "Freigabe konfigurieren",
-          "description": "Erstellen Sie eine zeitlich begrenzte Berechtigung. Der Zugriff endet automatisch bei Ablauf oder sofort nach einem Widerruf.",
+          "description": "Konfigurieren Sie eine zeitlich begrenzte Freigabe für das medizinische Profil, die vollständige medizinische Akte oder ausgewählte Dokumente. Die medizinische Notfallübersicht wird separat über den dauerhaften QR-Code oben verwaltet.",
           "scopeLabel": "Welche Informationen möchten Sie freigeben?",
           "durationLabel": "Wie lange soll der Zugriff gültig sein?",
           "accessModeLabel": "Wie oft darf die Berechtigung verwendet werden?",
@@ -1016,6 +1018,101 @@
             "share_grant_consumed": "Die einmalige Freigabe wurde bereits verwendet.",
             "email_configuration_missing": "Der E-Mail-Dienst ist nicht konfiguriert.",
             "email_send_failed": "Die E-Mail konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
+          }
+        },
+        "permanentEmergency": {
+          "eyebrow": "Medizinischer Notfallzugang",
+          "title": "Dauerhafter QR-Code für die medizinische Notfallübersicht",
+          "description": "Dieser QR-Code läuft nicht ab und kann auf dem Telefon gespeichert, ausgedruckt oder an eine vertrauenswürdige Person gesendet werden. Er zeigt immer die aktuelle medizinische Notfallübersicht.",
+          "loading": "Dauerhafter QR-Code wird geladen...",
+          "privacyTitle": "Wichtig:",
+          "privacyNotice": "Jeder, der den Code fotografiert oder scannt, kann die medizinische Notfallübersicht sehen, bis Sie ihn deaktivieren oder ersetzen. Medizinische Dokumente sind nicht verfügbar und nichts kann bearbeitet werden.",
+          "inactiveTitle": "Der dauerhafte QR-Code ist nicht aktiviert",
+          "inactiveDescription": "Aktivieren Sie ihn einmal. Danach kann derselbe QR-Code nach jeder Anmeldung erneut heruntergeladen werden und bleibt ohne Ablaufdatum gültig.",
+          "statuses": {
+            "active": "Dauerhaft aktiv",
+            "disabled": "Vorübergehend deaktiviert"
+          },
+          "linkLabel": "Dauerhafter sicherer Link",
+          "qrAlt": "Dauerhafter QR-Code für die medizinische Notfallübersicht",
+          "qrLoading": "QR-Code wird erstellt...",
+          "scan": "Für die medizinische Notfallübersicht scannen",
+          "disabledNotice": "Der Code ist deaktiviert. Reaktivieren Sie ihn für den Zugriff.",
+          "stableNotice": "Derselbe Code bleibt gültig, bis Sie QR ersetzen wählen.",
+          "confirmReplace": "Das Ersetzen macht sofort jede alte QR-Kopie ungültig, einschließlich Telefonbildern und gedruckten Karten. Fortfahren?",
+          "confirmDeactivate": "Der QR-Code öffnet keine medizinischen Informationen mehr, bis Sie ihn reaktivieren. Fortfahren?",
+          "actions": {
+            "activate": "Dauerhaften QR aktivieren",
+            "activating": "Wird aktiviert...",
+            "copy": "Link kopieren",
+            "downloadQr": "QR herunterladen",
+            "downloadLockScreen": "Sperrbildschirm-Bild herunterladen",
+            "downloadPrintCard": "Druckkarte herunterladen",
+            "deactivate": "Deaktivieren",
+            "deactivating": "Wird deaktiviert...",
+            "reactivate": "Reaktivieren",
+            "reactivating": "Wird reaktiviert...",
+            "replace": "QR ersetzen",
+            "replacing": "Wird ersetzt..."
+          },
+          "labels": {
+            "availability": "Verfügbarkeit",
+            "permanent": "Kein Ablaufdatum",
+            "accessCount": "Zugriffe",
+            "lastAccess": "Letzter Zugriff",
+            "never": "Nie"
+          },
+          "lockScreenHelp": {
+            "title": "Für den Sperrbildschirm",
+            "description": "Laden Sie das 9:16-Bild herunter und legen Sie es manuell als Sperrbildschirm-Hintergrund fest. Eine Website kann den Telefonhintergrund nicht automatisch ändern."
+          },
+          "email": {
+            "title": "Dauerhaften Code per E-Mail senden",
+            "description": "Senden Sie denselben dauerhaften Link an eine vertrauenswürdige Person. Der Versand ändert oder verbraucht den QR-Code nicht.",
+            "placeholder": "adresse@beispiel.de",
+            "send": "E-Mail senden",
+            "sending": "Wird gesendet...",
+            "errors": {
+              "invalid": "Geben Sie eine gültige E-Mail-Adresse ein.",
+              "token": "Der dauerhafte Code ist nicht mehr gültig.",
+              "notFound": "Der dauerhafte Code wurde nicht gefunden.",
+              "revoked": "Der dauerhafte Code wurde ersetzt.",
+              "disabled": "Reaktivieren Sie den Code vor dem Versand.",
+              "configuration": "E-Mail- oder permanenter QR-Dienst ist nicht konfiguriert.",
+              "send": "Die E-Mail konnte nicht gesendet werden."
+            }
+          },
+          "messages": {
+            "activate": "Der dauerhafte QR-Code wurde aktiviert.",
+            "replace": "Ein neuer dauerhafter QR-Code wurde erstellt. Alle alten Kopien sind ungültig.",
+            "deactivate": "Der dauerhafte QR-Code wurde deaktiviert.",
+            "reactivate": "Der dauerhafte QR-Code wurde reaktiviert.",
+            "copied": "Der dauerhafte Link wurde kopiert.",
+            "emailSent": "Die E-Mail mit dem dauerhaften Link wurde gesendet."
+          },
+          "errors": {
+            "authentication": "Sie müssen angemeldet sein.",
+            "account": "Ein aktives Patientenkonto mit bestätigter E-Mail ist erforderlich.",
+            "notFound": "Der dauerhafte QR-Code wurde nicht gefunden.",
+            "configuration": "Die sichere Konfiguration für den dauerhaften QR-Code fehlt.",
+            "load": "Der dauerhafte QR-Code konnte nicht geladen werden.",
+            "action": "Die Aktion konnte nicht abgeschlossen werden.",
+            "qr": "Der QR-Code konnte nicht erstellt werden.",
+            "copy": "Der Link konnte nicht kopiert werden.",
+            "image": "Das Bild konnte nicht erstellt werden."
+          },
+          "lockScreen": {
+            "title": "MEDIZINISCHER NOTFALL",
+            "subtitle": "RomDoc Notfallübersicht",
+            "scan": "QR-Code für medizinische Notfallinformationen scannen",
+            "footer": "Nur Lesezugriff. Dies ersetzt keine medizinischen Notfalldienste."
+          },
+          "printCard": {
+            "title": "Medizinische Notfallübersicht",
+            "permanent": "Dauerhafter QR-Code",
+            "scan": "Im Notfall scannen",
+            "description": "Der Code öffnet die aktuellen medizinischen Notfallinformationen des Patienten ohne Konto oder PIN.",
+            "notice": "Bewahren Sie die Karte sichtbar auf. Bei Verlust oder Foto ersetzen Sie den QR-Code im RomDoc-Konto."
           }
         }
       }
@@ -3002,7 +3099,8 @@
       "revoked": "Der Patient hat diese Freigabe widerrufen.",
       "expired": "Diese Freigabe ist abgelaufen.",
       "consumed": "Der einmalige Link wurde bereits geöffnet.",
-      "failed": "Die freigegebenen Informationen konnten nicht geladen werden."
+      "failed": "Die freigegebenen Informationen konnten nicht geladen werden.",
+      "disabled": "Der Patient hat diesen Notfall-QR-Code vorübergehend deaktiviert."
     },
     "documents": {
       "title": "Medizinische Dokumente",
@@ -3011,6 +3109,8 @@
       "download": "Herunterladen",
       "downloadDisabled": "Herunterladen ist nicht erlaubt",
       "empty": "Die ausgewählten Dokumente sind nicht mehr verfügbar."
-    }
+    },
+    "permanentReadOnlyNotice": "Dies ist ein dauerhafter, schreibgeschützter Zugriff auf die medizinische Notfallübersicht. Änderungen und der Zugriff auf medizinische Dokumente sind nicht möglich.",
+    "permanentAccess": "Dauerhafter Zugriff, bis der Patient den QR-Code deaktiviert oder ersetzt."
   }
 }

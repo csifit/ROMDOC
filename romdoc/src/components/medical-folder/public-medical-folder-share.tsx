@@ -12,8 +12,8 @@ import {
 
 import EmergencyMedicalSummary from "@/components/medical-folder/emergency-medical-summary";
 import {
+  isAnyMedicalFolderShareToken,
   isMedicalFolderDirectShareChannel,
-  isMedicalFolderShareToken,
   type DirectMedicalFolderShareError,
   type DirectMedicalFolderShareErrorCode,
   type DirectMedicalFolderShareResponse,
@@ -54,6 +54,8 @@ const ERROR_KEYS:
       "errors.expired",
     share_grant_consumed:
       "errors.consumed",
+    share_disabled:
+      "errors.disabled",
     share_open_failed:
       "errors.failed",
   };
@@ -417,7 +419,7 @@ export default function PublicMedicalFolderShare() {
       );
 
     if (
-      !isMedicalFolderShareToken(
+      !isAnyMedicalFolderShareToken(
         token
       )
     ) {
@@ -593,21 +595,28 @@ export default function PublicMedicalFolderShare() {
 
           <div className="mt-[17px] rounded-[13px] border border-amber-200 bg-amber-50 p-[13px] text-xs leading-5 text-amber-950">
             {t(
-              "readOnlyNotice"
+              payload.isPermanent
+                ? "permanentReadOnlyNotice"
+                : "readOnlyNotice"
             )}
           </div>
 
           <p className="mt-[13px] text-xs text-gray-500">
-            {t(
-              "expires",
-              {
-                date:
-                  formatDate(
-                    payload.expiresAt,
-                    locale
-                  ),
-              }
-            )}
+            {payload.isPermanent ||
+            !payload.expiresAt
+              ? t(
+                  "permanentAccess"
+                )
+              : t(
+                  "expires",
+                  {
+                    date:
+                      formatDate(
+                        payload.expiresAt,
+                        locale
+                      ),
+                  }
+                )}
           </p>
         </header>
 
