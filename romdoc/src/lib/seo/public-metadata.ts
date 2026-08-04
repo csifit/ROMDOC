@@ -241,7 +241,7 @@ getHomeMetadata(
       title:
         "Medici și programări medicale în România",
       description:
-        "Găsește medici, clinici aprobate și programări medicale online în România prin RomDoc.",
+        "Catalogul medicilor, clinicilor și gestionarea programărilor medicale.",
     },
     en: {
       title:
@@ -253,7 +253,7 @@ getHomeMetadata(
       title:
         "Ärzte und medizinische Termine",
       description:
-        "Finden Sie Ärzte, genehmigte Kliniken und Online-Termine mit RomDoc.",
+        "Ärzte- und Klinikverzeichnis mit Verwaltung medizinischer Termine.",
     },
   };
 

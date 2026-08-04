@@ -37,7 +37,7 @@
     "unavailable": "Photo unavailable for {doctorName}"
   },
   "HomePage": {
-    "heroTitle": "Find the right doctor",
+    "heroTitle": "Directory of doctors and clinics",
     "heroDescription": "Explore approved clinics on the map, then search for doctors by specialty, location and important attributes.",
     "citiesEyebrow": "Locations",
     "citiesTitle": "Popular cities",

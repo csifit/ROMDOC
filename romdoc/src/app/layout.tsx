@@ -68,7 +68,7 @@ export const metadata: Metadata = {
     template: "%s | RomDoc",
   },
   description:
-    "Găsește medici, clinici și programări medicale online în România.",
+    "Catalogul medicilor, clinicilor și gestionarea programărilor medicale.",
   openGraph: {
     siteName: "RomDoc",
     type: "website",

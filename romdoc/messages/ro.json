@@ -37,8 +37,8 @@
     "unavailable": "Fotografie indisponibilă pentru {doctorName}"
   },
   "HomePage": {
-    "heroTitle": "Găsește medicul potrivit în România",
-    "heroDescription": "Explorează clinicile aprobate pe hartă, apoi caută medici după specialitate, locație și atribute importante.",
+    "heroTitle": "Catalog de medici și clinici din România",
+    "heroDescription": "Găsește medici și clinici, compară informațiile disponibile și gestionează programările medicale prin RomDoc.",
     "citiesEyebrow": "Locații",
     "citiesTitle": "Orașe populare",
     "specializationsEyebrow": "Domenii medicale",
