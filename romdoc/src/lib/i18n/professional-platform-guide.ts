@@ -299,7 +299,7 @@ export const professionalPlatformGuideCopy: Record<
                 body:
                   "Contul independent folosește abonamentul RomDoc disponibil la înregistrare. Plata abonamentului și utilizarea SMS sunt fluxuri comerciale distincte.",
                 bullets: [
-                  "Abonamentul public este 12 EURO/lună sau 120 EURO/an, plus TVA aplicabilă.",
+                  "Abonamentul public este 20 EURO/lună sau 200 EURO/an, plus TVA aplicabilă.",
                   "Plata abonamentului este procesată prin fluxul de plată disponibil în cont.",
                   "SMS-urile trimise sunt calculate separat.",
                 ],
@@ -810,7 +810,7 @@ export const professionalPlatformGuideCopy: Record<
                 body:
                   "An Independent Doctor account uses the RomDoc subscription offered during registration. Subscription payment and SMS usage are separate commercial flows.",
                 bullets: [
-                  "The public subscription is 12 EURO/month or 120 EURO/year, plus applicable VAT.",
+                  "The public subscription is 20 EURO/month or 200 EURO/year, plus applicable VAT.",
                   "Subscription payment is processed through the payment flow available in the account.",
                   "Successfully sent SMS are calculated separately.",
                 ],
@@ -1321,7 +1321,7 @@ export const professionalPlatformGuideCopy: Record<
                 body:
                   "Ein unabhängiges Arztkonto nutzt das bei der Registrierung angebotene RomDoc-Abonnement. Abonnementzahlung und SMS-Nutzung sind getrennte kommerzielle Abläufe.",
                 bullets: [
-                  "Das öffentliche Abonnement kostet 12 EURO/Monat oder 120 EURO/Jahr zuzüglich anwendbarer MwSt.",
+                  "Das öffentliche Abonnement kostet 20 EURO/Monat oder 200 EURO/Jahr zuzüglich anwendbarer MwSt.",
                   "Die Zahlung erfolgt über den im Konto verfügbaren Zahlungsablauf.",
                   "Erfolgreich versendete SMS werden separat berechnet.",
                 ],
