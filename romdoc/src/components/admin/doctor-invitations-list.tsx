@@ -43,6 +43,11 @@ type DoctorInvitation = {
   accepted_at: string | null;
   expires_at: string | null;
   cancelled_at: string | null;
+  resend_count: number;
+  last_resent_at: string | null;
+  last_resend_failure_at: string | null;
+  last_resend_failure_code: string | null;
+  last_resend_failure_message: string | null;
   failure_code: string | null;
   failure_message: string | null;
   created_at: string;
@@ -60,6 +65,13 @@ type InvitationLinkResponse = {
   expiresAt?: string;
 };
 
+type InvitationResendResponse = {
+  code?: string;
+  error?: string;
+  message?: string;
+  invitation?: DoctorInvitation;
+};
+
 type DoctorInvitationsListProps = {
   refreshKey: number;
 };
@@ -74,6 +86,19 @@ type LinkCopy = {
   loading: string;
   unavailable: string;
   warning: string;
+};
+
+type ResendCopy = {
+  title: string;
+  description: string;
+  action: string;
+  sending: string;
+  success: string;
+  failed: string;
+  confirm: string;
+  count: string;
+  lastResent: string;
+  lastFailure: string;
 };
 
 const LINK_COPY: Record<"ro" | "en" | "de", LinkCopy> = {
@@ -118,6 +143,51 @@ const LINK_COPY: Record<"ro" | "en" | "de", LinkCopy> = {
   },
 };
 
+const RESEND_COPY: Record<"ro" | "en" | "de", ResendCopy> = {
+  ro: {
+    title: "Retrimite invitația",
+    description:
+      "Generează un link nou, prelungește perioada de valabilitate și trimite din nou e-mailul. Istoricul existent rămâne neschimbat.",
+    action: "Retrimite invitația",
+    sending: "Se retrimite...",
+    success: "Invitația medicului a fost retrimisă.",
+    failed: "Invitația nu a putut fi retrimisă.",
+    confirm:
+      "Retrimiți invitația acestui medic? Linkul anterior va fi înlocuit numai dacă noul e-mail este trimis cu succes.",
+    count: "Retrimiteri reușite",
+    lastResent: "Ultima retrimitere",
+    lastFailure: "Ultima eroare la retrimitere",
+  },
+  en: {
+    title: "Resend invitation",
+    description:
+      "Generate a new link, extend its validity and send the email again. Existing history remains unchanged.",
+    action: "Resend invitation",
+    sending: "Resending...",
+    success: "The doctor invitation was resent.",
+    failed: "The invitation could not be resent.",
+    confirm:
+      "Resend this doctor invitation? The previous link will be replaced only after the new email is sent successfully.",
+    count: "Successful resends",
+    lastResent: "Last resent",
+    lastFailure: "Last resend error",
+  },
+  de: {
+    title: "Einladung erneut senden",
+    description:
+      "Einen neuen Link erzeugen, die Gültigkeit verlängern und die E-Mail erneut senden. Der bestehende Verlauf bleibt unverändert.",
+    action: "Einladung erneut senden",
+    sending: "Wird erneut gesendet...",
+    success: "Die Arzteinladung wurde erneut gesendet.",
+    failed: "Die Einladung konnte nicht erneut gesendet werden.",
+    confirm:
+      "Diese Arzteinladung erneut senden? Der vorherige Link wird erst ersetzt, nachdem die neue E-Mail erfolgreich gesendet wurde.",
+    count: "Erfolgreiche Wiederholungen",
+    lastResent: "Zuletzt erneut gesendet",
+    lastFailure: "Letzter Fehler beim erneuten Senden",
+  },
+};
+
 function getStatusClasses(status: InvitationStatus) {
   switch (status) {
     case "accepted":
@@ -141,6 +211,7 @@ export default function DoctorInvitationsList({
   const locale = normalizeAppLocale(useLocale());
   const copy = getPlatformOperatorDoctors(locale);
   const linkCopy = LINK_COPY[locale];
+  const resendCopy = RESEND_COPY[locale];
   const [invitations, setInvitations] = useState<DoctorInvitation[]>([]);
   const [status, setStatus] = useState<"all" | InvitationStatus>("all");
   const [search, setSearch] = useState("");
@@ -156,6 +227,12 @@ export default function DoctorInvitationsList({
   const [linkErrors, setLinkErrors] = useState<Record<string, string>>({});
   const [loadingLinkId, setLoadingLinkId] = useState<string | null>(null);
   const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
+  const [resendingInvitationId, setResendingInvitationId] =
+    useState<string | null>(null);
+  const [resendMessages, setResendMessages] = useState<
+    Record<string, string>
+  >({});
+  const [resendErrors, setResendErrors] = useState<Record<string, string>>({});
 
   const formatDateTime = useCallback(
     (value: string | null) => {
@@ -317,6 +394,78 @@ export default function DoctorInvitationsList({
     [invitationLinks, linkCopy.unavailable]
   );
 
+  const resendInvitation = useCallback(
+    async (invitation: DoctorInvitation) => {
+      if (!window.confirm(resendCopy.confirm)) {
+        return;
+      }
+
+      setResendingInvitationId(invitation.id);
+      setResendMessages((current) => ({
+        ...current,
+        [invitation.id]: "",
+      }));
+      setResendErrors((current) => ({
+        ...current,
+        [invitation.id]: "",
+      }));
+
+      try {
+        const response = await fetch(
+          `/api/admin/doctors/invitations/${encodeURIComponent(
+            invitation.id
+          )}/resend`,
+          {
+            method: "POST",
+            cache: "no-store",
+          }
+        );
+
+        const result = (await response.json()) as InvitationResendResponse;
+
+        if (!response.ok || !result.invitation) {
+          throw new Error(result.error ?? resendCopy.failed);
+        }
+
+        setInvitations((current) =>
+          current.map((item) =>
+            item.id === invitation.id
+              ? (result.invitation as DoctorInvitation)
+              : item
+          )
+        );
+
+        setInvitationLinks((current) => {
+          const next = { ...current };
+          delete next[invitation.id];
+          return next;
+        });
+        setVisibleLinkInvitationId((current) =>
+          current === invitation.id ? null : current
+        );
+        setLinkErrors((current) => ({
+          ...current,
+          [invitation.id]: "",
+        }));
+        setResendMessages((current) => ({
+          ...current,
+          [invitation.id]: result.message ?? resendCopy.success,
+        }));
+      } catch (resendError) {
+        setResendErrors((current) => ({
+          ...current,
+          [invitation.id]:
+            resendError instanceof Error
+              ? resendError.message
+              : resendCopy.failed,
+        }));
+      } finally {
+        setResendingInvitationId(null);
+      }
+    },
+    [resendCopy.confirm, resendCopy.failed, resendCopy.success]
+  );
+
   return (
     <section className="overflow-hidden rounded-[13px] border border-gray-200 bg-white">
       <div className="border-b border-gray-200 p-[21px]">
@@ -390,6 +539,14 @@ export default function DoctorInvitationsList({
               visibleLinkInvitationId === invitation.id;
             const invitationLink = invitationLinks[invitation.id];
             const linkError = linkErrors[invitation.id];
+            const resendMessage = resendMessages[invitation.id];
+            const resendError = resendErrors[invitation.id];
+            const canResend =
+              ["sent", "expired", "failed"].includes(invitation.status) &&
+              Boolean(invitation.auth_user_id) &&
+              !invitation.accepted_at &&
+              !invitation.accepted_profile_id &&
+              !invitation.doctor_id;
             const canShowLink =
               invitation.status === "sent" &&
               Boolean(invitation.expires_at) &&
@@ -472,6 +629,14 @@ export default function DoctorInvitationsList({
                         <strong>{copy.invitations.details.accepted}:</strong>{" "}
                         {formatDateTime(invitation.accepted_at)}
                       </p>
+                      <p>
+                        <strong>{resendCopy.count}:</strong>{" "}
+                        {invitation.resend_count}
+                      </p>
+                      <p>
+                        <strong>{resendCopy.lastResent}:</strong>{" "}
+                        {formatDateTime(invitation.last_resent_at)}
+                      </p>
                     </div>
 
                     <div className="space-y-[8px]">
@@ -490,7 +655,63 @@ export default function DoctorInvitationsList({
                           {invitation.failure_message}
                         </p>
                       ) : null}
+
+                      {invitation.last_resend_failure_message ? (
+                        <p className="rounded-[13px] border border-amber-200 bg-amber-50 p-[13px] text-amber-900">
+                          <strong>{resendCopy.lastFailure}:</strong>{" "}
+                          {invitation.last_resend_failure_message}
+                          {invitation.last_resend_failure_at
+                            ? ` (${formatDateTime(
+                                invitation.last_resend_failure_at
+                              )})`
+                            : ""}
+                        </p>
+                      ) : null}
                     </div>
+
+                    {canResend ? (
+                      <div className="sm:col-span-2 rounded-[13px] border border-blue-200 bg-blue-50 p-[21px]">
+                        <div className="flex flex-col gap-[13px] sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="font-semibold text-blue-950">
+                              {resendCopy.title}
+                            </p>
+                            <p className="mt-[5px] text-sm leading-6 text-blue-900">
+                              {resendCopy.description}
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            disabled={resendingInvitationId === invitation.id}
+                            onClick={() => void resendInvitation(invitation)}
+                            className="romdoc-focus-ring shrink-0 rounded-[13px] bg-[#036661] px-[21px] py-[13px] text-sm font-semibold text-white hover:bg-[#ff2800] disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {resendingInvitationId === invitation.id
+                              ? resendCopy.sending
+                              : resendCopy.action}
+                          </button>
+                        </div>
+
+                        {resendMessage ? (
+                          <p
+                            role="status"
+                            className="mt-[13px] rounded-[13px] border border-green-200 bg-green-50 p-[13px] text-green-800"
+                          >
+                            {resendMessage}
+                          </p>
+                        ) : null}
+
+                        {resendError ? (
+                          <p
+                            role="alert"
+                            className="mt-[13px] rounded-[13px] border border-red-200 bg-red-50 p-[13px] text-red-800"
+                          >
+                            {resendError}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
 
                     {canShowLink ? (
                       <div className="sm:col-span-2 rounded-[13px] border border-[#036661]/20 bg-white p-[21px]">

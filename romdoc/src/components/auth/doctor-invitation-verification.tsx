@@ -7,8 +7,11 @@ import {
   useRouter,
 } from "next/navigation";
 
+type DoctorInvitationOtpType = "invite" | "magiclink";
+
 type DoctorInvitationVerificationProps = {
   tokenHash: string;
+  otpType: DoctorInvitationOtpType;
 };
 
 type VerifyResponse = {
@@ -18,69 +21,49 @@ type VerifyResponse = {
 
 export default function DoctorInvitationVerification({
   tokenHash,
+  otpType,
 }: DoctorInvitationVerificationProps) {
-  const router =
-    useRouter();
-
-  const [error, setError] =
-    useState<string | null>(
-      null
-    );
-
-  const [
-    isVerifying,
-    setIsVerifying,
-  ] = useState(false);
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   async function verifyInvitation() {
     setError(null);
     setIsVerifying(true);
 
     try {
-      const response =
-        await fetch(
-          "/api/auth/doctor-invitation/verify",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body:
-              JSON.stringify({
-                tokenHash,
-              }),
-          }
-        );
+      const response = await fetch(
+        "/api/auth/doctor-invitation/verify",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            tokenHash,
+            otpType,
+          }),
+        }
+      );
 
-      const result =
-        (await response.json()) as
-          VerifyResponse;
+      const result = (await response.json()) as VerifyResponse;
 
       if (!response.ok) {
         throw new Error(
-          result.error ??
-            "Invitația nu a putut fi verificată."
+          result.error ?? "Invitația nu a putut fi verificată."
         );
       }
 
-      router.replace(
-        result.next ??
-          "/auth/doctor-invitation"
-      );
-
+      router.replace(result.next ?? "/auth/doctor-invitation");
       router.refresh();
     } catch (verifyError) {
       setError(
-        verifyError instanceof
-          Error
+        verifyError instanceof Error
           ? verifyError.message
           : "Invitația nu a putut fi verificată."
       );
     } finally {
-      setIsVerifying(
-        false
-      );
+      setIsVerifying(false);
     }
   }
 
@@ -113,12 +96,8 @@ export default function DoctorInvitationVerification({
 
       <button
         type="button"
-        onClick={
-          verifyInvitation
-        }
-        disabled={
-          isVerifying
-        }
+        onClick={verifyInvitation}
+        disabled={isVerifying}
         className="romdoc-focus-ring mt-7 w-full rounded-xl bg-[#036661] px-5 py-3 font-semibold text-white transition-colors hover:bg-[#ff2800] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isVerifying

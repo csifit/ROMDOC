@@ -4,8 +4,9 @@ import {
 
 import DoctorInvitationVerification from "@/components/auth/doctor-invitation-verification";
 
-export const dynamic =
-  "force-dynamic";
+export const dynamic = "force-dynamic";
+
+type DoctorInvitationOtpType = "invite" | "magiclink";
 
 type DoctorInvitationVerifyPageProps = {
   searchParams: Promise<{
@@ -17,33 +18,27 @@ type DoctorInvitationVerifyPageProps = {
 export default async function DoctorInvitationVerifyPage({
   searchParams,
 }: DoctorInvitationVerifyPageProps) {
-  const params =
-    await searchParams;
+  const params = await searchParams;
 
   const tokenHash =
-    typeof params.token_hash ===
-      "string"
-      ? params.token_hash
-          .trim()
-          .slice(0, 1000)
+    typeof params.token_hash === "string"
+      ? params.token_hash.trim().slice(0, 1000)
       : "";
 
-  if (
-    !tokenHash ||
-    params.type !==
-      "invite"
-  ) {
-    redirect(
-      "/login?error=invalid-doctor-invitation"
-    );
+  const otpType: DoctorInvitationOtpType | null =
+    params.type === "invite" || params.type === "magiclink"
+      ? params.type
+      : null;
+
+  if (!tokenHash || !otpType) {
+    redirect("/login?error=invalid-doctor-invitation");
   }
 
   return (
     <main className="min-h-screen bg-[#F0EEE9] px-4 py-12 sm:px-6">
       <DoctorInvitationVerification
-        tokenHash={
-          tokenHash
-        }
+        tokenHash={tokenHash}
+        otpType={otpType}
       />
     </main>
   );

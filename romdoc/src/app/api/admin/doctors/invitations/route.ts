@@ -52,6 +52,11 @@ type DoctorInvitationRow = {
   accepted_at: string | null;
   expires_at: string | null;
   cancelled_at: string | null;
+  resend_count: number;
+  last_resent_at: string | null;
+  last_resend_failure_at: string | null;
+  last_resend_failure_code: string | null;
+  last_resend_failure_message: string | null;
   failure_code: string | null;
   failure_message: string | null;
   created_at: string;
@@ -156,6 +161,11 @@ export async function GET(request: NextRequest): Promise<Response> {
       accepted_at,
       expires_at,
       cancelled_at,
+      resend_count,
+      last_resent_at,
+      last_resend_failure_at,
+      last_resend_failure_code,
+      last_resend_failure_message,
       failure_code,
       failure_message,
       created_at,
@@ -537,6 +547,11 @@ export async function POST(request: NextRequest): Promise<Response> {
       auth_user_id,
       sent_at,
       expires_at,
+      resend_count,
+      last_resent_at,
+      last_resend_failure_at,
+      last_resend_failure_code,
+      last_resend_failure_message,
       created_at,
       updated_at
     `)
