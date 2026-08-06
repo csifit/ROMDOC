@@ -110,6 +110,35 @@ function hasTranslation(
   );
 }
 
+function formatSitemapDate(
+  value:
+    | string
+    | Date
+    | null
+    | undefined
+): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const date =
+    value instanceof Date
+      ? value
+      : new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return undefined;
+  }
+
+  return date
+    .toISOString()
+    .slice(0, 10);
+}
+
 function createLocalizedEntries({
   paths,
   lastModified,
@@ -152,13 +181,16 @@ function createLocalizedEntries({
       );
   }
 
+  const normalizedLastModified =
+    formatSitemapDate(
+      lastModified
+    );
+
   const shared = {
-    ...(lastModified
+    ...(normalizedLastModified
       ? {
           lastModified:
-            new Date(
-              lastModified
-            ),
+            normalizedLastModified,
         }
       : {}),
     changeFrequency,
