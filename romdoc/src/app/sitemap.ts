@@ -13,7 +13,6 @@ type TranslationRow = {
 type DoctorRow = {
   id: string;
   slug: string;
-  updated_at: string | null;
   doctor_translations:
     TranslationRow[] | null;
 };
@@ -21,7 +20,6 @@ type DoctorRow = {
 type SpecialtyRow = {
   id: string;
   slug: string;
-  updated_at: string | null;
   specialty_translations:
     TranslationRow[] | null;
 };
@@ -29,7 +27,6 @@ type SpecialtyRow = {
 type CityRow = {
   id: string;
   slug: string;
-  updated_at: string | null;
   city_translations:
     TranslationRow[] | null;
 };
@@ -110,96 +107,13 @@ function hasTranslation(
   );
 }
 
-function formatSitemapDate(
-  value:
-    | string
-    | Date
-    | null
-    | undefined
-): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-
-  const date =
-    value instanceof Date
-      ? value
-      : new Date(value);
-
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
-    return undefined;
-  }
-
-  return date
-    .toISOString()
-    .slice(0, 10);
-}
-
 function createLocalizedEntries({
   paths,
-  lastModified,
-  changeFrequency,
-  priority,
   includeGerman = true,
 }: {
   paths: LocalizedPaths;
-  lastModified?:
-    | string
-    | Date
-    | null;
-  changeFrequency:
-    MetadataRoute.Sitemap[number]["changeFrequency"];
-  priority: number;
   includeGerman?: boolean;
 }): MetadataRoute.Sitemap {
-  const languages: Record<
-    string,
-    string
-  > = {
-    ro:
-      absoluteUrl(
-        paths.ro
-      ),
-    en:
-      absoluteUrl(
-        paths.en
-      ),
-    "x-default":
-      absoluteUrl(
-        paths.ro
-      ),
-  };
-
-  if (includeGerman) {
-    languages.de =
-      absoluteUrl(
-        paths.de
-      );
-  }
-
-  const normalizedLastModified =
-    formatSitemapDate(
-      lastModified
-    );
-
-  const shared = {
-    ...(normalizedLastModified
-      ? {
-          lastModified:
-            normalizedLastModified,
-        }
-      : {}),
-    changeFrequency,
-    priority,
-    alternates: {
-      languages,
-    },
-  };
-
   const entries:
     MetadataRoute.Sitemap = [
       {
@@ -207,14 +121,12 @@ function createLocalizedEntries({
           absoluteUrl(
             paths.ro
           ),
-        ...shared,
       },
       {
         url:
           absoluteUrl(
             paths.en
           ),
-        ...shared,
       },
     ];
 
@@ -224,7 +136,6 @@ function createLocalizedEntries({
         absoluteUrl(
           paths.de
         ),
-      ...shared,
     });
   }
 
@@ -250,7 +161,6 @@ sitemap(): Promise<
       .select(`
         id,
         slug,
-        updated_at,
         doctor_translations (
           locale
         )
@@ -272,7 +182,6 @@ sitemap(): Promise<
       .select(`
         id,
         slug,
-        updated_at,
         specialty_translations (
           locale
         )
@@ -292,7 +201,6 @@ sitemap(): Promise<
       .select(`
         id,
         slug,
-        updated_at,
         city_translations (
           locale
         )
@@ -555,9 +463,6 @@ sitemap(): Promise<
           en: "/en",
           de: "/de",
         },
-        changeFrequency:
-          "daily",
-        priority: 1,
       }),
 
       ...createLocalizedEntries({
@@ -569,9 +474,6 @@ sitemap(): Promise<
           de:
             "/de/aerzte",
         },
-        changeFrequency:
-          "daily",
-        priority: 0.9,
       }),
 
       ...createLocalizedEntries({
@@ -583,9 +485,6 @@ sitemap(): Promise<
           de:
             "/de/fachrichtungen",
         },
-        changeFrequency:
-          "weekly",
-        priority: 0.8,
       }),
 
       ...createLocalizedEntries({
@@ -597,9 +496,6 @@ sitemap(): Promise<
           de:
             "/de/patientenratgeber",
         },
-        changeFrequency:
-          "monthly",
-        priority: 0.65,
       }),
 
       ...createLocalizedEntries({
@@ -611,9 +507,6 @@ sitemap(): Promise<
           de:
             "/de/ratgeber-aerzte-personal",
         },
-        changeFrequency:
-          "monthly",
-        priority: 0.6,
       }),
     ];
 
@@ -636,11 +529,6 @@ sitemap(): Promise<
           de:
             `/de/arzt/${slug}`,
         },
-        lastModified:
-          doctor.updated_at,
-        changeFrequency:
-          "weekly",
-        priority: 0.8,
         includeGerman:
           hasTranslation(
             doctor
@@ -670,11 +558,6 @@ sitemap(): Promise<
           de:
             `/de/aerzte/${slug}`,
         },
-        lastModified:
-          specialty.updated_at,
-        changeFrequency:
-          "weekly",
-        priority: 0.7,
         includeGerman:
           hasTranslation(
             specialty
@@ -722,22 +605,6 @@ sitemap(): Promise<
         city.slug
       );
 
-    const latestUpdate =
-      [
-        specialty
-          .updated_at,
-        city.updated_at,
-      ]
-        .filter(
-          (
-            value
-          ): value is string =>
-            Boolean(value)
-        )
-        .sort()
-        .at(-1) ??
-      null;
-
     entries.push(
       ...createLocalizedEntries({
         paths: {
@@ -748,11 +615,6 @@ sitemap(): Promise<
           de:
             `/de/aerzte/${specialtySlug}/${citySlug}`,
         },
-        lastModified:
-          latestUpdate,
-        changeFrequency:
-          "daily",
-        priority: 0.75,
         includeGerman:
           hasTranslation(
             specialty
