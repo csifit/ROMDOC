@@ -23,6 +23,12 @@ type SetupResponse = {
 
 type ComplimentarySubscriptionSetupProps = {
   complimentaryEndsAt: string;
+  monthlyPrice:
+    | string
+    | null;
+  yearlyPrice:
+    | string
+    | null;
 };
 
 type Copy = {
@@ -31,6 +37,7 @@ type Copy = {
   monthly: string;
   yearly: string;
   firstBilling: string;
+  finalPriceNote: string;
   button: string;
   opening: string;
   genericError: string;
@@ -49,6 +56,8 @@ const COPY: Record<
     yearly: "Anual",
     firstBilling:
       "Prima perioadă de facturare începe după",
+    finalPriceNote:
+      "Stripe va afișa suma finală și taxele aplicabile înainte de confirmare.",
     button:
       "Configurează plata în Stripe",
     opening:
@@ -65,6 +74,8 @@ const COPY: Record<
     yearly: "Yearly",
     firstBilling:
       "The first billing period begins after",
+    finalPriceNote:
+      "Stripe will show the final amount and any applicable taxes before confirmation.",
     button:
       "Set up payment in Stripe",
     opening:
@@ -81,6 +92,8 @@ const COPY: Record<
     yearly: "Jährlich",
     firstBilling:
       "Die erste Abrechnungsperiode beginnt nach",
+    finalPriceNote:
+      "Stripe zeigt den Endbetrag und die anwendbaren Steuern vor der Bestätigung an.",
     button:
       "Zahlung in Stripe einrichten",
     opening:
@@ -119,6 +132,8 @@ function getDateLocale(
 
 export default function ComplimentarySubscriptionSetup({
   complimentaryEndsAt,
+  monthlyPrice,
+  yearlyPrice,
 }: ComplimentarySubscriptionSetupProps) {
   const locale =
     useLocale();
@@ -253,6 +268,9 @@ export default function ComplimentarySubscriptionSetup({
           ].join(" ")}
         >
           {copy.monthly}
+          {monthlyPrice
+            ? ` · ${monthlyPrice}`
+            : ""}
         </button>
 
         <button
@@ -275,8 +293,15 @@ export default function ComplimentarySubscriptionSetup({
           ].join(" ")}
         >
           {copy.yearly}
+          {yearlyPrice
+            ? ` · ${yearlyPrice}`
+            : ""}
         </button>
       </div>
+
+      <p className="mt-3 text-xs leading-5 text-gray-500">
+        {copy.finalPriceNote}
+      </p>
 
       <p className="mt-4 text-sm leading-6 text-gray-600">
         {copy.firstBilling}{" "}

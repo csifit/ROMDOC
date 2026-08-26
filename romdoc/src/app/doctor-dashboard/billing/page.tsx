@@ -14,6 +14,9 @@ import {
   getStoredAppLocale,
 } from "@/lib/i18n/server-app-locale";
 import {
+  getStripe,
+} from "@/lib/stripe";
+import {
   createAdminClient,
 } from "@/lib/supabase/admin";
 import {
@@ -295,6 +298,65 @@ function getDateLocale(
   }
 
   return "ro-RO";
+}
+
+function formatStripeAmount(
+  unitAmount: number,
+  currency: string,
+  locale: string
+) {
+  return new Intl.NumberFormat(
+    getDateLocale(locale),
+    {
+      style: "currency",
+      currency:
+        currency.toUpperCase(),
+    }
+  ).format(
+    unitAmount / 100
+  );
+}
+
+async function getStripePriceLabel(
+  priceId:
+    | string
+    | undefined,
+  locale: string
+) {
+  if (!priceId) {
+    return null;
+  }
+
+  try {
+    const price =
+      await getStripe()
+        .prices.retrieve(
+          priceId
+        );
+
+    if (
+      !price.active ||
+      price.type !==
+        "recurring" ||
+      price.unit_amount ===
+        null
+    ) {
+      return null;
+    }
+
+    return formatStripeAmount(
+      price.unit_amount,
+      price.currency,
+      locale
+    );
+  } catch (error) {
+    console.error(
+      `Doctor billing page Stripe price lookup failed for ${priceId}:`,
+      error
+    );
+
+    return null;
+  }
 }
 
 function formatDate(
@@ -603,6 +665,34 @@ export default async function DoctorBillingPage() {
     ).getTime() > Date.now() &&
     !hasStripeSubscription;
 
+  let monthlyPriceLabel:
+    | string
+    | null = null;
+
+  let yearlyPriceLabel:
+    | string
+    | null = null;
+
+  if (
+    canSetUpComplimentarySubscription
+  ) {
+    [
+      monthlyPriceLabel,
+      yearlyPriceLabel,
+    ] = await Promise.all([
+      getStripePriceLabel(
+        process.env
+          .STRIPE_DOCTOR_PRICE_ID,
+        locale
+      ),
+      getStripePriceLabel(
+        process.env
+          .STRIPE_DOCTOR_YEARLY_PRICE_ID,
+        locale
+      ),
+    ]);
+  }
+
   const displayName = [
     profile.first_name,
     profile.last_name,
@@ -860,6 +950,12 @@ export default async function DoctorBillingPage() {
                     <ComplimentarySubscriptionSetup
                       complimentaryEndsAt={
                         complimentaryAccess.ends_at
+                      }
+                      monthlyPrice={
+                        monthlyPriceLabel
+                      }
+                      yearlyPrice={
+                        yearlyPriceLabel
                       }
                     />
                   </div>
