@@ -1,306 +1,240 @@
-import type { AppLocale } from "@/lib/i18n/app-locale";
+import type {
+  AppLocale,
+} from "@/lib/i18n/app-locale";
 
 type SmsUsageOverviewCopy = {
+  eyebrow: string;
+  title: string;
+  description: string;
   currentMonth: string;
   previousMonth: string;
-  provisional: string;
-  closed: string;
-  currency: string;
+  currentBadge: string;
+  previousBadge: string;
   sent: string;
-  invoiced: string;
-  uninvoiced: string;
-  estimatedNet: string;
-  uninvoicedNet: string;
-  net: string;
-  vat: string;
-  gross: string;
-  paymentStatus: string;
-  invoiceStatus: string;
+  delivered: string;
+  failed: string;
+  skipped: string;
+  confirmations: string;
+  reminders: string;
+  deliveryNote: string;
   noActivity: string;
-  payment: Record<string, string>;
-  invoice: Record<string, string>;
 };
 
-const COPY: Record<AppLocale, SmsUsageOverviewCopy> = {
+const COPY: Record<
+  AppLocale,
+  SmsUsageOverviewCopy
+> = {
   ro: {
+    eyebrow: "SMS",
+    title: "Utilizare SMS",
+    description:
+      "Rezumat operațional al notificărilor SMS trimise pentru programările tale. Aceste date sunt informative și nu reprezintă costuri sau facturare.",
     currentMonth: "Luna curentă",
     previousMonth: "Luna precedentă",
-    provisional: "Date provizorii",
-    closed: "Lună închisă",
-    currency: "Monedă",
-    sent: "SMS trimise",
-    invoiced: "Facturate",
-    uninvoiced: "Nefacturate",
-    estimatedNet: "Cost net estimat",
-    uninvoicedNet: "Net nefacturat",
-    net: "Net",
-    vat: "TVA",
-    gross: "Total cu TVA",
-    paymentStatus: "Plată",
-    invoiceStatus: "Factură",
-    noActivity: "Fără activitate SMS în această lună.",
-    payment: {
-      unpaid: "Neplătit",
-      checkout_open: "Plată în curs",
-      paid: "Plătit",
-      failed: "Plată eșuată",
-      cancelled: "Anulat",
-      refunded: "Rambursat",
-      not_applicable: "Nu se aplică",
-    },
-    invoice: {
-      not_issued: "Neemisă",
-      issued: "Emisă",
-      cancelled: "Anulată",
-      not_applicable: "Nu se aplică",
-    },
+    currentBadge: "În desfășurare",
+    previousBadge: "Istoric",
+    sent: "Trimise",
+    delivered: "Livrate",
+    failed: "Eșuate",
+    skipped: "Omise",
+    confirmations: "Confirmări",
+    reminders: "Reamintiri 24h",
+    deliveryNote:
+      "Numărul de SMS livrate se bazează pe rapoartele de livrare primite de la furnizor și poate fi mai mic decât numărul de SMS trimise.",
+    noActivity:
+      "Nu există activitate SMS în această perioadă.",
   },
   en: {
+    eyebrow: "SMS",
+    title: "SMS usage",
+    description:
+      "Operational summary of SMS notifications sent for your appointments. These figures are informational and do not represent costs or billing.",
     currentMonth: "Current month",
     previousMonth: "Previous month",
-    provisional: "Provisional data",
-    closed: "Closed month",
-    currency: "Currency",
-    sent: "SMS sent",
-    invoiced: "Invoiced",
-    uninvoiced: "Uninvoiced",
-    estimatedNet: "Estimated net cost",
-    uninvoicedNet: "Uninvoiced net",
-    net: "Net",
-    vat: "VAT",
-    gross: "Total including VAT",
-    paymentStatus: "Payment",
-    invoiceStatus: "Invoice",
-    noActivity: "No SMS activity in this month.",
-    payment: {
-      unpaid: "Unpaid",
-      checkout_open: "Payment in progress",
-      paid: "Paid",
-      failed: "Payment failed",
-      cancelled: "Cancelled",
-      refunded: "Refunded",
-      not_applicable: "Not applicable",
-    },
-    invoice: {
-      not_issued: "Not issued",
-      issued: "Issued",
-      cancelled: "Cancelled",
-      not_applicable: "Not applicable",
-    },
+    currentBadge: "In progress",
+    previousBadge: "History",
+    sent: "Sent",
+    delivered: "Delivered",
+    failed: "Failed",
+    skipped: "Skipped",
+    confirmations: "Confirmations",
+    reminders: "24h reminders",
+    deliveryNote:
+      "Delivered SMS counts are based on delivery reports received from the provider and can be lower than the number sent.",
+    noActivity:
+      "There is no SMS activity in this period.",
   },
   de: {
+    eyebrow: "SMS",
+    title: "SMS-Nutzung",
+    description:
+      "Operative Übersicht der SMS-Benachrichtigungen für deine Termine. Diese Angaben dienen nur zur Information und stellen keine Kosten oder Abrechnung dar.",
     currentMonth: "Aktueller Monat",
     previousMonth: "Vorheriger Monat",
-    provisional: "Vorläufige Daten",
-    closed: "Abgeschlossener Monat",
-    currency: "Währung",
-    sent: "Gesendete SMS",
-    invoiced: "Abgerechnet",
-    uninvoiced: "Nicht abgerechnet",
-    estimatedNet: "Geschätzte Nettokosten",
-    uninvoicedNet: "Nicht abgerechnet netto",
-    net: "Netto",
-    vat: "MwSt.",
-    gross: "Gesamt inkl. MwSt.",
-    paymentStatus: "Zahlung",
-    invoiceStatus: "Rechnung",
-    noActivity: "Keine SMS-Aktivität in diesem Monat.",
-    payment: {
-      unpaid: "Unbezahlt",
-      checkout_open: "Zahlung läuft",
-      paid: "Bezahlt",
-      failed: "Zahlung fehlgeschlagen",
-      cancelled: "Storniert",
-      refunded: "Erstattet",
-      not_applicable: "Nicht zutreffend",
-    },
-    invoice: {
-      not_issued: "Nicht ausgestellt",
-      issued: "Ausgestellt",
-      cancelled: "Storniert",
-      not_applicable: "Nicht zutreffend",
-    },
+    currentBadge: "Laufend",
+    previousBadge: "Verlauf",
+    sent: "Gesendet",
+    delivered: "Zugestellt",
+    failed: "Fehlgeschlagen",
+    skipped: "Übersprungen",
+    confirmations: "Bestätigungen",
+    reminders: "24h-Erinnerungen",
+    deliveryNote:
+      "Die Zahl der zugestellten SMS basiert auf den vom Anbieter empfangenen Zustellberichten und kann niedriger sein als die Zahl der gesendeten SMS.",
+    noActivity:
+      "In diesem Zeitraum gibt es keine SMS-Aktivität.",
   },
 };
 
-type CurrentMonthOverview = {
+type SmsMonthOverview = {
   label: string;
-  currency: string;
   sent: number;
-  invoiced: number;
-  uninvoiced: number;
-  estimatedNetFormatted: string;
-  uninvoicedNetFormatted: string;
-};
-
-type PreviousMonthOverview = {
-  label: string;
-  currency: string;
-  hasActivity: boolean;
-  smsCount: number;
-  netFormatted: string;
-  vatFormatted: string;
-  grossFormatted: string;
-  paymentStatus: string;
-  invoiceStatus: string;
+  delivered: number;
+  failed: number;
+  skipped: number;
+  confirmations: number;
+  reminders: number;
 };
 
 type DoctorSmsUsageOverviewProps = {
   locale: AppLocale;
-  eyebrow: string;
-  title: string;
-  description: string;
-  current: CurrentMonthOverview;
-  previous: PreviousMonthOverview;
+  current: SmsMonthOverview;
+  previous: SmsMonthOverview;
 };
-
-function statusClasses(kind: "provisional" | "closed") {
-  return kind === "provisional"
-    ? "border-amber-200 bg-amber-50 text-amber-900"
-    : "border-emerald-200 bg-emerald-50 text-emerald-800";
-}
 
 function MiniStat({
   label,
   value,
 }: {
   label: string;
-  value: string | number;
+  value: number;
 }) {
   return (
-    <div className="rounded-xl bg-gray-50 p-4">
+    <div className="rounded-[13px] bg-gray-50 p-[13px]">
       <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
         {label}
       </p>
-      <p className="mt-2 text-2xl font-bold text-gray-900">{value}</p>
+
+      <p className="mt-[8px] text-2xl font-bold text-gray-900">
+        {value}
+      </p>
     </div>
+  );
+}
+
+function MonthCard({
+  title,
+  badge,
+  data,
+  copy,
+}: {
+  title: string;
+  badge: string;
+  data: SmsMonthOverview;
+  copy: SmsUsageOverviewCopy;
+}) {
+  const hasActivity =
+    data.sent > 0 ||
+    data.delivered > 0 ||
+    data.failed > 0 ||
+    data.skipped > 0;
+
+  return (
+    <article className="rounded-[21px] border border-gray-200 p-[21px]">
+      <div className="flex flex-wrap items-start justify-between gap-[13px]">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            {title}
+          </p>
+
+          <h3 className="mt-[5px] text-lg font-bold capitalize text-gray-900">
+            {data.label}
+          </h3>
+        </div>
+
+        <span className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-[13px] py-[5px] text-xs font-semibold text-gray-700">
+          {badge}
+        </span>
+      </div>
+
+      {hasActivity ? (
+        <div className="mt-[21px] grid gap-[13px] sm:grid-cols-2 xl:grid-cols-3">
+          <MiniStat
+            label={copy.sent}
+            value={data.sent}
+          />
+          <MiniStat
+            label={copy.delivered}
+            value={data.delivered}
+          />
+          <MiniStat
+            label={copy.failed}
+            value={data.failed}
+          />
+          <MiniStat
+            label={copy.skipped}
+            value={data.skipped}
+          />
+          <MiniStat
+            label={copy.confirmations}
+            value={data.confirmations}
+          />
+          <MiniStat
+            label={copy.reminders}
+            value={data.reminders}
+          />
+        </div>
+      ) : (
+        <div className="mt-[21px] rounded-[13px] border border-dashed border-gray-300 bg-gray-50 p-[21px] text-sm text-gray-600">
+          {copy.noActivity}
+        </div>
+      )}
+    </article>
   );
 }
 
 export default function DoctorSmsUsageOverview({
   locale,
-  eyebrow,
-  title,
-  description,
   current,
   previous,
 }: DoctorSmsUsageOverviewProps) {
   const copy = COPY[locale];
-  const paymentLabel =
-    copy.payment[previous.paymentStatus] ?? previous.paymentStatus;
-  const invoiceLabel =
-    copy.invoice[previous.invoiceStatus] ?? previous.invoiceStatus;
 
   return (
-    <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+    <section className="mt-[34px] rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
       <div>
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#036661]">
-          {eyebrow}
+          {copy.eyebrow}
         </p>
-        <h2 className="mt-2 text-xl font-bold text-gray-900">{title}</h2>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-          {description}
+
+        <h2 className="mt-[8px] text-xl font-bold text-gray-900">
+          {copy.title}
+        </h2>
+
+        <p className="mt-[8px] max-w-3xl text-sm leading-6 text-gray-600">
+          {copy.description}
         </p>
       </div>
 
-      <div className="mt-6 grid gap-5 xl:grid-cols-2">
-        <article className="rounded-2xl border border-gray-200 p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                {copy.currentMonth}
-              </p>
-              <h3 className="mt-1 text-lg font-bold capitalize text-gray-900">
-                {current.label}
-              </h3>
-            </div>
-            <span
-              className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusClasses(
-                "provisional"
-              )}`}
-            >
-              {copy.provisional}
-            </span>
-          </div>
+      <div className="mt-[21px] grid gap-[21px] xl:grid-cols-2">
+        <MonthCard
+          title={copy.currentMonth}
+          badge={copy.currentBadge}
+          data={current}
+          copy={copy}
+        />
 
-          <p className="mt-2 text-xs text-gray-500">
-            {copy.currency}: {current.currency}
-          </p>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <MiniStat label={copy.sent} value={current.sent} />
-            <MiniStat label={copy.invoiced} value={current.invoiced} />
-            <MiniStat label={copy.uninvoiced} value={current.uninvoiced} />
-            <MiniStat
-              label={copy.estimatedNet}
-              value={current.estimatedNetFormatted}
-            />
-          </div>
-
-          <p className="mt-4 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-900">
-            <span className="font-semibold">{copy.uninvoicedNet}:</span>{" "}
-            {current.uninvoicedNetFormatted}
-          </p>
-        </article>
-
-        <article className="rounded-2xl border border-gray-200 p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                {copy.previousMonth}
-              </p>
-              <h3 className="mt-1 text-lg font-bold capitalize text-gray-900">
-                {previous.label}
-              </h3>
-            </div>
-            <span
-              className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusClasses(
-                "closed"
-              )}`}
-            >
-              {copy.closed}
-            </span>
-          </div>
-
-          <p className="mt-2 text-xs text-gray-500">
-            {copy.currency}: {previous.currency}
-          </p>
-
-          {previous.hasActivity ? (
-            <>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <MiniStat label={copy.sent} value={previous.smsCount} />
-                <MiniStat label={copy.net} value={previous.netFormatted} />
-                <MiniStat label={copy.vat} value={previous.vatFormatted} />
-                <MiniStat label={copy.gross} value={previous.grossFormatted} />
-              </div>
-
-              <dl className="mt-4 grid gap-3 rounded-xl bg-gray-50 p-4 text-sm sm:grid-cols-2">
-                <div>
-                  <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    {copy.paymentStatus}
-                  </dt>
-                  <dd className="mt-1 font-semibold text-gray-900">
-                    {paymentLabel}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    {copy.invoiceStatus}
-                  </dt>
-                  <dd className="mt-1 font-semibold text-gray-900">
-                    {invoiceLabel}
-                  </dd>
-                </div>
-              </dl>
-            </>
-          ) : (
-            <div className="mt-5 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm text-gray-600">
-              {copy.noActivity}
-            </div>
-          )}
-        </article>
+        <MonthCard
+          title={copy.previousMonth}
+          badge={copy.previousBadge}
+          data={previous}
+          copy={copy}
+        />
       </div>
+
+      <p className="mt-[13px] text-xs leading-5 text-gray-500">
+        {copy.deliveryNote}
+      </p>
     </section>
   );
 }
