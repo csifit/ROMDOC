@@ -162,6 +162,7 @@ function assertQuery(error: unknown, label: string) {
       typeof error === "object" && error !== null && "message" in error
         ? String((error as { message?: unknown }).message ?? label)
         : label;
+
     throw new Error(`${label}: ${message}`);
   }
 }
@@ -242,12 +243,12 @@ export async function loadAdminContractManagementData(
     admin
       .from("client_billing_terms")
       .select(
-        "id, client_type, doctor_id, clinic_organization_id, subscription_unit_price, sms_unit_price, currency, vat_rate, effective_from, effective_until, updated_at"
+        "id, client_type, doctor_id, clinic_organization_id, subscription_unit_price, currency, vat_rate, effective_from, effective_until, updated_at"
       ),
     admin
       .from("clinic_billing_settings")
       .select(
-        "clinic_doctor_monthly_price_ron, sms_unit_price_ron, vat_rate, billing_currency"
+        "clinic_doctor_monthly_price_ron, vat_rate, billing_currency"
       )
       .eq("id", 1)
       .maybeSingle(),
@@ -257,7 +258,10 @@ export async function loadAdminContractManagementData(
   assertQuery(packagesResult.error, "Contract packages query failed");
   assertQuery(linksResult.error, "Contract package documents query failed");
   assertQuery(doctorsResult.error, "Independent Doctor clients query failed");
-  assertQuery(organizationsResult.error, "Clinic Organisation clients query failed");
+  assertQuery(
+    organizationsResult.error,
+    "Clinic Organisation clients query failed"
+  );
   assertQuery(
     organizationBillingResult.error,
     "Clinic Organisation billing email query failed"
@@ -271,6 +275,7 @@ export async function loadAdminContractManagementData(
   assertQuery(billingSettingsResult.error, "Global billing settings query failed");
 
   const doctorRows = (doctorsResult.data ?? []) as Row[];
+
   const profileIds = doctorRows
     .map((doctor) => String(doctor.profile_id ?? ""))
     .filter(Boolean);
@@ -306,6 +311,7 @@ export async function loadAdminContractManagementData(
       })
       .map((doctor) => {
         const profile = profileMap.get(String(doctor.profile_id));
+
         return {
           id: String(doctor.id),
           clientType: "independent_doctor" as const,
@@ -358,10 +364,15 @@ export async function loadAdminContractManagementData(
       : null,
   }));
 
-  const linksByPackage = new Map<string, AdminContractPackageDocument[]>();
+  const linksByPackage = new Map<
+    string,
+    AdminContractPackageDocument[]
+  >();
+
   for (const row of (linksResult.data ?? []) as Row[]) {
     const packageId = String(row.package_id);
     const current = linksByPackage.get(packageId) ?? [];
+
     current.push({
       documentId: String(row.document_id),
       displayOrder: Number(row.display_order),
@@ -369,6 +380,7 @@ export async function loadAdminContractManagementData(
       sectionLabel:
         typeof row.section_label === "string" ? row.section_label : null,
     });
+
     linksByPackage.set(packageId, current);
   }
 
@@ -397,13 +409,17 @@ export async function loadAdminContractManagementData(
     ),
   }));
 
-  const packageMap = new Map(packages.map((item) => [item.id, item]));
+  const packageMap = new Map(
+    packages.map((item) => [item.id, item])
+  );
+
   const acceptanceMap = new Map(
     ((acceptancesResult.data ?? []) as Row[]).map((row) => [
       String(row.assignment_id),
       row,
     ])
   );
+
   const artifactMap = new Map(
     ((artifactsResult.data ?? []) as Row[]).map((row) => [
       String(row.acceptance_id),
@@ -415,14 +431,18 @@ export async function loadAdminContractManagementData(
     string,
     { sent: number; failed: number }
   >();
+
   for (const row of (deliveriesResult.data ?? []) as Row[]) {
     const assignmentId = String(row.assignment_id);
+
     const current = deliveryCounts.get(assignmentId) ?? {
       sent: 0,
       failed: 0,
     };
+
     if (row.status === "sent") current.sent += 1;
     if (row.status === "failed") current.failed += 1;
+
     deliveryCounts.set(assignmentId, current);
   }
 
@@ -433,14 +453,17 @@ export async function loadAdminContractManagementData(
       row.client_type === "clinic_organization"
         ? "clinic_organization"
         : "independent_doctor";
+
     const clientId = String(
       clientType === "clinic_organization"
         ? row.clinic_organization_id
         : row.doctor_id
     );
+
     const client = clientMap.get(`${clientType}:${clientId}`);
     const contractPackage = packageMap.get(String(row.package_id));
     const acceptance = acceptanceMap.get(String(row.id));
+
     const counts = deliveryCounts.get(String(row.id)) ?? {
       sent: 0,
       failed: 0,
@@ -479,12 +502,15 @@ export async function loadAdminContractManagementData(
     };
   });
 
-  const assignmentMap = new Map(assignments.map((item) => [item.id, item]));
+  const assignmentMap = new Map(
+    assignments.map((item) => [item.id, item])
+  );
 
   const acceptances: AdminContractAcceptanceLog[] = (
     (acceptancesResult.data ?? []) as Row[]
   ).map((row) => {
     const assignment = assignmentMap.get(String(row.assignment_id));
+
     return {
       id: String(row.id),
       assignmentId: String(row.assignment_id),
@@ -502,42 +528,59 @@ export async function loadAdminContractManagementData(
 
   const priceState = new Map<
     string,
-    { pending: boolean; verifiedApplied: boolean; legacyApplied: boolean }
+    {
+      pending: boolean;
+      verifiedApplied: boolean;
+      legacyApplied: boolean;
+    }
   >();
+
   for (const row of (eventsResult.data ?? []) as Row[]) {
     const assignmentId = String(row.assignment_id);
+
     const current = priceState.get(assignmentId) ?? {
       pending: false,
       verifiedApplied: false,
       legacyApplied: false,
     };
-    if (row.event_type === "price_update_pending") current.pending = true;
+
+    if (row.event_type === "price_update_pending") {
+      current.pending = true;
+    }
+
     if (row.event_type === "price_applied") {
       const eventData = objectValue(row.event_data);
+
       if (eventData.comparisonVerified === true) {
         current.verifiedApplied = true;
       } else {
         current.legacyApplied = true;
       }
     }
+
     priceState.set(assignmentId, current);
   }
 
   const settings = (billingSettingsResult.data ?? {}) as Row;
+
   const globalSubscriptionUnitPrice = Number(
-    settings.clinic_doctor_monthly_price_ron ?? 60
+    settings.clinic_doctor_monthly_price_ron ?? 20
   );
-  const globalSmsUnitPrice = Number(settings.sms_unit_price_ron ?? 0.3);
-  const globalVatRate = Number(settings.vat_rate ?? 0.21);
+
+  const globalVatRate = Number(
+    settings.vat_rate ?? 0.21
+  );
+
   const globalCurrency =
-    settings.billing_currency === "RON" ? ("RON" as const) : ("EUR" as const);
+    settings.billing_currency === "RON"
+      ? ("RON" as const)
+      : ("EUR" as const);
 
   const operationalOverrideMap = new Map<
     string,
     {
       id: string;
       subscriptionUnitPrice: number | null;
-      smsUnitPrice: number | null;
       currency: "RON" | "EUR";
       vatRate: number | null;
       effectiveFrom: string | null;
@@ -551,6 +594,7 @@ export async function loadAdminContractManagementData(
       row.client_type === "clinic_organization"
         ? "clinic_organization"
         : "independent_doctor";
+
     const clientId = String(
       clientType === "clinic_organization"
         ? row.clinic_organization_id
@@ -565,12 +609,14 @@ export async function loadAdminContractManagementData(
         row.subscription_unit_price === null
           ? null
           : Number(row.subscription_unit_price),
-      smsUnitPrice:
-        row.sms_unit_price === null ? null : Number(row.sms_unit_price),
       currency: row.currency === "RON" ? "RON" : "EUR",
       vatRate: row.vat_rate === null ? null : Number(row.vat_rate),
-      effectiveFrom: row.effective_from ? String(row.effective_from) : null,
-      effectiveUntil: row.effective_until ? String(row.effective_until) : null,
+      effectiveFrom: row.effective_from
+        ? String(row.effective_from)
+        : null,
+      effectiveUntil: row.effective_until
+        ? String(row.effective_until)
+        : null,
       updatedAt: row.updated_at ? String(row.updated_at) : null,
     });
   }
@@ -578,41 +624,55 @@ export async function loadAdminContractManagementData(
   const priceUpdates: AdminContractPriceUpdate[] = assignments
     .filter((assignment) => {
       const state = priceState.get(assignment.id);
-      return state?.pending === true && state.verifiedApplied === false;
+
+      return (
+        state?.pending === true &&
+        state.verifiedApplied === false
+      );
     })
     .map((assignment) => {
       const acceptedTerms = normalizeAcceptedContractPriceTerms(
-        assignment.acceptedCommercialTerms ?? assignment.commercialTerms
+        assignment.acceptedCommercialTerms ??
+          assignment.commercialTerms
       );
-      if (!hasAcceptedContractPriceTerms(acceptedTerms)) return null;
+
+      if (!hasAcceptedContractPriceTerms(acceptedTerms)) {
+        return null;
+      }
 
       const comparisonDate = (
         assignment.effectiveAt ??
         assignment.acceptedAt ??
         new Date().toISOString()
       ).slice(0, 10);
+
       const operationalTerms = createEffectiveOperationalPriceTerms({
         comparisonDate,
-        globalSubscriptionUnitPrice:
-          Number.isFinite(globalSubscriptionUnitPrice)
-            ? globalSubscriptionUnitPrice
-            : 60,
-        globalSmsUnitPrice: Number.isFinite(globalSmsUnitPrice)
-          ? globalSmsUnitPrice
-          : 0.3,
+        globalSubscriptionUnitPrice: Number.isFinite(
+          globalSubscriptionUnitPrice
+        )
+          ? globalSubscriptionUnitPrice
+          : 20,
         globalCurrency,
-        globalVatRate: Number.isFinite(globalVatRate) ? globalVatRate : 0.21,
+        globalVatRate: Number.isFinite(globalVatRate)
+          ? globalVatRate
+          : 0.21,
         override:
           operationalOverrideMap.get(
             `${assignment.clientType}:${assignment.clientId}`
           ) ?? null,
       });
+
       const differences = compareContractAndOperationalPrices(
         acceptedTerms,
         operationalTerms
       );
+
       const comparisonStatus: ContractPriceComparisonStatus =
-        differences.length === 0 ? "ready_to_confirm" : "needs_update";
+        differences.length === 0
+          ? "ready_to_confirm"
+          : "needs_update";
+
       return {
         assignmentId: assignment.id,
         clientId: assignment.clientId,
@@ -636,7 +696,10 @@ export async function loadAdminContractManagementData(
       if (first.comparisonStatus !== second.comparisonStatus) {
         return first.comparisonStatus === "needs_update" ? -1 : 1;
       }
-      return (second.acceptedAt ?? "").localeCompare(first.acceptedAt ?? "");
+
+      return (second.acceptedAt ?? "").localeCompare(
+        first.acceptedAt ?? ""
+      );
     });
 
   return {

@@ -114,8 +114,7 @@ const COPY = {
         "Atribuirea nu modifică automat tarifele de facturare și nu blochează niciun cont.",
       scope: "Destinatari",
       commercialTitle: "Condiții comerciale contractuale",
-      subscription: "Abonament",
-      sms: "SMS/unitate",
+      subscription: "Abonament / pachet",
       currency: "Monedă",
       vat: "TVA %",
       keepExisting: "Păstrează condițiile contractuale existente",
@@ -193,8 +192,7 @@ const COPY = {
       empty:
         "Nu există actualizări contractuale de tarif în așteptarea reconcilierii.",
       fields: {
-        subscriptionUnitPrice: "Abonament",
-        smsUnitPrice: "SMS / unitate",
+        subscriptionUnitPrice: "Abonament / pachet",
         currency: "Monedă",
         vatRate: "TVA",
       },
@@ -252,8 +250,7 @@ const COPY = {
         "Assignment never changes operational billing prices and never blocks an account.",
       scope: "Recipients",
       commercialTitle: "Contractual commercial terms",
-      subscription: "Subscription",
-      sms: "SMS/unit",
+      subscription: "Subscription / package",
       currency: "Currency",
       vat: "VAT %",
       keepExisting: "Keep existing contractual terms",
@@ -330,8 +327,7 @@ const COPY = {
         "Confirmation becomes available only after the operational values match the accepted contract.",
       empty: "There are no contractual price updates awaiting reconciliation.",
       fields: {
-        subscriptionUnitPrice: "Subscription",
-        smsUnitPrice: "SMS / unit",
+        subscriptionUnitPrice: "Subscription / package",
         currency: "Currency",
         vatRate: "VAT",
       },
@@ -389,8 +385,7 @@ const COPY = {
         "Die Zuweisung ändert niemals operative Abrechnungspreise und sperrt kein Konto.",
       scope: "Empfänger",
       commercialTitle: "Vertragliche Geschäftsbedingungen",
-      subscription: "Abonnement",
-      sms: "SMS/Einheit",
+      subscription: "Abonnement / Paket",
       currency: "Währung",
       vat: "MwSt. %",
       keepExisting: "Bestehende Vertragsbedingungen beibehalten",
@@ -467,8 +462,7 @@ const COPY = {
         "Die Bestätigung wird erst verfügbar, wenn die operativen Werte dem angenommenen Vertrag entsprechen.",
       empty: "Keine vertraglichen Preisaktualisierungen warten auf den Abgleich.",
       fields: {
-        subscriptionUnitPrice: "Abonnement",
-        smsUnitPrice: "SMS / Einheit",
+        subscriptionUnitPrice: "Abonnement / Paket",
         currency: "Währung",
         vatRate: "MwSt.",
       },
@@ -535,23 +529,17 @@ function formatDateOnly(value: string | null, locale: AppLocale) {
 
 function termsFromFields(input: {
   subscriptionPrice: string;
-  smsPrice: string;
   currency: string;
   vatPercent: string;
 }) {
   const result: Record<string, unknown> = {};
   const subscription = Number(input.subscriptionPrice.replace(",", "."));
-  const sms = Number(input.smsPrice.replace(",", "."));
   const vat = Number(input.vatPercent.replace(",", "."));
 
   const hasSubscription =
     input.subscriptionPrice.trim().length > 0 &&
     Number.isFinite(subscription) &&
     subscription >= 0;
-  const hasSms =
-    input.smsPrice.trim().length > 0 &&
-    Number.isFinite(sms) &&
-    sms >= 0;
   const hasVat =
     input.vatPercent.trim().length > 0 &&
     Number.isFinite(vat) &&
@@ -559,11 +547,11 @@ function termsFromFields(input: {
     vat <= 100;
 
   if (hasSubscription) result.subscriptionUnitPrice = subscription;
-  if (hasSms) result.smsUnitPrice = sms;
   if (hasVat) result.vatRate = vat / 100;
-  if (hasSubscription || hasSms || hasVat) {
+  if (hasSubscription || hasVat) {
     result.currency = input.currency;
   }
+
   return result;
 }
 
@@ -740,7 +728,6 @@ export default function AdminContractManagement({ locale, data }: Props) {
   const [assignmentNotes, setAssignmentNotes] = useState("");
   const [assignmentKeepExisting, setAssignmentKeepExisting] = useState(false);
   const [assignmentSubscription, setAssignmentSubscription] = useState("");
-  const [assignmentSms, setAssignmentSms] = useState("");
   const [assignmentCurrency, setAssignmentCurrency] = useState("RON");
   const [assignmentVat, setAssignmentVat] = useState("");
 
@@ -783,7 +770,6 @@ export default function AdminContractManagement({ locale, data }: Props) {
   const [amendmentClientIds, setAmendmentClientIds] = useState<string[]>([]);
   const [amendmentKeepTerms, setAmendmentKeepTerms] = useState(true);
   const [amendmentSubscription, setAmendmentSubscription] = useState("");
-  const [amendmentSms, setAmendmentSms] = useState("");
   const [amendmentCurrency, setAmendmentCurrency] = useState("RON");
   const [amendmentVat, setAmendmentVat] = useState("");
   const [amendmentNotes, setAmendmentNotes] = useState("");
@@ -1079,7 +1065,9 @@ export default function AdminContractManagement({ locale, data }: Props) {
                 <input
                   type="datetime-local"
                   value={assignmentEffectiveAt}
-                  onChange={(event) => setAssignmentEffectiveAt(event.target.value)}
+                  onChange={(event) =>
+                    setAssignmentEffectiveAt(event.target.value)
+                  }
                   className="input"
                 />
               </Field>
@@ -1089,21 +1077,38 @@ export default function AdminContractManagement({ locale, data }: Props) {
               <summary className="cursor-pointer p-[13px] font-semibold text-gray-800">
                 {copy.clients.commercialTitle}
               </summary>
-              <div className="grid gap-[13px] border-t border-gray-200 p-[13px] md:grid-cols-2 xl:grid-cols-4">
-                <Input label={copy.clients.subscription} value={assignmentSubscription} setValue={setAssignmentSubscription} type="number" />
-                <Input label={copy.clients.sms} value={assignmentSms} setValue={setAssignmentSms} type="number" />
+              <div className="grid gap-[13px] border-t border-gray-200 p-[13px] md:grid-cols-3">
+                <Input
+                  label={copy.clients.subscription}
+                  value={assignmentSubscription}
+                  setValue={setAssignmentSubscription}
+                  type="number"
+                />
                 <Field label={copy.clients.currency}>
-                  <select value={assignmentCurrency} onChange={(event) => setAssignmentCurrency(event.target.value)} className="input">
+                  <select
+                    value={assignmentCurrency}
+                    onChange={(event) =>
+                      setAssignmentCurrency(event.target.value)
+                    }
+                    className="input"
+                  >
                     <option value="RON">RON</option>
                     <option value="EUR">EUR</option>
                   </select>
                 </Field>
-                <Input label={copy.clients.vat} value={assignmentVat} setValue={setAssignmentVat} type="number" />
-                <label className="md:col-span-2 xl:col-span-4 flex items-start gap-[8px] text-sm text-gray-700">
+                <Input
+                  label={copy.clients.vat}
+                  value={assignmentVat}
+                  setValue={setAssignmentVat}
+                  type="number"
+                />
+                <label className="md:col-span-3 flex items-start gap-[8px] text-sm text-gray-700">
                   <input
                     type="checkbox"
                     checked={assignmentKeepExisting}
-                    onChange={(event) => setAssignmentKeepExisting(event.target.checked)}
+                    onChange={(event) =>
+                      setAssignmentKeepExisting(event.target.checked)
+                    }
                     className="mt-[3px]"
                   />
                   {copy.clients.keepExisting}
@@ -1112,7 +1117,11 @@ export default function AdminContractManagement({ locale, data }: Props) {
             </details>
 
             <Field label={copy.clients.notes} className="mt-[13px]">
-              <textarea value={assignmentNotes} onChange={(event) => setAssignmentNotes(event.target.value)} className="input min-h-[89px]" />
+              <textarea
+                value={assignmentNotes}
+                onChange={(event) => setAssignmentNotes(event.target.value)}
+                className="input min-h-[89px]"
+              />
             </Field>
 
             <button
@@ -1132,7 +1141,6 @@ export default function AdminContractManagement({ locale, data }: Props) {
                     keepExistingTerms: assignmentKeepExisting,
                     commercialTerms: termsFromFields({
                       subscriptionPrice: assignmentSubscription,
-                      smsPrice: assignmentSms,
                       currency: assignmentCurrency,
                       vatPercent: assignmentVat,
                     }),
@@ -1146,35 +1154,124 @@ export default function AdminContractManagement({ locale, data }: Props) {
           </section>
 
           <section className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
-            <h2 className="text-xl font-bold text-gray-950">{copy.clients.recent}</h2>
+            <h2 className="text-xl font-bold text-gray-950">
+              {copy.clients.recent}
+            </h2>
             <div className="mt-[13px] overflow-x-auto">
               <table className="min-w-full text-left text-sm">
                 <thead className="border-b border-gray-200 text-xs uppercase text-gray-500">
                   <tr>
-                    <th className="px-[8px] py-[13px]">{copy.common.client}</th>
-                    <th className="px-[8px] py-[13px]">{copy.common.package}</th>
-                    <th className="px-[8px] py-[13px]">{copy.common.status}</th>
-                    <th className="px-[8px] py-[13px]">{copy.clients.notifications}</th>
-                    <th className="px-[8px] py-[13px]">{copy.common.actions}</th>
+                    <th className="px-[8px] py-[13px]">
+                      {copy.common.client}
+                    </th>
+                    <th className="px-[8px] py-[13px]">
+                      {copy.common.package}
+                    </th>
+                    <th className="px-[8px] py-[13px]">
+                      {copy.common.status}
+                    </th>
+                    <th className="px-[8px] py-[13px]">
+                      {copy.clients.notifications}
+                    </th>
+                    <th className="px-[8px] py-[13px]">
+                      {copy.common.actions}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {data.assignments.slice(0, 100).map((assignment) => (
                     <tr key={assignment.id}>
-                      <td className="px-[8px] py-[13px] font-semibold text-gray-900">{assignment.clientName}</td>
-                      <td className="px-[8px] py-[13px] text-gray-600">{assignment.packageTitle} · {assignment.packageVersion}</td>
-                      <td className="px-[8px] py-[13px]"><Status value={assignment.status} /></td>
-                      <td className="px-[8px] py-[13px] text-gray-600">✓ {assignment.notificationSentCount} · ! {assignment.notificationFailedCount}</td>
+                      <td className="px-[8px] py-[13px] font-semibold text-gray-900">
+                        {assignment.clientName}
+                      </td>
+                      <td className="px-[8px] py-[13px] text-gray-600">
+                        {assignment.packageTitle} · {assignment.packageVersion}
+                      </td>
+                      <td className="px-[8px] py-[13px]">
+                        <Status value={assignment.status} />
+                      </td>
+                      <td className="px-[8px] py-[13px] text-gray-600">
+                        ✓ {assignment.notificationSentCount} · !{" "}
+                        {assignment.notificationFailedCount}
+                      </td>
                       <td className="px-[8px] py-[13px]">
                         <div className="flex flex-wrap gap-[8px]">
-                          {!["accepted", "effective", "superseded", "cancelled", "terminated"].includes(assignment.status) ? (
-                            <button type="button" disabled={isPending} onClick={() => run(() => api("/api/admin/contracts/assignments", "PATCH", { action: "notify", assignmentId: assignment.id }))} className="button-secondary">{copy.common.retry}</button>
+                          {![
+                            "accepted",
+                            "effective",
+                            "superseded",
+                            "cancelled",
+                            "terminated",
+                          ].includes(assignment.status) ? (
+                            <button
+                              type="button"
+                              disabled={isPending}
+                              onClick={() =>
+                                run(() =>
+                                  api(
+                                    "/api/admin/contracts/assignments",
+                                    "PATCH",
+                                    {
+                                      action: "notify",
+                                      assignmentId: assignment.id,
+                                    }
+                                  )
+                                )
+                              }
+                              className="button-secondary"
+                            >
+                              {copy.common.retry}
+                            </button>
                           ) : null}
-                          {!assignment.acceptanceRequired && ["assigned", "notified"].includes(assignment.status) ? (
-                            <button type="button" disabled={isPending} onClick={() => run(() => api("/api/admin/contracts/assignments", "PATCH", { action: "mark_effective", assignmentId: assignment.id }))} className="button-secondary">{copy.common.markEffective}</button>
+                          {!assignment.acceptanceRequired &&
+                          ["assigned", "notified"].includes(
+                            assignment.status
+                          ) ? (
+                            <button
+                              type="button"
+                              disabled={isPending}
+                              onClick={() =>
+                                run(() =>
+                                  api(
+                                    "/api/admin/contracts/assignments",
+                                    "PATCH",
+                                    {
+                                      action: "mark_effective",
+                                      assignmentId: assignment.id,
+                                    }
+                                  )
+                                )
+                              }
+                              className="button-secondary"
+                            >
+                              {copy.common.markEffective}
+                            </button>
                           ) : null}
-                          {["assigned", "notified", "awaiting_acceptance"].includes(assignment.status) ? (
-                            <button type="button" disabled={isPending} onClick={() => run(() => api("/api/admin/contracts/assignments", "PATCH", { action: "cancel", assignmentId: assignment.id, reason: "Cancelled manually by Admin" }))} className="button-danger">{copy.common.cancel}</button>
+                          {[
+                            "assigned",
+                            "notified",
+                            "awaiting_acceptance",
+                          ].includes(assignment.status) ? (
+                            <button
+                              type="button"
+                              disabled={isPending}
+                              onClick={() =>
+                                run(() =>
+                                  api(
+                                    "/api/admin/contracts/assignments",
+                                    "PATCH",
+                                    {
+                                      action: "cancel",
+                                      assignmentId: assignment.id,
+                                      reason: "Cancelled manually by Admin",
+                                    }
+                                  )
+                                )
+                              }
+                              className="button-danger"
+                            >
+                              {copy.common.cancel}
+                            </button>
                           ) : null}
                         </div>
                       </td>
@@ -1182,7 +1279,9 @@ export default function AdminContractManagement({ locale, data }: Props) {
                   ))}
                 </tbody>
               </table>
-              {data.assignments.length === 0 ? <Empty text={copy.common.noRows} /> : null}
+              {data.assignments.length === 0 ? (
+                <Empty text={copy.common.noRows} />
+              ) : null}
             </div>
           </section>
         </div>
@@ -1191,11 +1290,23 @@ export default function AdminContractManagement({ locale, data }: Props) {
       {tab === "templates" ? (
         <div className="grid gap-[21px] xl:grid-cols-2">
           <section className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
-            <h2 className="text-xl font-bold text-gray-950">{copy.templates.documents}</h2>
+            <h2 className="text-xl font-bold text-gray-950">
+              {copy.templates.documents}
+            </h2>
             <Field label={copy.templates.editDraft} className="mt-[13px]">
-              <select value={selectedDocumentId} onChange={(event) => setSelectedDocumentId(event.target.value)} className="input">
+              <select
+                value={selectedDocumentId}
+                onChange={(event) =>
+                  setSelectedDocumentId(event.target.value)
+                }
+                className="input"
+              >
                 <option value="">{copy.common.createNew}</option>
-                {drafts.map((item) => <option key={item.id} value={item.id}>{item.title} — {item.version}</option>)}
+                {drafts.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.title} — {item.version}
+                  </option>
+                ))}
               </select>
             </Field>
             <div className="mt-[13px] grid gap-[13px] md:grid-cols-2">
@@ -1302,7 +1413,7 @@ export default function AdminContractManagement({ locale, data }: Props) {
                 <Check checked={amendmentKeepTerms} setChecked={setAmendmentKeepTerms} label={amendmentKeepTerms ? copy.amendments.keepTerms : copy.amendments.replaceTerms} />
               </div>
               {!amendmentRequiresAcceptance ? <p className="mt-[13px] rounded-[13px] border border-amber-200 bg-amber-50 p-[13px] text-sm text-amber-950">{copy.amendments.noticeWarning}</p> : null}
-              {!amendmentKeepTerms ? <div className="mt-[13px] grid gap-[13px] md:grid-cols-2"><Input label={copy.clients.subscription} value={amendmentSubscription} setValue={setAmendmentSubscription} type="number" /><Input label={copy.clients.sms} value={amendmentSms} setValue={setAmendmentSms} type="number" /><Field label={copy.clients.currency}><select value={amendmentCurrency} onChange={(event) => setAmendmentCurrency(event.target.value)} className="input"><option value="RON">RON</option><option value="EUR">EUR</option></select></Field><Input label={copy.clients.vat} value={amendmentVat} setValue={setAmendmentVat} type="number" /></div> : null}
+              {!amendmentKeepTerms ? <div className="mt-[13px] grid gap-[13px] md:grid-cols-2"><Input label={copy.clients.subscription} value={amendmentSubscription} setValue={setAmendmentSubscription} type="number" /><Field label={copy.clients.currency}><select value={amendmentCurrency} onChange={(event) => setAmendmentCurrency(event.target.value)} className="input"><option value="RON">RON</option><option value="EUR">EUR</option></select></Field><Input label={copy.clients.vat} value={amendmentVat} setValue={setAmendmentVat} type="number" /></div> : null}
               <Field label={copy.clients.notes} className="mt-[13px]"><textarea value={amendmentNotes} onChange={(event) => setAmendmentNotes(event.target.value)} className="input min-h-[89px]" /></Field>
             </fieldset>
           </div>
@@ -1323,7 +1434,7 @@ export default function AdminContractManagement({ locale, data }: Props) {
               requiresAcceptance: amendmentRequiresAcceptance,
               clientIds: ids,
               keepExistingTerms: amendmentKeepTerms,
-              commercialTerms: termsFromFields({ subscriptionPrice: amendmentSubscription, smsPrice: amendmentSms, currency: amendmentCurrency, vatPercent: amendmentVat }),
+              commercialTerms: termsFromFields({ subscriptionPrice: amendmentSubscription, currency: amendmentCurrency, vatPercent: amendmentVat }),
               internalNotes: amendmentNotes,
             }));
           }} className="button-primary mt-[21px]">{copy.amendments.create}</button>
@@ -1393,7 +1504,6 @@ export default function AdminContractManagement({ locale, data }: Props) {
                 const isReady = item.comparisonStatus === "ready_to_confirm";
                 const trackedFields = [
                   "subscriptionUnitPrice",
-                  "smsUnitPrice",
                   "currency",
                   "vatRate",
                 ].filter((field) =>
@@ -1505,7 +1615,7 @@ export default function AdminContractManagement({ locale, data }: Props) {
                         <tbody className="divide-y divide-gray-100">
                           {trackedFields.map((field) => {
                             const different = differentFields.has(
-                              field as "subscriptionUnitPrice" | "smsUnitPrice" | "currency" | "vatRate"
+                              field as "subscriptionUnitPrice" | "currency" | "vatRate"
                             );
                             const acceptedValue = item.acceptedTerms[
                               field as keyof typeof item.acceptedTerms

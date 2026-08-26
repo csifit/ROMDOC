@@ -2,8 +2,11 @@ import "server-only";
 
 const NON_NEGATIVE_PRICE_KEYS = [
   "subscriptionUnitPrice",
-  "smsUnitPrice",
   "subscription_unit_price",
+] as const;
+
+const RETIRED_SMS_PRICE_KEYS = [
+  "smsUnitPrice",
   "sms_unit_price",
 ] as const;
 
@@ -45,11 +48,15 @@ export function validateAdminContractCommercialTerms(
   }
 
   const terms = {
-    ...(value as Record<
-      string,
-      unknown
-    >),
+    ...(value as Record<string, unknown>),
   };
+
+  // SMS is included in the RomDoc subscription/package.
+  // Strip retired per-SMS price keys even if an older browser or direct
+  // API request still submits them.
+  for (const key of RETIRED_SMS_PRICE_KEYS) {
+    delete terms[key];
+  }
 
   for (
     const key of

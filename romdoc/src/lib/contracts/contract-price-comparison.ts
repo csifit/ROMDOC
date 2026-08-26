@@ -1,19 +1,16 @@
 export type ContractPriceField =
   | "subscriptionUnitPrice"
-  | "smsUnitPrice"
   | "currency"
   | "vatRate";
 
 export type ContractPriceTerms = {
   subscriptionUnitPrice?: number | null;
-  smsUnitPrice?: number | null;
   currency?: "RON" | "EUR" | null;
   vatRate?: number | null;
 };
 
 export type EffectiveOperationalPriceTerms = {
   subscriptionUnitPrice: number | null;
-  smsUnitPrice: number | null;
   currency: "RON" | "EUR";
   vatRate: number | null;
   source: "client_override" | "global";
@@ -49,17 +46,23 @@ function firstDefined(
   if (Object.prototype.hasOwnProperty.call(source, camelCaseKey)) {
     return source[camelCaseKey];
   }
+
   if (Object.prototype.hasOwnProperty.call(source, snakeCaseKey)) {
     return source[snakeCaseKey];
   }
+
   return undefined;
 }
 
 function optionalNumber(value: unknown): number | null | undefined {
   if (value === undefined) return undefined;
   if (value === null || value === "") return undefined;
+
   const numeric = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(numeric) && numeric >= 0 ? numeric : undefined;
+
+  return Number.isFinite(numeric) && numeric >= 0
+    ? numeric
+    : undefined;
 }
 
 function optionalCurrency(
@@ -67,7 +70,9 @@ function optionalCurrency(
 ): "RON" | "EUR" | null | undefined {
   if (value === undefined) return undefined;
   if (value === null || value === "") return undefined;
+
   const normalized = String(value).trim().toUpperCase();
+
   return normalized === "RON" || normalized === "EUR"
     ? normalized
     : undefined;
@@ -79,7 +84,9 @@ function equalNumber(
   decimals: number
 ) {
   if (first === null || second === null) return first === second;
+
   const factor = 10 ** decimals;
+
   return Math.round(first * factor) === Math.round(second * factor);
 }
 
@@ -98,28 +105,37 @@ export function normalizeAcceptedContractPriceTerms(
   value: unknown
 ): ContractPriceTerms {
   const source = objectValue(value);
+
   const subscriptionUnitPrice = optionalNumber(
-    firstDefined(source, "subscriptionUnitPrice", "subscription_unit_price")
+    firstDefined(
+      source,
+      "subscriptionUnitPrice",
+      "subscription_unit_price"
+    )
   );
-  const smsUnitPrice = optionalNumber(
-    firstDefined(source, "smsUnitPrice", "sms_unit_price")
-  );
+
   const currency = optionalCurrency(
     firstDefined(source, "currency", "currency")
   );
+
   const vatRate = optionalNumber(
     firstDefined(source, "vatRate", "vat_rate")
   );
 
   const normalized: ContractPriceTerms = {};
+
   if (subscriptionUnitPrice !== undefined) {
     normalized.subscriptionUnitPrice = subscriptionUnitPrice;
   }
-  if (smsUnitPrice !== undefined) normalized.smsUnitPrice = smsUnitPrice;
-  if (currency !== undefined) normalized.currency = currency;
+
+  if (currency !== undefined) {
+    normalized.currency = currency;
+  }
+
   if (vatRate !== undefined && vatRate !== null && vatRate <= 1) {
     normalized.vatRate = vatRate;
   }
+
   return normalized;
 }
 
@@ -132,14 +148,12 @@ export function hasAcceptedContractPriceTerms(
 export function createEffectiveOperationalPriceTerms(input: {
   comparisonDate: string;
   globalSubscriptionUnitPrice: number | null;
-  globalSmsUnitPrice: number | null;
   globalCurrency: "RON" | "EUR";
   globalVatRate: number | null;
   override:
     | {
         id: string;
         subscriptionUnitPrice: number | null;
-        smsUnitPrice: number | null;
         currency: "RON" | "EUR";
         vatRate: number | null;
         effectiveFrom: string | null;
@@ -149,6 +163,7 @@ export function createEffectiveOperationalPriceTerms(input: {
     | null;
 }): EffectiveOperationalPriceTerms {
   const override = input.override;
+
   const overrideApplies = Boolean(
     override &&
       isDateInRange(
@@ -160,11 +175,9 @@ export function createEffectiveOperationalPriceTerms(input: {
 
   return {
     subscriptionUnitPrice: overrideApplies
-      ? override?.subscriptionUnitPrice ?? input.globalSubscriptionUnitPrice
+      ? override?.subscriptionUnitPrice ??
+        input.globalSubscriptionUnitPrice
       : input.globalSubscriptionUnitPrice,
-    smsUnitPrice: overrideApplies
-      ? override?.smsUnitPrice ?? input.globalSmsUnitPrice
-      : input.globalSmsUnitPrice,
     currency: overrideApplies
       ? override?.currency ?? input.globalCurrency
       : input.globalCurrency,
@@ -203,17 +216,6 @@ export function compareContractAndOperationalPrices(
   }
 
   if (
-    accepted.smsUnitPrice !== undefined &&
-    !equalNumber(accepted.smsUnitPrice, operational.smsUnitPrice, 4)
-  ) {
-    differences.push({
-      field: "smsUnitPrice",
-      accepted: accepted.smsUnitPrice,
-      operational: operational.smsUnitPrice,
-    });
-  }
-
-  if (
     accepted.currency !== undefined &&
     accepted.currency !== operational.currency
   ) {
@@ -226,7 +228,11 @@ export function compareContractAndOperationalPrices(
 
   if (
     accepted.vatRate !== undefined &&
-    !equalNumber(accepted.vatRate, operational.vatRate, 6)
+    !equalNumber(
+      accepted.vatRate,
+      operational.vatRate,
+      6
+    )
   ) {
     differences.push({
       field: "vatRate",
