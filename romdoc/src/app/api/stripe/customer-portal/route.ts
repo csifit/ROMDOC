@@ -2,10 +2,19 @@ import {
   NextRequest,
   NextResponse,
 } from "next/server";
-import { getStripe } from "@/lib/stripe";
-import { createClient } from "@/lib/supabase/server";
+import {
+  getStripe,
+} from "@/lib/stripe";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
-export const runtime = "nodejs";
+export const runtime =
+  "nodejs";
+
+type PortalRequestBody = {
+  returnTo?: unknown;
+};
 
 function getOrigin(
   request: NextRequest
@@ -17,10 +26,52 @@ function getOrigin(
   ).replace(/\/$/, "");
 }
 
+function normalizeReturnPath(
+  value: unknown
+) {
+  if (
+    value ===
+    "/doctor-dashboard/billing"
+  ) {
+    return value;
+  }
+
+  return "/doctor-application";
+}
+
+async function getPortalRequestBody(
+  request: NextRequest
+): Promise<PortalRequestBody> {
+  try {
+    const text =
+      await request.text();
+
+    if (!text.trim()) {
+      return {};
+    }
+
+    return JSON.parse(
+      text
+    ) as PortalRequestBody;
+  } catch {
+    return {};
+  }
+}
+
 export async function POST(
   request: NextRequest
 ): Promise<Response> {
   try {
+    const body =
+      await getPortalRequestBody(
+        request
+      );
+
+    const returnPath =
+      normalizeReturnPath(
+        body.returnTo
+      );
+
     const supabase =
       await createClient();
 
@@ -152,7 +203,7 @@ export async function POST(
           return_url:
             `${getOrigin(
               request
-            )}/doctor-application`,
+            )}${returnPath}`,
         });
 
     return NextResponse.json({

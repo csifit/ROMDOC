@@ -17,20 +17,33 @@ type PortalResponse = {
   error?: string;
 };
 
-export default function ManageSubscriptionButton() {
+type ManageSubscriptionButtonProps = {
+  returnTo?:
+    | "/doctor-application"
+    | "/doctor-dashboard/billing";
+};
+
+export default function ManageSubscriptionButton({
+  returnTo =
+    "/doctor-application",
+}: ManageSubscriptionButtonProps) {
   const locale = useLocale();
   const t = useTranslations(
     "DoctorApplication.manage"
   );
 
-  const [isPending, startTransition] =
-    useTransition();
+  const [
+    isPending,
+    startTransition,
+  ] = useTransition();
   const [error, setError] =
     useState<string | null>(null);
 
   useEffect(() => {
     document.cookie =
-      `NEXT_LOCALE=${encodeURIComponent(locale)}; ` +
+      `NEXT_LOCALE=${encodeURIComponent(
+        locale
+      )}; ` +
       "Path=/; Max-Age=31536000; SameSite=Lax";
   }, [locale]);
 
@@ -39,12 +52,20 @@ export default function ManageSubscriptionButton() {
 
     startTransition(async () => {
       try {
-        const response = await fetch(
-          "/api/stripe/customer-portal",
-          {
-            method: "POST",
-          }
-        );
+        const response =
+          await fetch(
+            "/api/stripe/customer-portal",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              body: JSON.stringify({
+                returnTo,
+              }),
+            }
+          );
 
         const result =
           (await response.json()) as
@@ -67,7 +88,9 @@ export default function ManageSubscriptionButton() {
         window.location.assign(
           result.url
         );
-      } catch (portalError) {
+      } catch (
+        portalError
+      ) {
         setError(
           portalError instanceof Error
             ? portalError.message
@@ -83,7 +106,9 @@ export default function ManageSubscriptionButton() {
         type="button"
         variant="secondary"
         isLoading={isPending}
-        loadingText={t("opening")}
+        loadingText={t(
+          "opening"
+        )}
         onClick={openPortal}
       >
         {t("button")}
