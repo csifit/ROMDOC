@@ -39,7 +39,6 @@ type TermsBody = {
   clientType?: unknown;
   clientId?: unknown;
   subscriptionUnitPrice?: unknown;
-  smsUnitPrice?: unknown;
   currency?: unknown;
   vatRate?: unknown;
   vatTreatment?: unknown;
@@ -68,6 +67,7 @@ function cleanText(value: unknown, maximumLength: number) {
 
 function optionalNumber(value: unknown, maximum = 9999999999.9999) {
   if (value === null || value === undefined || value === "") return null;
+
   const numeric =
     typeof value === "number"
       ? value
@@ -84,12 +84,14 @@ function optionalNumber(value: unknown, maximum = 9999999999.9999) {
 
 function optionalDate(value: unknown) {
   if (value === null || value === undefined || value === "") return null;
+
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return undefined;
   }
 
   const date = new Date(`${value}T00:00:00Z`);
-  return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value
+  return Number.isNaN(date.getTime()) ||
+    date.toISOString().slice(0, 10) !== value
     ? undefined
     : value;
 }
@@ -140,6 +142,7 @@ async function clientExists(
       .eq("id", clientId)
       .eq("account_type", "independent")
       .maybeSingle();
+
     return !error && Boolean(data);
   }
 
@@ -148,6 +151,7 @@ async function clientExists(
     .select("id")
     .eq("id", clientId)
     .maybeSingle();
+
   return !error && Boolean(data);
 }
 
@@ -156,6 +160,7 @@ export async function PATCH(request: NextRequest): Promise<Response> {
   if (access.response) return access.response;
 
   let body: TermsBody;
+
   try {
     body = (await request.json()) as TermsBody;
   } catch {
@@ -167,6 +172,7 @@ export async function PATCH(request: NextRequest): Promise<Response> {
   }
 
   const target = parseTarget(body);
+
   if (!target) {
     return failure(
       PLATFORM_OPERATOR_BILLING_HISTORY_CODES.invalidClient,
@@ -184,7 +190,6 @@ export async function PATCH(request: NextRequest): Promise<Response> {
   }
 
   const subscriptionUnitPrice = optionalNumber(body.subscriptionUnitPrice);
-  const smsUnitPrice = optionalNumber(body.smsUnitPrice);
   const vatRate = optionalNumber(body.vatRate, 1);
   const effectiveFrom = optionalDate(body.effectiveFrom);
   const effectiveUntil = optionalDate(body.effectiveUntil);
@@ -195,7 +200,6 @@ export async function PATCH(request: NextRequest): Promise<Response> {
 
   if (
     subscriptionUnitPrice === undefined ||
-    smsUnitPrice === undefined ||
     vatRate === undefined ||
     effectiveFrom === undefined ||
     effectiveUntil === undefined ||
@@ -225,6 +229,7 @@ export async function PATCH(request: NextRequest): Promise<Response> {
     target.clientType === "independent_doctor"
       ? "doctor_id"
       : "clinic_organization_id";
+
   const { data: existing, error: lookupError } = await admin
     .from("client_billing_terms")
     .select("id")
@@ -247,7 +252,6 @@ export async function PATCH(request: NextRequest): Promise<Response> {
     clinic_organization_id:
       target.clientType === "clinic_organization" ? target.clientId : null,
     subscription_unit_price: subscriptionUnitPrice,
-    sms_unit_price: smsUnitPrice,
     currency: currency as PlatformBillingCurrency,
     vat_rate: vatRate,
     vat_treatment: vatTreatment as PlatformVatTreatment,
@@ -298,6 +302,7 @@ export async function DELETE(request: NextRequest): Promise<Response> {
   if (access.response) return access.response;
 
   let body: TermsBody;
+
   try {
     body = (await request.json()) as TermsBody;
   } catch {
@@ -309,6 +314,7 @@ export async function DELETE(request: NextRequest): Promise<Response> {
   }
 
   const target = parseTarget(body);
+
   if (!target) {
     return failure(
       PLATFORM_OPERATOR_BILLING_HISTORY_CODES.invalidClient,
@@ -322,6 +328,7 @@ export async function DELETE(request: NextRequest): Promise<Response> {
     target.clientType === "independent_doctor"
       ? "doctor_id"
       : "clinic_organization_id";
+
   const { error } = await admin
     .from("client_billing_terms")
     .delete()

@@ -13,7 +13,6 @@ const DEFAULT_CURRENCY: PlatformBillingCurrency = "EUR";
 
 type BillingSettingsBody = {
   subscriptionPriceRon?: unknown;
-  smsPriceRon?: unknown;
   vatRate?: unknown;
   billingCurrency?: unknown;
 };
@@ -37,7 +36,9 @@ function normalizeVat(value: unknown) {
   return Math.round(parsed * 1000000) / 1000000;
 }
 
-function normalizeCurrency(value: unknown): PlatformBillingCurrency | null {
+function normalizeCurrency(
+  value: unknown
+): PlatformBillingCurrency | null {
   return typeof value === "string" &&
     CURRENCIES.has(value as PlatformBillingCurrency)
     ? (value as PlatformBillingCurrency)
@@ -88,7 +89,7 @@ export async function GET(): Promise<Response> {
   const { data, error } = await admin
     .from("clinic_billing_settings")
     .select(
-      "clinic_doctor_monthly_price_ron, sms_unit_price_ron, vat_rate, billing_currency, updated_at, updated_by_profile_id"
+      "clinic_doctor_monthly_price_ron, vat_rate, billing_currency, updated_at, updated_by_profile_id"
     )
     .eq("id", 1)
     .maybeSingle();
@@ -98,7 +99,7 @@ export async function GET(): Promise<Response> {
     return json(
       {
         code: PLATFORM_OPERATOR_BILLING_CODES.settingsLoadFailed,
-        error: "Prețurile nu au putut fi încărcate.",
+        error: "Tarifele nu au putut fi încărcate.",
       },
       500
     );
@@ -110,7 +111,6 @@ export async function GET(): Promise<Response> {
       subscriptionPriceRon: Number(
         data?.clinic_doctor_monthly_price_ron ?? 20
       ),
-      smsPriceRon: Number(data?.sms_unit_price_ron ?? 0.1),
       vatRate: Number(data?.vat_rate ?? 0.21),
       billingCurrency:
         data?.billing_currency === "RON" || data?.billing_currency === "EUR"
@@ -147,20 +147,18 @@ export async function PATCH(request: NextRequest): Promise<Response> {
   }
 
   const subscriptionPriceRon = normalizeMoney(body.subscriptionPriceRon);
-  const smsPriceRon = normalizeMoney(body.smsPriceRon, 1000);
   const vatRate = normalizeVat(body.vatRate);
   const billingCurrency = normalizeCurrency(body.billingCurrency);
 
   if (
     subscriptionPriceRon === null ||
-    smsPriceRon === null ||
     vatRate === null ||
     billingCurrency === null
   ) {
     return json(
       {
         code: PLATFORM_OPERATOR_BILLING_CODES.invalidPrices,
-        error: "Prețurile sau moneda introduse nu sunt valide.",
+        error: "Tariful, TVA sau moneda introduse nu sunt valide.",
       },
       400
     );
@@ -173,7 +171,6 @@ export async function PATCH(request: NextRequest): Promise<Response> {
       {
         id: 1,
         clinic_doctor_monthly_price_ron: subscriptionPriceRon,
-        sms_unit_price_ron: smsPriceRon,
         vat_rate: vatRate,
         billing_currency: billingCurrency,
         updated_at: new Date().toISOString(),
@@ -182,7 +179,7 @@ export async function PATCH(request: NextRequest): Promise<Response> {
       { onConflict: "id" }
     )
     .select(
-      "clinic_doctor_monthly_price_ron, sms_unit_price_ron, vat_rate, billing_currency, updated_at, updated_by_profile_id"
+      "clinic_doctor_monthly_price_ron, vat_rate, billing_currency, updated_at, updated_by_profile_id"
     )
     .single();
 
@@ -191,7 +188,7 @@ export async function PATCH(request: NextRequest): Promise<Response> {
     return json(
       {
         code: PLATFORM_OPERATOR_BILLING_CODES.settingsSaveFailed,
-        error: "Prețurile nu au putut fi salvate.",
+        error: "Tarifele nu au putut fi salvate.",
       },
       500
     );
@@ -199,10 +196,9 @@ export async function PATCH(request: NextRequest): Promise<Response> {
 
   return json({
     code: PLATFORM_OPERATOR_BILLING_CODES.settingsSaved,
-    message: "Prețurile au fost actualizate.",
+    message: "Tarifele au fost actualizate.",
     settings: {
       subscriptionPriceRon: Number(data.clinic_doctor_monthly_price_ron),
-      smsPriceRon: Number(data.sms_unit_price_ron),
       vatRate: Number(data.vat_rate),
       billingCurrency:
         data.billing_currency === "RON" ? "RON" : DEFAULT_CURRENCY,

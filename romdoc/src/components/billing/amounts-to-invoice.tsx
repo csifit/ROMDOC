@@ -6,9 +6,7 @@ import BillingClientList, {
 import ClientBillingTermsManager from "@/components/billing/client-billing-terms-manager";
 import PlatformBillingSettingsForm from "@/components/billing/platform-billing-settings-form";
 import ClinicManagerMonthSelector from "@/components/clinic-manager/clinic-manager-month-selector";
-import type {
-  PlatformBillingCurrency,
-} from "@/lib/billing/platform-invoicing";
+import type { PlatformBillingCurrency } from "@/lib/billing/platform-invoicing";
 import {
   formatPlatformBillingCurrency,
   formatPlatformBillingMonth,
@@ -35,6 +33,15 @@ type CurrencyTotals = {
   estimatedVat: number;
   displayedTotal: number;
   clientCount: number;
+};
+
+const GLOBAL_PRICING_DESCRIPTION: Record<AppLocale, string> = {
+  ro:
+    "Deschide pentru a vedea sau modifica prețul global al abonamentului/pachetului, moneda și TVA. SMS-urile sunt incluse și nu au tarif separat.",
+  en:
+    "Open to view or change the global subscription/package price, currency and VAT. SMS is included and has no separate unit price.",
+  de:
+    "Öffnen, um den globalen Abonnement-/Paketpreis, die Währung und den MwSt.-Satz anzuzeigen oder zu ändern. SMS sind enthalten und haben keinen separaten Einzelpreis.",
 };
 
 function currencyLabel(locale: AppLocale) {
@@ -125,6 +132,7 @@ export default function AmountsToInvoice({
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             {copy.history.months}
           </p>
+
           <div className="mt-[8px] flex flex-wrap gap-[8px]">
             {data.historyMonths.map((month) => (
               <Link
@@ -186,7 +194,7 @@ export default function AmountsToInvoice({
                   {copy.history.globalPricingTitle}
                 </h3>
                 <p className="mt-[5px] text-sm leading-6 text-gray-600">
-                  {copy.history.globalPricingDescription}
+                  {GLOBAL_PRICING_DESCRIPTION[locale]}
                 </p>
               </div>
 

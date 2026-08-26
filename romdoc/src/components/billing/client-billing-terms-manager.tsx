@@ -1,7 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
 
 import type {
   PlatformBillingClientOption,
@@ -24,6 +29,30 @@ type ApiResponse = {
   error?: string;
 };
 
+const LOCAL_COPY: Record<
+  AppLocale,
+  {
+    description: string;
+    packagePrice: string;
+  }
+> = {
+  ro: {
+    description:
+      "Selectează un medic independent sau o organizație de clinică și salvează un tarif personalizat pentru abonament/pachet. Moneda, TVA și perioada de valabilitate rămân configurabile. SMS-urile sunt incluse și nu au tarif separat.",
+    packagePrice: "Preț abonament / pachet",
+  },
+  en: {
+    description:
+      "Select an independent Doctor or clinic organisation and save a custom subscription/package price. Currency, VAT and effective dates remain configurable. SMS is included and has no separate unit price.",
+    packagePrice: "Subscription / package price",
+  },
+  de: {
+    description:
+      "Wählen Sie einen selbstständigen Arzt oder eine Klinikorganisation und speichern Sie einen individuellen Abonnement-/Paketpreis. Währung, MwSt. und Gültigkeitsdaten bleiben konfigurierbar. SMS sind enthalten und haben keinen separaten Einzelpreis.",
+    packagePrice: "Abonnement- / Paketpreis",
+  },
+};
+
 function numberValue(value: number | null) {
   if (value === null) return "";
   return String(value.toFixed(4)).replace(/0+$/, "").replace(/\.$/, "");
@@ -39,12 +68,12 @@ export default function ClientBillingTermsManager({
   defaultCurrency,
 }: Props) {
   const copy = getPlatformOperatorBillingHistory(locale);
+  const localCopy = LOCAL_COPY[locale];
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
   const [selectedKey, setSelectedKey] = useState("");
   const [subscriptionPrice, setSubscriptionPrice] = useState("");
-  const [smsPrice, setSmsPrice] = useState("");
   const [currency, setCurrency] =
     useState<PlatformBillingCurrency>(defaultCurrency);
   const [vatPercent, setVatPercent] = useState("");
@@ -78,8 +107,10 @@ export default function ClientBillingTermsManager({
 
   useEffect(() => {
     const terms = selectedClient?.terms;
-    setSubscriptionPrice(numberValue(terms?.subscriptionUnitPrice ?? null));
-    setSmsPrice(numberValue(terms?.smsUnitPrice ?? null));
+
+    setSubscriptionPrice(
+      numberValue(terms?.subscriptionUnitPrice ?? null)
+    );
     setCurrency(terms?.currency ?? defaultCurrency);
     setVatPercent(
       terms?.vatRate === null || terms?.vatRate === undefined
@@ -109,17 +140,18 @@ export default function ClientBillingTermsManager({
     setError("");
 
     const subscription = parseOptionalNumber(subscriptionPrice);
-    const sms = parseOptionalNumber(smsPrice);
     const vat = parseOptionalNumber(vatPercent);
 
-    if (subscription === undefined || sms === undefined) {
+    if (subscription === undefined) {
       setError(copy.pricing.invalidPrices);
       return;
     }
+
     if (vat === undefined || (vat !== null && vat > 100)) {
       setError(copy.pricing.invalidVat);
       return;
     }
+
     if (effectiveFrom && effectiveUntil && effectiveUntil < effectiveFrom) {
       setError(copy.pricing.invalidDates);
       return;
@@ -134,7 +166,6 @@ export default function ClientBillingTermsManager({
             clientType: selectedClient.clientType,
             clientId: selectedClient.id,
             subscriptionUnitPrice: subscription,
-            smsUnitPrice: sms,
             currency,
             vatRate: vat === null ? null : vat / 100,
             vatTreatment,
@@ -146,7 +177,9 @@ export default function ClientBillingTermsManager({
             effectiveUntil: effectiveUntil || null,
           }),
         });
+
         const result = (await response.json()) as ApiResponse;
+
         if (!response.ok) {
           throw new Error(
             locale === "ro" && result.error
@@ -154,6 +187,7 @@ export default function ClientBillingTermsManager({
               : copy.pricing.invalidPrices
           );
         }
+
         setMessage(copy.pricing.saved);
         router.refresh();
       } catch (saveError) {
@@ -181,7 +215,9 @@ export default function ClientBillingTermsManager({
             clientId: selectedClient.id,
           }),
         });
+
         const result = (await response.json()) as ApiResponse;
+
         if (!response.ok) {
           throw new Error(
             locale === "ro" && result.error
@@ -189,6 +225,7 @@ export default function ClientBillingTermsManager({
               : copy.pricing.invalidPrices
           );
         }
+
         setMessage(copy.pricing.resetDone);
         router.refresh();
       } catch (resetError) {
@@ -215,11 +252,13 @@ export default function ClientBillingTermsManager({
       <p className="text-sm font-semibold text-[#9A4F35]">
         {copy.pricing.eyebrow}
       </p>
+
       <h3 className="mt-[8px] text-xl font-bold text-gray-900">
         {copy.pricing.title}
       </h3>
+
       <p className="mt-[8px] max-w-4xl text-sm leading-6 text-gray-600">
-        {copy.pricing.description}
+        {localCopy.description}
       </p>
 
       <div className="mt-[21px] grid gap-[13px] lg:grid-cols-2">
@@ -240,12 +279,14 @@ export default function ClientBillingTermsManager({
           <span className="text-sm font-semibold text-gray-700">
             {copy.pricing.selectClient}
           </span>
+
           <select
             value={selectedKey}
             onChange={(event) => setSelectedKey(event.target.value)}
             className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px] text-sm"
           >
             <option value="">{copy.pricing.selectClient}</option>
+
             {doctorClients.length > 0 ? (
               <optgroup label={copy.pricing.independentDoctors}>
                 {doctorClients.map((client) => (
@@ -255,6 +296,7 @@ export default function ClientBillingTermsManager({
                 ))}
               </optgroup>
             ) : null}
+
             {organizationClients.length > 0 ? (
               <optgroup label={copy.pricing.clinicOrganizations}>
                 {organizationClients.map((client) => (
@@ -265,6 +307,7 @@ export default function ClientBillingTermsManager({
               </optgroup>
             ) : null}
           </select>
+
           {filteredClients.length === 0 ? (
             <p className="mt-[8px] text-xs text-amber-700">
               {copy.pricing.noClients}
@@ -287,6 +330,7 @@ export default function ClientBillingTermsManager({
                 {selectedClient.accountEmail ?? "—"}
               </p>
             </div>
+
             <span
               className={`rounded-full px-[13px] py-[8px] text-xs font-semibold ${
                 selectedClient.terms
@@ -300,10 +344,10 @@ export default function ClientBillingTermsManager({
             </span>
           </div>
 
-          <div className="mt-[21px] grid gap-[13px] md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-[21px] grid gap-[13px] md:grid-cols-2 xl:grid-cols-3">
             <label>
               <span className="text-sm font-semibold text-gray-700">
-                {copy.pricing.subscriptionPrice}
+                {localCopy.packagePrice}
               </span>
               <input
                 type="number"
@@ -315,20 +359,7 @@ export default function ClientBillingTermsManager({
                 className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px]"
               />
             </label>
-            <label>
-              <span className="text-sm font-semibold text-gray-700">
-                {copy.pricing.smsPrice}
-              </span>
-              <input
-                type="number"
-                min="0"
-                step="0.0001"
-                value={smsPrice}
-                onChange={(event) => setSmsPrice(event.target.value)}
-                placeholder={copy.pricing.optionalGlobalFallback}
-                className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px]"
-              />
-            </label>
+
             <label>
               <span className="text-sm font-semibold text-gray-700">
                 {copy.pricing.currency}
@@ -344,6 +375,7 @@ export default function ClientBillingTermsManager({
                 <option value={secondaryCurrency}>{secondaryCurrency}</option>
               </select>
             </label>
+
             <label>
               <span className="text-sm font-semibold text-gray-700">
                 {copy.pricing.vatPercent}
@@ -388,6 +420,7 @@ export default function ClientBillingTermsManager({
                 ))}
               </select>
             </label>
+
             <label className="md:col-span-2">
               <span className="text-sm font-semibold text-gray-700">
                 {copy.pricing.vatReason}
@@ -412,6 +445,7 @@ export default function ClientBillingTermsManager({
                 className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px]"
               />
             </label>
+
             <label>
               <span className="text-sm font-semibold text-gray-700">
                 {copy.pricing.vatValidationStatus} · {copy.pricing.optional}
@@ -440,6 +474,7 @@ export default function ClientBillingTermsManager({
                 ))}
               </select>
             </label>
+
             <label>
               <span className="text-sm font-semibold text-gray-700">
                 {copy.pricing.vatValidatedAt} · {copy.pricing.optional}
@@ -451,7 +486,9 @@ export default function ClientBillingTermsManager({
                 className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px]"
               />
             </label>
+
             <div className="hidden xl:block" />
+
             <label>
               <span className="text-sm font-semibold text-gray-700">
                 {copy.pricing.effectiveFrom} · {copy.pricing.optional}
@@ -463,6 +500,7 @@ export default function ClientBillingTermsManager({
                 className="romdoc-focus-ring mt-[8px] w-full rounded-[13px] border border-gray-300 bg-white px-[13px] py-[13px]"
               />
             </label>
+
             <label>
               <span className="text-sm font-semibold text-gray-700">
                 {copy.pricing.effectiveUntil} · {copy.pricing.optional}
@@ -486,6 +524,7 @@ export default function ClientBillingTermsManager({
             >
               {isPending ? copy.pricing.saving : copy.pricing.save}
             </button>
+
             {selectedClient.terms ? (
               <button
                 type="button"
@@ -503,6 +542,7 @@ export default function ClientBillingTermsManager({
               {message}
             </p>
           ) : null}
+
           {error ? (
             <p
               role="alert"

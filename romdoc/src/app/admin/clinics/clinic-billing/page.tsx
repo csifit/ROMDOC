@@ -17,7 +17,6 @@ import { createClient } from "@/lib/supabase/server";
 
 type BillingSettings = {
   clinic_doctor_monthly_price_ron: number | string | null;
-  sms_unit_price_ron: number | string | null;
   vat_rate: number | string | null;
   billing_currency: string | null;
   updated_at: string | null;
@@ -52,7 +51,7 @@ const COPY: Record<AppLocale, Copy> = {
       "Consultă estimările lunare, costurile pe organizație și detaliile necesare facturării Clinicilor.",
     pricingTitle: "Tarife globale",
     pricingDescription:
-      "Configurează abonamentul lunar pentru medicii invitați, prețul unui SMS trimis și TVA.",
+      "Configurează abonamentul/pachetul pentru medicii invitați, moneda și TVA. SMS-urile sunt incluse și nu au tarif separat.",
     periodTitle: "Perioada analizată",
     periodDescription:
       "Selectează luna pentru sumarul consolidat. Luna următoare nu poate fi selectată.",
@@ -66,7 +65,7 @@ const COPY: Record<AppLocale, Copy> = {
       "Review monthly estimates, organization costs and the details required for clinic invoicing.",
     pricingTitle: "Global pricing",
     pricingDescription:
-      "Configure the monthly invited-doctor subscription, the price of a sent SMS and VAT.",
+      "Configure the invited-doctor subscription/package, currency and VAT. SMS is included and has no separate unit price.",
     periodTitle: "Reporting period",
     periodDescription:
       "Select the month for the consolidated overview. Future months cannot be selected.",
@@ -80,7 +79,7 @@ const COPY: Record<AppLocale, Copy> = {
       "Prüfen Sie monatliche Schätzungen, Organisationskosten und die für die Rechnungsstellung erforderlichen Angaben.",
     pricingTitle: "Globale Preise",
     pricingDescription:
-      "Konfigurieren Sie das monatliche Abonnement für eingeladene Ärzte, den Preis einer gesendeten SMS und die MwSt.",
+      "Konfigurieren Sie Abonnement/Paket für eingeladene Ärzte, Währung und MwSt. SMS sind enthalten und haben keinen separaten Einzelpreis.",
     periodTitle: "Berichtszeitraum",
     periodDescription:
       "Wählen Sie den Monat für die konsolidierte Übersicht. Zukünftige Monate können nicht ausgewählt werden.",
@@ -96,25 +95,36 @@ function monthKeyInBucharest(value = new Date()) {
     month: "2-digit",
   }).formatToParts(value);
 
-  const year = parts.find((part) => part.type === "year")?.value ?? "";
-  const month = parts.find((part) => part.type === "month")?.value ?? "";
+  const year =
+    parts.find((part) => part.type === "year")?.value ?? "";
+  const month =
+    parts.find((part) => part.type === "month")?.value ?? "";
+
   return `${year}-${month}`;
 }
 
 function shiftMonth(monthKey: string, offset: number) {
   const [year, month] = monthKey.split("-").map(Number);
   const date = new Date(Date.UTC(year, month - 1 + offset, 1));
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(
-    2,
-    "0"
-  )}`;
+
+  return `${date.getUTCFullYear()}-${String(
+    date.getUTCMonth() + 1
+  ).padStart(2, "0")}`;
 }
 
-function normalizeRequestedMonth(value: string | undefined, currentMonth: string) {
+function normalizeRequestedMonth(
+  value: string | undefined,
+  currentMonth: string
+) {
   if (!/^\d{4}-\d{2}$/.test(value ?? "")) return currentMonth;
+
   const month = Number(value?.slice(5, 7));
+
   if (month < 1 || month > 12) return currentMonth;
-  return (value as string) > currentMonth ? currentMonth : (value as string);
+
+  return (value as string) > currentMonth
+    ? currentMonth
+    : (value as string);
 }
 
 function normalizeCurrency(value: unknown): PlatformBillingCurrency {
@@ -123,7 +133,10 @@ function normalizeCurrency(value: unknown): PlatformBillingCurrency {
 
 function numberOrFallback(value: unknown, fallback: number) {
   const number = Number(value);
-  return Number.isFinite(number) && number >= 0 ? number : fallback;
+
+  return Number.isFinite(number) && number >= 0
+    ? number
+    : fallback;
 }
 
 function emptySummary(
@@ -138,7 +151,8 @@ function emptySummary(
         settings?.clinic_doctor_monthly_price_ron,
         60
       ),
-      smsUnitPriceRon: numberOrFallback(settings?.sms_unit_price_ron, 0.3),
+      // Compatibility field retained until the old SQL RPC is retired.
+      smsUnitPriceRon: 0,
       vatRate: numberOrFallback(settings?.vat_rate, 0.21),
     },
     totals: {
@@ -158,7 +172,9 @@ function emptySummary(
   };
 }
 
-export default async function AdminClinicBillingPage({ searchParams }: Props) {
+export default async function AdminClinicBillingPage({
+  searchParams,
+}: Props) {
   const locale = await getStoredAppLocale();
   const text = COPY[locale];
   const supabase = await createClient();
@@ -173,6 +189,7 @@ export default async function AdminClinicBillingPage({ searchParams }: Props) {
       locale,
       next: "/admin/clinics/clinic-billing",
     });
+
     redirect(`/login?${parameters.toString()}`);
   }
 
@@ -193,19 +210,25 @@ export default async function AdminClinicBillingPage({ searchParams }: Props) {
   const { data: settingsData, error: settingsError } = await supabase
     .from("clinic_billing_settings")
     .select(
-      "clinic_doctor_monthly_price_ron, sms_unit_price_ron, vat_rate, billing_currency, updated_at, updated_by_profile_id"
+      "clinic_doctor_monthly_price_ron, vat_rate, billing_currency, updated_at, updated_by_profile_id"
     )
     .eq("id", 1)
     .maybeSingle();
 
   if (settingsError) {
-    console.error("Admin clinic billing settings query failed:", settingsError);
+    console.error(
+      "Admin clinic billing settings query failed:",
+      settingsError
+    );
   }
 
   const settings = (settingsData ?? null) as BillingSettings | null;
   const currentMonth = monthKeyInBucharest();
   const parameters = (await searchParams) ?? {};
-  const selectedMonth = normalizeRequestedMonth(parameters.month, currentMonth);
+  const selectedMonth = normalizeRequestedMonth(
+    parameters.month,
+    currentMonth
+  );
   const previousMonth = shiftMonth(selectedMonth, -1);
 
   const [selectedResult, previousResult] = await Promise.all([
@@ -218,27 +241,39 @@ export default async function AdminClinicBillingPage({ searchParams }: Props) {
   ]);
 
   if (selectedResult.error) {
-    console.error("Selected clinic billing summary failed:", selectedResult.error);
+    console.error(
+      "Selected clinic billing summary failed:",
+      selectedResult.error
+    );
   }
+
   if (previousResult.error) {
-    console.error("Previous clinic billing summary failed:", previousResult.error);
+    console.error(
+      "Previous clinic billing summary failed:",
+      previousResult.error
+    );
   }
 
   const selectedSummary = selectedResult.data
     ? (selectedResult.data as ClinicBillingMonthSummary)
     : emptySummary(selectedMonth, settings);
+
   const previousSummary = previousResult.data
     ? (previousResult.data as ClinicBillingMonthSummary)
     : emptySummary(previousMonth, settings);
 
   const currency = normalizeCurrency(settings?.billing_currency);
+
   const rates: PlatformBillingRates = {
     subscriptionPriceRon: numberOrFallback(
       settings?.clinic_doctor_monthly_price_ron,
       60
     ),
-    smsPriceRon: numberOrFallback(settings?.sms_unit_price_ron, 0.3),
-    vatRate: Math.min(1, numberOrFallback(settings?.vat_rate, 0.21)),
+    smsPriceRon: 0,
+    vatRate: Math.min(
+      1,
+      numberOrFallback(settings?.vat_rate, 0.21)
+    ),
     updatedAt: settings?.updated_at ?? null,
     updatedByProfileId: settings?.updated_by_profile_id ?? null,
   };
@@ -247,13 +282,18 @@ export default async function AdminClinicBillingPage({ searchParams }: Props) {
     <div className="space-y-[34px]">
       <header className="flex flex-wrap items-start justify-between gap-[21px]">
         <div>
-          <p className="text-sm font-semibold text-[#9A4F35]">{text.eyebrow}</p>
+          <p className="text-sm font-semibold text-[#9A4F35]">
+            {text.eyebrow}
+          </p>
+
           <h1 className="mt-[8px] text-3xl font-bold text-gray-900">
             {text.title}
           </h1>
+
           <p className="mt-[13px] max-w-4xl text-sm leading-6 text-gray-600">
             {text.description}
           </p>
+
           <p className="mt-[8px] text-sm text-gray-500">
             {text.currency}: {currency}
           </p>
@@ -268,13 +308,18 @@ export default async function AdminClinicBillingPage({ searchParams }: Props) {
       </header>
 
       <section className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
-        <h2 className="text-lg font-bold text-gray-900">{text.periodTitle}</h2>
+        <h2 className="text-lg font-bold text-gray-900">
+          {text.periodTitle}
+        </h2>
+
         <p className="mt-[8px] max-w-3xl text-sm leading-6 text-gray-600">
           {text.periodDescription}
         </p>
+
         <p className="mt-[8px] text-sm text-gray-500">
           {text.currency}: {currency}
         </p>
+
         <ClinicManagerMonthSelector
           value={selectedMonth}
           locale={locale}

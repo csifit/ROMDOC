@@ -1,6 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  useMemo,
+  useState,
+} from "react";
 
 import CreateClinicInvoiceFromEstimateLink from "@/components/invoices/create-clinic-invoice-from-estimate-link";
 import type { PlatformBillingCurrency } from "@/lib/billing/platform-invoicing";
@@ -96,13 +99,11 @@ type Copy = {
   doctors: string;
   sms: string;
   subscriptionSubtotal: string;
-  smsSubtotal: string;
   subtotal: string;
   vat: string;
   total: string;
   priceOverview: string;
   doctorPrice: string;
-  smsPrice: string;
   vatRate: string;
   organizationSearch: string;
   searchPlaceholder: string;
@@ -119,12 +120,12 @@ type Copy = {
   doctor: string;
   clinic: string;
   subscription: string;
-  smsCost: string;
   estimatedTotal: string;
   confirmations: string;
   reminders: string;
   createInvoice: string;
   operationalNotice: string;
+  includedSmsNotice: string;
   noDoctors: string;
 };
 
@@ -140,14 +141,12 @@ const COPY: Record<AppLocale, Copy> = {
     locations: "Locații aprobate",
     doctors: "Medici acoperiți",
     sms: "SMS trimise",
-    subscriptionSubtotal: "Abonamente medici",
-    smsSubtotal: "SMS",
+    subscriptionSubtotal: "Abonamente / pachete",
     subtotal: "Subtotal înainte de TVA",
     vat: "TVA estimat",
     total: "Total estimat",
     priceOverview: "Tarife utilizate",
-    doctorPrice: "Abonament medic / lună",
-    smsPrice: "Preț / SMS",
+    doctorPrice: "Abonament / pachet medic",
     vatRate: "Cotă TVA",
     organizationSearch: "Caută organizație",
     searchPlaceholder: "Organizație, societate, CUI sau e-mail...",
@@ -163,14 +162,15 @@ const COPY: Record<AppLocale, Copy> = {
     doctorBreakdown: "Detalii pe medic / cont",
     doctor: "Medic / cont",
     clinic: "Locație",
-    subscription: "Abonament",
-    smsCost: "Cost SMS",
+    subscription: "Abonament / pachet",
     estimatedTotal: "Total estimat",
     confirmations: "Confirmări",
     reminders: "Reminder 24h",
     createInvoice: "Deschide factura",
     operationalNotice:
-      "Valorile sunt estimări operaționale. Factura contabilă este creată și urmărită separat în SAGA.",
+      "Valorile monetare sunt calculate numai din abonamente/pachete. Factura contabilă este creată și urmărită separat în SAGA.",
+    includedSmsNotice:
+      "SMS-urile sunt incluse în abonament/pachet și sunt afișate doar ca utilizare operațională.",
     noDoctors: "Nu există medici cu acoperire activă în această perioadă.",
   },
   en: {
@@ -184,14 +184,12 @@ const COPY: Record<AppLocale, Copy> = {
     locations: "Approved locations",
     doctors: "Covered Doctors",
     sms: "SMS sent",
-    subscriptionSubtotal: "Doctor subscriptions",
-    smsSubtotal: "SMS",
+    subscriptionSubtotal: "Subscriptions / packages",
     subtotal: "Subtotal before VAT",
     vat: "Estimated VAT",
     total: "Estimated total",
     priceOverview: "Prices used",
-    doctorPrice: "Doctor subscription / month",
-    smsPrice: "Price / SMS",
+    doctorPrice: "Doctor subscription / package",
     vatRate: "VAT rate",
     organizationSearch: "Search organizations",
     searchPlaceholder: "Organization, company, tax ID or email...",
@@ -207,14 +205,15 @@ const COPY: Record<AppLocale, Copy> = {
     doctorBreakdown: "Doctor / account details",
     doctor: "Doctor / account",
     clinic: "Location",
-    subscription: "Subscription",
-    smsCost: "SMS cost",
+    subscription: "Subscription / package",
     estimatedTotal: "Estimated total",
     confirmations: "Confirmations",
     reminders: "24h reminders",
     createInvoice: "Open invoice",
     operationalNotice:
-      "These values are operational estimates. The accounting invoice is created and tracked separately in SAGA.",
+      "Monetary values are calculated only from subscriptions/packages. The accounting invoice is created and tracked separately in SAGA.",
+    includedSmsNotice:
+      "SMS is included in the subscription/package and is shown only as operational usage.",
     noDoctors: "There are no Doctors with active coverage in this period.",
   },
   de: {
@@ -228,14 +227,12 @@ const COPY: Record<AppLocale, Copy> = {
     locations: "Genehmigte Standorte",
     doctors: "Abgedeckte Ärzte",
     sms: "Gesendete SMS",
-    subscriptionSubtotal: "Arztabonnements",
-    smsSubtotal: "SMS",
+    subscriptionSubtotal: "Abonnements / Pakete",
     subtotal: "Zwischensumme vor MwSt.",
     vat: "Geschätzte MwSt.",
     total: "Geschätzter Gesamtbetrag",
     priceOverview: "Verwendete Preise",
-    doctorPrice: "Arztabonnement / Monat",
-    smsPrice: "Preis / SMS",
+    doctorPrice: "Arztabonnement / Paket",
     vatRate: "MwSt.-Satz",
     organizationSearch: "Organisationen suchen",
     searchPlaceholder: "Organisation, Unternehmen, Steuer-ID oder E-Mail...",
@@ -251,14 +248,15 @@ const COPY: Record<AppLocale, Copy> = {
     doctorBreakdown: "Arzt-/Kontodetails",
     doctor: "Arzt / Konto",
     clinic: "Standort",
-    subscription: "Abonnement",
-    smsCost: "SMS-Kosten",
+    subscription: "Abonnement / Paket",
     estimatedTotal: "Geschätzter Gesamtbetrag",
     confirmations: "Bestätigungen",
     reminders: "24h-Erinnerungen",
     createInvoice: "Rechnung öffnen",
     operationalNotice:
-      "Die Werte sind operative Schätzungen. Die Buchhaltungsrechnung wird separat in SAGA erstellt und verfolgt.",
+      "Geldbeträge werden nur aus Abonnements/Paketen berechnet. Die Buchhaltungsrechnung wird separat in SAGA erstellt und verfolgt.",
+    includedSmsNotice:
+      "SMS sind im Abonnement/Paket enthalten und werden nur als operative Nutzung angezeigt.",
     noDoctors: "In diesem Zeitraum gibt es keine Ärzte mit aktiver Abdeckung.",
   },
 };
@@ -268,6 +266,24 @@ const LOCALE_TAG: Record<AppLocale, string> = {
   en: "en-GB",
   de: "de-DE",
 };
+
+function roundMoney(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function packageAmounts(
+  subscriptionSubtotal: number,
+  vatRate: number
+) {
+  const subtotal = roundMoney(Number(subscriptionSubtotal ?? 0));
+  const vat = roundMoney(subtotal * Number(vatRate ?? 0));
+
+  return {
+    subtotal,
+    vat,
+    total: roundMoney(subtotal + vat),
+  };
+}
 
 function formatCurrency(
   value: number,
@@ -283,6 +299,7 @@ function formatCurrency(
 
 function formatMonth(value: string, locale: AppLocale) {
   const [year, month] = value.slice(0, 7).split("-").map(Number);
+
   return new Intl.DateTimeFormat(LOCALE_TAG[locale], {
     month: "long",
     year: "numeric",
@@ -317,7 +334,9 @@ function SummaryMetric({
       <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
         {label}
       </p>
-      <p className="mt-[8px] text-lg font-bold text-gray-900">{value}</p>
+      <p className="mt-[8px] text-lg font-bold text-gray-900">
+        {value}
+      </p>
     </div>
   );
 }
@@ -326,6 +345,7 @@ function organizationAddress(
   profile: ClinicBillingOrganizationRow["billingProfile"]
 ) {
   if (!profile) return "";
+
   return [
     profile.billing_address,
     profile.billing_city,
@@ -348,7 +368,10 @@ export default function AdminClinicBillingOverview({
   const previousByOrganization = useMemo(
     () =>
       new Map(
-        previousSummary.organizations.map((row) => [row.organization.id, row])
+        previousSummary.organizations.map((row) => [
+          row.organization.id,
+          row,
+        ])
       ),
     [previousSummary.organizations]
   );
@@ -359,6 +382,7 @@ export default function AdminClinicBillingOverview({
 
     return selectedSummary.organizations.filter((row) => {
       const billing = row.billingProfile;
+
       return normalizeSearch(
         `${row.organization.name} ${row.organization.contactEmail ?? ""} ${
           billing?.company_name ?? ""
@@ -370,10 +394,21 @@ export default function AdminClinicBillingOverview({
   const selectedLabel = formatMonth(selectedSummary.monthStart, locale);
   const previousLabel = formatMonth(previousSummary.monthStart, locale);
 
+  const selectedTotals = packageAmounts(
+    selectedSummary.totals.subscriptionSubtotalRon,
+    selectedSummary.prices.vatRate
+  );
+  const previousTotals = packageAmounts(
+    previousSummary.totals.subscriptionSubtotalRon,
+    previousSummary.prices.vatRate
+  );
+
   return (
     <section className="space-y-[21px] rounded-[21px] border border-[#036661]/20 bg-[#F8FBFA] p-[21px] shadow-sm sm:p-[34px]">
       <header>
-        <p className="text-sm font-semibold text-[#036661]">{copy.summary}</p>
+        <p className="text-sm font-semibold text-[#036661]">
+          {copy.summary}
+        </p>
         <h2 className="mt-[8px] text-2xl font-bold capitalize text-gray-900">
           {selectedLabel}
         </h2>
@@ -404,12 +439,28 @@ export default function AdminClinicBillingOverview({
         />
       </div>
 
+      <p className="rounded-[13px] border border-blue-200 bg-blue-50 p-[13px] text-sm leading-6 text-blue-950">
+        {copy.includedSmsNotice}
+      </p>
+
       <div className="grid gap-[13px] xl:grid-cols-2">
         {[
-          [copy.selectedMonth, selectedLabel, selectedSummary],
-          [copy.previousMonth, previousLabel, previousSummary],
-        ].map(([eyebrow, monthLabel, summary]) => {
+          [
+            copy.selectedMonth,
+            selectedLabel,
+            selectedSummary,
+            selectedTotals,
+          ],
+          [
+            copy.previousMonth,
+            previousLabel,
+            previousSummary,
+            previousTotals,
+          ],
+        ].map(([eyebrow, monthLabel, summary, amounts]) => {
           const typedSummary = summary as ClinicBillingMonthSummary;
+          const typedAmounts = amounts as ReturnType<typeof packageAmounts>;
+
           return (
             <article
               key={String(eyebrow)}
@@ -421,6 +472,7 @@ export default function AdminClinicBillingOverview({
               <h3 className="mt-[5px] text-lg font-bold capitalize text-gray-900">
                 {monthLabel as string}
               </h3>
+
               <dl className="mt-[13px] space-y-[8px] text-sm">
                 {[
                   [
@@ -432,42 +484,22 @@ export default function AdminClinicBillingOverview({
                     ),
                   ],
                   [
-                    copy.smsSubtotal,
-                    formatCurrency(
-                      typedSummary.totals.smsSubtotalRon,
-                      locale,
-                      currency
-                    ),
-                  ],
-                  [
                     copy.subtotal,
-                    formatCurrency(
-                      typedSummary.totals.subtotalBeforeVatRon,
-                      locale,
-                      currency
-                    ),
+                    formatCurrency(typedAmounts.subtotal, locale, currency),
                   ],
                   [
                     copy.vat,
-                    formatCurrency(
-                      typedSummary.totals.estimatedVatRon,
-                      locale,
-                      currency
-                    ),
+                    formatCurrency(typedAmounts.vat, locale, currency),
                   ],
                   [
                     copy.total,
-                    formatCurrency(
-                      typedSummary.totals.estimatedTotalRon,
-                      locale,
-                      currency
-                    ),
+                    formatCurrency(typedAmounts.total, locale, currency),
                   ],
                 ].map(([label, value], index) => (
                   <div
                     key={String(label)}
                     className={`flex items-center justify-between gap-[13px] ${
-                      index === 4
+                      index === 3
                         ? "border-t border-gray-200 pt-[13px] font-bold"
                         : ""
                     }`}
@@ -483,23 +515,18 @@ export default function AdminClinicBillingOverview({
       </div>
 
       <section className="rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-sm">
-        <h3 className="text-lg font-bold text-gray-900">{copy.priceOverview}</h3>
+        <h3 className="text-lg font-bold text-gray-900">
+          {copy.priceOverview}
+        </h3>
         <p className="mt-[5px] text-sm text-gray-500">
           {copy.currency}: {currency}
         </p>
-        <div className="mt-[13px] grid gap-[13px] sm:grid-cols-3">
+
+        <div className="mt-[13px] grid gap-[13px] sm:grid-cols-2">
           <SummaryMetric
             label={copy.doctorPrice}
             value={formatCurrency(
               selectedSummary.prices.clinicDoctorMonthlyPriceRon,
-              locale,
-              currency
-            )}
-          />
-          <SummaryMetric
-            label={copy.smsPrice}
-            value={formatCurrency(
-              selectedSummary.prices.smsUnitPriceRon,
               locale,
               currency
             )}
@@ -534,6 +561,16 @@ export default function AdminClinicBillingOverview({
             {filteredOrganizations.map((row) => {
               const previous = previousByOrganization.get(row.organization.id);
               const billing = row.billingProfile;
+              const organizationAmounts = packageAmounts(
+                row.subscriptionSubtotalRon,
+                selectedSummary.prices.vatRate
+              );
+              const previousOrganizationAmounts = previous
+                ? packageAmounts(
+                    previous.subscriptionSubtotalRon,
+                    previousSummary.prices.vatRate
+                  )
+                : { subtotal: 0, vat: 0, total: 0 };
 
               return (
                 <details
@@ -549,13 +586,27 @@ export default function AdminClinicBillingOverview({
                         {row.organization.contactEmail ?? "—"}
                       </p>
                     </div>
+
                     <div className="grid grid-cols-2 gap-[8px] sm:grid-cols-4 md:min-w-[600px]">
-                      <SummaryMetric label={copy.locations} value={row.approvedLocationCount} />
-                      <SummaryMetric label={copy.doctors} value={row.activeDoctorCount} />
-                      <SummaryMetric label={copy.sms} value={row.totalSmsCount} />
+                      <SummaryMetric
+                        label={copy.locations}
+                        value={row.approvedLocationCount}
+                      />
+                      <SummaryMetric
+                        label={copy.doctors}
+                        value={row.activeDoctorCount}
+                      />
+                      <SummaryMetric
+                        label={copy.sms}
+                        value={row.totalSmsCount}
+                      />
                       <SummaryMetric
                         label={copy.total}
-                        value={formatCurrency(row.estimatedTotalRon, locale, currency)}
+                        value={formatCurrency(
+                          organizationAmounts.total,
+                          locale,
+                          currency
+                        )}
                       />
                     </div>
                   </summary>
@@ -576,24 +627,34 @@ export default function AdminClinicBillingOverview({
                         <h4 className="font-bold text-gray-900">
                           {copy.billingDetails}
                         </h4>
+
                         {billing ? (
                           <dl className="mt-[8px] space-y-[5px] text-sm leading-6 text-gray-700">
                             <div>
-                              <dt className="sr-only">{copy.billingDetails}</dt>
+                              <dt className="sr-only">
+                                {copy.billingDetails}
+                              </dt>
                               <dd className="font-semibold text-gray-950">
                                 {billing.company_name}
                               </dd>
                             </div>
+
                             <div className="flex gap-[5px]">
                               <dt className="font-medium">{copy.taxId}:</dt>
                               <dd>{billing.tax_id}</dd>
                             </div>
+
                             <div className="flex gap-[5px]">
-                              <dt className="font-medium">{copy.billingEmail}:</dt>
+                              <dt className="font-medium">
+                                {copy.billingEmail}:
+                              </dt>
                               <dd>{billing.billing_email}</dd>
                             </div>
+
                             <div className="flex gap-[5px]">
-                              <dt className="font-medium">{copy.address}:</dt>
+                              <dt className="font-medium">
+                                {copy.address}:
+                              </dt>
                               <dd>{organizationAddress(billing)}</dd>
                             </div>
                           </dl>
@@ -608,12 +669,16 @@ export default function AdminClinicBillingOverview({
                         {[
                           [
                             copy.selectedPeriod,
-                            formatCurrency(row.estimatedTotalRon, locale, currency),
+                            formatCurrency(
+                              organizationAmounts.total,
+                              locale,
+                              currency
+                            ),
                           ],
                           [
                             copy.previousPeriod,
                             formatCurrency(
-                              previous?.estimatedTotalRon ?? 0,
+                              previousOrganizationAmounts.total,
                               locale,
                               currency
                             ),
@@ -645,6 +710,7 @@ export default function AdminClinicBillingOverview({
                       <h4 className="font-bold text-gray-900">
                         {copy.doctorBreakdown}
                       </h4>
+
                       {row.doctors.length === 0 ? (
                         <p className="mt-[8px] text-sm text-gray-600">
                           {copy.noDoctors}
@@ -654,72 +720,98 @@ export default function AdminClinicBillingOverview({
                           <table className="min-w-full text-left text-sm">
                             <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                               <tr>
-                                <th className="px-[13px] py-[10px]">{copy.doctor}</th>
-                                <th className="px-[13px] py-[10px]">{copy.clinic}</th>
-                                <th className="px-[13px] py-[10px]">{copy.subscription}</th>
-                                <th className="px-[13px] py-[10px]">{copy.sms}</th>
-                                <th className="px-[13px] py-[10px]">{copy.smsCost}</th>
-                                <th className="px-[13px] py-[10px]">{copy.estimatedTotal}</th>
+                                <th className="px-[13px] py-[10px]">
+                                  {copy.doctor}
+                                </th>
+                                <th className="px-[13px] py-[10px]">
+                                  {copy.clinic}
+                                </th>
+                                <th className="px-[13px] py-[10px]">
+                                  {copy.subscription}
+                                </th>
+                                <th className="px-[13px] py-[10px]">
+                                  {copy.sms}
+                                </th>
+                                <th className="px-[13px] py-[10px]">
+                                  {copy.estimatedTotal}
+                                </th>
                               </tr>
                             </thead>
+
                             <tbody className="divide-y divide-gray-100">
-                              {row.doctors.map((doctor) => (
-                                <tr key={doctor.relationshipId}>
-                                  <td className="px-[13px] py-[10px]">
-                                    <p className="font-semibold text-gray-950">
-                                      {doctor.doctorName}
-                                    </p>
-                                    <p className="mt-[3px] text-xs text-gray-500">
-                                      {doctor.email ?? "—"}
-                                    </p>
-                                  </td>
-                                  <td className="px-[13px] py-[10px] text-gray-700">
-                                    {doctor.clinicName ?? "—"}
-                                  </td>
-                                  <td className="px-[13px] py-[10px] font-medium">
-                                    {formatCurrency(
-                                      doctor.subscriptionCostRon,
-                                      locale,
-                                      currency
-                                    )}
-                                  </td>
-                                  <td className="px-[13px] py-[10px] text-gray-700">
-                                    {doctor.totalSmsCount}
-                                    <p className="mt-[3px] text-xs text-gray-500">
-                                      {copy.confirmations}: {doctor.confirmationSmsCount} · {copy.reminders}: {doctor.reminder24hSmsCount}
-                                    </p>
-                                  </td>
-                                  <td className="px-[13px] py-[10px] font-medium">
-                                    {formatCurrency(doctor.smsCostRon, locale, currency)}
-                                  </td>
-                                  <td className="px-[13px] py-[10px] font-bold text-[#036661]">
-                                    {formatCurrency(
-                                      doctor.estimatedDoctorTotalRon,
-                                      locale,
-                                      currency
-                                    )}
-                                  </td>
-                                </tr>
-                              ))}
+                              {row.doctors.map((doctor) => {
+                                const doctorAmounts = packageAmounts(
+                                  doctor.subscriptionCostRon,
+                                  selectedSummary.prices.vatRate
+                                );
+
+                                return (
+                                  <tr key={doctor.relationshipId}>
+                                    <td className="px-[13px] py-[10px]">
+                                      <p className="font-semibold text-gray-950">
+                                        {doctor.doctorName}
+                                      </p>
+                                      <p className="mt-[3px] text-xs text-gray-500">
+                                        {doctor.email ?? "—"}
+                                      </p>
+                                    </td>
+
+                                    <td className="px-[13px] py-[10px] text-gray-700">
+                                      {doctor.clinicName ?? "—"}
+                                    </td>
+
+                                    <td className="px-[13px] py-[10px] font-medium">
+                                      {formatCurrency(
+                                        doctor.subscriptionCostRon,
+                                        locale,
+                                        currency
+                                      )}
+                                    </td>
+
+                                    <td className="px-[13px] py-[10px] text-gray-700">
+                                      {doctor.totalSmsCount}
+                                      <p className="mt-[3px] text-xs text-gray-500">
+                                        {copy.confirmations}:{" "}
+                                        {doctor.confirmationSmsCount} ·{" "}
+                                        {copy.reminders}:{" "}
+                                        {doctor.reminder24hSmsCount}
+                                      </p>
+                                    </td>
+
+                                    <td className="px-[13px] py-[10px] font-bold text-[#036661]">
+                                      {formatCurrency(
+                                        doctorAmounts.total,
+                                        locale,
+                                        currency
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>
                       )}
                     </div>
 
-                    {previous && previous.estimatedTotalRon > 0 ? (
+                    {previous &&
+                    previousOrganizationAmounts.total > 0 ? (
                       <div className="mt-[21px]">
                         <CreateClinicInvoiceFromEstimateLink
                           href="/admin/invoices"
                           organizationId={row.organization.id}
                           billingPeriodStart={previousSummary.monthStart}
                           billingPeriodEnd={new Date(
-                            new Date(previousSummary.monthEndExclusive).getTime() -
+                            new Date(
+                              previousSummary.monthEndExclusive
+                            ).getTime() -
                               24 * 60 * 60 * 1000
                           )
                             .toISOString()
                             .slice(0, 10)}
-                          estimatedAmountRon={previous.estimatedTotalRon}
+                          estimatedAmountRon={
+                            previousOrganizationAmounts.total
+                          }
                           label={copy.createInvoice}
                           className="romdoc-focus-ring inline-flex rounded-[13px] bg-[#036661] px-[21px] py-[13px] text-sm font-semibold text-white transition hover:bg-[#024d49]"
                         />
