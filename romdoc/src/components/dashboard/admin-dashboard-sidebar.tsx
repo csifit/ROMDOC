@@ -23,10 +23,22 @@ type AdminDashboardSidebarProps = {
   children: ReactNode;
 };
 
-const CONTRACTS_LABEL: Record<AppLocale, string> = {
+const CONTRACTS_LABEL: Record<
+  AppLocale,
+  string
+> = {
   ro: "Contracte",
   en: "Contracts",
   de: "Verträge",
+};
+
+const CLINIC_ORGANISATIONS_LABEL: Record<
+  AppLocale,
+  string
+> = {
+  ro: "Organizații de clinică",
+  en: "Clinic organisations",
+  de: "Klinikorganisationen",
 };
 
 const NAVIGATION_ITEMS = [
@@ -80,6 +92,16 @@ const NAVIGATION_ITEMS = [
   },
   {
     href:
+      "/admin/clinic-organisations",
+    labelKey:
+      null,
+    icon:
+      "clinics",
+    customLabel:
+      "clinicOrganisations",
+  },
+  {
+    href:
       "/admin/specialties",
     labelKey:
       "specialties",
@@ -125,6 +147,8 @@ const NAVIGATION_ITEMS = [
       null,
     icon:
       "invoices",
+    customLabel:
+      "contracts",
   },
   {
     href:
@@ -169,36 +193,57 @@ export default function AdminDashboardSidebar({
     );
 
   const navigationItems:
-    PlatformOperatorNavigationItem[] = [
-      ...NAVIGATION_ITEMS.map(
+    PlatformOperatorNavigationItem[] =
+      NAVIGATION_ITEMS.map(
         (
           item
-        ) => ({
-          href:
-            item.href,
-          label:
+        ) => {
+          let label: string;
+
+          if (
             item.labelKey
-              ? t(
-                  `navigation.${item.labelKey}`
-                )
-              : CONTRACTS_LABEL[
-                  locale
-                ],
-          icon:
-            item.icon,
-        })
+          ) {
+            label =
+              t(
+                `navigation.${item.labelKey}`
+              );
+          } else if (
+            "customLabel" in
+              item &&
+            item.customLabel ===
+              "clinicOrganisations"
+          ) {
+            label =
+              CLINIC_ORGANISATIONS_LABEL[
+                locale
+              ];
+          } else {
+            label =
+              CONTRACTS_LABEL[
+                locale
+              ];
+          }
+
+          return {
+            href:
+              item.href,
+            label,
+            icon:
+              item.icon,
+          };
+        }
+      );
+
+  navigationItems.push({
+    href:
+      `/${locale}`,
+    label:
+      t(
+        "navigation.home"
       ),
-      {
-        href:
-          `/${locale}`,
-        label:
-          t(
-            "navigation.home"
-          ),
-        icon:
-          "home",
-      },
-    ];
+    icon:
+      "home",
+  });
 
   return (
     <PlatformOperatorDashboardShell
