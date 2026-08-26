@@ -66,6 +66,18 @@ type Subscription = {
   last_payment_at: string | null;
 };
 
+type ComplimentaryAccess = {
+  id: string;
+  doctor_id: string;
+  invitation_id: string | null;
+  grant_type: string;
+  status: string;
+  starts_at: string;
+  ends_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
 type Doctor = {
   id: string;
   profile_id: string | null;
@@ -93,6 +105,7 @@ type Doctor = {
   auth_email: string | null;
   email_verified: boolean;
   subscription: Subscription | null;
+  complimentary_access: ComplimentaryAccess | null;
   clinic_count: number;
   active_staff_count: number;
 };
@@ -132,6 +145,75 @@ type VerificationFilter =
   | "verified"
   | "rejected"
   | "expired";
+
+const COMMERCIAL_ACCESS_COPY = {
+  ro: {
+    accessType: "Tip acces",
+    adminComplimentary: "Acces gratuit acordat de administrator",
+    stripeSubscription: "Abonament Stripe",
+    clinicCoverage: "Acoperire prin clinică",
+    noCommercialAccess: "Fără acces comercial identificat",
+    complimentaryStatus: "Statut acces gratuit",
+    complimentaryStart: "Început acces gratuit",
+    complimentaryEnd: "Sfârșit acces gratuit",
+    stripeActivation: "Activare Stripe",
+    stripeActivated: "Activat",
+    stripeNotActivated: "Neactivat",
+    stripePeriodStart: "Început perioadă Stripe",
+    stripePeriodEnd: "Sfârșit perioadă Stripe",
+    grantStatuses: {
+      scheduled: "Programat",
+      active: "Activ",
+      expired: "Expirat",
+      revoked: "Revocat",
+      cancelled: "Anulat",
+    },
+  },
+  en: {
+    accessType: "Access type",
+    adminComplimentary: "Admin complimentary access",
+    stripeSubscription: "Stripe subscription",
+    clinicCoverage: "Clinic-covered access",
+    noCommercialAccess: "No commercial access identified",
+    complimentaryStatus: "Complimentary status",
+    complimentaryStart: "Complimentary starts",
+    complimentaryEnd: "Complimentary ends",
+    stripeActivation: "Stripe activation",
+    stripeActivated: "Activated",
+    stripeNotActivated: "Not activated",
+    stripePeriodStart: "Stripe period starts",
+    stripePeriodEnd: "Stripe period ends",
+    grantStatuses: {
+      scheduled: "Scheduled",
+      active: "Active",
+      expired: "Expired",
+      revoked: "Revoked",
+      cancelled: "Cancelled",
+    },
+  },
+  de: {
+    accessType: "Zugangsart",
+    adminComplimentary: "Kostenloser Admin-Zugang",
+    stripeSubscription: "Stripe-Abonnement",
+    clinicCoverage: "Von der Klinik abgedeckt",
+    noCommercialAccess: "Kein kommerzieller Zugang erkannt",
+    complimentaryStatus: "Status des kostenlosen Zugangs",
+    complimentaryStart: "Kostenloser Zugang beginnt",
+    complimentaryEnd: "Kostenloser Zugang endet",
+    stripeActivation: "Stripe-Aktivierung",
+    stripeActivated: "Aktiviert",
+    stripeNotActivated: "Nicht aktiviert",
+    stripePeriodStart: "Stripe-Zeitraum beginnt",
+    stripePeriodEnd: "Stripe-Zeitraum endet",
+    grantStatuses: {
+      scheduled: "Geplant",
+      active: "Aktiv",
+      expired: "Abgelaufen",
+      revoked: "Widerrufen",
+      cancelled: "Storniert",
+    },
+  },
+} as const;
 
 function getFirstRelation<T>(
   relation:
@@ -195,7 +277,9 @@ function getStatusClasses(
   if (
     status === "suspended" ||
     status === "expired" ||
-    status === "canceled"
+    status === "canceled" ||
+    status === "cancelled" ||
+    status === "revoked"
   ) {
     return "bg-gray-200 text-gray-700";
   }
@@ -213,6 +297,11 @@ export default function DoctorsManagement() {
     getPlatformOperatorDoctors(
       locale
     );
+
+  const commercialCopy =
+    COMMERCIAL_ACCESS_COPY[
+      locale
+    ];
 
   const [
     doctors,
@@ -315,6 +404,17 @@ export default function DoctorsManagement() {
           return copy.common.none;
         }
 
+        const date =
+          new Date(value);
+
+        if (
+          Number.isNaN(
+            date.getTime()
+          )
+        ) {
+          return copy.common.none;
+        }
+
         return new Intl.DateTimeFormat(
           PLATFORM_OPERATOR_DOCTOR_LOCALE_TAGS[
             locale
@@ -326,9 +426,7 @@ export default function DoctorsManagement() {
             timeZone:
               "Europe/Bucharest",
           }
-        ).format(
-          new Date(value)
-        );
+        ).format(date);
       },
       [
         copy.common.none,
@@ -677,7 +775,6 @@ export default function DoctorsManagement() {
     setChangingDoctorId(
       doctor.id
     );
-
     setError(null);
     setSuccess(null);
 
@@ -716,18 +813,13 @@ export default function DoctorsManagement() {
             .actionFailed
         );
 
-      if (
-        !response.ok
-      ) {
+      if (!response.ok) {
         throw new Error(
           message
         );
       }
 
-      setSuccess(
-        message
-      );
-
+      setSuccess(message);
       await loadDoctors();
     } catch (
       actionError
@@ -783,7 +875,6 @@ export default function DoctorsManagement() {
     setChangingDoctorId(
       doctor.id
     );
-
     setError(null);
     setSuccess(null);
 
@@ -822,18 +913,13 @@ export default function DoctorsManagement() {
             .actionFailed
         );
 
-      if (
-        !response.ok
-      ) {
+      if (!response.ok) {
         throw new Error(
           message
         );
       }
 
-      setSuccess(
-        message
-      );
-
+      setSuccess(message);
       await loadDoctors();
     } catch (
       actionError
@@ -889,7 +975,6 @@ export default function DoctorsManagement() {
     setChangingDoctorId(
       doctor.id
     );
-
     setError(null);
     setSuccess(null);
 
@@ -933,18 +1018,13 @@ export default function DoctorsManagement() {
             .actionFailed
         );
 
-      if (
-        !response.ok
-      ) {
+      if (!response.ok) {
         throw new Error(
           message
         );
       }
 
-      setSuccess(
-        message
-      );
-
+      setSuccess(message);
       await loadDoctors();
     } catch (
       actionError
@@ -979,7 +1059,6 @@ export default function DoctorsManagement() {
     setChangingDoctorId(
       doctor.id
     );
-
     setError(null);
     setSuccess(null);
 
@@ -1018,18 +1097,13 @@ export default function DoctorsManagement() {
             .actionFailed
         );
 
-      if (
-        !response.ok
-      ) {
+      if (!response.ok) {
         throw new Error(
           message
         );
       }
 
-      setSuccess(
-        message
-      );
-
+      setSuccess(message);
       await loadDoctors();
     } catch (
       actionError
@@ -1139,6 +1213,58 @@ export default function DoctorsManagement() {
         subscription.status
       ] ??
       subscription.status;
+    };
+
+  const getComplimentaryStatusLabel =
+    (
+      grant:
+        | ComplimentaryAccess
+        | null
+    ) => {
+      if (!grant) {
+        return copy.common.none;
+      }
+
+      return (
+        commercialCopy
+          .grantStatuses as
+          Record<
+            string,
+            string
+          >
+      )[grant.status] ??
+      grant.status;
+    };
+
+  const getCommercialAccessType =
+    (
+      doctor: Doctor
+    ) => {
+      if (
+        doctor.complimentary_access
+      ) {
+        return commercialCopy
+          .adminComplimentary;
+      }
+
+      if (
+        doctor.subscription_payer ===
+        "clinic"
+      ) {
+        return commercialCopy
+          .clinicCoverage;
+      }
+
+      if (
+        doctor.subscription
+          ?.stripe_subscription_id
+      ) {
+        return commercialCopy
+          .stripeSubscription;
+      }
+
+      return commercialCopy
+        .noCommercialAccess;
     };
 
   return (
@@ -1259,7 +1385,7 @@ export default function DoctorsManagement() {
                   search
                 }
                 onChange={(
-                  event: { target: { value: string } }
+                  event
                 ) =>
                   setSearch(
                     event.target
@@ -1286,7 +1412,7 @@ export default function DoctorsManagement() {
                   doctorStatus
                 }
                 onChange={(
-                  event: { target: { value: string } }
+                  event
                 ) =>
                   setDoctorStatus(
                     event.target
@@ -1329,7 +1455,7 @@ export default function DoctorsManagement() {
                   accountStatus
                 }
                 onChange={(
-                  event: { target: { value: string } }
+                  event
                 ) =>
                   setAccountStatus(
                     event.target
@@ -1378,7 +1504,7 @@ export default function DoctorsManagement() {
                   subscriptionStatus
                 }
                 onChange={(
-                  event: { target: { value: string } }
+                  event
                 ) =>
                   setSubscriptionStatus(
                     event.target
@@ -1439,7 +1565,7 @@ export default function DoctorsManagement() {
                   payerFilter
                 }
                 onChange={(
-                  event: { target: { value: string } }
+                  event
                 ) =>
                   setPayerFilter(
                     event.target
@@ -1482,7 +1608,7 @@ export default function DoctorsManagement() {
                   verificationStatus
                 }
                 onChange={(
-                  event: { target: { value: string } }
+                  event
                 ) =>
                   setVerificationStatus(
                     event.target
@@ -1646,6 +1772,15 @@ export default function DoctorsManagement() {
                   ] ??
                   copy.common
                     .unknown;
+
+                const complimentaryAccess =
+                  doctor.complimentary_access;
+
+                const stripeActivated =
+                  Boolean(
+                    doctor.subscription
+                      ?.stripe_subscription_id
+                  );
 
                 return (
                   <article
@@ -1966,6 +2101,66 @@ export default function DoctorsManagement() {
                             <div>
                               <dt className="text-xs text-gray-500">
                                 {
+                                  commercialCopy
+                                    .accessType
+                                }
+                              </dt>
+                              <dd className="mt-[5px] font-medium">
+                                {getCommercialAccessType(
+                                  doctor
+                                )}
+                              </dd>
+                            </div>
+
+                            <div>
+                              <dt className="text-xs text-gray-500">
+                                {
+                                  commercialCopy
+                                    .complimentaryStatus
+                                }
+                              </dt>
+                              <dd className="mt-[5px] font-medium">
+                                {getComplimentaryStatusLabel(
+                                  complimentaryAccess
+                                )}
+                              </dd>
+                            </div>
+
+                            <div>
+                              <dt className="text-xs text-gray-500">
+                                {
+                                  commercialCopy
+                                    .complimentaryStart
+                                }
+                              </dt>
+                              <dd className="mt-[5px] font-medium">
+                                {formatDate(
+                                  complimentaryAccess
+                                    ?.starts_at ??
+                                    null
+                                )}
+                              </dd>
+                            </div>
+
+                            <div>
+                              <dt className="text-xs text-gray-500">
+                                {
+                                  commercialCopy
+                                    .complimentaryEnd
+                                }
+                              </dt>
+                              <dd className="mt-[5px] font-medium">
+                                {formatDate(
+                                  complimentaryAccess
+                                    ?.ends_at ??
+                                    null
+                                )}
+                              </dd>
+                            </div>
+
+                            <div>
+                              <dt className="text-xs text-gray-500">
+                                {
                                   copy.doctors
                                     .labels
                                     .plan
@@ -2000,6 +2195,28 @@ export default function DoctorsManagement() {
                             <div>
                               <dt className="text-xs text-gray-500">
                                 {
+                                  commercialCopy
+                                    .stripeActivation
+                                }
+                              </dt>
+                              <dd className="mt-[5px] font-medium">
+                                {doctor.subscription_payer ===
+                                "clinic"
+                                  ? copy
+                                      .doctors
+                                      .labels
+                                      .clinicNotApplicable
+                                  : stripeActivated
+                                    ? commercialCopy
+                                        .stripeActivated
+                                    : commercialCopy
+                                        .stripeNotActivated}
+                              </dd>
+                            </div>
+
+                            <div>
+                              <dt className="text-xs text-gray-500">
+                                {
                                   copy.doctors
                                     .labels
                                     .stripeStatus
@@ -2024,9 +2241,25 @@ export default function DoctorsManagement() {
                             <div>
                               <dt className="text-xs text-gray-500">
                                 {
-                                  copy.doctors
-                                    .labels
-                                    .periodEnd
+                                  commercialCopy
+                                    .stripePeriodStart
+                                }
+                              </dt>
+                              <dd className="mt-[5px] font-medium">
+                                {formatDate(
+                                  doctor
+                                    .subscription
+                                    ?.current_period_start ??
+                                    null
+                                )}
+                              </dd>
+                            </div>
+
+                            <div>
+                              <dt className="text-xs text-gray-500">
+                                {
+                                  commercialCopy
+                                    .stripePeriodEnd
                                 }
                               </dt>
                               <dd className="mt-[5px] font-medium">

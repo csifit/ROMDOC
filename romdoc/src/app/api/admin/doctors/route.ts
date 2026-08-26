@@ -58,6 +58,18 @@ type SubscriptionRow = {
   doctor_id: string | null;
 };
 
+type ComplimentaryAccessRow = {
+  id: string;
+  doctor_id: string;
+  invitation_id: string | null;
+  grant_type: string;
+  status: string;
+  starts_at: string;
+  ends_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
 function json(
   body: unknown,
   status = 200
@@ -152,6 +164,7 @@ export async function GET(): Promise<Response> {
   const [
     doctorsResult,
     subscriptionsResult,
+    complimentaryAccessResult,
     clinicLinksResult,
     staffResult,
     organizationsResult,
@@ -225,6 +238,23 @@ export async function GET(): Promise<Response> {
         updated_at
       `),
     admin
+      .from("doctor_access_grants")
+      .select(`
+        id,
+        doctor_id,
+        invitation_id,
+        grant_type,
+        status,
+        starts_at,
+        ends_at,
+        created_at,
+        updated_at
+      `)
+      .eq("grant_type", "admin_complimentary")
+      .order("created_at", {
+        ascending: false,
+      }),
+    admin
       .from("doctor_clinics")
       .select(`
         doctor_id,
@@ -246,6 +276,7 @@ export async function GET(): Promise<Response> {
       "Admin doctors query failed:",
       doctorsResult.error
     );
+
     return failure(
       CODE.doctorsLoadFailed,
       "Medicii nu au putut fi încărcați.",
@@ -258,9 +289,23 @@ export async function GET(): Promise<Response> {
       "Admin subscriptions query failed:",
       subscriptionsResult.error
     );
+
     return failure(
       CODE.doctorSubscriptionsLoadFailed,
       "Abonamentele medicilor nu au putut fi încărcate.",
+      500
+    );
+  }
+
+  if (complimentaryAccessResult.error) {
+    console.error(
+      "Admin doctor complimentary-access query failed:",
+      complimentaryAccessResult.error
+    );
+
+    return failure(
+      CODE.doctorSubscriptionsLoadFailed,
+      "Accesul comercial al medicilor nu a putut fi încărcat.",
       500
     );
   }
@@ -270,6 +315,7 @@ export async function GET(): Promise<Response> {
       "Admin doctor clinic counts query failed:",
       clinicLinksResult.error
     );
+
     return failure(
       CODE.doctorClinicLinksLoadFailed,
       "Asocierile clinicilor nu au putut fi încărcate.",
@@ -282,6 +328,7 @@ export async function GET(): Promise<Response> {
       "Admin doctor staff counts query failed:",
       staffResult.error
     );
+
     return failure(
       CODE.doctorStaffLoadFailed,
       "Personalul medicilor nu a putut fi încărcat.",
@@ -294,6 +341,7 @@ export async function GET(): Promise<Response> {
       "Admin doctor clinic organizations query failed:",
       organizationsResult.error
     );
+
     return failure(
       CODE.clinicOrganizationsLoadFailed,
       "Organizațiile clinicilor nu au putut fi încărcate.",
@@ -310,6 +358,7 @@ export async function GET(): Promise<Response> {
       "Admin doctor auth users query failed:",
       authError
     );
+
     return failure(
       CODE.doctorAuthLoadFailed,
       "Datele de autentificare ale medicilor nu au putut fi încărcate.",
@@ -320,6 +369,7 @@ export async function GET(): Promise<Response> {
   const subscriptionRows = (subscriptionsResult.data ?? []) as Array<
     SubscriptionRow & Record<string, unknown>
   >;
+
   const subscriptionByDoctorId = new Map(
     subscriptionRows
       .filter((subscription) => Boolean(subscription.doctor_id))
@@ -328,6 +378,7 @@ export async function GET(): Promise<Response> {
         subscription,
       ])
   );
+
   const subscriptionByProfileId = new Map(
     subscriptionRows
       .filter((subscription) => Boolean(subscription.profile_id))
@@ -336,6 +387,27 @@ export async function GET(): Promise<Response> {
         subscription,
       ])
   );
+
+  /*
+   * The query is ordered newest first. Keeping only the first row per
+   * doctor gives Admin the latest Admin-granted complimentary period while
+   * preserving expired history in the database.
+   */
+  const complimentaryAccessByDoctorId =
+    new Map<string, ComplimentaryAccessRow>();
+
+  for (
+    const grant of
+    (complimentaryAccessResult.data ?? []) as ComplimentaryAccessRow[]
+  ) {
+    if (!complimentaryAccessByDoctorId.has(grant.doctor_id)) {
+      complimentaryAccessByDoctorId.set(
+        grant.doctor_id,
+        grant
+      );
+    }
+  }
+
   const clinicCountByDoctorId = new Map<string, number>();
 
   for (const link of clinicLinksResult.data ?? []) {
@@ -360,12 +432,14 @@ export async function GET(): Promise<Response> {
 
   const organizations =
     (organizationsResult.data ?? []) as ClinicOrganization[];
+
   const organizationNameById = new Map(
     organizations.map((organization) => [
       organization.id,
       organization.name,
     ])
   );
+
   const doctors = (
     (doctorsResult.data ?? []) as Array<
       DoctorRow & Record<string, unknown>
@@ -375,19 +449,28 @@ export async function GET(): Promise<Response> {
     const profile = Array.isArray(rawProfile)
       ? rawProfile[0] ?? null
       : rawProfile ?? null;
+
     const authUser = doctor.profile_id
       ? authUserMap.get(doctor.profile_id)
       : null;
+
     const subscription =
       subscriptionByDoctorId.get(doctor.id) ??
       (doctor.profile_id
         ? subscriptionByProfileId.get(doctor.profile_id)
         : null) ??
       null;
+
+    const complimentaryAccess =
+      complimentaryAccessByDoctorId.get(doctor.id) ??
+      null;
+
     const canonicalAccountType =
       doctor.account_type ?? "independent";
+
     const isClinicInvited =
       canonicalAccountType === "clinic_invited";
+
     const clinicOrganizationName = doctor.clinic_organization_id
       ? organizationNameById.get(doctor.clinic_organization_id) ?? null
       : null;
@@ -398,6 +481,7 @@ export async function GET(): Promise<Response> {
       auth_email: authUser?.email ?? doctor.email ?? null,
       email_verified: authUser?.emailConfirmed ?? false,
       subscription,
+      complimentary_access: complimentaryAccess,
       subscription_payer: isClinicInvited ? "clinic" : "doctor",
       clinic_organization_name: clinicOrganizationName,
       clinic_count: clinicCountByDoctorId.get(doctor.id) ?? 0,
@@ -474,6 +558,7 @@ export async function PATCH(
   }
 
   const admin = createAdminClient();
+
   const { data: doctor, error: doctorError } = await admin
     .from("doctors")
     .select(`
@@ -632,14 +717,17 @@ export async function PATCH(
     body.verificationStatus,
     50
   );
+
   const registrationNumber = normalizeString(
     body.registrationNumber,
     200
   );
+
   const verificationExpiresAt = normalizeString(
     body.verificationExpiresAt,
     100
   );
+
   const allowedVerificationStatuses = [
     "not_submitted",
     "pending",
@@ -684,6 +772,7 @@ export async function PATCH(
   }
 
   const isVerified = verificationStatus === "verified";
+
   const { data: updatedDoctor, error: verificationError } = await admin
     .from("doctors")
     .update({
