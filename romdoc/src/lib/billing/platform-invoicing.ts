@@ -18,6 +18,10 @@ export type PlatformVatValidationStatus =
 
 export type PlatformBillingRates = {
   subscriptionPriceRon: number;
+  /**
+   * Compatibility field.
+   * SMS is included in the subscription/package and is not billed separately.
+   */
   smsPriceRon: number;
   vatRate: number;
   updatedAt: string | null;
@@ -44,6 +48,9 @@ export type PlatformClientBillingTerms = {
   clientType: PlatformInvoiceClientType;
   clientId: string;
   subscriptionUnitPrice: number | null;
+  /**
+   * Legacy compatibility field. It is ignored by invoice calculations.
+   */
   smsUnitPrice: number | null;
   currency: PlatformBillingCurrency;
   vatRate: number | null;
@@ -89,6 +96,9 @@ export type PlatformInvoiceAmountRow = {
   otherSmsCount: number;
   totalSmsCount: number;
   subscriptionUnitPrice: number;
+  /**
+   * Compatibility field. Always 0 for new invoice calculations.
+   */
   smsUnitPrice: number;
   currency: PlatformBillingCurrency;
   vatRate: number;
@@ -96,6 +106,9 @@ export type PlatformInvoiceAmountRow = {
   vatReason: string | null;
   billingTermsSource: "client" | "global";
   subscriptionAmount: number;
+  /**
+   * Compatibility field. Always 0 for new invoice calculations.
+   */
   smsAmount: number;
   subtotal: number;
   vatAmount: number;
@@ -129,7 +142,6 @@ export type PlatformInvoicingData = {
 
 type BillingSettingsRow = {
   clinic_doctor_monthly_price_ron: number | string | null;
-  sms_unit_price_ron: number | string | null;
   vat_rate: number | string | null;
   updated_at: string | null;
   updated_by_profile_id: string | null;
@@ -214,8 +226,6 @@ type SmsLogRow = {
   doctor_id: string | null;
   event: string | null;
   status: string | null;
-  invoice_status: string | null;
-  payer_type: string | null;
   payer_clinic_organization_id: string | null;
   created_at: string;
 };
@@ -259,7 +269,7 @@ type ClientInvoiceRow = {
 
 const DEFAULT_RATES: PlatformBillingRates = {
   subscriptionPriceRon: 20,
-  smsPriceRon: 0.1,
+  smsPriceRon: 0,
   vatRate: 0.21,
   updatedAt: null,
   updatedByProfileId: null,
@@ -459,27 +469,36 @@ function termAppliesToRange(
 
 function buildAmounts({
   subscriptionCount,
-  totalSmsCount,
   terms,
   rates,
 }: {
   subscriptionCount: number;
+  /**
+   * Kept in the call contract so SMS counts can remain available to callers,
+   * but they are intentionally excluded from monetary calculations.
+   */
   totalSmsCount: number;
   terms: PlatformClientBillingTerms | null;
   rates: PlatformBillingRates;
 }) {
   const subscriptionUnitPrice =
     terms?.subscriptionUnitPrice ?? rates.subscriptionPriceRon;
-  const smsUnitPrice = terms?.smsUnitPrice ?? rates.smsPriceRon;
   const currency = terms?.currency ?? "RON";
   const vatRate = terms?.vatRate ?? rates.vatRate;
   const vatTreatment = terms?.vatTreatment ?? "domestic";
   const vatReason = terms?.vatReason ?? null;
+
   const subscriptionAmount = roundMoney(
     subscriptionCount * subscriptionUnitPrice
   );
-  const smsAmount = roundMoney(totalSmsCount * smsUnitPrice);
-  const subtotal = roundMoney(subscriptionAmount + smsAmount);
+
+  // SMS is included in the fixed subscription/package price.
+  // Keep compatibility fields at zero until the old SMS billing schema/types
+  // are retired in a later cleanup migration.
+  const smsUnitPrice = 0;
+  const smsAmount = 0;
+
+  const subtotal = subscriptionAmount;
   const vatAmount = roundMoney(subtotal * vatRate);
   const total = roundMoney(subtotal + vatAmount);
 
@@ -556,7 +575,7 @@ export async function loadPlatformBillingRates(): Promise<{
   const { data, error } = await admin
     .from("clinic_billing_settings")
     .select(
-      "clinic_doctor_monthly_price_ron, sms_unit_price_ron, vat_rate, updated_at, updated_by_profile_id"
+      "clinic_doctor_monthly_price_ron, vat_rate, updated_at, updated_by_profile_id"
     )
     .eq("id", 1)
     .maybeSingle();
@@ -575,7 +594,7 @@ export async function loadPlatformBillingRates(): Promise<{
         row.clinic_doctor_monthly_price_ron,
         DEFAULT_RATES.subscriptionPriceRon
       ),
-      smsPriceRon: toNumber(row.sms_unit_price_ron, DEFAULT_RATES.smsPriceRon),
+      smsPriceRon: 0,
       vatRate: Math.min(1, toNumber(row.vat_rate, DEFAULT_RATES.vatRate)),
       updatedAt: row.updated_at,
       updatedByProfileId: row.updated_by_profile_id,
@@ -660,7 +679,7 @@ export async function loadPlatformInvoicingData({
     admin
       .from("sms_delivery_logs")
       .select(
-        "doctor_id, event, status, invoice_status, payer_type, payer_clinic_organization_id, created_at"
+        "doctor_id, event, status, payer_clinic_organization_id, created_at"
       )
       .gte("created_at", range.startIso)
       .lt("created_at", range.endExclusiveIso)
@@ -726,7 +745,8 @@ export async function loadPlatformInvoicingData({
   const rates = ratesResult.rates;
   const doctors = (doctorsResult.data ?? []) as DoctorRow[];
   const profiles = (profilesResult.data ?? []) as ProfileRow[];
-  const subscriptions = (subscriptionsResult.data ?? []) as DoctorSubscriptionRow[];
+  const subscriptions = (subscriptionsResult.data ??
+    []) as DoctorSubscriptionRow[];
   const doctorBillingProfiles = (doctorBillingResult.data ??
     []) as DoctorBillingProfileRow[];
   const organizations = (organizationsResult.data ?? []) as OrganizationRow[];
@@ -739,6 +759,7 @@ export async function loadPlatformInvoicingData({
   const invoiceRows = (invoicesResult.data ?? []) as ClientInvoiceRow[];
 
   const termsByClient = new Map<string, PlatformClientBillingTerms>();
+
   for (const row of termRows) {
     try {
       const terms = normalizeTerms(row);
@@ -749,23 +770,33 @@ export async function loadPlatformInvoicingData({
   }
 
   const invoiceByClient = new Map<string, PlatformClientInvoiceRecord>();
+
   for (const invoice of invoiceRows) {
     const id =
       invoice.client_type === "independent_doctor"
         ? invoice.doctor_id
         : invoice.clinic_organization_id;
+
     if (!id) continue;
-    invoiceByClient.set(clientKey(invoice.client_type, id), normalizeInvoice(invoice));
+
+    invoiceByClient.set(
+      clientKey(invoice.client_type, id),
+      normalizeInvoice(invoice)
+    );
   }
 
-  const profilesById = new Map(profiles.map((profile) => [profile.id, profile]));
+  const profilesById = new Map(
+    profiles.map((profile) => [profile.id, profile])
+  );
 
   const subscriptionsByDoctorId = new Map<string, DoctorSubscriptionRow>();
   const subscriptionsByProfileId = new Map<string, DoctorSubscriptionRow>();
+
   for (const subscription of subscriptions) {
     if (subscription.doctor_id) {
       subscriptionsByDoctorId.set(subscription.doctor_id, subscription);
     }
+
     if (subscription.profile_id) {
       subscriptionsByProfileId.set(subscription.profile_id, subscription);
     }
@@ -774,6 +805,7 @@ export async function loadPlatformInvoicingData({
   const doctorBillingById = new Map(
     doctorBillingProfiles.map((profile) => [profile.doctor_id, profile])
   );
+
   const organizationBillingById = new Map(
     organizationBillingProfiles.map((profile) => [
       profile.organization_id,
@@ -804,8 +836,7 @@ export async function loadPlatformInvoicingData({
 
   const organizationByDoctorId = new Map<string, string>();
 
-  // The immutable Doctor account link is the primary source of truth.
-  // This also attributes older SMS logs created before payer fields were added.
+  // Immutable Doctor account ownership is the primary source of truth.
   for (const doctor of doctors) {
     if (
       doctor.account_type === "clinic_invited" &&
@@ -818,7 +849,7 @@ export async function loadPlatformInvoicingData({
     }
   }
 
-  // Keep the accepted clinic-paid relationship as a compatibility fallback.
+  // Accepted clinic-paid relationships remain a compatibility fallback.
   for (const relationship of billableRelationships) {
     if (
       relationship.doctor_id &&
@@ -842,44 +873,48 @@ export async function loadPlatformInvoicingData({
   const organizationSmsCounts = new Map<string, SmsCounter>();
 
   for (const log of smsLogs) {
-    if (
-      log.invoice_status === "not_billable" ||
-      log.payer_type === "not_billable" ||
-      log.payer_type === "romdoc"
-    ) {
-      continue;
-    }
-
-    const increment = (map: Map<string, SmsCounter>, key: string) => {
+    const increment = (
+      map: Map<string, SmsCounter>,
+      key: string
+    ) => {
       const current = map.get(key) ?? {
         total: 0,
         confirmations: 0,
         reminders: 0,
         other: 0,
       };
+
       current.total += 1;
-      if (log.event === "confirmed") current.confirmations += 1;
-      else if (log.event === "reminder_24_hours") current.reminders += 1;
-      else current.other += 1;
+
+      if (log.event === "confirmed") {
+        current.confirmations += 1;
+      } else if (log.event === "reminder_24_hours") {
+        current.reminders += 1;
+      } else {
+        current.other += 1;
+      }
+
       map.set(key, current);
     };
 
-    const explicitOrganizationId = log.payer_clinic_organization_id;
+    const explicitOrganizationId =
+      log.payer_clinic_organization_id;
+
     const inferredOrganizationId = log.doctor_id
       ? organizationByDoctorId.get(log.doctor_id)
       : undefined;
 
-    if (
-      log.payer_type === "clinic_organization" ||
-      explicitOrganizationId ||
-      inferredOrganizationId
-    ) {
-      const organizationId = explicitOrganizationId ?? inferredOrganizationId;
-      if (organizationId) increment(organizationSmsCounts, organizationId);
+    const organizationId =
+      explicitOrganizationId ?? inferredOrganizationId;
+
+    if (organizationId) {
+      increment(organizationSmsCounts, organizationId);
       continue;
     }
 
-    if (log.doctor_id) increment(doctorSmsCounts, log.doctor_id);
+    if (log.doctor_id) {
+      increment(doctorSmsCounts, log.doctor_id);
+    }
   }
 
   const pricingClients: PlatformBillingClientOption[] = [];
@@ -897,16 +932,14 @@ export async function loadPlatformInvoicingData({
         doctor.created_at,
         range.endExclusiveIso
       );
+
       const hasBillableSubscription = Boolean(
         subscription &&
-        BILLABLE_SUBSCRIPTION_STATUSES.has(subscription.status ?? "") &&
-        isDateBefore(subscription.created_at, range.endExclusiveIso) &&
-        isDateAfterOrEqual(subscription.canceled_at, range.startIso)
+          BILLABLE_SUBSCRIPTION_STATUSES.has(subscription.status ?? "") &&
+          isDateBefore(subscription.created_at, range.endExclusiveIso) &&
+          isDateAfterOrEqual(subscription.canceled_at, range.startIso)
       );
 
-      // Independent Doctors are activated only after successful subscription
-      // or an explicit platform entitlement. An active Doctor therefore counts
-      // as one monthly subscription even when a legacy subscription row is absent.
       const subscriptionCount =
         existedBeforeMonthEnd &&
         (hasBillableSubscription || doctor.status === "active")
@@ -923,14 +956,20 @@ export async function loadPlatformInvoicingData({
       const profile = doctor.profile_id
         ? profilesById.get(doctor.profile_id)
         : undefined;
+
       const billing = doctorBillingById.get(doctor.id);
+
       const clientName =
         fullName(profile) ||
         doctorNameFromSlug(doctor.slug) ||
         billing?.legal_name ||
         doctor.slug;
+
       const rawTerms =
-        termsByClient.get(clientKey("independent_doctor", doctor.id)) ?? null;
+        termsByClient.get(
+          clientKey("independent_doctor", doctor.id)
+        ) ?? null;
+
       const applicableTerms = termAppliesToRange(rawTerms, range)
         ? rawTerms
         : null;
@@ -944,7 +983,9 @@ export async function loadPlatformInvoicingData({
       });
 
       const invoiceRecord =
-        invoiceByClient.get(clientKey("independent_doctor", doctor.id)) ?? null;
+        invoiceByClient.get(
+          clientKey("independent_doctor", doctor.id)
+        ) ?? null;
 
       if (!existedBeforeMonthEnd && sms.total === 0 && !invoiceRecord) {
         return null;
@@ -987,6 +1028,7 @@ export async function loadPlatformInvoicingData({
     );
 
   const subscriptionsByOrganization = new Map<string, number>();
+
   for (const doctor of doctors) {
     if (
       doctor.account_type !== "clinic_invited" ||
@@ -1006,17 +1048,21 @@ export async function loadPlatformInvoicingData({
     .map((organization): PlatformInvoiceAmountRow | null => {
       const subscriptionCount =
         subscriptionsByOrganization.get(organization.id) ?? 0;
+
       const sms = organizationSmsCounts.get(organization.id) ?? {
         total: 0,
         confirmations: 0,
         reminders: 0,
         other: 0,
       };
+
       const billing = organizationBillingById.get(organization.id);
+
       const rawTerms =
         termsByClient.get(
           clientKey("clinic_organization", organization.id)
         ) ?? null;
+
       const applicableTerms = termAppliesToRange(rawTerms, range)
         ? rawTerms
         : null;
@@ -1030,8 +1076,9 @@ export async function loadPlatformInvoicingData({
       });
 
       const invoiceRecord =
-        invoiceByClient.get(clientKey("clinic_organization", organization.id)) ??
-        null;
+        invoiceByClient.get(
+          clientKey("clinic_organization", organization.id)
+        ) ?? null;
 
       const existedBeforeMonthEnd = isDateBefore(
         organization.created_at,
@@ -1082,6 +1129,7 @@ export async function loadPlatformInvoicingData({
     if (first.clientType !== second.clientType) {
       return first.clientType === "independent_doctor" ? -1 : 1;
     }
+
     return first.name.localeCompare(second.name, locale);
   });
 
