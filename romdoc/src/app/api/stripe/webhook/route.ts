@@ -3,10 +3,16 @@ import {
   NextResponse,
 } from "next/server";
 import Stripe from "stripe";
-import { getStripe } from "@/lib/stripe";
-import { createAdminClient } from "@/lib/supabase/admin";
 
-export const runtime = "nodejs";
+import {
+  getStripe,
+} from "@/lib/stripe";
+import {
+  createAdminClient,
+} from "@/lib/supabase/admin";
+
+export const runtime =
+  "nodejs";
 
 type SubscriptionPeriod = {
   current_period_start?: number;
@@ -16,6 +22,9 @@ type SubscriptionPeriod = {
 type BillingInterval =
   | "monthly"
   | "yearly";
+
+const INDEPENDENT_COMPLIMENTARY_FLOW =
+  "independent_complimentary";
 
 function timestampToIso(
   timestamp:
@@ -69,8 +78,10 @@ function getBillingIntervalFromSubscription(
       .romdoc_billing_interval;
 
   if (
-    metadataInterval === "monthly" ||
-    metadataInterval === "yearly"
+    metadataInterval ===
+      "monthly" ||
+    metadataInterval ===
+      "yearly"
   ) {
     return metadataInterval;
   }
@@ -93,31 +104,70 @@ function getSubscriptionPriceId(
   );
 }
 
-function slugify(value: string) {
+function getCustomerId(
+  subscription: Stripe.Subscription
+) {
+  return typeof subscription.customer ===
+    "string"
+    ? subscription.customer
+    : subscription.customer.id;
+}
+
+function isIndependentComplimentarySubscription(
+  subscription: Stripe.Subscription
+) {
+  return (
+    subscription.metadata
+      .romdoc_subscription_flow ===
+    INDEPENDENT_COMPLIMENTARY_FLOW
+  );
+}
+
+function slugify(
+  value: string
+) {
   return value
     .normalize("NFD")
-    .replace(/[^\u0000-\u007E]/g, "")
+    .replace(
+      /[^\u0000-\u007E]/g,
+      ""
+    )
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(
+      /[^a-z0-9]+/g,
+      "-"
+    )
+    .replace(
+      /^-+|-+$/g,
+      ""
+    );
 }
 
 async function createUniqueDoctorSlug(
   baseName: string
 ) {
-  const admin = createAdminClient();
+  const admin =
+    createAdminClient();
 
   const baseSlug =
-    slugify(baseName) || "medic";
+    slugify(baseName) ||
+    "medic";
 
-  let candidate = baseSlug;
+  let candidate =
+    baseSlug;
   let suffix = 2;
 
   while (true) {
-    const { data, error } = await admin
+    const {
+      data,
+      error,
+    } = await admin
       .from("doctors")
       .select("id")
-      .eq("slug", candidate)
+      .eq(
+        "slug",
+        candidate
+      )
       .maybeSingle();
 
     if (error) {
@@ -130,7 +180,8 @@ async function createUniqueDoctorSlug(
       return candidate;
     }
 
-    candidate = `${baseSlug}-${suffix}`;
+    candidate =
+      `${baseSlug}-${suffix}`;
     suffix += 1;
   }
 }
@@ -153,11 +204,180 @@ async function getSubscription(
     );
 }
 
-async function activateDoctorFromSubscription(
+async function syncIndependentComplimentarySubscription(
+  subscription: Stripe.Subscription,
+  options?: {
+    markPaid?: boolean;
+  }
+) {
+  const profileId =
+    subscription.metadata
+      .romdoc_profile_id;
+
+  const doctorId =
+    subscription.metadata
+      .romdoc_doctor_id;
+
+  if (
+    !profileId ||
+    !doctorId
+  ) {
+    throw new Error(
+      "Independent complimentary Stripe subscription is missing RomDoc doctor metadata."
+    );
+  }
+
+  const admin =
+    createAdminClient();
+
+  const {
+    data: doctor,
+    error: doctorError,
+  } = await admin
+    .from("doctors")
+    .select(`
+      id,
+      profile_id,
+      account_type
+    `)
+    .eq(
+      "id",
+      doctorId
+    )
+    .eq(
+      "profile_id",
+      profileId
+    )
+    .maybeSingle();
+
+  if (
+    doctorError ||
+    !doctor
+  ) {
+    throw new Error(
+      `Independent doctor lookup failed: ${
+        doctorError?.message ??
+        "not found"
+      }`
+    );
+  }
+
+  if (
+    doctor.account_type !==
+    "independent"
+  ) {
+    throw new Error(
+      "Clinic-invited doctors cannot hold a direct Stripe subscription."
+    );
+  }
+
+  const period =
+    getSubscriptionPeriod(
+      subscription
+    );
+
+  const updateValues: {
+    profile_id: string;
+    doctor_application_id: null;
+    doctor_id: string;
+    stripe_customer_id: string;
+    stripe_subscription_id: string;
+    stripe_price_id: string | null;
+    billing_interval: BillingInterval;
+    status: string;
+    current_period_start:
+      | string
+      | null;
+    current_period_end:
+      | string
+      | null;
+    cancel_at_period_end: boolean;
+    canceled_at:
+      | string
+      | null;
+    updated_at: string;
+    last_payment_at?: string;
+  } = {
+    profile_id:
+      profileId,
+    doctor_application_id:
+      null,
+    doctor_id:
+      doctorId,
+    stripe_customer_id:
+      getCustomerId(
+        subscription
+      ),
+    stripe_subscription_id:
+      subscription.id,
+    stripe_price_id:
+      getSubscriptionPriceId(
+        subscription
+      ),
+    billing_interval:
+      getBillingIntervalFromSubscription(
+        subscription
+      ),
+    status:
+      subscription.status,
+    current_period_start:
+      timestampToIso(
+        period.start
+      ),
+    current_period_end:
+      timestampToIso(
+        period.end
+      ),
+    cancel_at_period_end:
+      subscription
+        .cancel_at_period_end,
+    canceled_at:
+      timestampToIso(
+        subscription.canceled_at
+      ),
+    updated_at:
+      new Date().toISOString(),
+  };
+
+  if (
+    options?.markPaid
+  ) {
+    updateValues.last_payment_at =
+      new Date().toISOString();
+  }
+
+  const {
+    error:
+      subscriptionUpsertError,
+  } = await admin
+    .from(
+      "doctor_subscriptions"
+    )
+    .upsert(
+      updateValues,
+      {
+        onConflict:
+          "profile_id",
+      }
+    );
+
+  if (
+    subscriptionUpsertError
+  ) {
+    throw new Error(
+      `Independent subscription persistence failed: ${subscriptionUpsertError.message}`
+    );
+  }
+}
+
+async function activateApplicantDoctorFromSubscription(
   subscription: Stripe.Subscription
 ) {
   if (
-    !["active", "trialing"].includes(
+    ![
+      "active",
+      "trialing",
+    ].includes(
       subscription.status
     )
   ) {
@@ -172,13 +392,17 @@ async function activateDoctorFromSubscription(
     subscription.metadata
       .romdoc_doctor_application_id;
 
-  if (!profileId || !applicationId) {
+  if (
+    !profileId ||
+    !applicationId
+  ) {
     throw new Error(
-      "Stripe subscription is missing RomDoc metadata."
+      "Stripe applicant subscription is missing RomDoc metadata."
     );
   }
 
-  const admin = createAdminClient();
+  const admin =
+    createAdminClient();
 
   const {
     data: profile,
@@ -191,10 +415,16 @@ async function activateDoctorFromSubscription(
       first_name,
       last_name
     `)
-    .eq("id", profileId)
+    .eq(
+      "id",
+      profileId
+    )
     .maybeSingle();
 
-  if (profileError || !profile) {
+  if (
+    profileError ||
+    !profile
+  ) {
     throw new Error(
       `Doctor profile lookup failed: ${
         profileError?.message ??
@@ -205,9 +435,12 @@ async function activateDoctorFromSubscription(
 
   const {
     data: application,
-    error: applicationError,
+    error:
+      applicationError,
   } = await admin
-    .from("doctor_applications")
+    .from(
+      "doctor_applications"
+    )
     .select(`
       id,
       profile_id,
@@ -216,8 +449,14 @@ async function activateDoctorFromSubscription(
       city_id,
       status
     `)
-    .eq("id", applicationId)
-    .eq("profile_id", profileId)
+    .eq(
+      "id",
+      applicationId
+    )
+    .eq(
+      "profile_id",
+      profileId
+    )
     .maybeSingle();
 
   if (
@@ -226,18 +465,23 @@ async function activateDoctorFromSubscription(
   ) {
     throw new Error(
       `Doctor application lookup failed: ${
-        applicationError?.message ??
+        applicationError
+          ?.message ??
         "not found"
       }`
     );
   }
 
   const {
-    data: authUserResult,
-    error: authUserError,
+    data:
+      authUserResult,
+    error:
+      authUserError,
   } =
     await admin.auth.admin
-      .getUserById(profileId);
+      .getUserById(
+        profileId
+      );
 
   if (
     authUserError ||
@@ -245,34 +489,46 @@ async function activateDoctorFromSubscription(
   ) {
     throw new Error(
       `Doctor Auth user lookup failed: ${
-        authUserError?.message ??
+        authUserError
+          ?.message ??
         "not found"
       }`
     );
   }
 
-  let doctorId: string | null = null;
+  let doctorId:
+    | string
+    | null = null;
 
   const {
-    data: existingDoctor,
-    error: doctorLookupError,
+    data:
+      existingDoctor,
+    error:
+      doctorLookupError,
   } = await admin
     .from("doctors")
     .select("id")
-    .eq("profile_id", profileId)
+    .eq(
+      "profile_id",
+      profileId
+    )
     .maybeSingle();
 
-  if (doctorLookupError) {
+  if (
+    doctorLookupError
+  ) {
     throw new Error(
       `Existing doctor lookup failed: ${doctorLookupError.message}`
     );
   }
 
   if (existingDoctor) {
-    doctorId = existingDoctor.id;
+    doctorId =
+      existingDoctor.id;
 
     const {
-      error: doctorUpdateError,
+      error:
+        doctorUpdateError,
     } = await admin
       .from("doctors")
       .update({
@@ -281,15 +537,20 @@ async function activateDoctorFromSubscription(
         phone:
           application.phone,
         email:
-          authUserResult.user.email ??
-          null,
+          authUserResult.user
+            .email ?? null,
         status: "active",
         updated_at:
           new Date().toISOString(),
       })
-      .eq("id", doctorId);
+      .eq(
+        "id",
+        doctorId
+      );
 
-    if (doctorUpdateError) {
+    if (
+      doctorUpdateError
+    ) {
       throw new Error(
         `Doctor activation failed: ${doctorUpdateError.message}`
       );
@@ -313,43 +574,57 @@ async function activateDoctorFromSubscription(
             )}`
       );
 
-    doctorId = crypto.randomUUID();
+    doctorId =
+      crypto.randomUUID();
 
     const {
-      error: doctorInsertError,
+      error:
+        doctorInsertError,
     } = await admin
       .from("doctors")
       .insert({
-        id: doctorId,
-        profile_id: profileId,
+        id:
+          doctorId,
+        profile_id:
+          profileId,
         city_id:
           application.city_id,
-        slug: doctorSlug,
+        slug:
+          doctorSlug,
         phone:
           application.phone,
         email:
-          authUserResult.user.email ??
-          null,
-        status: "active",
+          authUserResult.user
+            .email ?? null,
+        status:
+          "active",
       });
 
-    if (doctorInsertError) {
+    if (
+      doctorInsertError
+    ) {
       throw new Error(
         `Doctor creation failed: ${doctorInsertError.message}`
       );
     }
 
     const {
-      error: translationInsertError,
+      error:
+        translationInsertError,
     } = await admin
-      .from("doctor_translations")
+      .from(
+        "doctor_translations"
+      )
       .insert({
-        doctor_id: doctorId,
+        doctor_id:
+          doctorId,
         locale: "ro",
         title: "Medic",
       });
 
-    if (translationInsertError) {
+    if (
+      translationInsertError
+    ) {
       throw new Error(
         `Doctor translation creation failed: ${translationInsertError.message}`
       );
@@ -361,12 +636,16 @@ async function activateDoctorFromSubscription(
     application.specialty_id
   ) {
     const {
-      error: specialtyInsertError,
+      error:
+        specialtyInsertError,
     } = await admin
-      .from("doctor_specialties")
+      .from(
+        "doctor_specialties"
+      )
       .upsert(
         {
-          doctor_id: doctorId,
+          doctor_id:
+            doctorId,
           specialty_id:
             application.specialty_id,
         },
@@ -376,7 +655,9 @@ async function activateDoctorFromSubscription(
         }
       );
 
-    if (specialtyInsertError) {
+    if (
+      specialtyInsertError
+    ) {
       throw new Error(
         `Doctor specialty creation failed: ${specialtyInsertError.message}`
       );
@@ -388,39 +669,35 @@ async function activateDoctorFromSubscription(
       subscription
     );
 
-  const customerId =
-    typeof subscription.customer ===
-    "string"
-      ? subscription.customer
-      : subscription.customer.id;
-
-  const priceId =
-    getSubscriptionPriceId(
-      subscription
-    );
-
-  const billingInterval =
-    getBillingIntervalFromSubscription(
-      subscription
-    );
-
   const {
-    error: subscriptionUpsertError,
+    error:
+      subscriptionUpsertError,
   } = await admin
-    .from("doctor_subscriptions")
+    .from(
+      "doctor_subscriptions"
+    )
     .upsert(
       {
-        profile_id: profileId,
+        profile_id:
+          profileId,
         doctor_application_id:
           applicationId,
-        doctor_id: doctorId,
+        doctor_id:
+          doctorId,
         stripe_customer_id:
-          customerId,
+          getCustomerId(
+            subscription
+          ),
         stripe_subscription_id:
           subscription.id,
-        stripe_price_id: priceId,
+        stripe_price_id:
+          getSubscriptionPriceId(
+            subscription
+          ),
         billing_interval:
-          billingInterval,
+          getBillingIntervalFromSubscription(
+            subscription
+          ),
         status:
           subscription.status,
         current_period_start:
@@ -444,18 +721,22 @@ async function activateDoctorFromSubscription(
           new Date().toISOString(),
       },
       {
-        onConflict: "profile_id",
+        onConflict:
+          "profile_id",
       }
     );
 
-  if (subscriptionUpsertError) {
+  if (
+    subscriptionUpsertError
+  ) {
     throw new Error(
       `Subscription activation persistence failed: ${subscriptionUpsertError.message}`
     );
   }
 
   const {
-    error: profileUpdateError,
+    error:
+      profileUpdateError,
   } = await admin
     .from("profiles")
     .update({
@@ -463,87 +744,120 @@ async function activateDoctorFromSubscription(
       updated_at:
         new Date().toISOString(),
     })
-    .eq("id", profileId);
+    .eq(
+      "id",
+      profileId
+    );
 
-  if (profileUpdateError) {
+  if (
+    profileUpdateError
+  ) {
     throw new Error(
       `Doctor role activation failed: ${profileUpdateError.message}`
     );
   }
 
   const {
-    error: applicationUpdateError,
+    error:
+      applicationUpdateError,
   } = await admin
-    .from("doctor_applications")
+    .from(
+      "doctor_applications"
+    )
     .update({
       status: "paid",
       updated_at:
         new Date().toISOString(),
     })
-    .eq("id", applicationId);
+    .eq(
+      "id",
+      applicationId
+    );
 
-  if (applicationUpdateError) {
+  if (
+    applicationUpdateError
+  ) {
     throw new Error(
       `Doctor application activation failed: ${applicationUpdateError.message}`
     );
   }
 }
 
-async function updateSubscriptionRecord(
+async function syncApplicantSubscriptionRecord(
   subscription: Stripe.Subscription
 ) {
-  const admin = createAdminClient();
-
   const profileId =
     subscription.metadata
       .romdoc_profile_id;
 
+  const applicationId =
+    subscription.metadata
+      .romdoc_doctor_application_id;
+
   if (!profileId) {
     return;
   }
+
+  const admin =
+    createAdminClient();
 
   const period =
     getSubscriptionPeriod(
       subscription
     );
 
-  const priceId =
-    getSubscriptionPriceId(
-      subscription
+  const {
+    error,
+  } = await admin
+    .from(
+      "doctor_subscriptions"
+    )
+    .upsert(
+      {
+        profile_id:
+          profileId,
+        doctor_application_id:
+          applicationId ||
+          null,
+        stripe_customer_id:
+          getCustomerId(
+            subscription
+          ),
+        stripe_subscription_id:
+          subscription.id,
+        stripe_price_id:
+          getSubscriptionPriceId(
+            subscription
+          ),
+        billing_interval:
+          getBillingIntervalFromSubscription(
+            subscription
+          ),
+        status:
+          subscription.status,
+        current_period_start:
+          timestampToIso(
+            period.start
+          ),
+        current_period_end:
+          timestampToIso(
+            period.end
+          ),
+        cancel_at_period_end:
+          subscription
+            .cancel_at_period_end,
+        canceled_at:
+          timestampToIso(
+            subscription.canceled_at
+          ),
+        updated_at:
+          new Date().toISOString(),
+      },
+      {
+        onConflict:
+          "profile_id",
+      }
     );
-
-  const billingInterval =
-    getBillingIntervalFromSubscription(
-      subscription
-    );
-
-  const { error } = await admin
-    .from("doctor_subscriptions")
-    .update({
-      stripe_price_id: priceId,
-      billing_interval:
-        billingInterval,
-      status:
-        subscription.status,
-      current_period_start:
-        timestampToIso(
-          period.start
-        ),
-      current_period_end:
-        timestampToIso(
-          period.end
-        ),
-      cancel_at_period_end:
-        subscription
-          .cancel_at_period_end,
-      canceled_at:
-        timestampToIso(
-          subscription.canceled_at
-        ),
-      updated_at:
-        new Date().toISOString(),
-    })
-    .eq("profile_id", profileId);
 
   if (error) {
     throw new Error(
@@ -552,20 +866,43 @@ async function updateSubscriptionRecord(
   }
 
   if (
-    ["active", "trialing"].includes(
+    [
+      "active",
+      "trialing",
+    ].includes(
       subscription.status
     )
   ) {
-    await activateDoctorFromSubscription(
+    await activateApplicantDoctorFromSubscription(
       subscription
     );
   }
 }
 
+async function syncSubscriptionRecord(
+  subscription: Stripe.Subscription
+) {
+  if (
+    isIndependentComplimentarySubscription(
+      subscription
+    )
+  ) {
+    await syncIndependentComplimentarySubscription(
+      subscription
+    );
+    return;
+  }
+
+  await syncApplicantSubscriptionRecord(
+    subscription
+  );
+}
+
 export async function POST(
   request: NextRequest
 ): Promise<Response> {
-  const stripe = getStripe();
+  const stripe =
+    getStripe();
 
   const webhookSecret =
     process.env
@@ -603,7 +940,8 @@ export async function POST(
   const rawBody =
     await request.text();
 
-  let event: Stripe.Event;
+  let event:
+    Stripe.Event;
 
   try {
     event =
@@ -629,13 +967,19 @@ export async function POST(
     );
   }
 
-  const admin = createAdminClient();
+  const admin =
+    createAdminClient();
 
   const {
-    data: processedEvent,
+    data:
+      processedEvent,
   } = await admin
-    .from("stripe_webhook_events")
-    .select("stripe_event_id")
+    .from(
+      "stripe_webhook_events"
+    )
+    .select(
+      "stripe_event_id"
+    )
     .eq(
       "stripe_event_id",
       event.id
@@ -650,7 +994,9 @@ export async function POST(
   }
 
   try {
-    switch (event.type) {
+    switch (
+      event.type
+    ) {
       case "checkout.session.completed": {
         const session =
           event.data.object as
@@ -663,7 +1009,9 @@ export async function POST(
           break;
         }
 
-        if (!session.subscription) {
+        if (
+          !session.subscription
+        ) {
           throw new Error(
             "Completed Checkout Session has no subscription."
           );
@@ -674,7 +1022,7 @@ export async function POST(
             session.subscription
           );
 
-        await updateSubscriptionRecord(
+        await syncSubscriptionRecord(
           subscription
         );
 
@@ -688,7 +1036,7 @@ export async function POST(
           event.data.object as
             Stripe.Subscription;
 
-        await updateSubscriptionRecord(
+        await syncSubscriptionRecord(
           subscription
         );
 
@@ -705,15 +1053,32 @@ export async function POST(
             ?.subscription_details
             ?.subscription;
 
-        if (parentSubscription) {
+        if (
+          parentSubscription
+        ) {
           const subscription =
             await getSubscription(
               parentSubscription
             );
 
-          await activateDoctorFromSubscription(
-            subscription
-          );
+          if (
+            isIndependentComplimentarySubscription(
+              subscription
+            )
+          ) {
+            await syncIndependentComplimentarySubscription(
+              subscription,
+              {
+                markPaid:
+                  invoice.amount_paid >
+                  0,
+              }
+            );
+          } else {
+            await syncApplicantSubscriptionRecord(
+              subscription
+            );
+          }
         }
 
         break;
@@ -729,13 +1094,20 @@ export async function POST(
             ?.subscription_details
             ?.subscription;
 
-        if (parentSubscription) {
+        if (
+          parentSubscription
+        ) {
           const subscription =
             await getSubscription(
               parentSubscription
             );
 
-          await updateSubscriptionRecord(
+          /*
+           * Important commercial rule:
+           * failed or overdue payment updates billing state only.
+           * It never suspends, blocks or disables the doctor account.
+           */
+          await syncSubscriptionRecord(
             subscription
           );
         }
@@ -748,17 +1120,23 @@ export async function POST(
     }
 
     const {
-      error: eventLogError,
+      error:
+        eventLogError,
     } = await admin
-      .from("stripe_webhook_events")
+      .from(
+        "stripe_webhook_events"
+      )
       .insert({
-        stripe_event_id: event.id,
-        event_type: event.type,
+        stripe_event_id:
+          event.id,
+        event_type:
+          event.type,
       });
 
     if (
       eventLogError &&
-      eventLogError.code !== "23505"
+      eventLogError.code !==
+        "23505"
     ) {
       throw new Error(
         `Webhook event logging failed: ${eventLogError.message}`

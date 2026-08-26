@@ -5,6 +5,7 @@ import {
   redirect,
 } from "next/navigation";
 
+import ComplimentarySubscriptionSetup from "@/components/doctor/complimentary-subscription-setup";
 import DoctorBillingProfileForm, {
   type DoctorBillingProfileData,
 } from "@/components/doctor/doctor-billing-profile-form";
@@ -75,6 +76,8 @@ type SubscriptionCopy = {
   stripeCustomerMissing: string;
   manageHint: string;
   setupLaterHint: string;
+  setupReadyHint: string;
+  setupUnavailableHint: string;
   cancelAtPeriodEnd: string;
   yes: string;
   no: string;
@@ -119,7 +122,11 @@ const SUBSCRIPTION_COPY: Record<
     manageHint:
       "Poți administra abonamentul, metoda de plată și datele disponibile în Portalul Stripe.",
     setupLaterHint:
-      "Activarea Stripe pentru trecerea de la perioada gratuită la abonament va fi configurată în pasul următor.",
+      "Abonamentul Stripe nu este încă activat.",
+    setupReadyHint:
+      "Poți configura acum metoda de plată. Prima facturare Stripe va începe numai la finalul perioadei gratuite afișate mai sus.",
+    setupUnavailableHint:
+      "Configurarea automată este disponibilă doar cât timp există o perioadă gratuită activă și nu există deja un abonament Stripe.",
     cancelAtPeriodEnd:
       "Anulare la sfârșitul perioadei",
     yes: "Da",
@@ -175,7 +182,11 @@ const SUBSCRIPTION_COPY: Record<
     manageHint:
       "You can manage the subscription, payment method and available billing details in the Stripe Portal.",
     setupLaterHint:
-      "Stripe activation for the transition from complimentary access to a paid subscription will be configured in the next step.",
+      "The Stripe subscription has not been activated yet.",
+    setupReadyHint:
+      "You can configure the payment method now. The first Stripe billing period will begin only when the complimentary period shown above ends.",
+    setupUnavailableHint:
+      "Automatic setup is available only while complimentary access is active and no Stripe subscription already exists.",
     cancelAtPeriodEnd:
       "Cancel at period end",
     yes: "Yes",
@@ -231,7 +242,11 @@ const SUBSCRIPTION_COPY: Record<
     manageHint:
       "Im Stripe-Portal kannst du das Abonnement, die Zahlungsmethode und verfügbare Zahlungsdaten verwalten.",
     setupLaterHint:
-      "Die Stripe-Aktivierung für den Übergang vom kostenlosen Zugang zum kostenpflichtigen Abonnement wird im nächsten Schritt eingerichtet.",
+      "Das Stripe-Abonnement ist noch nicht aktiviert.",
+    setupReadyHint:
+      "Du kannst die Zahlungsmethode jetzt einrichten. Die erste Stripe-Abrechnungsperiode beginnt erst, wenn der oben angezeigte kostenlose Zeitraum endet.",
+    setupUnavailableHint:
+      "Die automatische Einrichtung ist nur während eines aktiven kostenlosen Zugangs und ohne bestehendes Stripe-Abonnement verfügbar.",
     cancelAtPeriodEnd:
       "Kündigung zum Periodenende",
     yes: "Ja",
@@ -575,6 +590,19 @@ export default async function DoctorBillingPage() {
         ?.stripe_customer_id
     );
 
+  const hasStripeSubscription =
+    Boolean(
+      subscription
+        ?.stripe_subscription_id
+    );
+
+  const canSetUpComplimentarySubscription =
+    complimentaryAccess?.status === "active" &&
+    new Date(
+      complimentaryAccess.ends_at
+    ).getTime() > Date.now() &&
+    !hasStripeSubscription;
+
   const displayName = [
     profile.first_name,
     profile.last_name,
@@ -812,18 +840,30 @@ export default async function DoctorBillingPage() {
                 </p>
 
                 <p className="mt-2 text-sm leading-6 text-gray-600">
-                  {hasStripeCustomer
+                  {hasStripeSubscription
                     ? subscriptionCopy.manageHint
-                    : subscriptionCopy.setupLaterHint}
+                    : canSetUpComplimentarySubscription
+                      ? subscriptionCopy.setupReadyHint
+                      : hasStripeCustomer
+                        ? subscriptionCopy.setupLaterHint
+                        : subscriptionCopy.setupUnavailableHint}
                 </p>
 
-                {hasStripeCustomer && (
+                {hasStripeSubscription ? (
                   <div className="mt-5">
                     <ManageSubscriptionButton
                       returnTo="/doctor-dashboard/billing"
                     />
                   </div>
-                )}
+                ) : canSetUpComplimentarySubscription ? (
+                  <div className="mt-5">
+                    <ComplimentarySubscriptionSetup
+                      complimentaryEndsAt={
+                        complimentaryAccess.ends_at
+                      }
+                    />
+                  </div>
+                ) : null}
               </div>
             </article>
           </div>
