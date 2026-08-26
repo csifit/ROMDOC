@@ -33,6 +33,8 @@ const RESENDABLE_STATUSES = new Set([
   "failed",
 ]);
 
+type DoctorInvitationOtpType = "invite" | "magiclink";
+
 type InvitationRow = {
   id: string;
   email: string;
@@ -79,6 +81,25 @@ function failure(
 
 function normalizeEmail(value: string | null | undefined) {
   return value?.trim().toLowerCase() ?? "";
+}
+
+function buildDoctorInvitationVerificationLink(
+  redirectTo: string,
+  hashedToken: string,
+  otpType: DoctorInvitationOtpType
+) {
+  const verificationUrl = new URL(redirectTo);
+
+  verificationUrl.searchParams.set(
+    "token_hash",
+    hashedToken
+  );
+  verificationUrl.searchParams.set(
+    "type",
+    otpType
+  );
+
+  return verificationUrl.toString();
 }
 
 async function recordResendFailure({
@@ -358,17 +379,18 @@ export async function POST(
     },
   });
 
-  const actionLink = linkData?.properties?.action_link ?? null;
+  const hashedToken =
+    linkData?.properties?.hashed_token?.trim() ?? "";
   const generatedUserId = linkData?.user?.id ?? null;
 
   if (
     linkError ||
-    !actionLink ||
+    !hashedToken ||
     generatedUserId !== invitation.auth_user_id
   ) {
     const safeError =
       linkError ??
-      new Error("Supabase did not return the expected resend link.");
+      new Error("Supabase did not return the expected resend token.");
 
     await recordResendFailure({
       invitationId: invitation.id,
@@ -376,7 +398,7 @@ export async function POST(
       error: safeError,
     });
 
-    console.error("Doctor invitation resend link failed:", linkError);
+    console.error("Doctor invitation resend token failed:", linkError);
 
     return failure(
       "doctor_invitation_resend_link_failed",
@@ -384,6 +406,13 @@ export async function POST(
       502
     );
   }
+
+  const actionLink =
+    buildDoctorInvitationVerificationLink(
+      redirectTo,
+      hashedToken,
+      "magiclink"
+    );
 
   const expiresAt = getDoctorInvitationExpiryDate();
   const emailResult = await sendDoctorInvitationEmail({

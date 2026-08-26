@@ -28,6 +28,8 @@ const NO_STORE_HEADERS = {
   "Cache-Control": "no-store",
 };
 
+type DoctorInvitationOtpType = "invite" | "magiclink";
+
 type DoctorInvitationRow = {
   id: string;
   email: string;
@@ -101,6 +103,25 @@ function getValidationCode(field: string | undefined) {
     default:
       return CODE.doctorInvitationInvalidPayload;
   }
+}
+
+function buildDoctorInvitationVerificationLink(
+  redirectTo: string,
+  hashedToken: string,
+  otpType: DoctorInvitationOtpType
+) {
+  const verificationUrl = new URL(redirectTo);
+
+  verificationUrl.searchParams.set(
+    "token_hash",
+    hashedToken
+  );
+  verificationUrl.searchParams.set(
+    "type",
+    otpType
+  );
+
+  return verificationUrl.toString();
 }
 
 export async function GET(request: NextRequest): Promise<Response> {
@@ -409,12 +430,13 @@ export async function POST(request: NextRequest): Promise<Response> {
     },
   });
 
-  const actionLink = linkData?.properties?.action_link ?? null;
+  const hashedToken =
+    linkData?.properties?.hashed_token?.trim() ?? "";
   const authUserId = linkData?.user?.id ?? null;
 
-  if (linkError || !actionLink || !authUserId) {
+  if (linkError || !hashedToken || !authUserId) {
     const safeFailure = getSafeInvitationFailure(
-      linkError ?? new Error("Supabase did not return an invitation link.")
+      linkError ?? new Error("Supabase did not return an invitation token.")
     );
 
     await admin
@@ -437,7 +459,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       reason: safeFailure.message,
     });
 
-    console.error("Supabase doctor invitation link failed:", linkError);
+    console.error("Supabase doctor invitation token failed:", linkError);
 
     return failure(
       CODE.doctorInvitationSendFailed,
@@ -448,6 +470,13 @@ export async function POST(request: NextRequest): Promise<Response> {
       }
     );
   }
+
+  const actionLink =
+    buildDoctorInvitationVerificationLink(
+      redirectTo,
+      hashedToken,
+      "invite"
+    );
 
   const { error: linkStoreError } = await admin
     .from("doctor_invitations")
@@ -585,6 +614,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         expiresAt,
         providerMessageId: emailResult.providerMessageId,
         manualLinkAvailable: true,
+        linkType: "invite",
       },
     });
 
