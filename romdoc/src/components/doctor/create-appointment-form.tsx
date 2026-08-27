@@ -70,147 +70,324 @@ export default function CreateAppointmentForm({
   const locale = normalizeAppLocale(
     useLocale()
   );
+
   const t = useTranslations(
     "DoctorAppointmentOperations.appointments.create"
   );
+
   const commonT = useTranslations(
     "DoctorAppointmentOperations.common"
   );
+
   const router = useRouter();
 
   const [isOpen, setIsOpen] =
     useState(false);
+
   const [clinicId, setClinicId] =
-    useState(clinics[0]?.id ?? "");
-  const [patientName, setPatientName] =
-    useState("");
-  const [patientEmail, setPatientEmail] =
-    useState("");
-  const [patientPhone, setPatientPhone] =
-    useState("");
-  const [scheduledDate, setScheduledDate] =
-    useState("");
-  const [scheduledTime, setScheduledTime] =
-    useState("");
-  const [selectedDurationMinutes, setSelectedDurationMinutes] =
-    useState<number | null>(null);
-  const [availableSlots, setAvailableSlots] =
-    useState<AvailableSlot[]>([]);
-  const [slotsAreLoading, setSlotsAreLoading] =
-    useState(false);
-  const [slotsError, setSlotsError] =
-    useState("");
-  const [source, setSource] =
-    useState<AppointmentSource>("phone");
-  const [notes, setNotes] =
-    useState("");
-  const [isSubmitting, setIsSubmitting] =
-    useState(false);
-  const [successMessage, setSuccessMessage] =
-    useState("");
-  const [warningMessage, setWarningMessage] =
-    useState("");
-  const [errorMessage, setErrorMessage] =
+    useState(
+      clinics[0]?.id ??
+        ""
+    );
+
+  const [
+    patientName,
+    setPatientName,
+  ] =
     useState("");
 
-  const today = getLocalDateString();
+  const [
+    patientEmail,
+    setPatientEmail,
+  ] =
+    useState("");
+
+  const [
+    patientPhone,
+    setPatientPhone,
+  ] =
+    useState("");
+
+  const [
+    scheduledDate,
+    setScheduledDate,
+  ] =
+    useState("");
+
+  const [
+    scheduledTime,
+    setScheduledTime,
+  ] =
+    useState("");
+
+  const [
+    selectedDurationMinutes,
+    setSelectedDurationMinutes,
+  ] =
+    useState<
+      number | null
+    >(null);
+
+  const [
+    availableSlots,
+    setAvailableSlots,
+  ] =
+    useState<
+      AvailableSlot[]
+    >([]);
+
+  const [
+    slotsAreLoading,
+    setSlotsAreLoading,
+  ] =
+    useState(false);
+
+  const [
+    slotsError,
+    setSlotsError,
+  ] =
+    useState("");
+
+  const [
+    source,
+    setSource,
+  ] =
+    useState<
+      AppointmentSource
+    >("phone");
+
+  const [
+    notes,
+    setNotes,
+  ] =
+    useState("");
+
+  const [
+    isSubmitting,
+    setIsSubmitting,
+  ] =
+    useState(false);
+
+  const [
+    successMessage,
+    setSuccessMessage,
+  ] =
+    useState("");
+
+  const [
+    warningMessage,
+    setWarningMessage,
+  ] =
+    useState("");
+
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] =
+    useState("");
+
+  const today =
+    getLocalDateString();
+
+  // Patient Database shortcut:
+  // /doctor-dashboard/appointments?createPatient=1&patientName=...
+  // Reuses this existing appointment form and prefills the
+  // contact information already known in Doctor -> Patients.
+  useEffect(() => {
+    const parameters =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    if (
+      parameters.get(
+        "createPatient"
+      ) !== "1"
+    ) {
+      return;
+    }
+
+    setPatientName(
+      parameters.get(
+        "patientName"
+      ) ??
+        ""
+    );
+
+    setPatientEmail(
+      parameters.get(
+        "patientEmail"
+      ) ??
+        ""
+    );
+
+    setPatientPhone(
+      parameters.get(
+        "patientPhone"
+      ) ??
+        ""
+    );
+
+    setIsOpen(true);
+  }, []);
 
   useEffect(() => {
-    const timerId = window.setTimeout(() => {
-      setClinicId((currentClinicId) => {
-        if (
-          clinics.some(
-            (clinic) =>
-              clinic.id === currentClinicId
-          )
-        ) {
-          return currentClinicId;
-        }
+    const timerId =
+      window.setTimeout(
+        () => {
+          setClinicId(
+            (
+              currentClinicId
+            ) => {
+              if (
+                clinics.some(
+                  (
+                    clinic
+                  ) =>
+                    clinic.id ===
+                    currentClinicId
+                )
+              ) {
+                return currentClinicId;
+              }
 
-        return clinics[0]?.id ?? "";
-      });
-    }, 0);
+              return (
+                clinics[0]?.id ??
+                ""
+              );
+            }
+          );
+        },
+        0
+      );
 
     return () => {
-      window.clearTimeout(timerId);
+      window.clearTimeout(
+        timerId
+      );
     };
-  }, [clinics]);
+  }, [
+    clinics,
+  ]);
 
   useEffect(() => {
-    const resetTimerId = window.setTimeout(() => {
-      setScheduledTime("");
-      setSelectedDurationMinutes(null);
-      setAvailableSlots([]);
-      setSlotsError("");
-    }, 0);
+    const resetTimerId =
+      window.setTimeout(
+        () => {
+          setScheduledTime("");
+          setSelectedDurationMinutes(
+            null
+          );
+          setAvailableSlots([]);
+          setSlotsError("");
+        },
+        0
+      );
 
     if (
       !doctorId ||
       !clinicId ||
       !scheduledDate
     ) {
-      const loadingTimerId = window.setTimeout(() => {
-        setSlotsAreLoading(false);
-      }, 0);
+      const loadingTimerId =
+        window.setTimeout(
+          () => {
+            setSlotsAreLoading(
+              false
+            );
+          },
+          0
+        );
 
       return () => {
-        window.clearTimeout(resetTimerId);
-        window.clearTimeout(loadingTimerId);
+        window.clearTimeout(
+          resetTimerId
+        );
+        window.clearTimeout(
+          loadingTimerId
+        );
       };
     }
 
-    const controller = new AbortController();
+    const controller =
+      new AbortController();
 
     async function loadSlots() {
-      setSlotsAreLoading(true);
+      setSlotsAreLoading(
+        true
+      );
+
       setSlotsError("");
 
       try {
-        const params = new URLSearchParams({
-          doctorId,
-          clinicId,
-          date: scheduledDate,
-        });
+        const params =
+          new URLSearchParams({
+            doctorId,
+            clinicId,
+            date:
+              scheduledDate,
+          });
 
-        const response = await fetch(
-          `/api/availability/slots?${params.toString()}`,
-          {
-            method: "GET",
-            cache: "no-store",
-            signal: controller.signal,
-          }
-        );
+        const response =
+          await fetch(
+            `/api/availability/slots?${params.toString()}`,
+            {
+              method:
+                "GET",
+              cache:
+                "no-store",
+              signal:
+                controller.signal,
+            }
+          );
 
         const result =
-          (await response.json()) as AvailableSlotsResponse;
+          (await response.json()) as
+            AvailableSlotsResponse;
 
         if (!response.ok) {
           throw new Error(
-            locale === "ro" && result.error
+            locale ===
+                "ro" &&
+              result.error
               ? result.error
-              : t("slotsLoadError")
+              : t(
+                  "slotsLoadError"
+                )
           );
         }
 
         setAvailableSlots(
-          result.slots ?? []
+          result.slots ??
+            []
         );
       } catch (error) {
         if (
-          error instanceof DOMException &&
-          error.name === "AbortError"
+          error instanceof
+            DOMException &&
+          error.name ===
+            "AbortError"
         ) {
           return;
         }
 
         setSlotsError(
-          error instanceof Error
+          error instanceof
+            Error
             ? error.message
-            : t("slotsLoadError")
+            : t(
+                "slotsLoadError"
+              )
         );
       } finally {
-        if (!controller.signal.aborted) {
-          setSlotsAreLoading(false);
+        if (
+          !controller
+            .signal
+            .aborted
+        ) {
+          setSlotsAreLoading(
+            false
+          );
         }
       }
     }
@@ -218,7 +395,9 @@ export default function CreateAppointmentForm({
     void loadSlots();
 
     return () => {
-      window.clearTimeout(resetTimerId);
+      window.clearTimeout(
+        resetTimerId
+      );
       controller.abort();
     };
   }, [
@@ -230,13 +409,18 @@ export default function CreateAppointmentForm({
   ]);
 
   function resetForm() {
-    setClinicId(clinics[0]?.id ?? "");
+    setClinicId(
+      clinics[0]?.id ??
+        ""
+    );
     setPatientName("");
     setPatientEmail("");
     setPatientPhone("");
     setScheduledDate("");
     setScheduledTime("");
-    setSelectedDurationMinutes(null);
+    setSelectedDurationMinutes(
+      null
+    );
     setAvailableSlots([]);
     setSlotsError("");
     setSource("phone");
@@ -244,79 +428,146 @@ export default function CreateAppointmentForm({
   }
 
   async function handleSubmit(
-    event: FormEvent<HTMLFormElement>
+    event:
+      FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
+
     setSuccessMessage("");
     setWarningMessage("");
     setErrorMessage("");
 
     if (!clinicId) {
-      setErrorMessage(t("selectClinicError"));
+      setErrorMessage(
+        t(
+          "selectClinicError"
+        )
+      );
       return;
     }
 
-    if (patientName.trim().length < 2) {
-      setErrorMessage(t("patientNameError"));
+    if (
+      patientName
+        .trim()
+        .length <
+      2
+    ) {
+      setErrorMessage(
+        t(
+          "patientNameError"
+        )
+      );
       return;
     }
 
-    if (!patientEmail.trim()) {
-      setErrorMessage(t("patientEmailError"));
+    if (
+      !patientEmail.trim()
+    ) {
+      setErrorMessage(
+        t(
+          "patientEmailError"
+        )
+      );
       return;
     }
 
-    if (patientPhone.trim().length < 7) {
-      setErrorMessage(t("patientPhoneError"));
+    if (
+      patientPhone
+        .trim()
+        .length <
+      7
+    ) {
+      setErrorMessage(
+        t(
+          "patientPhoneError"
+        )
+      );
       return;
     }
 
-    if (!scheduledDate || !scheduledTime) {
-      setErrorMessage(t("selectSlotError"));
+    if (
+      !scheduledDate ||
+      !scheduledTime
+    ) {
+      setErrorMessage(
+        t(
+          "selectSlotError"
+        )
+      );
       return;
     }
 
-    setIsSubmitting(true);
+    setIsSubmitting(
+      true
+    );
 
     try {
-      const response = await fetch(
-        "/api/doctor/appointments",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            clinicId,
-            patientName: patientName.trim(),
-            patientEmail: patientEmail
-              .trim()
-              .toLowerCase(),
-            patientPhone: patientPhone.trim(),
-            scheduledDate,
-            scheduledTime,
-            source,
-            notes: notes.trim() || null,
-          }),
-        }
-      );
+      const response =
+        await fetch(
+          "/api/doctor/appointments",
+          {
+            method:
+              "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                clinicId,
+                patientName:
+                  patientName
+                    .trim(),
+                patientEmail:
+                  patientEmail
+                    .trim()
+                    .toLowerCase(),
+                patientPhone:
+                  patientPhone
+                    .trim(),
+                scheduledDate,
+                scheduledTime,
+                source,
+                notes:
+                  notes
+                    .trim() ||
+                  null,
+              }),
+          }
+        );
 
       const result =
-        (await response.json()) as CreateAppointmentResponse;
+        (await response.json()) as
+          CreateAppointmentResponse;
 
       if (!response.ok) {
         setErrorMessage(
-          locale === "ro" && result.error
+          locale ===
+              "ro" &&
+            result.error
             ? result.error
-            : t("createError")
+            : t(
+                "createError"
+              )
         );
         return;
       }
 
-      setSuccessMessage(t("created"));
+      setSuccessMessage(
+        t(
+          "created"
+        )
+      );
 
-      if (result.emailSent === false) {
-        setWarningMessage(t("emailWarning"));
+      if (
+        result.emailSent ===
+        false
+      ) {
+        setWarningMessage(
+          t(
+            "emailWarning"
+          )
+        );
       }
 
       resetForm();
@@ -326,118 +577,224 @@ export default function CreateAppointmentForm({
         "Doctor appointment form request failed:",
         error
       );
-      setErrorMessage(t("serverError"));
+
+      setErrorMessage(
+        t(
+          "serverError"
+        )
+      );
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(
+        false
+      );
     }
   }
 
-  if (clinics.length === 0) {
+  if (
+    clinics.length ===
+    0
+  ) {
     return (
       <section className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-6">
         <h2 className="text-lg font-semibold text-amber-900">
-          {t("noClinicsTitle")}
+          {t(
+            "noClinicsTitle"
+          )}
         </h2>
+
         <p className="mt-2 leading-7 text-amber-800">
-          {t("noClinicsDescription")}
+          {t(
+            "noClinicsDescription"
+          )}
         </p>
       </section>
     );
   }
 
-  const sourceOptions: Array<{
-    value: AppointmentSource;
-    label: string;
-  }> = [
-    {value: "phone", label: commonT("sourcePhone")},
-    {value: "walk_in", label: commonT("sourceWalkIn")},
-    {value: "email", label: commonT("sourceEmail")},
-    {value: "other", label: commonT("sourceOther")},
-  ];
+  const sourceOptions:
+    Array<{
+      value:
+        AppointmentSource;
+      label:
+        string;
+    }> = [
+      {
+        value:
+          "phone",
+        label:
+          commonT(
+            "sourcePhone"
+          ),
+      },
+      {
+        value:
+          "walk_in",
+        label:
+          commonT(
+            "sourceWalkIn"
+          ),
+      },
+      {
+        value:
+          "email",
+        label:
+          commonT(
+            "sourceEmail"
+          ),
+      },
+      {
+        value:
+          "other",
+        label:
+          commonT(
+            "sourceOther"
+          ),
+      },
+    ];
 
   return (
     <section className="mt-8 rounded-2xl border border-gray-200 bg-white shadow-sm">
       <button
         type="button"
         onClick={() => {
-          setIsOpen((currentValue) => !currentValue);
+          setIsOpen(
+            (
+              currentValue
+            ) =>
+              !currentValue
+          );
           setSuccessMessage("");
           setWarningMessage("");
           setErrorMessage("");
         }}
         className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
-        aria-expanded={isOpen}
+        aria-expanded={
+          isOpen
+        }
       >
         <div>
           <h2 className="text-xl font-semibold text-gray-900">
-            {t("title")}
+            {t(
+              "title"
+            )}
           </h2>
+
           <p className="mt-1 text-sm text-gray-600">
-            {t("description")}
+            {t(
+              "description"
+            )}
           </p>
         </div>
+
         <span
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F0EEE9] text-xl font-medium text-gray-800"
           aria-hidden="true"
         >
-          {isOpen ? "−" : "+"}
+          {isOpen
+            ? "−"
+            : "+"}
         </span>
       </button>
 
       {isOpen && (
         <div className="border-t border-gray-200 px-6 py-6">
           <form
-            onSubmit={handleSubmit}
+            onSubmit={
+              handleSubmit
+            }
             className="space-y-5"
           >
             <div className="grid gap-5 md:grid-cols-2">
               <label className="block">
                 <span className="block text-sm font-medium text-gray-700">
-                  {t("clinic")}
+                  {t(
+                    "clinic"
+                  )}
                 </span>
+
                 <select
-                  value={clinicId}
-                  onChange={(event) =>
-                    setClinicId(event.target.value)
+                  value={
+                    clinicId
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setClinicId(
+                      event.target
+                        .value
+                    )
                   }
                   required
-                  disabled={isSubmitting}
+                  disabled={
+                    isSubmitting
+                  }
                   className="romdoc-select mt-2"
                 >
-                  {clinics.map((clinic) => (
-                    <option
-                      key={clinic.id}
-                      value={clinic.id}
-                    >
-                      {clinic.name}
-                    </option>
-                  ))}
+                  {clinics.map(
+                    (
+                      clinic
+                    ) => (
+                      <option
+                        key={
+                          clinic.id
+                        }
+                        value={
+                          clinic.id
+                        }
+                      >
+                        {
+                          clinic.name
+                        }
+                      </option>
+                    )
+                  )}
                 </select>
               </label>
 
               <label className="block">
                 <span className="block text-sm font-medium text-gray-700">
-                  {t("source")}
+                  {t(
+                    "source"
+                  )}
                 </span>
+
                 <select
-                  value={source}
-                  onChange={(event) =>
+                  value={
+                    source
+                  }
+                  onChange={(
+                    event
+                  ) =>
                     setSource(
-                      event.target.value as AppointmentSource
+                      event.target
+                        .value as
+                        AppointmentSource
                     )
                   }
                   required
-                  disabled={isSubmitting}
+                  disabled={
+                    isSubmitting
+                  }
                   className="romdoc-select mt-2"
                 >
-                  {sourceOptions.map((option) => (
-                    <option
-                      key={option.value}
-                      value={option.value}
-                    >
-                      {option.label}
-                    </option>
-                  ))}
+                  {sourceOptions.map(
+                    (
+                      option
+                    ) => (
+                      <option
+                        key={
+                          option.value
+                        }
+                        value={
+                          option.value
+                        }
+                      >
+                        {
+                          option.label
+                        }
+                      </option>
+                    )
+                  )}
                 </select>
               </label>
             </div>
@@ -445,36 +802,68 @@ export default function CreateAppointmentForm({
             <div className="grid gap-5 md:grid-cols-2">
               <label className="block">
                 <span className="block text-sm font-medium text-gray-700">
-                  {t("patientName")}
+                  {t(
+                    "patientName"
+                  )}
                 </span>
+
                 <input
                   type="text"
-                  value={patientName}
-                  onChange={(event) =>
-                    setPatientName(event.target.value)
+                  value={
+                    patientName
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setPatientName(
+                      event.target
+                        .value
+                    )
                   }
                   required
-                  disabled={isSubmitting}
+                  disabled={
+                    isSubmitting
+                  }
                   autoComplete="name"
-                  placeholder={t("patientNamePlaceholder")}
+                  placeholder={
+                    t(
+                      "patientNamePlaceholder"
+                    )
+                  }
                   className="romdoc-input mt-2"
                 />
               </label>
 
               <label className="block">
                 <span className="block text-sm font-medium text-gray-700">
-                  {t("phone")}
+                  {t(
+                    "phone"
+                  )}
                 </span>
+
                 <input
                   type="tel"
-                  value={patientPhone}
-                  onChange={(event) =>
-                    setPatientPhone(event.target.value)
+                  value={
+                    patientPhone
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setPatientPhone(
+                      event.target
+                        .value
+                    )
                   }
                   required
-                  disabled={isSubmitting}
+                  disabled={
+                    isSubmitting
+                  }
                   autoComplete="tel"
-                  placeholder={t("phonePlaceholder")}
+                  placeholder={
+                    t(
+                      "phonePlaceholder"
+                    )
+                  }
                   className="romdoc-input mt-2"
                 />
               </label>
@@ -482,18 +871,34 @@ export default function CreateAppointmentForm({
 
             <label className="block">
               <span className="block text-sm font-medium text-gray-700">
-                {t("email")}
+                {t(
+                  "email"
+                )}
               </span>
+
               <input
                 type="email"
-                value={patientEmail}
-                onChange={(event) =>
-                  setPatientEmail(event.target.value)
+                value={
+                  patientEmail
+                }
+                onChange={(
+                  event
+                ) =>
+                  setPatientEmail(
+                    event.target
+                      .value
+                  )
                 }
                 required
-                disabled={isSubmitting}
+                disabled={
+                  isSubmitting
+                }
                 autoComplete="email"
-                placeholder={t("emailPlaceholder")}
+                placeholder={
+                  t(
+                    "emailPlaceholder"
+                  )
+                }
                 className="romdoc-input mt-2"
               />
             </label>
@@ -501,81 +906,131 @@ export default function CreateAppointmentForm({
             <div className="grid gap-5 md:grid-cols-2">
               <label className="block">
                 <span className="block text-sm font-medium text-gray-700">
-                  {t("date")}
+                  {t(
+                    "date"
+                  )}
                 </span>
+
                 <input
                   type="date"
-                  min={today}
-                  value={scheduledDate}
-                  onChange={(event) =>
-                    setScheduledDate(event.target.value)
+                  min={
+                    today
+                  }
+                  value={
+                    scheduledDate
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setScheduledDate(
+                      event.target
+                        .value
+                    )
                   }
                   required
-                  disabled={isSubmitting}
+                  disabled={
+                    isSubmitting
+                  }
                   className="romdoc-input mt-2"
                 />
               </label>
 
               <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
                 <p className="text-sm font-semibold text-gray-700">
-                  {t("time")}
+                  {t(
+                    "time"
+                  )}
                 </p>
 
                 {!scheduledDate ? (
                   <p className="mt-2 text-sm text-gray-600">
-                    {t("selectDateFirst")}
+                    {t(
+                      "selectDateFirst"
+                    )}
                   </p>
                 ) : slotsAreLoading ? (
                   <p className="mt-2 text-sm text-gray-600">
-                    {t("loadingSlots")}
+                    {t(
+                      "loadingSlots"
+                    )}
                   </p>
                 ) : slotsError ? (
                   <p className="mt-2 text-sm text-red-700">
-                    {slotsError}
+                    {
+                      slotsError
+                    }
                   </p>
-                ) : availableSlots.length === 0 ? (
+                ) : availableSlots.length ===
+                  0 ? (
                   <p className="mt-2 text-sm text-gray-600">
-                    {t("noSlots")}
+                    {t(
+                      "noSlots"
+                    )}
                   </p>
                 ) : (
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {availableSlots.map((slot) => (
-                      <button
-                        key={`${slot.time}-${slot.durationMinutes}`}
-                        type="button"
-                        onClick={() => {
-                          setScheduledTime(slot.time);
-                          setSelectedDurationMinutes(
-                            slot.durationMinutes
-                          );
-                        }}
-                        disabled={isSubmitting}
-                        className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-colors disabled:opacity-60 ${
-                          scheduledTime === slot.time
-                            ? "border-[#036661] bg-[#036661] text-white"
-                            : "border-gray-300 bg-white text-gray-800 hover:border-[#036661]"
-                        }`}
-                      >
-                        {slot.time}
-                        <span className="ml-2 text-xs opacity-80">
-                          {commonT("minutes", {
-                            count: slot.durationMinutes,
-                          })}
-                        </span>
-                      </button>
-                    ))}
+                    {availableSlots.map(
+                      (
+                        slot
+                      ) => (
+                        <button
+                          key={`${slot.time}-${slot.durationMinutes}`}
+                          type="button"
+                          onClick={() => {
+                            setScheduledTime(
+                              slot.time
+                            );
+                            setSelectedDurationMinutes(
+                              slot.durationMinutes
+                            );
+                          }}
+                          disabled={
+                            isSubmitting
+                          }
+                          className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-colors disabled:opacity-60 ${
+                            scheduledTime ===
+                            slot.time
+                              ? "border-[#036661] bg-[#036661] text-white"
+                              : "border-gray-300 bg-white text-gray-800 hover:border-[#036661]"
+                          }`}
+                        >
+                          {
+                            slot.time
+                          }
+
+                          <span className="ml-2 text-xs opacity-80">
+                            {commonT(
+                              "minutes",
+                              {
+                                count:
+                                  slot.durationMinutes,
+                              }
+                            )}
+                          </span>
+                        </button>
+                      )
+                    )}
                   </div>
                 )}
 
                 {scheduledTime && (
                   <p className="mt-3 text-xs text-gray-600">
-                    {t("selectedSlot", {
-                      time: scheduledTime,
-                    })}
+                    {t(
+                      "selectedSlot",
+                      {
+                        time:
+                          scheduledTime,
+                      }
+                    )}
+
                     {selectedDurationMinutes
-                      ? ` · ${commonT("minutes", {
-                          count: selectedDurationMinutes,
-                        })}`
+                      ? ` · ${commonT(
+                          "minutes",
+                          {
+                            count:
+                              selectedDurationMinutes,
+                          }
+                        )}`
                       : ""}
                   </p>
                 )}
@@ -584,52 +1039,103 @@ export default function CreateAppointmentForm({
 
             <label className="block">
               <span className="block text-sm font-medium text-gray-700">
-                {t("notes")}
+                {t(
+                  "notes"
+                )}
               </span>
+
               <textarea
-                rows={4}
-                maxLength={5000}
-                value={notes}
-                onChange={(event) =>
-                  setNotes(event.target.value)
+                rows={
+                  4
                 }
-                disabled={isSubmitting}
-                placeholder={t("notesPlaceholder")}
+                maxLength={
+                  5000
+                }
+                value={
+                  notes
+                }
+                onChange={(
+                  event
+                ) =>
+                  setNotes(
+                    event.target
+                      .value
+                  )
+                }
+                disabled={
+                  isSubmitting
+                }
+                placeholder={
+                  t(
+                    "notesPlaceholder"
+                  )
+                }
                 className="romdoc-textarea mt-2"
               />
+
               <span className="mt-1 block text-right text-xs text-gray-500">
-                {notes.length}/5000
+                {
+                  notes.length
+                }
+                /5000
               </span>
             </label>
 
             {errorMessage && (
-              <div role="alert" className="romdoc-notice romdoc-notice-error">
-                {errorMessage}
+              <div
+                role="alert"
+                className="romdoc-notice romdoc-notice-error"
+              >
+                {
+                  errorMessage
+                }
               </div>
             )}
+
             {warningMessage && (
-              <div role="alert" className="romdoc-notice romdoc-notice-warning">
-                {warningMessage}
+              <div
+                role="alert"
+                className="romdoc-notice romdoc-notice-warning"
+              >
+                {
+                  warningMessage
+                }
               </div>
             )}
+
             {successMessage && (
-              <div role="status" className="romdoc-notice romdoc-notice-success">
-                {successMessage}
+              <div
+                role="status"
+                className="romdoc-notice romdoc-notice-success"
+              >
+                {
+                  successMessage
+                }
               </div>
             )}
 
             <div className="flex flex-wrap gap-3">
               <Button
                 type="submit"
-                disabled={isSubmitting || slotsAreLoading}
+                disabled={
+                  isSubmitting ||
+                  slotsAreLoading
+                }
               >
                 {isSubmitting
-                  ? t("creating")
-                  : t("create")}
+                  ? t(
+                      "creating"
+                    )
+                  : t(
+                      "create"
+                    )}
               </Button>
+
               <Button
                 type="button"
-                disabled={isSubmitting}
+                disabled={
+                  isSubmitting
+                }
                 onClick={() => {
                   resetForm();
                   setErrorMessage("");
@@ -638,7 +1144,9 @@ export default function CreateAppointmentForm({
                 }}
                 variant="secondary"
               >
-                {t("reset")}
+                {t(
+                  "reset"
+                )}
               </Button>
             </div>
           </form>
