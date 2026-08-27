@@ -11,6 +11,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
+import Link from "next/link";
 import {
   useLocale,
   useTranslations,
@@ -357,6 +358,11 @@ export default function StaffAppointmentsCalendar({
   const t =
     useTranslations(
       "StaffOperationalDashboard.calendar"
+    );
+
+  const listT =
+    useTranslations(
+      "StaffOperationalDashboard.list"
     );
 
   const calendarRef =
@@ -1326,6 +1332,17 @@ export default function StaffAppointmentsCalendar({
                     onUpdated
                   }
                 />
+
+                <div className="mt-[13px]">
+                  <Link
+                    href={`/appointments/${selectedAppointment.id}/messages?locale=${locale}`}
+                    className="romdoc-button romdoc-button-secondary romdoc-button-sm"
+                  >
+                    {listT(
+                      "messages"
+                    )}
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className="rounded-[21px] border border-dashed border-gray-300 bg-gray-50 p-[21px] text-center">

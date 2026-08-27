@@ -13,6 +13,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
+import Link from "next/link";
 import {
   useLocale,
   useTranslations,
@@ -258,6 +259,11 @@ AppointmentCalendar({
   const commonT =
     useTranslations(
       "DoctorAppointmentOperations.common"
+    );
+
+  const detailT =
+    useTranslations(
+      "DoctorAppointmentOperations.detail"
     );
 
   const calendarRef =
@@ -1242,6 +1248,17 @@ AppointmentCalendar({
                       .rescheduleReason
                   }
                 />
+
+                <div className="mt-[13px]">
+                  <Link
+                    href={`/appointments/${selectedAppointment.id}/messages?locale=${locale}`}
+                    className="romdoc-button romdoc-button-secondary romdoc-button-sm"
+                  >
+                    {detailT(
+                      "messages"
+                    )}
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className="rounded-[21px] border border-dashed border-gray-300 bg-gray-50 p-[21px] text-center">
