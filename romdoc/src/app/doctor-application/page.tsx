@@ -292,7 +292,7 @@ export default async function DoctorApplicationPage({
       getConfiguredEuroPrice(
         process.env
           .NEXT_PUBLIC_DOCTOR_MONTHLY_PRICE_EURO,
-        "20"
+        "40"
       ),
       locale
     );
@@ -302,7 +302,7 @@ export default async function DoctorApplicationPage({
       getConfiguredEuroPrice(
         process.env
           .NEXT_PUBLIC_DOCTOR_YEARLY_PRICE_EURO,
-        "200"
+        "400"
       ),
       locale
     );

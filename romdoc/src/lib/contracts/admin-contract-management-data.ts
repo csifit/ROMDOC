@@ -564,7 +564,7 @@ export async function loadAdminContractManagementData(
   const settings = (billingSettingsResult.data ?? {}) as Row;
 
   const globalSubscriptionUnitPrice = Number(
-    settings.clinic_doctor_monthly_price_ron ?? 20
+    settings.clinic_doctor_monthly_price_ron ?? 40
   );
 
   const globalVatRate = Number(
@@ -652,7 +652,7 @@ export async function loadAdminContractManagementData(
           globalSubscriptionUnitPrice
         )
           ? globalSubscriptionUnitPrice
-          : 20,
+          : 40,
         globalCurrency,
         globalVatRate: Number.isFinite(globalVatRate)
           ? globalVatRate

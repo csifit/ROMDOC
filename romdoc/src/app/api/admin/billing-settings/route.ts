@@ -109,7 +109,7 @@ export async function GET(): Promise<Response> {
     code: PLATFORM_OPERATOR_BILLING_CODES.settingsLoaded,
     settings: {
       subscriptionPriceRon: Number(
-        data?.clinic_doctor_monthly_price_ron ?? 20
+        data?.clinic_doctor_monthly_price_ron ?? 100
       ),
       vatRate: Number(data?.vat_rate ?? 0.21),
       billingCurrency:
