@@ -14,6 +14,7 @@ import { getLocale } from "next-intl/server";
 type Locale = "ro" | "en" | "de";
 type SearchParams = {
   city?: string;
+  clinic?: string;
   specialty?: string;
   verified?: string;
   page?: string;
@@ -43,6 +44,7 @@ type DoctorRow = {
 };
 type ClinicRelation = {
   id: string;
+  slug: string;
   status: string;
   clinic_translations: Translation[] | null;
   cities:
@@ -65,6 +67,7 @@ type DoctorSpecialtyRow = {
 type AvailabilityRow = { doctor_id: string };
 
 const DOCTORS_PER_PAGE = 12;
+const MAX_CLINIC_VIEW_DOCTORS = 100;
 
 const labels = {
   ro: {
@@ -174,6 +177,7 @@ export default async function DoctorsPage({ searchParams }: Props) {
   const t = labels[locale];
   const params = await searchParams;
   const selectedCity = safeSlug(params.city);
+  const selectedClinic = safeSlug(params.clinic);
   const selectedSpecialty = safeSlug(params.specialty);
   const verifiedOnly = params.verified === "true";
   const requestedPage = safePage(params.page);
@@ -248,7 +252,7 @@ export default async function DoctorsPage({ searchParams }: Props) {
         supabase
           .from("doctor_clinics")
           .select(
-            "doctor_id, clinics(id,status,clinic_translations(locale,name),cities(slug,city_translations(locale,name)))"
+            "doctor_id, clinics(id,slug,status,clinic_translations(locale,name),cities(slug,city_translations(locale,name)))"
           )
           .in("doctor_id", doctorIds),
         supabase
@@ -306,11 +310,14 @@ export default async function DoctorsPage({ searchParams }: Props) {
               Boolean(clinic && clinic.status === "approved")
           );
 
-        const matchingClinic = selectedCity
-          ? clinicCandidates.find(
-              (clinic) => relation(clinic.cities)?.slug === selectedCity
-            ) ?? null
-          : clinicCandidates[0] ?? null;
+        const matchingClinic = selectedClinic
+          ? clinicCandidates.find((clinic) => clinic.slug === selectedClinic) ??
+            null
+          : selectedCity
+            ? clinicCandidates.find(
+                (clinic) => relation(clinic.cities)?.slug === selectedCity
+              ) ?? null
+            : clinicCandidates[0] ?? null;
 
         if (!matchingClinic) return [];
 
@@ -377,12 +384,17 @@ export default async function DoctorsPage({ searchParams }: Props) {
   }
 
   const totalDoctors = allMatchingDoctors.length;
-  const totalPages = Math.max(1, Math.ceil(totalDoctors / DOCTORS_PER_PAGE));
-  const currentPage = Math.min(requestedPage, totalPages);
-  const firstDoctorIndex = (currentPage - 1) * DOCTORS_PER_PAGE;
+  const doctorsPerPage = selectedClinic
+    ? MAX_CLINIC_VIEW_DOCTORS
+    : DOCTORS_PER_PAGE;
+  const totalPages = Math.max(1, Math.ceil(totalDoctors / doctorsPerPage));
+  const currentPage = selectedClinic
+    ? 1
+    : Math.min(requestedPage, totalPages);
+  const firstDoctorIndex = (currentPage - 1) * doctorsPerPage;
   const paginatedDoctors = allMatchingDoctors.slice(
     firstDoctorIndex,
-    firstDoctorIndex + DOCTORS_PER_PAGE
+    firstDoctorIndex + doctorsPerPage
   );
 
   const doctors = await Promise.all(

@@ -247,11 +247,9 @@ function createInfoWindowContent(
     "romdoc-map-popup";
 
   const doctorsHref =
-    clinic.citySlug
-      ? `/medici?city=${encodeURIComponent(
-          clinic.citySlug
-        )}`
-      : "/medici";
+    `/medici?clinic=${encodeURIComponent(
+      clinic.slug
+    )}#doctor-directory-results`;
 
   container.innerHTML = `
     <p class="romdoc-map-popup-city">${escapeHtml(
@@ -276,7 +274,12 @@ function createInfoWindowContent(
       )}</span>
     </div>
     <div class="romdoc-map-popup-actions">
-      <a href="${doctorsHref}" class="romdoc-map-popup-primary">
+      <a
+        href="${doctorsHref}"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="romdoc-map-popup-primary"
+      >
         ${escapeHtml(
           copy.viewDoctors
         )}
