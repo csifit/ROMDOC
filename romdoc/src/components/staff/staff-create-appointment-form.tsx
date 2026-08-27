@@ -8,6 +8,7 @@ import {
   type FormEvent,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -24,9 +25,7 @@ export type StaffClinicOption = {
 export type StaffDoctorOption = {
   id: string;
   name: string;
-
-  clinics:
-    StaffClinicOption[];
+  clinics: StaffClinicOption[];
 };
 
 type AppointmentSource =
@@ -36,20 +35,14 @@ type AppointmentSource =
   | "other";
 
 type StaffCreateAppointmentFormProps = {
-  doctors:
-    StaffDoctorOption[];
-
-  onCreated:
-    () =>
-      void |
-      Promise<void>;
+  doctors: StaffDoctorOption[];
+  onCreated: () => void | Promise<void>;
 };
 
 type CreateAppointmentResponse = {
   success?: boolean;
   emailSent?: boolean;
   error?: string;
-
   appointment?: {
     id: string;
   };
@@ -61,23 +54,19 @@ type AvailableSlot = {
 };
 
 type AvailableSlotsResponse = {
-  slots?:
-    AvailableSlot[];
-
+  slots?: AvailableSlot[];
   error?: string;
 };
 
 function getLocalDateString() {
-  const today =
-    new Date();
+  const today = new Date();
 
   const year =
     today.getFullYear();
 
   const month =
     String(
-      today.getMonth() +
-        1
+      today.getMonth() + 1
     ).padStart(
       2,
       "0"
@@ -239,7 +228,9 @@ export default function StaffCreateAppointmentForm({
     source,
     setSource,
   ] =
-    useState<AppointmentSource>(
+    useState<
+      AppointmentSource
+    >(
       "phone"
     );
 
@@ -283,8 +274,156 @@ export default function StaffCreateAppointmentForm({
       ""
     );
 
+  const didApplyPatientPrefill =
+    useRef(
+      false
+    );
+
   const today =
     getLocalDateString();
+
+  // Staff -> Patients shortcut:
+  //
+  // /staff-dashboard
+  //   ?createPatient=1
+  //   &doctorId=...
+  //   &patientName=...
+  //   &patientEmail=...
+  //   &patientPhone=...
+  //
+  // This mirrors the Doctor Patient Database flow:
+  // select the assigned Doctor, prefill known patient contact
+  // details, choose that Doctor's first clinic, and open the
+  // existing appointment form.
+  useEffect(() => {
+    if (
+      didApplyPatientPrefill.current ||
+      doctors.length ===
+        0
+    ) {
+      return;
+    }
+
+    const parameters =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    if (
+      parameters.get(
+        "createPatient"
+      ) !==
+      "1"
+    ) {
+      didApplyPatientPrefill.current =
+        true;
+      return;
+    }
+
+    const requestedDoctorId =
+      parameters.get(
+        "doctorId"
+      ) ??
+      "";
+
+    const matchedDoctor =
+      doctors.find(
+        (
+          doctor
+        ) =>
+          doctor.id ===
+          requestedDoctorId
+      );
+
+    if (
+      !matchedDoctor
+    ) {
+      didApplyPatientPrefill.current =
+        true;
+      return;
+    }
+
+    setDoctorId(
+      matchedDoctor.id
+    );
+
+    setClinicId(
+      matchedDoctor
+        .clinics[0]
+        ?.id ??
+      ""
+    );
+
+    setPatientName(
+      parameters.get(
+        "patientName"
+      ) ??
+      ""
+    );
+
+    setPatientEmail(
+      parameters.get(
+        "patientEmail"
+      ) ??
+      ""
+    );
+
+    setPatientPhone(
+      parameters.get(
+        "patientPhone"
+      ) ??
+      ""
+    );
+
+    setScheduledDate(
+      ""
+    );
+
+    setScheduledTime(
+      ""
+    );
+
+    setSelectedDurationMinutes(
+      null
+    );
+
+    setAvailableSlots(
+      []
+    );
+
+    setSlotsError(
+      ""
+    );
+
+    setSource(
+      "phone"
+    );
+
+    setNotes(
+      ""
+    );
+
+    setSuccessMessage(
+      ""
+    );
+
+    setWarningMessage(
+      ""
+    );
+
+    setErrorMessage(
+      ""
+    );
+
+    setIsOpen(
+      true
+    );
+
+    didApplyPatientPrefill.current =
+      true;
+  }, [
+    doctors,
+  ]);
 
   useEffect(() => {
     if (
@@ -399,10 +538,8 @@ export default function StaffCreateAppointmentForm({
             {
               method:
                 "GET",
-
               cache:
                 "no-store",
-
               signal:
                 controller.signal,
             }
@@ -607,7 +744,8 @@ export default function StaffCreateAppointmentForm({
     if (
       patientName
         .trim()
-        .length < 2
+        .length <
+      2
     ) {
       setErrorMessage(
         t(
@@ -633,7 +771,8 @@ export default function StaffCreateAppointmentForm({
     if (
       patientPhone
         .trim()
-        .length < 7
+        .length <
+      7
     ) {
       setErrorMessage(
         t(
@@ -668,34 +807,27 @@ export default function StaffCreateAppointmentForm({
           {
             method:
               "POST",
-
             headers: {
               "Content-Type":
                 "application/json",
             },
-
             body:
               JSON.stringify({
                 doctorId,
                 clinicId,
-
                 patientName:
                   patientName
                     .trim(),
-
                 patientEmail:
                   patientEmail
                     .trim()
                     .toLowerCase(),
-
                 patientPhone:
                   patientPhone
                     .trim(),
-
                 scheduledDate,
                 scheduledTime,
                 source,
-
                 notes:
                   notes.trim() ||
                   null,
@@ -768,7 +900,10 @@ export default function StaffCreateAppointmentForm({
     0
   ) {
     return (
-      <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
+      <section
+        id="staff-create-appointment"
+        className="rounded-2xl border border-amber-200 bg-amber-50 p-6"
+      >
         <h2 className="text-lg font-semibold text-amber-950">
           {t(
             "noDoctorsTitle"
@@ -794,7 +929,10 @@ export default function StaffCreateAppointmentForm({
     ];
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <section
+      id="staff-create-appointment"
+      className="scroll-mt-6 rounded-2xl border border-gray-200 bg-white shadow-sm"
+    >
       <button
         type="button"
         onClick={() => {
@@ -1156,8 +1294,7 @@ export default function StaffCreateAppointmentForm({
                       slotsError
                     }
                   </p>
-                ) : availableSlots
-                    .length ===
+                ) : availableSlots.length ===
                   0 ? (
                   <p className="mt-2 text-sm text-gray-600">
                     {t(
@@ -1215,7 +1352,6 @@ export default function StaffCreateAppointmentForm({
                       {
                         time:
                           scheduledTime,
-
                         duration:
                           selectedDurationMinutes
                             ? t(
