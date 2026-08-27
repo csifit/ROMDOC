@@ -37,6 +37,15 @@ export type DoctorPatientDatabaseRow = {
   patientProfileId: string | null;
   source: string;
   createdAt: string;
+  addressLine1: string | null;
+  addressLine2: string | null;
+  city: string | null;
+  county: string | null;
+  postalCode: string | null;
+  country: string | null;
+  contactUpdatedAt: string | null;
+  inviteLastSentAt: string | null;
+  inviteCount: number;
   lastAppointment: {
     date: string;
     time: string | null;
@@ -55,12 +64,24 @@ type Props = {
   loadError?: boolean;
 };
 
+type ContactDraft = {
+  displayName: string;
+  email: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  county: string;
+  postalCode: string;
+  country: string;
+};
+
 const TEXT = {
   ro: {
     eyebrow: "Cabinet medical",
     title: "Pacienți",
     description:
-      "Listă compactă a pacienților tăi, construită din programări și pacienți adăugați manual.",
+      "Listă compactă a pacienților tăi, cu programări, date de contact și adresă.",
     add: "Adaugă pacient",
     addTitle: "Adaugă pacient manual",
     addDescription:
@@ -85,6 +106,18 @@ const TEXT = {
     folder: "Dosar medical",
     message: "Mesaj pacient",
     createAppointment: "Creează programare",
+    contactAddress: "Contact / adresă",
+    editContactAddress: "Editează contact / adresă",
+    hideContactAddress: "Închide contact / adresă",
+    invite: "Invită în RomDoc",
+    inviting: "Se trimite...",
+    invited: "Invitația a fost trimisă.",
+    inviteNeedsEmail:
+      "Adaugă o adresă de e-mail înainte de a trimite invitația.",
+    alreadyLinked:
+      "Pacientul are deja cont RomDoc asociat.",
+    inviteHistory:
+      "Ultima invitație",
     history: "Istoric programări",
     noHistory: "Nu există încă programări pentru acest pacient.",
     noDate: "—",
@@ -102,12 +135,24 @@ const TEXT = {
       "Accesul medical devine disponibil printr-o programare confirmată, reprogramată sau finalizată.",
     open: "Deschide",
     patientCount: "pacienți",
+    addressLine1: "Adresă",
+    addressLine2: "Adresă suplimentară",
+    city: "Localitate",
+    county: "Județ / Sector",
+    postalCode: "Cod poștal",
+    country: "Țară",
+    saveContact: "Salvează datele",
+    contactSaving: "Se salvează...",
+    contactSaved: "Datele de contact și adresa au fost actualizate.",
+    contactSaveError: "Datele nu au putut fi actualizate.",
+    contactUpdated: "Ultima actualizare",
+    notCompleted: "Necompletat",
   },
   en: {
     eyebrow: "Medical practice",
     title: "Patients",
     description:
-      "A compact list of your patients, built from appointments and manually added patients.",
+      "A compact list of your patients with appointments, contact details and address.",
     add: "Add patient",
     addTitle: "Add patient manually",
     addDescription:
@@ -132,6 +177,17 @@ const TEXT = {
     folder: "Medical folder",
     message: "Message patient",
     createAppointment: "Create appointment",
+    contactAddress: "Contact / address",
+    editContactAddress: "Edit contact / address",
+    hideContactAddress: "Close contact / address",
+    invite: "Invite to RomDoc",
+    inviting: "Sending...",
+    invited: "Invitation sent.",
+    inviteNeedsEmail:
+      "Add an email address before sending an invitation.",
+    alreadyLinked:
+      "The patient already has a linked RomDoc account.",
+    inviteHistory: "Last invitation",
     history: "Appointment history",
     noHistory: "There are no appointments for this patient yet.",
     noDate: "—",
@@ -149,12 +205,24 @@ const TEXT = {
       "Medical access becomes available through a confirmed, rescheduled or completed appointment.",
     open: "Open",
     patientCount: "patients",
+    addressLine1: "Address",
+    addressLine2: "Address line 2",
+    city: "City",
+    county: "County / District",
+    postalCode: "Postal code",
+    country: "Country",
+    saveContact: "Save details",
+    contactSaving: "Saving...",
+    contactSaved: "Contact and address details updated.",
+    contactSaveError: "The details could not be updated.",
+    contactUpdated: "Last updated",
+    notCompleted: "Not completed",
   },
   de: {
     eyebrow: "Arztpraxis",
     title: "Patienten",
     description:
-      "Eine kompakte Patientenliste aus Terminen und manuell hinzugefügten Patienten.",
+      "Eine kompakte Patientenliste mit Terminen, Kontaktdaten und Adresse.",
     add: "Patient hinzufügen",
     addTitle: "Patient manuell hinzufügen",
     addDescription:
@@ -179,6 +247,17 @@ const TEXT = {
     folder: "Medizinische Akte",
     message: "Patientennachricht",
     createAppointment: "Termin erstellen",
+    contactAddress: "Kontakt / Adresse",
+    editContactAddress: "Kontakt / Adresse bearbeiten",
+    hideContactAddress: "Kontakt / Adresse schließen",
+    invite: "Zu RomDoc einladen",
+    inviting: "Wird gesendet...",
+    invited: "Einladung wurde gesendet.",
+    inviteNeedsEmail:
+      "Fügen Sie vor dem Versand eine E-Mail-Adresse hinzu.",
+    alreadyLinked:
+      "Der Patient hat bereits ein verknüpftes RomDoc-Konto.",
+    inviteHistory: "Letzte Einladung",
     history: "Terminverlauf",
     noHistory: "Für diesen Patienten gibt es noch keine Termine.",
     noDate: "—",
@@ -197,6 +276,18 @@ const TEXT = {
       "Medizinischer Zugriff wird über einen bestätigten, verschobenen oder abgeschlossenen Termin verfügbar.",
     open: "Öffnen",
     patientCount: "Patienten",
+    addressLine1: "Adresse",
+    addressLine2: "Adresszusatz",
+    city: "Ort",
+    county: "Kreis / Bezirk",
+    postalCode: "Postleitzahl",
+    country: "Land",
+    saveContact: "Daten speichern",
+    contactSaving: "Wird gespeichert...",
+    contactSaved: "Kontakt- und Adressdaten wurden aktualisiert.",
+    contactSaveError: "Die Daten konnten nicht aktualisiert werden.",
+    contactUpdated: "Zuletzt aktualisiert",
+    notCompleted: "Nicht ausgefüllt",
   },
 } as const;
 
@@ -218,29 +309,58 @@ function formatAppointment(
     return fallback;
   }
 
-  const date = new Intl.DateTimeFormat(
-    INTL_LOCALE[locale],
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }
-  ).format(
-    new Date(`${value.date}T12:00:00`)
-  );
+  const date =
+    new Intl.DateTimeFormat(
+      INTL_LOCALE[locale],
+      {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }
+    ).format(
+      new Date(
+        `${value.date}T12:00:00`
+      )
+    );
 
   return value.time
     ? `${date}, ${value.time.slice(0, 5)}`
     : date;
 }
 
+function formatDateTime(
+  value: string | null,
+  locale: AppLocale,
+  fallback: string
+) {
+  if (!value) {
+    return fallback;
+  }
+
+  return new Intl.DateTimeFormat(
+    INTL_LOCALE[locale],
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }
+  ).format(
+    new Date(value)
+  );
+}
+
 function createAppointmentHref(
   patient: DoctorPatientDatabaseRow
 ) {
-  const parameters = new URLSearchParams({
-    createPatient: "1",
-    patientName: patient.displayName,
-  });
+  const parameters =
+    new URLSearchParams({
+      createPatient:
+        "1",
+      patientName:
+        patient.displayName,
+    });
 
   if (patient.email) {
     parameters.set(
@@ -259,6 +379,40 @@ function createAppointmentHref(
   return `/doctor-dashboard/appointments?${parameters.toString()}`;
 }
 
+function createDraft(
+  patient:
+    DoctorPatientDatabaseRow
+): ContactDraft {
+  return {
+    displayName:
+      patient.displayName,
+    email:
+      patient.email ??
+      "",
+    phone:
+      patient.phone ??
+      "",
+    addressLine1:
+      patient.addressLine1 ??
+      "",
+    addressLine2:
+      patient.addressLine2 ??
+      "",
+    city:
+      patient.city ??
+      "",
+    county:
+      patient.county ??
+      "",
+    postalCode:
+      patient.postalCode ??
+      "",
+    country:
+      patient.country ??
+      "",
+  };
+}
+
 export default function DoctorPatientsTable({
   patients,
   loadError = false,
@@ -274,7 +428,10 @@ export default function DoctorPatientsTable({
   const router =
     useRouter();
 
-  const [query, setQuery] =
+  const [
+    query,
+    setQuery,
+  ] =
     useState("");
 
   const [
@@ -285,7 +442,26 @@ export default function DoctorPatientsTable({
       null
     );
 
-  const [addOpen, setAddOpen] =
+  const [
+    editingPatientId,
+    setEditingPatientId,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  const [
+    contactDraft,
+    setContactDraft,
+  ] =
+    useState<ContactDraft | null>(
+      null
+    );
+
+  const [
+    addOpen,
+    setAddOpen,
+  ] =
     useState(false);
 
   const [
@@ -294,10 +470,16 @@ export default function DoctorPatientsTable({
   ] =
     useState("");
 
-  const [email, setEmail] =
+  const [
+    email,
+    setEmail,
+  ] =
     useState("");
 
-  const [phone, setPhone] =
+  const [
+    phone,
+    setPhone,
+  ] =
     useState("");
 
   const [
@@ -305,6 +487,22 @@ export default function DoctorPatientsTable({
     setIsSaving,
   ] =
     useState(false);
+
+  const [
+    contactSavingId,
+    setContactSavingId,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  const [
+    invitingPatientId,
+    setInvitingPatientId,
+  ] =
+    useState<string | null>(
+      null
+    );
 
   const [
     errorMessage,
@@ -318,66 +516,83 @@ export default function DoctorPatientsTable({
   ] =
     useState("");
 
+  const [
+    rowMessage,
+    setRowMessage,
+  ] =
+    useState<{
+      patientId: string;
+      kind: "success" | "error";
+      text: string;
+    } | null>(
+      null
+    );
+
   const filteredPatients =
-    useMemo(() => {
-      const normalized =
-        query
-          .trim()
-          .toLowerCase();
+    useMemo(
+      () => {
+        const normalized =
+          query
+            .trim()
+            .toLowerCase();
 
-      if (!normalized) {
-        return patients;
-      }
+        if (!normalized) {
+          return patients;
+        }
 
-      const digits =
-        normalized.replace(
-          /\D/g,
-          ""
-        );
+        const digits =
+          normalized.replace(
+            /\D/g,
+            ""
+          );
 
-      return patients.filter(
-        (patient) => {
-          const nameMatch =
-            patient.displayName
-              .toLowerCase()
-              .includes(
-                normalized
-              );
+        return patients.filter(
+          (
+            patient
+          ) => {
+            const nameMatch =
+              patient.displayName
+                .toLowerCase()
+                .includes(
+                  normalized
+                );
 
-          const emailMatch =
-            patient.email
-              ?.toLowerCase()
-              .includes(
-                normalized
-              ) ??
-            false;
+            const emailMatch =
+              patient.email
+                ?.toLowerCase()
+                .includes(
+                  normalized
+                ) ??
+              false;
 
-          const phoneMatch =
-            digits.length >
-              0 &&
-            (
-              patient.phone ??
-              ""
-            )
-              .replace(
-                /\D/g,
+            const phoneMatch =
+              digits.length >
+                0 &&
+              (
+                patient.phone ??
                 ""
               )
-              .includes(
-                digits
-              );
+                .replace(
+                  /\D/g,
+                  ""
+                )
+                .includes(
+                  digits
+                );
 
-          return (
-            nameMatch ||
-            emailMatch ||
-            phoneMatch
-          );
-        }
-      );
-    }, [
-      patients,
-      query,
-    ]);
+            return (
+              nameMatch ||
+              emailMatch ||
+              phoneMatch
+            );
+          }
+        );
+      },
+      [
+        patients,
+        query,
+      ]
+    );
 
   async function handleAddPatient(
     event:
@@ -405,7 +620,8 @@ export default function DoctorPatientsTable({
         await fetch(
           "/api/doctor/patients",
           {
-            method: "POST",
+            method:
+              "POST",
             headers: {
               "Content-Type":
                 "application/json",
@@ -447,6 +663,256 @@ export default function DoctorPatientsTable({
       );
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  function openContactEditor(
+    patient:
+      DoctorPatientDatabaseRow
+  ) {
+    if (
+      editingPatientId ===
+      patient.id
+    ) {
+      setEditingPatientId(
+        null
+      );
+      setContactDraft(
+        null
+      );
+      return;
+    }
+
+    setEditingPatientId(
+      patient.id
+    );
+    setContactDraft(
+      createDraft(
+        patient
+      )
+    );
+    setRowMessage(
+      null
+    );
+  }
+
+  function updateDraft(
+    key: keyof ContactDraft,
+    value: string
+  ) {
+    setContactDraft(
+      (
+        current
+      ) =>
+        current
+          ? {
+              ...current,
+              [key]:
+                value,
+            }
+          : current
+    );
+  }
+
+  async function saveContact(
+    patientId: string
+  ) {
+    if (
+      !contactDraft
+    ) {
+      return;
+    }
+
+    if (
+      !contactDraft.email
+        .trim() &&
+      !contactDraft.phone
+        .trim()
+    ) {
+      setRowMessage({
+        patientId,
+        kind:
+          "error",
+        text:
+          text.contactRequired,
+      });
+      return;
+    }
+
+    setContactSavingId(
+      patientId
+    );
+    setRowMessage(
+      null
+    );
+
+    try {
+      const response =
+        await fetch(
+          "/api/doctor/patients",
+          {
+            method:
+              "PATCH",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                patientId,
+                ...contactDraft,
+              }),
+          }
+        );
+
+      const result =
+        (await response.json()) as {
+          error?: string;
+        };
+
+      if (!response.ok) {
+        setRowMessage({
+          patientId,
+          kind:
+            "error",
+          text:
+            result.error ??
+            text.contactSaveError,
+        });
+        return;
+      }
+
+      setRowMessage({
+        patientId,
+        kind:
+          "success",
+        text:
+          text.contactSaved,
+      });
+
+      setEditingPatientId(
+        null
+      );
+      setContactDraft(
+        null
+      );
+
+      router.refresh();
+    } catch {
+      setRowMessage({
+        patientId,
+        kind:
+          "error",
+        text:
+          text.contactSaveError,
+      });
+    } finally {
+      setContactSavingId(
+        null
+      );
+    }
+  }
+
+  async function sendInvite(
+    patient:
+      DoctorPatientDatabaseRow
+  ) {
+    if (
+      patient.patientProfileId
+    ) {
+      setRowMessage({
+        patientId:
+          patient.id,
+        kind:
+          "error",
+        text:
+          text.alreadyLinked,
+      });
+      return;
+    }
+
+    if (
+      !patient.email
+    ) {
+      setRowMessage({
+        patientId:
+          patient.id,
+        kind:
+          "error",
+        text:
+          text.inviteNeedsEmail,
+      });
+      return;
+    }
+
+    setInvitingPatientId(
+      patient.id
+    );
+    setRowMessage(
+      null
+    );
+
+    try {
+      const response =
+        await fetch(
+          "/api/doctor/patients/invite",
+          {
+            method:
+              "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                patientId:
+                  patient.id,
+                locale,
+              }),
+          }
+        );
+
+      const result =
+        (await response.json()) as {
+          error?: string;
+        };
+
+      if (!response.ok) {
+        setRowMessage({
+          patientId:
+            patient.id,
+          kind:
+            "error",
+          text:
+            result.error ??
+            text.addError,
+        });
+        return;
+      }
+
+      setRowMessage({
+        patientId:
+          patient.id,
+        kind:
+          "success",
+        text:
+          text.invited,
+      });
+
+      router.refresh();
+    } catch {
+      setRowMessage({
+        patientId:
+          patient.id,
+        kind:
+          "error",
+        text:
+          text.addError,
+      });
+    } finally {
+      setInvitingPatientId(
+        null
+      );
     }
   }
 
@@ -698,6 +1164,10 @@ export default function DoctorPatientsTable({
                     expandedPatientId ===
                     patient.id;
 
+                  const editing =
+                    editingPatientId ===
+                    patient.id;
+
                   const medicalHref =
                     patient.medicalAppointmentId
                       ? `/medical-folder/${patient.medicalAppointmentId}?locale=${locale}`
@@ -707,6 +1177,22 @@ export default function DoctorPatientsTable({
                     patient.messageAppointmentId
                       ? `/appointments/${patient.messageAppointmentId}/messages?locale=${locale}`
                       : null;
+
+                  const addressSummary =
+                    [
+                      patient.addressLine1,
+                      patient.addressLine2,
+                      [
+                        patient.postalCode,
+                        patient.city,
+                      ]
+                        .filter(Boolean)
+                        .join(" "),
+                      patient.county,
+                      patient.country,
+                    ]
+                      .filter(Boolean)
+                      .join(", ");
 
                   return (
                     <div
@@ -790,87 +1276,420 @@ export default function DoctorPatientsTable({
 
                       {expanded && (
                         <div className="border-t border-gray-100 bg-[#F0EEE9]/45 px-[17px] py-[17px]">
-                          <div className="grid gap-[21px] xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.85fr)]">
-                            <div>
-                              <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                                {text.quickActions}
-                              </p>
+                          <div className="grid gap-[21px] xl:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">
+                            <div className="space-y-[17px]">
+                              <div>
+                                <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                                  {text.quickActions}
+                                </p>
 
-                              <div className="mt-[8px] flex flex-wrap gap-[8px]">
-                                {medicalHref ? (
-                                  <>
+                                <div className="mt-[8px] flex flex-wrap gap-[8px]">
+                                  {medicalHref ? (
+                                    <>
+                                      <Link
+                                        href={
+                                          medicalHref
+                                        }
+                                        className="romdoc-button romdoc-button-secondary romdoc-button-sm"
+                                      >
+                                        {text.medical}
+                                      </Link>
+
+                                      <Link
+                                        href={
+                                          medicalHref
+                                        }
+                                        className="romdoc-button romdoc-button-secondary romdoc-button-sm"
+                                      >
+                                        {text.folder}
+                                      </Link>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span
+                                        title={
+                                          text.medicalRequired
+                                        }
+                                        className="inline-flex min-h-[34px] cursor-not-allowed items-center rounded-[13px] border border-gray-200 bg-gray-100 px-[13px] py-[8px] text-sm font-semibold text-gray-400"
+                                      >
+                                        {text.medical}
+                                      </span>
+
+                                      <span
+                                        title={
+                                          text.medicalRequired
+                                        }
+                                        className="inline-flex min-h-[34px] cursor-not-allowed items-center rounded-[13px] border border-gray-200 bg-gray-100 px-[13px] py-[8px] text-sm font-semibold text-gray-400"
+                                      >
+                                        {text.folder}
+                                      </span>
+                                    </>
+                                  )}
+
+                                  {messageHref ? (
                                     <Link
                                       href={
-                                        medicalHref
+                                        messageHref
                                       }
                                       className="romdoc-button romdoc-button-secondary romdoc-button-sm"
                                     >
-                                      {text.medical}
+                                      {text.message}
                                     </Link>
-
-                                    <Link
-                                      href={
-                                        medicalHref
-                                      }
-                                      className="romdoc-button romdoc-button-secondary romdoc-button-sm"
-                                    >
-                                      {text.folder}
-                                    </Link>
-                                  </>
-                                ) : (
-                                  <>
+                                  ) : (
                                     <span
                                       title={
-                                        text.medicalRequired
+                                        text.accountRequired
                                       }
                                       className="inline-flex min-h-[34px] cursor-not-allowed items-center rounded-[13px] border border-gray-200 bg-gray-100 px-[13px] py-[8px] text-sm font-semibold text-gray-400"
                                     >
-                                      {text.medical}
+                                      {text.message}
                                     </span>
+                                  )}
 
-                                    <span
-                                      title={
-                                        text.medicalRequired
-                                      }
-                                      className="inline-flex min-h-[34px] cursor-not-allowed items-center rounded-[13px] border border-gray-200 bg-gray-100 px-[13px] py-[8px] text-sm font-semibold text-gray-400"
-                                    >
-                                      {text.folder}
-                                    </span>
-                                  </>
-                                )}
-
-                                {messageHref ? (
                                   <Link
-                                    href={
-                                      messageHref
+                                    href={createAppointmentHref(
+                                      patient
+                                    )}
+                                    className="romdoc-button romdoc-button-primary romdoc-button-sm"
+                                  >
+                                    {text.createAppointment}
+                                  </Link>
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      openContactEditor(
+                                        patient
+                                      )
                                     }
                                     className="romdoc-button romdoc-button-secondary romdoc-button-sm"
                                   >
-                                    {text.message}
-                                  </Link>
-                                ) : (
-                                  <span
-                                    title={
-                                      text.accountRequired
-                                    }
-                                    className="inline-flex min-h-[34px] cursor-not-allowed items-center rounded-[13px] border border-gray-200 bg-gray-100 px-[13px] py-[8px] text-sm font-semibold text-gray-400"
-                                  >
-                                    {text.message}
-                                  </span>
-                                )}
+                                    {editing
+                                      ? text.hideContactAddress
+                                      : text.editContactAddress}
+                                  </button>
 
-                                <Link
-                                  href={createAppointmentHref(
-                                    patient
+                                  {!patient.patientProfileId && (
+                                    <button
+                                      type="button"
+                                      disabled={
+                                        invitingPatientId ===
+                                          patient.id ||
+                                        !patient.email
+                                      }
+                                      onClick={() =>
+                                        void sendInvite(
+                                          patient
+                                        )
+                                      }
+                                      title={
+                                        !patient.email
+                                          ? text.inviteNeedsEmail
+                                          : undefined
+                                      }
+                                      className="romdoc-button romdoc-button-secondary romdoc-button-sm disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      {invitingPatientId ===
+                                      patient.id
+                                        ? text.inviting
+                                        : text.invite}
+                                    </button>
                                   )}
-                                  className="romdoc-button romdoc-button-primary romdoc-button-sm"
-                                >
-                                  {text.createAppointment}
-                                </Link>
+                                </div>
                               </div>
 
+                              <div className="rounded-[13px] border border-gray-200 bg-white p-[13px]">
+                                <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                                  {text.contactAddress}
+                                </p>
+
+                                <div className="mt-[8px] grid gap-[5px] text-sm text-gray-700 sm:grid-cols-2">
+                                  <p>
+                                    <strong>{text.email}:</strong>{" "}
+                                    {patient.email ??
+                                      text.notCompleted}
+                                  </p>
+
+                                  <p>
+                                    <strong>{text.phone}:</strong>{" "}
+                                    {patient.phone ??
+                                      text.notCompleted}
+                                  </p>
+
+                                  <p className="sm:col-span-2">
+                                    <strong>{text.addressLine1}:</strong>{" "}
+                                    {addressSummary ||
+                                      text.notCompleted}
+                                  </p>
+                                </div>
+
+                                {patient.contactUpdatedAt && (
+                                  <p className="mt-[8px] text-xs text-gray-500">
+                                    {text.contactUpdated}:{" "}
+                                    {formatDateTime(
+                                      patient.contactUpdatedAt,
+                                      locale,
+                                      text.noDate
+                                    )}
+                                  </p>
+                                )}
+
+                                {patient.inviteLastSentAt &&
+                                  !patient.patientProfileId && (
+                                  <p className="mt-[5px] text-xs text-gray-500">
+                                    {text.inviteHistory}:{" "}
+                                    {formatDateTime(
+                                      patient.inviteLastSentAt,
+                                      locale,
+                                      text.noDate
+                                    )}
+                                    {patient.inviteCount > 1
+                                      ? ` · ${patient.inviteCount}`
+                                      : ""}
+                                  </p>
+                                )}
+                              </div>
+
+                              {editing &&
+                                contactDraft && (
+                                <div className="rounded-[13px] border border-[#036661]/20 bg-white p-[17px]">
+                                  <div className="grid gap-[13px] md:grid-cols-2">
+                                    <label className="block md:col-span-2">
+                                      <span className="text-sm font-semibold text-gray-700">
+                                        {text.name}
+                                      </span>
+                                      <input
+                                        type="text"
+                                        value={
+                                          contactDraft.displayName
+                                        }
+                                        onChange={(event) =>
+                                          updateDraft(
+                                            "displayName",
+                                            event.target.value
+                                          )
+                                        }
+                                        className="romdoc-input mt-[5px]"
+                                      />
+                                    </label>
+
+                                    <label className="block">
+                                      <span className="text-sm font-semibold text-gray-700">
+                                        {text.email}
+                                      </span>
+                                      <input
+                                        type="email"
+                                        value={
+                                          contactDraft.email
+                                        }
+                                        onChange={(event) =>
+                                          updateDraft(
+                                            "email",
+                                            event.target.value
+                                          )
+                                        }
+                                        className="romdoc-input mt-[5px]"
+                                      />
+                                    </label>
+
+                                    <label className="block">
+                                      <span className="text-sm font-semibold text-gray-700">
+                                        {text.phone}
+                                      </span>
+                                      <input
+                                        type="tel"
+                                        value={
+                                          contactDraft.phone
+                                        }
+                                        onChange={(event) =>
+                                          updateDraft(
+                                            "phone",
+                                            event.target.value
+                                          )
+                                        }
+                                        className="romdoc-input mt-[5px]"
+                                      />
+                                    </label>
+
+                                    <label className="block md:col-span-2">
+                                      <span className="text-sm font-semibold text-gray-700">
+                                        {text.addressLine1}
+                                      </span>
+                                      <input
+                                        type="text"
+                                        value={
+                                          contactDraft.addressLine1
+                                        }
+                                        onChange={(event) =>
+                                          updateDraft(
+                                            "addressLine1",
+                                            event.target.value
+                                          )
+                                        }
+                                        className="romdoc-input mt-[5px]"
+                                      />
+                                    </label>
+
+                                    <label className="block md:col-span-2">
+                                      <span className="text-sm font-semibold text-gray-700">
+                                        {text.addressLine2}
+                                      </span>
+                                      <input
+                                        type="text"
+                                        value={
+                                          contactDraft.addressLine2
+                                        }
+                                        onChange={(event) =>
+                                          updateDraft(
+                                            "addressLine2",
+                                            event.target.value
+                                          )
+                                        }
+                                        className="romdoc-input mt-[5px]"
+                                      />
+                                    </label>
+
+                                    <label className="block">
+                                      <span className="text-sm font-semibold text-gray-700">
+                                        {text.city}
+                                      </span>
+                                      <input
+                                        type="text"
+                                        value={
+                                          contactDraft.city
+                                        }
+                                        onChange={(event) =>
+                                          updateDraft(
+                                            "city",
+                                            event.target.value
+                                          )
+                                        }
+                                        className="romdoc-input mt-[5px]"
+                                      />
+                                    </label>
+
+                                    <label className="block">
+                                      <span className="text-sm font-semibold text-gray-700">
+                                        {text.county}
+                                      </span>
+                                      <input
+                                        type="text"
+                                        value={
+                                          contactDraft.county
+                                        }
+                                        onChange={(event) =>
+                                          updateDraft(
+                                            "county",
+                                            event.target.value
+                                          )
+                                        }
+                                        className="romdoc-input mt-[5px]"
+                                      />
+                                    </label>
+
+                                    <label className="block">
+                                      <span className="text-sm font-semibold text-gray-700">
+                                        {text.postalCode}
+                                      </span>
+                                      <input
+                                        type="text"
+                                        value={
+                                          contactDraft.postalCode
+                                        }
+                                        onChange={(event) =>
+                                          updateDraft(
+                                            "postalCode",
+                                            event.target.value
+                                          )
+                                        }
+                                        className="romdoc-input mt-[5px]"
+                                      />
+                                    </label>
+
+                                    <label className="block">
+                                      <span className="text-sm font-semibold text-gray-700">
+                                        {text.country}
+                                      </span>
+                                      <input
+                                        type="text"
+                                        value={
+                                          contactDraft.country
+                                        }
+                                        onChange={(event) =>
+                                          updateDraft(
+                                            "country",
+                                            event.target.value
+                                          )
+                                        }
+                                        className="romdoc-input mt-[5px]"
+                                      />
+                                    </label>
+                                  </div>
+
+                                  <div className="mt-[13px] flex flex-wrap gap-[8px]">
+                                    <button
+                                      type="button"
+                                      disabled={
+                                        contactSavingId ===
+                                        patient.id
+                                      }
+                                      onClick={() =>
+                                        void saveContact(
+                                          patient.id
+                                        )
+                                      }
+                                      className="romdoc-button romdoc-button-primary romdoc-button-sm"
+                                    >
+                                      {contactSavingId ===
+                                      patient.id
+                                        ? text.contactSaving
+                                        : text.saveContact}
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      disabled={
+                                        contactSavingId ===
+                                        patient.id
+                                      }
+                                      onClick={() => {
+                                        setEditingPatientId(
+                                          null
+                                        );
+                                        setContactDraft(
+                                          null
+                                        );
+                                      }}
+                                      className="romdoc-button romdoc-button-secondary romdoc-button-sm"
+                                    >
+                                      {text.cancel}
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+
+                              {rowMessage?.patientId ===
+                                patient.id && (
+                                <div
+                                  role={
+                                    rowMessage.kind ===
+                                    "error"
+                                      ? "alert"
+                                      : "status"
+                                  }
+                                  className={
+                                    rowMessage.kind ===
+                                    "error"
+                                      ? "romdoc-notice romdoc-notice-error"
+                                      : "romdoc-notice romdoc-notice-success"
+                                  }
+                                >
+                                  {rowMessage.text}
+                                </div>
+                              )}
+
                               {!patient.patientProfileId && (
-                                <div className="mt-[13px] rounded-[13px] border border-amber-200 bg-amber-50 p-[13px] text-xs leading-5 text-amber-900">
+                                <div className="rounded-[13px] border border-amber-200 bg-amber-50 p-[13px] text-xs leading-5 text-amber-900">
                                   {text.accountRequired}{" "}
                                   {text.medicalRequired}
                                 </div>
@@ -888,7 +1707,7 @@ export default function DoctorPatientsTable({
                                   {text.noHistory}
                                 </p>
                               ) : (
-                                <div className="mt-[8px] max-h-[250px] overflow-y-auto rounded-[13px] border border-gray-200 bg-white">
+                                <div className="mt-[8px] max-h-[320px] overflow-y-auto rounded-[13px] border border-gray-200 bg-white">
                                   {patient.history.map(
                                     (
                                       appointment

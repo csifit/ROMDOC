@@ -15,38 +15,33 @@ import {
 
 type DoctorPatientRow = {
   id: string;
-  patient_profile_id:
-    | string
-    | null;
+  patient_profile_id: string | null;
   display_name: string;
-  email:
-    | string
-    | null;
-  phone:
-    | string
-    | null;
+  email: string | null;
+  phone: string | null;
   source: string;
   created_at: string;
+  address_line_1: string | null;
+  address_line_2: string | null;
+  city: string | null;
+  county: string | null;
+  postal_code: string | null;
+  country: string | null;
+  contact_updated_at: string | null;
+  invite_last_sent_at: string | null;
+  invite_count: number;
 };
 
 type AppointmentRow = {
   id: string;
-  patient_profile_id:
-    | string
-    | null;
+  patient_profile_id: string | null;
   patient_name: string;
   patient_email: string;
   patient_phone: string;
   requested_date: string;
-  requested_time:
-    | string
-    | null;
-  scheduled_date:
-    | string
-    | null;
-  scheduled_time:
-    | string
-    | null;
+  requested_time: string | null;
+  scheduled_date: string | null;
+  scheduled_time: string | null;
   status: string;
   created_at: string;
 };
@@ -195,12 +190,31 @@ async function loadAllDoctorPatients(
         .from(
           "doctor_patients"
         )
-        .select(
-          "id, patient_profile_id, display_name, email, phone, source, created_at"
-        )
+        .select(`
+          id,
+          patient_profile_id,
+          display_name,
+          email,
+          phone,
+          source,
+          created_at,
+          address_line_1,
+          address_line_2,
+          city,
+          county,
+          postal_code,
+          country,
+          contact_updated_at,
+          invite_last_sent_at,
+          invite_count
+        `)
         .eq(
           "doctor_id",
           doctorId
+        )
+        .is(
+          "archived_at",
+          null
         )
         .order(
           "display_name",
@@ -269,9 +283,19 @@ async function loadAllDoctorAppointments(
         .from(
           "appointments"
         )
-        .select(
-          "id, patient_profile_id, patient_name, patient_email, patient_phone, requested_date, requested_time, scheduled_date, scheduled_time, status, created_at"
-        )
+        .select(`
+          id,
+          patient_profile_id,
+          patient_name,
+          patient_email,
+          patient_phone,
+          requested_date,
+          requested_time,
+          scheduled_date,
+          scheduled_time,
+          status,
+          created_at
+        `)
         .eq(
           "doctor_id",
           doctorId
@@ -412,7 +436,8 @@ DoctorPatientsPage() {
   let appointmentRows:
     AppointmentRow[] = [];
 
-  let loadError = false;
+  let loadError =
+    false;
 
   try {
     [
@@ -435,7 +460,8 @@ DoctorPatientsPage() {
       error
     );
 
-    loadError = true;
+    loadError =
+      true;
   }
 
   const now =
@@ -494,18 +520,19 @@ DoctorPatientsPage() {
             })
           );
 
-        const past =
+        const lastAppointment =
           matching.find(
             (
               appointment
             ) =>
               appointmentTimestamp(
                 appointment
-              ) <= now
+              ) <=
+              now
           ) ??
           null;
 
-        const next =
+        const nextAppointment =
           [...matching]
             .filter(
               (
@@ -594,26 +621,58 @@ DoctorPatientsPage() {
           createdAt:
             patient
               .created_at,
+          addressLine1:
+            patient
+              .address_line_1,
+          addressLine2:
+            patient
+              .address_line_2,
+          city:
+            patient.city,
+          county:
+            patient.county,
+          postalCode:
+            patient
+              .postal_code,
+          country:
+            patient.country,
+          contactUpdatedAt:
+            patient
+              .contact_updated_at,
+          inviteLastSentAt:
+            patient
+              .invite_last_sent_at,
+          inviteCount:
+            patient
+              .invite_count,
           lastAppointment:
-            past
+            lastAppointment
               ? {
                   date:
-                    past.scheduled_date ??
-                    past.requested_date,
+                    lastAppointment
+                      .scheduled_date ??
+                    lastAppointment
+                      .requested_date,
                   time:
-                    past.scheduled_time ??
-                    past.requested_time,
+                    lastAppointment
+                      .scheduled_time ??
+                    lastAppointment
+                      .requested_time,
                 }
               : null,
           nextAppointment:
-            next
+            nextAppointment
               ? {
                   date:
-                    next.scheduled_date ??
-                    next.requested_date,
+                    nextAppointment
+                      .scheduled_date ??
+                    nextAppointment
+                      .requested_date,
                   time:
-                    next.scheduled_time ??
-                    next.requested_time,
+                    nextAppointment
+                      .scheduled_time ??
+                    nextAppointment
+                      .requested_time,
                 }
               : null,
           medicalAppointmentId:
