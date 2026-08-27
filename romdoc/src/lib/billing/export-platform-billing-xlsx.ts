@@ -132,7 +132,7 @@ export async function buildPlatformBillingUsageXlsx({
     );
 
   usage.mergeCells(
-    "A1:X1"
+    "A1:T1"
   );
 
   usage.getCell(
@@ -177,7 +177,7 @@ export async function buildPlatformBillingUsageXlsx({
   ).height = 28;
 
   usage.mergeCells(
-    "A2:X2"
+    "A2:T2"
   );
 
   usage.getCell(
@@ -230,14 +230,6 @@ export async function buildPlatformBillingUsageXlsx({
       .subscriptionPrice,
     copy.xlsx
       .subscriptionAmount,
-    oldCopy.amounts
-      .confirmationSms,
-    oldCopy.amounts
-      .reminderSms,
-    copy.history
-      .otherSms,
-    oldCopy.amounts
-      .smsSent,
     copy.history
       .subtotal,
     copy.xlsx
@@ -337,10 +329,6 @@ export async function buildPlatformBillingUsageXlsx({
       row.subscriptionCount,
       row.subscriptionUnitPrice,
       row.subscriptionAmount,
-      row.confirmationSmsCount,
-      row.reminder24hSmsCount,
-      row.otherSmsCount,
-      row.totalSmsCount,
       row.subtotal,
       row.vatRate,
       copy.vatTreatment[
@@ -385,10 +373,6 @@ export async function buildPlatformBillingUsageXlsx({
     15,
     18,
     18,
-    16,
-    16,
-    16,
-    14,
     16,
     12,
     24,
@@ -443,19 +427,13 @@ export async function buildPlatformBillingUsageXlsx({
 
     row.getCell(
       14
-    ).numFmt = "0";
+    ).numFmt =
+      "0.00";
 
     row.getCell(
       15
-    ).numFmt = "0";
-
-    row.getCell(
-      16
-    ).numFmt = "0";
-
-    row.getCell(
-      17
-    ).numFmt = "0";
+    ).numFmt =
+      "0.00%";
 
     row.getCell(
       18
@@ -464,16 +442,6 @@ export async function buildPlatformBillingUsageXlsx({
 
     row.getCell(
       19
-    ).numFmt =
-      "0.00%";
-
-    row.getCell(
-      22
-    ).numFmt =
-      "0.00";
-
-    row.getCell(
-      23
     ).numFmt =
       "0.00";
 

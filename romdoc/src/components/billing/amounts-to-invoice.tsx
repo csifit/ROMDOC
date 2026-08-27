@@ -37,11 +37,11 @@ type CurrencyTotals = {
 
 const GLOBAL_PRICING_DESCRIPTION: Record<AppLocale, string> = {
   ro:
-    "Deschide pentru a vedea sau modifica prețul global al abonamentului/pachetului, moneda și TVA. SMS-urile sunt incluse și nu au tarif separat.",
+    "Deschide pentru a vedea sau modifica prețul global al abonamentului/pachetului, moneda și TVA.",
   en:
-    "Open to view or change the global subscription/package price, currency and VAT. SMS is included and has no separate unit price.",
+    "Open to view or change the global subscription/package price, currency and VAT.",
   de:
-    "Öffnen, um den globalen Abonnement-/Paketpreis, die Währung und den MwSt.-Satz anzuzeigen oder zu ändern. SMS sind enthalten und haben keinen separaten Einzelpreis.",
+    "Öffnen, um den globalen Abonnement-/Paketpreis, die Währung und den MwSt.-Satz anzuzeigen oder zu ändern.",
 };
 
 function currencyLabel(locale: AppLocale) {

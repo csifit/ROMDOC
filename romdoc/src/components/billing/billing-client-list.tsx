@@ -44,30 +44,6 @@ type ClientFilterStatus =
   | "invoiced"
   | "paid";
 
-const SMS_INCLUDED_COPY: Record<
-  AppLocale,
-  {
-    usage: string;
-    included: string;
-  }
-> = {
-  ro: {
-    usage: "Utilizare SMS",
-    included:
-      "SMS-urile sunt incluse în abonament și nu sunt calculate separat.",
-  },
-  en: {
-    usage: "SMS usage",
-    included:
-      "SMS is included in the subscription and is not calculated separately.",
-  },
-  de: {
-    usage: "SMS-Nutzung",
-    included:
-      "SMS sind im Abonnement enthalten und werden nicht separat berechnet.",
-  },
-};
-
 function localeTag(
   locale: AppLocale
 ) {
@@ -360,11 +336,6 @@ function ClientRow({
       locale
     );
 
-  const smsCopy =
-    SMS_INCLUDED_COPY[
-      locale
-    ];
-
   const status =
     visibleStatus(
       row,
@@ -446,7 +417,7 @@ function ClientRow({
           </p>
         </div>
 
-        <div className="grid w-full grid-cols-2 gap-[8px] sm:grid-cols-3 xl:min-w-[660px] xl:grid-cols-6">
+        <div className="grid w-full grid-cols-2 gap-[8px] sm:grid-cols-3 xl:min-w-[600px] xl:grid-cols-5">
           <div className="rounded-[13px] bg-gray-50 p-[8px] text-center">
             <p className="text-xs text-gray-500">
               {row.clientType ===
@@ -478,21 +449,6 @@ function ClientRow({
                 locale,
                 row.currency
               )}
-            </p>
-          </div>
-
-          <div className="rounded-[13px] bg-gray-50 p-[8px] text-center">
-            <p className="text-xs text-gray-500">
-              {
-                oldCopy.amounts
-                  .smsSent
-              }
-            </p>
-
-            <p className="mt-[5px] text-lg font-bold text-gray-900">
-              {
-                row.totalSmsCount
-              }
             </p>
           </div>
 
@@ -571,57 +527,6 @@ function ClientRow({
                     row.currency
                   )}
                 </dd>
-              </div>
-
-              <div className="rounded-[13px] border border-blue-200 bg-blue-50 p-[13px]">
-                <div className="flex flex-wrap items-center justify-between gap-[8px]">
-                  <dt className="font-medium text-blue-950">
-                    {
-                      smsCopy.usage
-                    }
-                  </dt>
-
-                  <dd className="font-bold text-blue-950">
-                    {
-                      row.totalSmsCount
-                    }
-                  </dd>
-                </div>
-
-                <p className="mt-[5px] text-xs leading-5 text-blue-900">
-                  {
-                    smsCopy.included
-                  }
-                </p>
-
-                <div className="mt-[8px] text-xs leading-5 text-blue-900">
-                  {
-                    oldCopy.amounts
-                      .confirmationSms
-                  }
-                  :{" "}
-                  {
-                    row.confirmationSmsCount
-                  }
-                  {" · "}
-                  {
-                    oldCopy.amounts
-                      .reminderSms
-                  }
-                  :{" "}
-                  {
-                    row.reminder24hSmsCount
-                  }
-                  {" · "}
-                  {
-                    copy.history
-                      .otherSms
-                  }
-                  :{" "}
-                  {
-                    row.otherSmsCount
-                  }
-                </div>
               </div>
 
               <div className="mt-[5px] flex items-start justify-between gap-[13px] border-t border-gray-200 pt-[13px]">

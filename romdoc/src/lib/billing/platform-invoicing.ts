@@ -174,6 +174,12 @@ type DoctorSubscriptionRow = {
   created_at: string;
 };
 
+type DoctorAccessGrantRow = {
+  doctor_id: string;
+  status: string;
+  ends_at: string;
+};
+
 type DoctorBillingProfileRow = {
   doctor_id: string;
   legal_name: string | null;
@@ -277,7 +283,6 @@ const DEFAULT_RATES: PlatformBillingRates = {
 
 const BILLABLE_SUBSCRIPTION_STATUSES = new Set([
   "active",
-  "trialing",
   "past_due",
   "unpaid",
 ]);
@@ -620,6 +625,7 @@ export async function loadPlatformInvoicingData({
     doctorsResult,
     profilesResult,
     subscriptionsResult,
+    accessGrantsResult,
     doctorBillingResult,
     organizationsResult,
     organizationBillingResult,
@@ -642,6 +648,10 @@ export async function loadPlatformInvoicingData({
       .select(
         "doctor_id, profile_id, status, current_period_start, current_period_end, canceled_at, created_at"
       ),
+    admin
+      .from("doctor_access_grants")
+      .select("doctor_id, status, ends_at")
+      .eq("grant_type", "admin_complimentary"),
     admin
       .from("doctor_billing_profiles")
       .select(
@@ -729,6 +739,7 @@ export async function loadPlatformInvoicingData({
     doctorsResult.error,
     profilesResult.error,
     subscriptionsResult.error,
+    accessGrantsResult.error,
     doctorBillingResult.error,
     organizationsResult.error,
     organizationBillingResult.error,
@@ -747,6 +758,8 @@ export async function loadPlatformInvoicingData({
   const profiles = (profilesResult.data ?? []) as ProfileRow[];
   const subscriptions = (subscriptionsResult.data ??
     []) as DoctorSubscriptionRow[];
+  const accessGrants = (accessGrantsResult.data ??
+    []) as DoctorAccessGrantRow[];
   const doctorBillingProfiles = (doctorBillingResult.data ??
     []) as DoctorBillingProfileRow[];
   const organizations = (organizationsResult.data ?? []) as OrganizationRow[];
@@ -799,6 +812,23 @@ export async function loadPlatformInvoicingData({
 
     if (subscription.profile_id) {
       subscriptionsByProfileId.set(subscription.profile_id, subscription);
+    }
+  }
+
+  const complimentaryEndsByDoctorId = new Map<string, string>();
+
+  for (const grant of accessGrants) {
+    if (!["active", "expired"].includes(grant.status)) {
+      continue;
+    }
+
+    const existingEnd = complimentaryEndsByDoctorId.get(grant.doctor_id);
+
+    if (
+      !existingEnd ||
+      new Date(grant.ends_at).getTime() > new Date(existingEnd).getTime()
+    ) {
+      complimentaryEndsByDoctorId.set(grant.doctor_id, grant.ends_at);
     }
   }
 
@@ -933,18 +963,22 @@ export async function loadPlatformInvoicingData({
         range.endExclusiveIso
       );
 
+      const complimentaryEndsAt =
+        complimentaryEndsByDoctorId.get(doctor.id) ?? null;
+
+      const invoiceableFrom =
+        complimentaryEndsAt ?? subscription?.created_at ?? null;
+
       const hasBillableSubscription = Boolean(
         subscription &&
+          invoiceableFrom &&
           BILLABLE_SUBSCRIPTION_STATUSES.has(subscription.status ?? "") &&
-          isDateBefore(subscription.created_at, range.endExclusiveIso) &&
+          isDateBefore(invoiceableFrom, range.endExclusiveIso) &&
           isDateAfterOrEqual(subscription.canceled_at, range.startIso)
       );
 
       const subscriptionCount =
-        existedBeforeMonthEnd &&
-        (hasBillableSubscription || doctor.status === "active")
-          ? 1
-          : 0;
+        existedBeforeMonthEnd && hasBillableSubscription ? 1 : 0;
 
       const sms = doctorSmsCounts.get(doctor.id) ?? {
         total: 0,
@@ -987,7 +1021,7 @@ export async function loadPlatformInvoicingData({
           clientKey("independent_doctor", doctor.id)
         ) ?? null;
 
-      if (!existedBeforeMonthEnd && sms.total === 0 && !invoiceRecord) {
+      if (subscriptionCount === 0 && !invoiceRecord) {
         return null;
       }
 
