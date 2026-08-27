@@ -1021,7 +1021,11 @@ export async function loadPlatformInvoicingData({
           clientKey("independent_doctor", doctor.id)
         ) ?? null;
 
-      if (subscriptionCount === 0 && !invoiceRecord) {
+      // Keep complimentary / pre-paid-start Doctors visible in the Invoice CRM
+      // with a zero amount. They become invoiceable only when the paid Stripe
+      // subscription period actually begins. Historical invoice records remain
+      // visible even if the Doctor did not otherwise exist in the selected month.
+      if (!existedBeforeMonthEnd && !invoiceRecord) {
         return null;
       }
 
