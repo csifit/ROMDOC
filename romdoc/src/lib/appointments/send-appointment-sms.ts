@@ -92,12 +92,10 @@ type AppointmentRow = {
   clinics: ClinicRelation | ClinicRelation[] | null;
 };
 
-type SmsPayer = {
-  payerType: "doctor" | "clinic_organization";
+type SmsUsageAttribution = {
+  ownerType: "doctor" | "clinic_organization";
   clinicOrganizationId: string | null;
 };
-
-const DEFAULT_SMS_UNIT_COST_MINOR = 10;
 
 function firstRelation<T>(value: T | T[] | null): T | null {
   return Array.isArray(value) ? value[0] ?? null : value;
@@ -287,7 +285,9 @@ function buildMessage(
   });
 }
 
-function resolvePayer(appointment: AppointmentRow): SmsPayer {
+function resolveUsageAttribution(
+  appointment: AppointmentRow
+): SmsUsageAttribution {
   const doctor = firstRelation(appointment.doctors);
   const isClinicInvited =
     doctor?.account_type === "clinic_invited" ||
@@ -295,22 +295,15 @@ function resolvePayer(appointment: AppointmentRow): SmsPayer {
 
   if (isClinicInvited && doctor?.clinic_organization_id) {
     return {
-      payerType: "clinic_organization",
+      ownerType: "clinic_organization",
       clinicOrganizationId: doctor.clinic_organization_id,
     };
   }
 
   return {
-    payerType: "doctor",
+    ownerType: "doctor",
     clinicOrganizationId: null,
   };
-}
-
-function configuredSmsUnitCostMinor(value: unknown) {
-  const priceRon = Number(value);
-  return Number.isFinite(priceRon) && priceRon >= 0
-    ? Math.round(priceRon * 100)
-    : DEFAULT_SMS_UNIT_COST_MINOR;
 }
 
 async function logSmsDelivery({
@@ -319,17 +312,15 @@ async function logSmsDelivery({
   event,
   recipient,
   result,
-  unitCostMinor,
 }: {
   appointment: AppointmentRow;
   triggeredByProfileId: string | null;
   event: AppointmentSmsEvent;
   recipient: string;
   result: SmsSendResult;
-  unitCostMinor: number;
 }) {
   const admin = createAdminClient();
-  const payer = resolvePayer(appointment);
+  const attribution = resolveUsageAttribution(appointment);
   const status = result.sent
     ? "sent"
     : result.skipped
@@ -348,17 +339,24 @@ async function logSmsDelivery({
     provider_message_id: result.providerMessageId,
     error_code: result.errorCode,
     error_message: result.errorMessage?.slice(0, 2000) ?? null,
-    invoice_status: result.sent ? "uninvoiced" : "not_billable",
-    unit_cost_minor: unitCostMinor,
+
+    // Temporary compatibility values while the legacy SMS billing columns
+    // still exist as NOT NULL fields in production. New SMS events are never
+    // accrued as monetary items. The final retirement migration can remove
+    // these fields after the live dependency audit is clean.
+    invoice_status: "not_billable",
+    unit_cost_minor: 0,
     currency: "EUR",
-    payer_type: result.sent ? payer.payerType : "not_billable",
+
+    // These legacy column names are retained only as operational usage
+    // attribution until the schema cleanup. They do not create a receivable.
+    payer_type: attribution.ownerType,
     payer_clinic_organization_id:
-      result.sent && payer.payerType === "clinic_organization"
-        ? payer.clinicOrganizationId
+      attribution.ownerType === "clinic_organization"
+        ? attribution.clinicOrganizationId
         : null,
-    payer_note: result.sent
-      ? "Resolved from the immutable Doctor account type at send time."
-      : "SMS was not sent and is not billable.",
+    payer_note:
+      "Operational usage attribution only. SMS is included in the RomDoc subscription/package and is not billed per message.",
   });
 
   if (error) {
@@ -460,43 +458,27 @@ export async function sendAppointmentSms({
   triggeredByProfileId,
 }: SendAppointmentSmsInput): Promise<SmsSendResult> {
   const admin = createAdminClient();
-  const [settingsResult, billingSettingsResult] = await Promise.all([
-    admin
-      .from("sms_platform_settings")
-      .select(
-        "sms_enabled, confirmation_sms_enabled, reminder_24h_sms_enabled"
-      )
-      .eq("id", 1)
-      .maybeSingle(),
-    admin
-      .from("clinic_billing_settings")
-      .select("sms_unit_price_ron")
-      .eq("id", 1)
-      .maybeSingle(),
-  ]);
 
-  if (settingsResult.error) {
-    console.error("SMS settings lookup failed:", settingsResult.error);
+  const { data: settingsData, error: settingsError } = await admin
+    .from("sms_platform_settings")
+    .select(
+      "sms_enabled, confirmation_sms_enabled, reminder_24h_sms_enabled"
+    )
+    .eq("id", 1)
+    .maybeSingle();
+
+  if (settingsError) {
+    console.error("SMS settings lookup failed:", settingsError);
     return {
       sent: false,
       skipped: true,
       providerMessageId: null,
       errorCode: "SMS_SETTINGS_LOOKUP_FAILED",
-      errorMessage: settingsResult.error.message,
+      errorMessage: settingsError.message,
     };
   }
 
-  if (billingSettingsResult.error) {
-    console.error(
-      "SMS billing settings lookup failed; using fallback price:",
-      billingSettingsResult.error
-    );
-  }
-
-  const settings = settingsResult.data as SmsSettings | null;
-  const unitCostMinor = configuredSmsUnitCostMinor(
-    billingSettingsResult.data?.sms_unit_price_ron
-  );
+  const settings = settingsData as SmsSettings | null;
 
   if (!settings?.sms_enabled) {
     return {
@@ -621,12 +603,13 @@ export async function sendAppointmentSms({
       event,
       recipient: appointment.patient_phone || "missing",
       result,
-      unitCostMinor,
     });
+
     return result;
   }
 
   const message = buildMessage(event, appointment);
+
   if (!message) {
     const result = {
       sent: false,
@@ -642,8 +625,8 @@ export async function sendAppointmentSms({
       event,
       recipient: normalizedPhone,
       result,
-      unitCostMinor,
     });
+
     return result;
   }
 
@@ -655,7 +638,6 @@ export async function sendAppointmentSms({
     event,
     recipient: normalizedPhone,
     result,
-    unitCostMinor,
   });
 
   return result;
