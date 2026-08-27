@@ -28,6 +28,12 @@ const messagesByLocale = {
   de: deMessages,
 } as const;
 
+const PATIENTS_LABEL = {
+  ro: "Pacienți",
+  en: "Patients",
+  de: "Patienten",
+} as const;
+
 export default async function StaffDashboardPage() {
   const locale =
     await getStoredAppLocale();
@@ -233,6 +239,19 @@ export default async function StaffDashboardPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
+              {hasActiveAssignment && (
+                <Link
+                  href="/staff-dashboard/patients"
+                  className="romdoc-button romdoc-button-secondary romdoc-button-sm"
+                >
+                  {
+                    PATIENTS_LABEL[
+                      locale
+                    ]
+                  }
+                </Link>
+              )}
+
               <Link
                 href={
                   homeHref

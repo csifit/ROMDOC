@@ -5,6 +5,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from "react";
 import {
   useLocale,
@@ -78,6 +79,54 @@ const ROLE_KEYS = [
   "admin",
   "system",
 ] as const;
+
+const PATIENT_SYNC_COPY: Record<
+  AppLocale,
+  {
+    save: string;
+    saving: string;
+    saved: string;
+    error: string;
+    open: string;
+  }
+> = {
+  ro: {
+    save:
+      "Salvează în Pacienți",
+    saving:
+      "Se sincronizează...",
+    saved:
+      "Pacientul a fost sincronizat cu baza de pacienți.",
+    error:
+      "Pacientul nu a putut fi sincronizat.",
+    open:
+      "Deschide Pacienți",
+  },
+  en: {
+    save:
+      "Save to Patients",
+    saving:
+      "Synchronizing...",
+    saved:
+      "The patient was synchronized with the Patients database.",
+    error:
+      "The patient could not be synchronized.",
+    open:
+      "Open Patients",
+  },
+  de: {
+    save:
+      "In Patienten speichern",
+    saving:
+      "Wird synchronisiert...",
+    saved:
+      "Der Patient wurde mit der Patientendatenbank synchronisiert.",
+    error:
+      "Der Patient konnte nicht synchronisiert werden.",
+    open:
+      "Patienten öffnen",
+  },
+};
 
 function statusClasses(status: string) {
   switch (status) {
@@ -155,16 +204,42 @@ export default function DoctorAppointmentDetailPanel({
   const locale = normalizeAppLocale(
     useLocale()
   );
+
   const t = useTranslations(
     "DoctorAppointmentOperations.detail"
   );
+
   const commonT = useTranslations(
     "DoctorAppointmentOperations.common"
   );
+
   const timelineT = useTranslations(
     "DoctorAppointmentOperations.timeline"
   );
-  const closeRef = useRef<HTMLButtonElement | null>(null);
+
+  const closeRef =
+    useRef<HTMLButtonElement | null>(null);
+
+  const [
+    isSynchronizingPatient,
+    setIsSynchronizingPatient,
+  ] =
+    useState(false);
+
+  const [
+    patientSyncMessage,
+    setPatientSyncMessage,
+  ] =
+    useState("");
+
+  const [
+    patientSyncError,
+    setPatientSyncError,
+  ] =
+    useState("");
+
+  const patientSyncCopy =
+    PATIENT_SYNC_COPY[locale];
 
   useEffect(() => {
     if (variant !== "dialog") {
@@ -233,6 +308,62 @@ export default function DoctorAppointmentDetailPanel({
     `${formatDate(date, locale)}${
       time ? `, ${time.slice(0, 5)}` : ""
     }`;
+
+  async function synchronizePatient() {
+    if (
+      isSynchronizingPatient
+    ) {
+      return;
+    }
+
+    setPatientSyncMessage("");
+    setPatientSyncError("");
+    setIsSynchronizingPatient(true);
+
+    try {
+      const response =
+        await fetch(
+          "/api/doctor/patients/sync",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                appointmentId:
+                  appointment.id,
+              }),
+          }
+        );
+
+      const result =
+        (await response.json()) as {
+          error?: string;
+        };
+
+      if (!response.ok) {
+        setPatientSyncError(
+          result.error ??
+            patientSyncCopy.error
+        );
+        return;
+      }
+
+      setPatientSyncMessage(
+        patientSyncCopy.saved
+      );
+    } catch {
+      setPatientSyncError(
+        patientSyncCopy.error
+      );
+    } finally {
+      setIsSynchronizingPatient(
+        false
+      );
+    }
+  }
 
   const content = (
     <div
@@ -350,12 +481,54 @@ export default function DoctorAppointmentDetailPanel({
         />
 
         <div className="mt-6 border-t border-gray-200 pt-5">
-          <Link
-            href={`/appointments/${appointment.id}/messages?locale=${locale}`}
-            className="romdoc-button romdoc-button-secondary romdoc-button-sm"
-          >
-            {t("messages")}
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/appointments/${appointment.id}/messages?locale=${locale}`}
+              className="romdoc-button romdoc-button-secondary romdoc-button-sm"
+            >
+              {t("messages")}
+            </Link>
+
+            <button
+              type="button"
+              onClick={() =>
+                void synchronizePatient()
+              }
+              disabled={
+                isSynchronizingPatient
+              }
+              className="romdoc-button romdoc-button-secondary romdoc-button-sm disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSynchronizingPatient
+                ? patientSyncCopy.saving
+                : patientSyncCopy.save}
+            </button>
+
+            <Link
+              href="/doctor-dashboard/patients"
+              className="romdoc-button romdoc-button-secondary romdoc-button-sm"
+            >
+              {patientSyncCopy.open}
+            </Link>
+          </div>
+
+          {patientSyncError && (
+            <div
+              role="alert"
+              className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800"
+            >
+              {patientSyncError}
+            </div>
+          )}
+
+          {patientSyncMessage && (
+            <div
+              role="status"
+              className="mt-3 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-800"
+            >
+              {patientSyncMessage}
+            </div>
+          )}
         </div>
 
         {appointment.patientProfileId ? (
