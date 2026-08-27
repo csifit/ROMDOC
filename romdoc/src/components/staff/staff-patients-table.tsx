@@ -286,6 +286,37 @@ function formatAppointment(
     : date;
 }
 
+function createAppointmentHref(
+  patient:
+    StaffPatientDatabaseRow
+) {
+  const parameters =
+    new URLSearchParams({
+      createPatient:
+        "1",
+      doctorId:
+        patient.doctorId,
+      patientName:
+        patient.displayName,
+    });
+
+  if (patient.email) {
+    parameters.set(
+      "patientEmail",
+      patient.email
+    );
+  }
+
+  if (patient.phone) {
+    parameters.set(
+      "patientPhone",
+      patient.phone
+    );
+  }
+
+  return `/staff-dashboard?${parameters.toString()}#staff-create-appointment`;
+}
+
 export default function StaffPatientsTable({
   patients,
   loadError = false,
@@ -690,7 +721,9 @@ export default function StaffPatientsTable({
 
                             <div className="flex flex-wrap gap-[8px]">
                               <Link
-                                href="/staff-dashboard"
+                                href={createAppointmentHref(
+                                  patient
+                                )}
                                 title={
                                   copy.createHelp
                                 }

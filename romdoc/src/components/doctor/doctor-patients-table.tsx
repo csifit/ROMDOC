@@ -5,6 +5,7 @@ import {
   useLocale,
 } from "next-intl";
 import {
+  useEffect,
   useMemo,
   useState,
   type FormEvent,
@@ -76,6 +77,20 @@ type ContactDraft = {
   country: string;
 };
 
+type AccountFilter =
+  | "all"
+  | "linked"
+  | "invited"
+  | "contact_only";
+
+type SortMode =
+  | "name"
+  | "recent"
+  | "upcoming";
+
+const PATIENTS_PER_PAGE =
+  25;
+
 const TEXT = {
   ro: {
     eyebrow: "Cabinet medical",
@@ -135,6 +150,20 @@ const TEXT = {
       "Accesul medical devine disponibil printr-o programare confirmată, reprogramată sau finalizată.",
     open: "Deschide",
     patientCount: "pacienți",
+    filterAll: "Toți",
+    filterLinked: "Cont RomDoc",
+    filterInvited: "Invitați",
+    filterContactOnly: "Doar contact",
+    invitedStatus: "Invitat",
+    sortLabel: "Sortare",
+    sortName: "Nume A–Z",
+    sortRecent: "Programare recentă",
+    sortUpcoming: "Următoarea programare",
+    showing: "Afișați",
+    of: "din",
+    previousPage: "Înapoi",
+    nextPage: "Înainte",
+    page: "Pagina",
     addressLine1: "Adresă",
     addressLine2: "Adresă suplimentară",
     city: "Localitate",
@@ -205,6 +234,20 @@ const TEXT = {
       "Medical access becomes available through a confirmed, rescheduled or completed appointment.",
     open: "Open",
     patientCount: "patients",
+    filterAll: "All",
+    filterLinked: "RomDoc account",
+    filterInvited: "Invited",
+    filterContactOnly: "Contact-only",
+    invitedStatus: "Invited",
+    sortLabel: "Sort",
+    sortName: "Name A–Z",
+    sortRecent: "Recent appointment",
+    sortUpcoming: "Next appointment",
+    showing: "Showing",
+    of: "of",
+    previousPage: "Previous",
+    nextPage: "Next",
+    page: "Page",
     addressLine1: "Address",
     addressLine2: "Address line 2",
     city: "City",
@@ -276,6 +319,20 @@ const TEXT = {
       "Medizinischer Zugriff wird über einen bestätigten, verschobenen oder abgeschlossenen Termin verfügbar.",
     open: "Öffnen",
     patientCount: "Patienten",
+    filterAll: "Alle",
+    filterLinked: "RomDoc-Konto",
+    filterInvited: "Eingeladen",
+    filterContactOnly: "Nur Kontakt",
+    invitedStatus: "Eingeladen",
+    sortLabel: "Sortierung",
+    sortName: "Name A–Z",
+    sortRecent: "Letzter Termin",
+    sortUpcoming: "Nächster Termin",
+    showing: "Angezeigt",
+    of: "von",
+    previousPage: "Zurück",
+    nextPage: "Weiter",
+    page: "Seite",
     addressLine1: "Adresse",
     addressLine2: "Adresszusatz",
     city: "Ort",
@@ -379,6 +436,34 @@ function createAppointmentHref(
   return `/doctor-dashboard/appointments?${parameters.toString()}`;
 }
 
+function patientAppointmentTimestamp(
+  value:
+    | {
+        date: string;
+        time: string | null;
+      }
+    | null
+) {
+  if (!value) {
+    return null;
+  }
+
+  const time =
+    value.time ??
+    "00:00:00";
+
+  const timestamp =
+    new Date(
+      `${value.date}T${time.slice(0, 8)}`
+    ).getTime();
+
+  return Number.isFinite(
+    timestamp
+  )
+    ? timestamp
+    : null;
+}
+
 function createDraft(
   patient:
     DoctorPatientDatabaseRow
@@ -433,6 +518,30 @@ export default function DoctorPatientsTable({
     setQuery,
   ] =
     useState("");
+
+  const [
+    accountFilter,
+    setAccountFilter,
+  ] =
+    useState<AccountFilter>(
+      "all"
+    );
+
+  const [
+    sortMode,
+    setSortMode,
+  ] =
+    useState<SortMode>(
+      "name"
+    );
+
+  const [
+    currentPage,
+    setCurrentPage,
+  ] =
+    useState(
+      1
+    );
 
   const [
     expandedPatientId,
@@ -536,63 +645,238 @@ export default function DoctorPatientsTable({
             .trim()
             .toLowerCase();
 
-        if (!normalized) {
-          return patients;
-        }
-
         const digits =
           normalized.replace(
             /\D/g,
             ""
           );
 
-        return patients.filter(
-          (
-            patient
-          ) => {
-            const nameMatch =
-              patient.displayName
-                .toLowerCase()
-                .includes(
-                  normalized
-                );
-
-            const emailMatch =
-              patient.email
-                ?.toLowerCase()
-                .includes(
-                  normalized
-                ) ??
-              false;
-
-            const phoneMatch =
-              digits.length >
-                0 &&
-              (
-                patient.phone ??
-                ""
-              )
-                .replace(
-                  /\D/g,
-                  ""
-                )
-                .includes(
-                  digits
-                );
-
-            return (
-              nameMatch ||
-              emailMatch ||
-              phoneMatch
+        const accountMatches = (
+          patient:
+            DoctorPatientDatabaseRow
+        ) => {
+          if (
+            accountFilter ===
+            "linked"
+          ) {
+            return Boolean(
+              patient.patientProfileId
             );
           }
-        );
+
+          if (
+            accountFilter ===
+            "invited"
+          ) {
+            return Boolean(
+              !patient.patientProfileId &&
+              patient.inviteLastSentAt
+            );
+          }
+
+          if (
+            accountFilter ===
+            "contact_only"
+          ) {
+            return Boolean(
+              !patient.patientProfileId &&
+              !patient.inviteLastSentAt
+            );
+          }
+
+          return true;
+        };
+
+        const searchMatches = (
+          patient:
+            DoctorPatientDatabaseRow
+        ) => {
+          if (!normalized) {
+            return true;
+          }
+
+          const nameMatch =
+            patient.displayName
+              .toLowerCase()
+              .includes(
+                normalized
+              );
+
+          const emailMatch =
+            patient.email
+              ?.toLowerCase()
+              .includes(
+                normalized
+              ) ??
+            false;
+
+          const phoneMatch =
+            digits.length >
+              0 &&
+            (
+              patient.phone ??
+              ""
+            )
+              .replace(
+                /\D/g,
+                ""
+              )
+              .includes(
+                digits
+              );
+
+          return (
+            nameMatch ||
+            emailMatch ||
+            phoneMatch
+          );
+        };
+
+        return patients
+          .filter(
+            (
+              patient
+            ) =>
+              accountMatches(
+                patient
+              ) &&
+              searchMatches(
+                patient
+              )
+          )
+          .sort(
+            (
+              first,
+              second
+            ) => {
+              if (
+                sortMode ===
+                "recent"
+              ) {
+                const firstTime =
+                  patientAppointmentTimestamp(
+                    first.lastAppointment
+                  ) ??
+                  Number.NEGATIVE_INFINITY;
+
+                const secondTime =
+                  patientAppointmentTimestamp(
+                    second.lastAppointment
+                  ) ??
+                  Number.NEGATIVE_INFINITY;
+
+                if (
+                  firstTime !==
+                  secondTime
+                ) {
+                  return (
+                    secondTime -
+                    firstTime
+                  );
+                }
+              }
+
+              if (
+                sortMode ===
+                "upcoming"
+              ) {
+                const firstTime =
+                  patientAppointmentTimestamp(
+                    first.nextAppointment
+                  ) ??
+                  Number.POSITIVE_INFINITY;
+
+                const secondTime =
+                  patientAppointmentTimestamp(
+                    second.nextAppointment
+                  ) ??
+                  Number.POSITIVE_INFINITY;
+
+                if (
+                  firstTime !==
+                  secondTime
+                ) {
+                  return (
+                    firstTime -
+                    secondTime
+                  );
+                }
+              }
+
+              return first.displayName.localeCompare(
+                second.displayName,
+                INTL_LOCALE[
+                  locale
+                ],
+                {
+                  sensitivity:
+                    "base",
+                }
+              );
+            }
+          );
       },
       [
+        accountFilter,
+        locale,
         patients,
         query,
+        sortMode,
       ]
     );
+
+  const totalPages =
+    Math.max(
+      1,
+      Math.ceil(
+        filteredPatients.length /
+        PATIENTS_PER_PAGE
+      )
+    );
+
+  const safeCurrentPage =
+    Math.min(
+      currentPage,
+      totalPages
+    );
+
+  const pageStart =
+    (
+      safeCurrentPage -
+      1
+    ) *
+    PATIENTS_PER_PAGE;
+
+  const paginatedPatients =
+    filteredPatients.slice(
+      pageStart,
+      pageStart +
+        PATIENTS_PER_PAGE
+    );
+
+  useEffect(() => {
+    setCurrentPage(
+      1
+    );
+  }, [
+    accountFilter,
+    query,
+    sortMode,
+  ]);
+
+  useEffect(() => {
+    if (
+      currentPage >
+      totalPages
+    ) {
+      setCurrentPage(
+        totalPages
+      );
+    }
+  }, [
+    currentPage,
+    totalPages,
+  ]);
 
   async function handleAddPatient(
     event:
@@ -1105,28 +1389,121 @@ export default function DoctorPatientsTable({
         </div>
       ) : (
         <section className="rounded-[21px] border border-gray-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-[13px] border-b border-gray-200 p-[17px] sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm font-semibold text-gray-700">
-              {patients.length}{" "}
-              {text.patientCount}
+          <div className="space-y-[13px] border-b border-gray-200 p-[17px]">
+            <div className="flex flex-col gap-[13px] sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-sm font-semibold text-gray-700">
+                {patients.length}{" "}
+                {text.patientCount}
+              </div>
+
+              <input
+                type="search"
+                value={query}
+                onChange={(
+                  event
+                ) =>
+                  setQuery(
+                    event.target
+                      .value
+                  )
+                }
+                placeholder={
+                  text.search
+                }
+                className="romdoc-input w-full sm:max-w-md"
+              />
             </div>
 
-            <input
-              type="search"
-              value={query}
-              onChange={(
-                event
-              ) =>
-                setQuery(
-                  event.target
-                    .value
-                )
-              }
-              placeholder={
-                text.search
-              }
-              className="romdoc-input w-full sm:max-w-md"
-            />
+            <div className="flex flex-col gap-[8px] lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-wrap gap-[6px]">
+                {(
+                  [
+                    [
+                      "all",
+                      text.filterAll,
+                    ],
+                    [
+                      "linked",
+                      text.filterLinked,
+                    ],
+                    [
+                      "invited",
+                      text.filterInvited,
+                    ],
+                    [
+                      "contact_only",
+                      text.filterContactOnly,
+                    ],
+                  ] as Array<
+                    [
+                      AccountFilter,
+                      string,
+                    ]
+                  >
+                ).map(
+                  (
+                    [
+                      value,
+                      label,
+                    ]
+                  ) => (
+                    <button
+                      key={
+                        value
+                      }
+                      type="button"
+                      onClick={() =>
+                        setAccountFilter(
+                          value
+                        )
+                      }
+                      className={
+                        accountFilter ===
+                        value
+                          ? "rounded-full bg-[#036661] px-[11px] py-[6px] text-xs font-semibold text-white"
+                          : "rounded-full border border-gray-200 bg-white px-[11px] py-[6px] text-xs font-semibold text-gray-600 hover:border-[#036661] hover:text-[#036661]"
+                      }
+                    >
+                      {
+                        label
+                      }
+                    </button>
+                  )
+                )}
+              </div>
+
+              <label className="flex items-center gap-[8px] text-xs font-semibold text-gray-600">
+                <span>
+                  {text.sortLabel}
+                </span>
+
+                <select
+                  value={
+                    sortMode
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setSortMode(
+                      event.target
+                        .value as
+                        SortMode
+                    )
+                  }
+                  className="romdoc-select min-w-[190px]"
+                >
+                  <option value="name">
+                    {text.sortName}
+                  </option>
+                  <option value="recent">
+                    {text.sortRecent}
+                  </option>
+                  <option value="upcoming">
+                    {text.sortUpcoming}
+                  </option>
+                </select>
+              </label>
+            </div>
           </div>
 
           {patients.length ===
@@ -1158,7 +1535,7 @@ export default function DoctorPatientsTable({
                 <div />
               </div>
 
-              {filteredPatients.map(
+              {paginatedPatients.map(
                 (patient) => {
                   const expanded =
                     expandedPatientId ===
@@ -1258,12 +1635,16 @@ export default function DoctorPatientsTable({
                             className={
                               patient.patientProfileId
                                 ? "inline-flex rounded-full bg-emerald-50 px-[8px] py-[3px] text-xs font-semibold text-emerald-800"
-                                : "inline-flex rounded-full bg-amber-50 px-[8px] py-[3px] text-xs font-semibold text-amber-800"
+                                : patient.inviteLastSentAt
+                                  ? "inline-flex rounded-full bg-blue-50 px-[8px] py-[3px] text-xs font-semibold text-blue-800"
+                                  : "inline-flex rounded-full bg-amber-50 px-[8px] py-[3px] text-xs font-semibold text-amber-800"
                             }
                           >
                             {patient.patientProfileId
                               ? text.romdocAccount
-                              : text.contactOnly}
+                              : patient.inviteLastSentAt
+                                ? text.invitedStatus
+                                : text.contactOnly}
                           </span>
                         </div>
 
@@ -1761,6 +2142,72 @@ export default function DoctorPatientsTable({
                   );
                 }
               )}
+            </div>
+          )}
+
+          {filteredPatients.length > 0 && (
+            <div className="flex flex-col gap-[10px] border-t border-gray-200 px-[17px] py-[13px] sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-gray-500">
+                {text.showing}{" "}
+                {pageStart + 1}
+                {"–"}
+                {Math.min(
+                  pageStart +
+                    PATIENTS_PER_PAGE,
+                  filteredPatients.length
+                )}{" "}
+                {text.of}{" "}
+                {filteredPatients.length}
+              </p>
+
+              <div className="flex items-center gap-[8px]">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCurrentPage(
+                      Math.max(
+                        1,
+                        safeCurrentPage -
+                          1
+                      )
+                    )
+                  }
+                  disabled={
+                    safeCurrentPage <=
+                    1
+                  }
+                  className="romdoc-button romdoc-button-secondary romdoc-button-sm disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {text.previousPage}
+                </button>
+
+                <span className="text-xs font-semibold text-gray-600">
+                  {text.page}{" "}
+                  {safeCurrentPage}
+                  {" / "}
+                  {totalPages}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCurrentPage(
+                      Math.min(
+                        totalPages,
+                        safeCurrentPage +
+                          1
+                      )
+                    )
+                  }
+                  disabled={
+                    safeCurrentPage >=
+                    totalPages
+                  }
+                  className="romdoc-button romdoc-button-secondary romdoc-button-sm disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {text.nextPage}
+                </button>
+              </div>
             </div>
           )}
         </section>
