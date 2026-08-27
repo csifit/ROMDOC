@@ -128,7 +128,7 @@ buildAppointmentSmsMessage({
 
       case "ro":
       default:
-        return `RomDoc: Reamintire: ai programare mâine, în data de ${date}, la ora ${time}, la ${doctor}, ${clinic}${addressPart}.`;
+        return `RomDoc: Reamintire: ai programare maine, in data de ${date}, la ora ${time}, la ${doctor}, ${clinic}${addressPart}.`;
     }
   }
 
@@ -141,6 +141,6 @@ buildAppointmentSmsMessage({
 
     case "ro":
     default:
-      return `RomDoc: Programarea la ${doctor} a fost confirmată pentru ora ${time}, în data de ${date}, la ${clinic}${addressPart}.`;
+      return `RomDoc: Programarea la ${doctor} a fost confirmata pentru ora ${time}, in data de ${date}, la ${clinic}${addressPart}.`;
   }
 }
