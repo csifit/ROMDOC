@@ -13,6 +13,14 @@ type SyncPatientBody = {
   appointmentId?: unknown;
 };
 
+type DoctorPatientVerificationRow = {
+  id: string;
+  patient_profile_id: string | null;
+  display_name: string;
+  email: string | null;
+  phone: string | null;
+};
+
 function cleanText(
   value: unknown,
   maximumLength: number
@@ -30,6 +38,118 @@ function isUuid(
 ) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value
+  );
+}
+
+function normalizeName(
+  value:
+    | string
+    | null
+    | undefined
+) {
+  return (
+    value ??
+    ""
+  )
+    .trim()
+    .toLowerCase();
+}
+
+function normalizeEmail(
+  value:
+    | string
+    | null
+    | undefined
+) {
+  return (
+    value ??
+    ""
+  )
+    .trim()
+    .toLowerCase();
+}
+
+function normalizePhone(
+  value:
+    | string
+    | null
+    | undefined
+) {
+  return (
+    value ??
+    ""
+  ).replace(
+    /\D/g,
+    ""
+  );
+}
+
+function matchesAppointmentPatient(
+  patient:
+    DoctorPatientVerificationRow,
+  appointment: {
+    patient_profile_id:
+      string | null;
+    patient_name:
+      string;
+    patient_email:
+      string | null;
+    patient_phone:
+      string | null;
+  }
+) {
+  if (
+    appointment.patient_profile_id &&
+    patient.patient_profile_id ===
+      appointment.patient_profile_id
+  ) {
+    return true;
+  }
+
+  if (
+    normalizeName(
+      patient.display_name
+    ) !==
+    normalizeName(
+      appointment.patient_name
+    )
+  ) {
+    return false;
+  }
+
+  const appointmentEmail =
+    normalizeEmail(
+      appointment.patient_email
+    );
+
+  const patientEmail =
+    normalizeEmail(
+      patient.email
+    );
+
+  const appointmentPhone =
+    normalizePhone(
+      appointment.patient_phone
+    );
+
+  const patientPhone =
+    normalizePhone(
+      patient.phone
+    );
+
+  return (
+    Boolean(
+      appointmentEmail &&
+      patientEmail &&
+      appointmentEmail ===
+        patientEmail
+    ) ||
+    Boolean(
+      appointmentPhone &&
+      patientPhone &&
+      appointmentPhone ===
+        patientPhone
+    )
   );
 }
 
@@ -223,7 +343,16 @@ export async function POST(
       );
     }
 
+    /*
+     * The trigger from migrations 108/109 remains the canonical
+     * appointment -> doctor_patients synchronization logic.
+     *
+     * PostgreSQL UPDATE OF triggers fire when the listed columns are
+     * targeted by an UPDATE, even when the values themselves do not change.
+     */
     const {
+      data:
+        updatedAppointment,
       error:
         syncError,
     } =
@@ -248,10 +377,15 @@ export async function POST(
         .eq(
           "doctor_id",
           doctor.id
-        );
+        )
+        .select(
+          "id"
+        )
+        .maybeSingle();
 
     if (
-      syncError
+      syncError ||
+      !updatedAppointment
     ) {
       console.error(
         "Doctor appointment patient synchronization failed:",
@@ -269,10 +403,105 @@ export async function POST(
       );
     }
 
+    /*
+     * Do not return a false success. Verify that the trigger really
+     * produced (or matched) an active doctor_patients row.
+     */
+    const {
+      data:
+        patientRows,
+      error:
+        verificationError,
+    } =
+      await admin
+        .from(
+          "doctor_patients"
+        )
+        .select(`
+          id,
+          patient_profile_id,
+          display_name,
+          email,
+          phone
+        `)
+        .eq(
+          "doctor_id",
+          doctor.id
+        )
+        .is(
+          "archived_at",
+          null
+        )
+        .limit(
+          5000
+        );
+
+    if (
+      verificationError
+    ) {
+      console.error(
+        "Doctor patient synchronization verification failed:",
+        verificationError
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "Pacientul a fost procesat, dar baza de pacienți nu a putut fi verificată.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    const patientRow =
+      (
+        (
+          patientRows ??
+          []
+        ) as
+          DoctorPatientVerificationRow[]
+      ).find(
+        (
+          patient
+        ) =>
+          matchesAppointmentPatient(
+            patient,
+            appointment
+          )
+      );
+
+    if (
+      !patientRow
+    ) {
+      console.error(
+        "Doctor patient synchronization returned no CRM row:",
+        {
+          appointmentId:
+            appointment.id,
+          doctorId:
+            doctor.id,
+        }
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "Sincronizarea nu a creat încă pacientul în baza de pacienți.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       appointmentId:
         appointment.id,
+      patientId:
+        patientRow.id,
     });
   } catch (error) {
     console.error(
