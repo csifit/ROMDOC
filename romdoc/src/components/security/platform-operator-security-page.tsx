@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import SharedAccountSecuritySettings from "@/components/security/shared-account-security-settings";
 import {
   getPlatformOperatorFoundation,
 } from "@/lib/i18n/platform-operator-foundation";
@@ -191,17 +192,23 @@ export default async function PlatformOperatorSecurityPage({
         </p>
       </header>
 
+      <div className="mt-[34px]">
+        <SharedAccountSecuritySettings
+          locale={locale}
+        />
+      </div>
+
       {factorsResult.error ? (
         <div
           role="alert"
-          className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-800 shadow-sm"
+          className="mt-[21px] rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-800 shadow-sm"
         >
           {
             copy.loadError
           }
         </div>
       ) : factor ? (
-        <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-5 shadow-sm">
+        <div className="mt-[21px] rounded-2xl border border-green-200 bg-green-50 p-5 shadow-sm">
           <div className="flex items-start gap-4">
             <div
               aria-hidden="true"
@@ -265,7 +272,7 @@ export default async function PlatformOperatorSecurityPage({
           </div>
         </div>
       ) : (
-        <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+        <div className="mt-[21px] rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
           <h2 className="text-xl font-bold text-amber-950">
             {
               copy.inactiveTitle

@@ -6,6 +6,7 @@ import {
 } from "next/navigation";
 
 import DoctorSecuritySettings from "@/components/doctor/doctor-security-settings";
+import SharedAccountSecuritySettings from "@/components/security/shared-account-security-settings";
 import {
   getStoredAppLocale,
 } from "@/lib/i18n/server-app-locale";
@@ -101,7 +102,13 @@ export default async function DoctorSecurityPage() {
           </p>
         </header>
 
-        <div className="mt-8">
+        <div className="mt-[34px]">
+          <SharedAccountSecuritySettings
+            locale={locale}
+          />
+        </div>
+
+        <div className="mt-[21px]">
           <DoctorSecuritySettings />
         </div>
       </div>

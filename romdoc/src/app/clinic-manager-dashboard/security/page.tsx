@@ -6,6 +6,7 @@ import {
   redirect,
 } from "next/navigation";
 
+import SharedAccountSecuritySettings from "@/components/security/shared-account-security-settings";
 import {
   type AppLocale,
 } from "@/lib/i18n/app-locale";
@@ -209,17 +210,23 @@ export default async function ClinicManagerSecurityPage() {
         </p>
       </header>
 
+      <div className="mt-[34px]">
+        <SharedAccountSecuritySettings
+          locale={locale}
+        />
+      </div>
+
       {factorsResult.error ? (
         <div
           role="alert"
-          className="mt-[34px] rounded-[21px] border border-red-200 bg-red-50 p-[21px] text-sm text-red-800 shadow-sm"
+          className="mt-[21px] rounded-[21px] border border-red-200 bg-red-50 p-[21px] text-sm text-red-800 shadow-sm"
         >
           {t(
             "loadError"
           )}
         </div>
       ) : factor ? (
-        <div className="mt-[34px] rounded-[21px] border border-green-200 bg-green-50 p-[21px] shadow-sm">
+        <div className="mt-[21px] rounded-[21px] border border-green-200 bg-green-50 p-[21px] shadow-sm">
           <div className="flex items-start gap-[13px]">
             <div
               aria-hidden="true"
@@ -294,7 +301,7 @@ export default async function ClinicManagerSecurityPage() {
           </div>
         </div>
       ) : (
-        <div className="mt-[34px] rounded-[21px] border border-amber-200 bg-amber-50 p-[21px] shadow-sm">
+        <div className="mt-[21px] rounded-[21px] border border-amber-200 bg-amber-50 p-[21px] shadow-sm">
           <div className="flex items-start gap-[13px]">
             <div
               aria-hidden="true"

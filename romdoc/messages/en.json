@@ -297,7 +297,7 @@
       "monthlyPrice": "40 EURO/month + VAT",
       "yearlyLabel": "Yearly plan",
       "yearlyPrice": "400 EURO/year + VAT",
-      "smsNote": "Messaging and SMS service costs are separate and are not included in the doctor subscription."
+      "smsNote": "Messaging and SMS service costs are separate and are included in the doctor subscription."
     },
     "sms": {
       "title": "Appointment SMS service",
@@ -1909,7 +1909,7 @@
       "title": "My clinic",
       "description": "This account is managed in relation to a clinic. You cannot propose new clinics from this account; the Clinic Manager manages the organization, subscription payment and clinic associations.",
       "coveredTitle": "Subscription covered by the clinic",
-      "coveredDescription": "For this account, the subscription and SMS usage are managed by the clinic. A separate email address is required for an independent account or another clinic.",
+      "coveredDescription": "For this account, the subscriptions are managed by the clinic. A separate email address is required for an independent account or another clinic.",
       "organization": "Clinic organization",
       "organizationName": "Organization name",
       "organizationStatus": "Organization status",

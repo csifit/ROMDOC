@@ -12,6 +12,9 @@ import {
 import StaffAppointmentsManager from "@/components/staff/staff-appointments-manager";
 import StaffLogoutButton from "@/components/staff/staff-logout-button";
 import {
+  getAccountSecurityCopy,
+} from "@/lib/i18n/account-security";
+import {
   getStoredAppLocale,
 } from "@/lib/i18n/server-app-locale";
 import {
@@ -44,6 +47,11 @@ export default async function StaffDashboardPage() {
       namespace:
         "DoctorStaffFoundation.staff.page",
     });
+
+  const securityCopy =
+    getAccountSecurityCopy(
+      locale
+    );
 
   const supabase =
     await createClient();
@@ -251,6 +259,13 @@ export default async function StaffDashboardPage() {
                   }
                 </Link>
               )}
+
+              <Link
+                href="/staff-dashboard/security"
+                className="romdoc-button romdoc-button-secondary romdoc-button-sm"
+              >
+                {securityCopy.navigationLabel}
+              </Link>
 
               <Link
                 href={

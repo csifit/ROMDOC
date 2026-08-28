@@ -1279,7 +1279,7 @@
         "collapseMenu": "Restrânge meniul",
         "openMenu": "Deschide meniul",
         "closeMenu": "Închide meniul",
-        "clinicAccountNotice": "Cont medic clinică. Abonamentul și SMS-urile sunt gestionate de clinică.",
+        "clinicAccountNotice": "Cont medic clinică. Abonamentul este gestionat de clinică.",
         "signOut": "Deconectare",
         "signingOut": "Se deconectează...",
         "devices": "Dispozitive conectate"
@@ -1291,7 +1291,7 @@
         "doctorFallback": "doctore",
         "description": "Vezi rapid cererile noi, programul de astăzi și acțiunile importante.",
         "clinicAccountTitle": "Cont de medic gestionat de clinică",
-        "clinicAccountDescription": "Abonamentul, facturarea SMS și datele de facturare sunt gestionate de Clinic Manager. Tu poți administra profilul profesional, serviciile, disponibilitatea și programările pentru locația atribuită.",
+        "clinicAccountDescription": "Abonamentul, și datele de facturare sunt gestionate de Clinic Manager. Tu poți administra profilul profesional, serviciile, disponibilitatea și programările pentru locația atribuită.",
         "billingTitle": "Date de facturare",
         "billingDescription": "Completează datele private necesare pentru facturarea SMS-urilor și a altor servicii RomDoc. Aceste informații nu apar public.",
         "billingOpen": "Deschide datele de facturare",
