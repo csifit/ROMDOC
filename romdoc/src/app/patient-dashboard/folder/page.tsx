@@ -7,6 +7,7 @@ import {
 } from "next/navigation";
 
 import PatientMedicalProfile from "@/components/medical-folder/patient-medical-profile";
+import PatientFamilyDoctorDesignation from "@/components/patient/patient-family-doctor-designation";
 import PatientMedicalFolder from "@/components/patient/patient-medical-folder";
 import {
   getStoredAppLocale,
@@ -183,6 +184,10 @@ export default async function PatientFolderPage() {
             )}
           </div>
         </header>
+
+        <PatientFamilyDoctorDesignation
+          locale={locale}
+        />
 
         <PatientMedicalProfile />
 

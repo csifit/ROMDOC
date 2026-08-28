@@ -88,6 +88,40 @@ type SortMode =
   | "recent"
   | "upcoming";
 
+type RecentDoctorVisit = {
+  id: string;
+  date: string;
+  time: string | null;
+  status: string;
+  doctorName: string;
+  specialtyName: string;
+  clinicName: string;
+  isCurrentDoctor: boolean;
+};
+
+type ClinicalHistoryItem = {
+  id: string;
+  kind:
+    | "profile"
+    | "document";
+  occurredAt: string;
+  actorName: string;
+  fieldKey: string | null;
+  previousValue:
+    Record<string, unknown> | null;
+  newValue:
+    Record<string, unknown> | null;
+  documentTitle: string | null;
+  eventType: string | null;
+};
+
+type ClinicalOverviewResponse = {
+  isFamilyDoctor?: boolean;
+  visits?: RecentDoctorVisit[];
+  clinicalHistory?: ClinicalHistoryItem[];
+  error?: string;
+};
+
 const PATIENTS_PER_PAGE =
   25;
 
@@ -133,8 +167,18 @@ const TEXT = {
       "Pacientul are deja cont RomDoc asociat.",
     inviteHistory:
       "Ultima invitație",
-    history: "Istoric programări",
-    noHistory: "Nu există încă programări pentru acest pacient.",
+    history: "Vizite recente la medici",
+    noHistory: "Nu există încă vizite medicale pentru acest pacient.",
+    historyLoading: "Se încarcă vizitele...",
+    historyLoadError: "Vizitele recente nu au putut fi încărcate.",
+    familyDoctorOverview: "Medic de familie · vedere longitudinală",
+    clinicalHistory: "Istoric clinic",
+    noClinicalHistory: "Nu există încă modificări în Profilul medical sau Dosarul medical.",
+    changedBy: "Modificat de",
+    previousValue: "Anterior",
+    newValue: "Nou",
+    documentAdded: "Document medical adăugat",
+    documentRemoved: "Document medical eliminat",
     noDate: "—",
     noPatients: "Nu există încă pacienți.",
     noPatientsDescription:
@@ -217,8 +261,18 @@ const TEXT = {
     alreadyLinked:
       "The patient already has a linked RomDoc account.",
     inviteHistory: "Last invitation",
-    history: "Appointment history",
-    noHistory: "There are no appointments for this patient yet.",
+    history: "Recent doctor visits",
+    noHistory: "There are no doctor visits for this patient yet.",
+    historyLoading: "Loading visits...",
+    historyLoadError: "Recent doctor visits could not be loaded.",
+    familyDoctorOverview: "Family Doctor · longitudinal view",
+    clinicalHistory: "Clinical history",
+    noClinicalHistory: "There are no Medical Profile or Medical Folder changes yet.",
+    changedBy: "Changed by",
+    previousValue: "Previous",
+    newValue: "New",
+    documentAdded: "Medical document added",
+    documentRemoved: "Medical document removed",
     noDate: "—",
     noPatients: "There are no patients yet.",
     noPatientsDescription:
@@ -301,8 +355,18 @@ const TEXT = {
     alreadyLinked:
       "Der Patient hat bereits ein verknüpftes RomDoc-Konto.",
     inviteHistory: "Letzte Einladung",
-    history: "Terminverlauf",
-    noHistory: "Für diesen Patienten gibt es noch keine Termine.",
+    history: "Letzte Arztbesuche",
+    noHistory: "Für diesen Patienten gibt es noch keine Arztbesuche.",
+    historyLoading: "Besuche werden geladen...",
+    historyLoadError: "Die letzten Arztbesuche konnten nicht geladen werden.",
+    familyDoctorOverview: "Hausarzt · Langzeitübersicht",
+    clinicalHistory: "Klinischer Verlauf",
+    noClinicalHistory: "Es gibt noch keine Änderungen im medizinischen Profil oder in der medizinischen Akte.",
+    changedBy: "Geändert von",
+    previousValue: "Vorher",
+    newValue: "Neu",
+    documentAdded: "Medizinisches Dokument hinzugefügt",
+    documentRemoved: "Medizinisches Dokument entfernt",
     noDate: "—",
     noPatients: "Noch keine Patienten vorhanden.",
     noPatientsDescription:
@@ -462,6 +526,91 @@ function patientAppointmentTimestamp(
   )
     ? timestamp
     : null;
+}
+
+function clinicalFieldLabel(
+  fieldKey: string,
+  locale: AppLocale
+) {
+  const labels:
+    Record<
+      AppLocale,
+      Record<string, string>
+    > = {
+      ro: {
+        date_of_birth: "Data nașterii",
+        sex: "Sex",
+        blood_group: "Grupa sanguină",
+        medical_alerts: "Alerte medicale",
+        allergies: "Alergii",
+        current_medications: "Medicamente curente",
+        chronic_conditions: "Afecțiuni cronice",
+        previous_surgeries: "Intervenții chirurgicale",
+        implants_and_medical_devices: "Implanturi și dispozitive",
+        emergency_contact: "Contact de urgență",
+        family_doctor: "Medic de familie",
+        organ_donation_preference: "Preferință donare organe",
+      },
+      en: {
+        date_of_birth: "Date of birth",
+        sex: "Sex",
+        blood_group: "Blood group",
+        medical_alerts: "Medical alerts",
+        allergies: "Allergies",
+        current_medications: "Current medications",
+        chronic_conditions: "Chronic conditions",
+        previous_surgeries: "Previous surgeries",
+        implants_and_medical_devices: "Implants and medical devices",
+        emergency_contact: "Emergency contact",
+        family_doctor: "Family Doctor",
+        organ_donation_preference: "Organ donation preference",
+      },
+      de: {
+        date_of_birth: "Geburtsdatum",
+        sex: "Geschlecht",
+        blood_group: "Blutgruppe",
+        medical_alerts: "Medizinische Warnhinweise",
+        allergies: "Allergien",
+        current_medications: "Aktuelle Medikamente",
+        chronic_conditions: "Chronische Erkrankungen",
+        previous_surgeries: "Frühere Operationen",
+        implants_and_medical_devices: "Implantate und Medizinprodukte",
+        emergency_contact: "Notfallkontakt",
+        family_doctor: "Hausarzt",
+        organ_donation_preference: "Organspende-Präferenz",
+      },
+    };
+
+  return labels[locale][fieldKey] ?? fieldKey;
+}
+
+function clinicalValueSummary(
+  value:
+    Record<string, unknown> | null
+) {
+  if (!value) {
+    return "—";
+  }
+
+  const values = Object.values(value)
+    .filter(
+      (item) =>
+        typeof item === "string" &&
+        item.trim().length > 0
+    )
+    .map((item) =>
+      String(item).trim()
+    );
+
+  if (values.length === 0) {
+    return "—";
+  }
+
+  const summary = values.join(" · ");
+
+  return summary.length > 180
+    ? `${summary.slice(0, 177)}...`
+    : summary;
 }
 
 function createDraft(
@@ -636,6 +785,30 @@ export default function DoctorPatientsTable({
     } | null>(
       null
     );
+
+  const [
+    clinicalOverviewByPatient,
+    setClinicalOverviewByPatient,
+  ] = useState<
+    Record<
+      string,
+      ClinicalOverviewResponse
+    >
+  >({});
+
+  const [
+    clinicalOverviewLoadingId,
+    setClinicalOverviewLoadingId,
+  ] = useState<string | null>(
+    null
+  );
+
+  const [
+    clinicalOverviewErrors,
+    setClinicalOverviewErrors,
+  ] = useState<
+    Record<string, string>
+  >({});
 
   const filteredPatients =
     useMemo(
@@ -877,6 +1050,105 @@ export default function DoctorPatientsTable({
     currentPage,
     totalPages,
   ]);
+
+  async function loadClinicalOverview(
+    patient:
+      DoctorPatientDatabaseRow
+  ) {
+    if (
+      !patient.patientProfileId ||
+      Object.prototype.hasOwnProperty.call(
+        clinicalOverviewByPatient,
+        patient.id
+      )
+    ) {
+      return;
+    }
+
+    setClinicalOverviewLoadingId(
+      patient.id
+    );
+
+    setClinicalOverviewErrors(
+      (current) => {
+        const next = {
+          ...current,
+        };
+
+        delete next[patient.id];
+        return next;
+      }
+    );
+
+    try {
+      const response = await fetch(
+        `/api/doctor/patients/${patient.id}/clinical-overview?locale=${locale}`,
+        {
+          cache: "no-store",
+        }
+      );
+
+      const payload =
+        (await response.json()) as
+          ClinicalOverviewResponse;
+
+      if (!response.ok) {
+        throw new Error(
+          locale === "ro" && payload.error
+            ? payload.error
+            : text.historyLoadError
+        );
+      }
+
+      setClinicalOverviewByPatient(
+        (current) => ({
+          ...current,
+          [patient.id]: payload,
+        })
+      );
+    } catch (loadError) {
+      setClinicalOverviewErrors(
+        (current) => ({
+          ...current,
+          [patient.id]:
+            loadError instanceof Error
+              ? loadError.message
+              : text.historyLoadError,
+        })
+      );
+    } finally {
+      setClinicalOverviewLoadingId(
+        (current) =>
+          current === patient.id
+            ? null
+            : current
+      );
+    }
+  }
+
+  function togglePatient(
+    patient:
+      DoctorPatientDatabaseRow
+  ) {
+    const opening =
+      expandedPatientId !==
+      patient.id;
+
+    setExpandedPatientId(
+      opening
+        ? patient.id
+        : null
+    );
+
+    if (
+      opening &&
+      patient.patientProfileId
+    ) {
+      void loadClinicalOverview(
+        patient
+      );
+    }
+  }
 
   async function handleAddPatient(
     event:
@@ -1571,6 +1843,36 @@ export default function DoctorPatientsTable({
                       .filter(Boolean)
                       .join(", ");
 
+                  const clinicalOverview =
+                    clinicalOverviewByPatient[
+                      patient.id
+                    ];
+
+                  const clinicalOverviewLoading =
+                    clinicalOverviewLoadingId ===
+                    patient.id;
+
+                  const clinicalOverviewError =
+                    clinicalOverviewErrors[
+                      patient.id
+                    ] ?? "";
+
+                  const recentVisits:
+                    RecentDoctorVisit[] =
+                    clinicalOverview?.visits ??
+                    patient.history.map(
+                      (appointment) => ({
+                        id: appointment.id,
+                        date: appointment.date,
+                        time: appointment.time,
+                        status: appointment.status,
+                        doctorName: "",
+                        specialtyName: "",
+                        clinicName: "",
+                        isCurrentDoctor: true,
+                      })
+                    );
+
                   return (
                     <div
                       key={
@@ -1580,10 +1882,8 @@ export default function DoctorPatientsTable({
                       <button
                         type="button"
                         onClick={() =>
-                          setExpandedPatientId(
-                            expanded
-                              ? null
-                              : patient.id
+                          togglePatient(
+                            patient
                           )
                         }
                         aria-expanded={
@@ -1671,6 +1971,8 @@ export default function DoctorPatientsTable({
                                         href={
                                           medicalHref
                                         }
+                                        target="_blank"
+                                        rel="noopener noreferrer"
                                         className="romdoc-button romdoc-button-secondary romdoc-button-sm"
                                       >
                                         {text.medical}
@@ -1680,6 +1982,8 @@ export default function DoctorPatientsTable({
                                         href={
                                           medicalHref
                                         }
+                                        target="_blank"
+                                        rel="noopener noreferrer"
                                         className="romdoc-button romdoc-button-secondary romdoc-button-sm"
                                       >
                                         {text.folder}
@@ -1712,6 +2016,8 @@ export default function DoctorPatientsTable({
                                       href={
                                         messageHref
                                       }
+                                      target="_blank"
+                                      rel="noopener noreferrer"
                                       className="romdoc-button romdoc-button-secondary romdoc-button-sm"
                                     >
                                       {text.message}
@@ -1731,6 +2037,8 @@ export default function DoctorPatientsTable({
                                     href={createAppointmentHref(
                                       patient
                                     )}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
                                     className="romdoc-button romdoc-button-primary romdoc-button-sm"
                                   >
                                     {text.createAppointment}
@@ -2077,60 +2385,188 @@ export default function DoctorPatientsTable({
                               )}
                             </div>
 
-                            <div>
-                              <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                                {text.history}
-                              </p>
+                            <div className="space-y-[17px]">
+                              <div>
+                                <div className="flex flex-wrap items-center gap-[8px]">
+                                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                                    {text.history}
+                                  </p>
 
-                              {patient.history.length ===
-                              0 ? (
-                                <p className="mt-[8px] text-sm text-gray-600">
-                                  {text.noHistory}
-                                </p>
-                              ) : (
-                                <div className="mt-[8px] max-h-[320px] overflow-y-auto rounded-[13px] border border-gray-200 bg-white">
-                                  {patient.history.map(
-                                    (
-                                      appointment
-                                    ) => (
-                                      <div
-                                        key={
-                                          appointment.id
-                                        }
-                                        className="flex flex-wrap items-center justify-between gap-[8px] border-b border-gray-100 px-[13px] py-[8px] last:border-b-0"
-                                      >
-                                        <div>
-                                          <p className="text-sm font-semibold text-gray-900">
-                                            {formatAppointment(
-                                              {
-                                                date:
-                                                  appointment.date,
-                                                time:
-                                                  appointment.time,
-                                              },
-                                              locale,
-                                              text.noDate
-                                            )}
-                                          </p>
+                                  {clinicalOverview?.isFamilyDoctor && (
+                                    <span className="rounded-full bg-emerald-50 px-[8px] py-[3px] text-xs font-semibold text-emerald-800">
+                                      {text.familyDoctorOverview}
+                                    </span>
+                                  )}
+                                </div>
 
-                                          <p className="mt-[2px] text-xs text-gray-500">
-                                            {getAppointmentStatusLabel(
-                                              appointment.status as AppointmentStatus,
-                                              locale
-                                            )}
-                                          </p>
+                                {clinicalOverviewLoading ? (
+                                  <p className="mt-[8px] text-sm text-gray-600">
+                                    {text.historyLoading}
+                                  </p>
+                                ) : clinicalOverviewError ? (
+                                  <div className="mt-[8px] rounded-[13px] border border-red-200 bg-red-50 p-[10px] text-sm text-red-800">
+                                    {clinicalOverviewError}
+                                  </div>
+                                ) : recentVisits.length === 0 ? (
+                                  <p className="mt-[8px] text-sm text-gray-600">
+                                    {text.noHistory}
+                                  </p>
+                                ) : (
+                                  <div className="mt-[8px] max-h-[320px] overflow-y-auto rounded-[13px] border border-gray-200 bg-white">
+                                    {recentVisits.map(
+                                      (visit) => (
+                                        <div
+                                          key={visit.id}
+                                          className="border-b border-gray-100 px-[13px] py-[8px] last:border-b-0"
+                                        >
+                                          <div className="flex flex-wrap items-start justify-between gap-[8px]">
+                                            <div className="min-w-0">
+                                              <p className="text-sm font-semibold text-gray-900">
+                                                {formatAppointment(
+                                                  {
+                                                    date: visit.date,
+                                                    time: visit.time,
+                                                  },
+                                                  locale,
+                                                  text.noDate
+                                                )}
+                                              </p>
+
+                                              {visit.doctorName && (
+                                                <p className="mt-[2px] text-sm text-gray-700">
+                                                  {visit.specialtyName && visit.specialtyName !== "—"
+                                                    ? `${visit.specialtyName} · `
+                                                    : ""}
+                                                  {visit.doctorName}
+                                                </p>
+                                              )}
+
+                                              {visit.clinicName && visit.clinicName !== "—" && (
+                                                <p className="mt-[2px] text-xs text-gray-500">
+                                                  {visit.clinicName}
+                                                </p>
+                                              )}
+                                            </div>
+
+                                            <div className="flex flex-col items-end gap-[4px]">
+                                              <span className="text-xs font-semibold text-gray-500">
+                                                {getAppointmentStatusLabel(
+                                                  visit.status as AppointmentStatus,
+                                                  locale
+                                                )}
+                                              </span>
+
+                                              {patient.patientProfileId && visit.isCurrentDoctor && (
+                                                <Link
+                                                  href={`/appointments/${visit.id}/messages?locale=${locale}`}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="text-xs font-semibold text-[#036661] hover:underline"
+                                                >
+                                                  {text.open}
+                                                </Link>
+                                              )}
+                                            </div>
+                                          </div>
                                         </div>
+                                      )
+                                    )}
+                                  </div>
+                                )}
+                              </div>
 
-                                        {patient.patientProfileId ? (
-                                          <Link
-                                            href={`/appointments/${appointment.id}/messages?locale=${locale}`}
-                                            className="text-xs font-semibold text-[#036661] hover:underline"
+                              {clinicalOverview?.isFamilyDoctor && (
+                                <div>
+                                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                                    {text.clinicalHistory}
+                                  </p>
+
+                                  {(clinicalOverview.clinicalHistory ?? []).length === 0 ? (
+                                    <p className="mt-[8px] text-sm text-gray-600">
+                                      {text.noClinicalHistory}
+                                    </p>
+                                  ) : (
+                                    <div className="mt-[8px] max-h-[320px] overflow-y-auto rounded-[13px] border border-gray-200 bg-white">
+                                      {(clinicalOverview.clinicalHistory ?? []).map(
+                                        (event) => (
+                                          <div
+                                            key={event.id}
+                                            className="border-b border-gray-100 px-[13px] py-[10px] last:border-b-0"
                                           >
-                                            {text.open}
-                                          </Link>
-                                        ) : null}
-                                      </div>
-                                    )
+                                            {event.kind === "document" ? (
+                                              <>
+                                                <div className="flex flex-wrap items-start justify-between gap-[8px]">
+                                                  <p className="text-sm font-semibold text-gray-900">
+                                                    {event.eventType === "soft_deleted"
+                                                      ? text.documentRemoved
+                                                      : text.documentAdded}
+                                                  </p>
+
+                                                  <p className="text-xs text-gray-500">
+                                                    {formatDateTime(
+                                                      event.occurredAt,
+                                                      locale,
+                                                      text.noDate
+                                                    )}
+                                                  </p>
+                                                </div>
+
+                                                <p className="mt-[4px] text-sm text-gray-700">
+                                                  {event.documentTitle ?? text.folder}
+                                                </p>
+
+                                                <p className="mt-[3px] text-xs text-gray-500">
+                                                  {text.changedBy}: {event.actorName}
+                                                </p>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <div className="flex flex-wrap items-start justify-between gap-[8px]">
+                                                  <p className="text-sm font-semibold text-gray-900">
+                                                    {clinicalFieldLabel(
+                                                      event.fieldKey ?? "",
+                                                      locale
+                                                    )}
+                                                  </p>
+
+                                                  <p className="text-xs text-gray-500">
+                                                    {formatDateTime(
+                                                      event.occurredAt,
+                                                      locale,
+                                                      text.noDate
+                                                    )}
+                                                  </p>
+                                                </div>
+
+                                                <p className="mt-[3px] text-xs text-gray-500">
+                                                  {text.changedBy}: {event.actorName}
+                                                </p>
+
+                                                <div className="mt-[6px] grid gap-[5px] text-xs text-gray-700 sm:grid-cols-2">
+                                                  <p>
+                                                    <span className="font-semibold text-gray-500">
+                                                      {text.previousValue}: {" "}
+                                                    </span>
+                                                    {clinicalValueSummary(
+                                                      event.previousValue
+                                                    )}
+                                                  </p>
+
+                                                  <p>
+                                                    <span className="font-semibold text-gray-500">
+                                                      {text.newValue}: {" "}
+                                                    </span>
+                                                    {clinicalValueSummary(
+                                                      event.newValue
+                                                    )}
+                                                  </p>
+                                                </div>
+                                              </>
+                                            )}
+                                          </div>
+                                        )
+                                      )}
+                                    </div>
                                   )}
                                 </div>
                               )}

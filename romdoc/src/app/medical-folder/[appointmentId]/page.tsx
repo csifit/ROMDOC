@@ -61,30 +61,48 @@ export default async function MedicalFolderPage({
   params,
   searchParams,
 }: Props) {
-  const {appointmentId} = await params;
-  const query = await searchParams;
-  const storedLocale = await getStoredAppLocale();
+  const { appointmentId } =
+    await params;
+
+  const query =
+    await searchParams;
+
+  const storedLocale =
+    await getStoredAppLocale();
+
   const locale = query.locale
-    ? normalizeAppLocale(query.locale)
+    ? normalizeAppLocale(
+        query.locale
+      )
     : storedLocale;
-  const t = await getTranslations({
-    locale,
-    namespace: "DoctorAppointmentOperations.folder.page",
-  });
+
+  const t =
+    await getTranslations({
+      locale,
+      namespace:
+        "DoctorAppointmentOperations.folder.page",
+    });
 
   if (!isUuid(appointmentId)) {
     notFound();
   }
 
-  const supabase = await createClient();
-  const {
-    data: {user},
-    error: userError,
-  } = await supabase.auth.getUser();
+  const supabase =
+    await createClient();
 
-  if (userError || !user) {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth
+    .getUser();
+
+  if (
+    userError ||
+    !user
+  ) {
     const nextPath =
       `/medical-folder/${appointmentId}?locale=${locale}`;
+
     redirect(
       `/login?locale=${locale}&next=${encodeURIComponent(nextPath)}`
     );
@@ -105,12 +123,17 @@ export default async function MedicalFolderPage({
     profileError ||
     !profile ||
     profile.account_status !== "active" ||
-    !["doctor", "staff"].includes(profile.role)
+    ![
+      "doctor",
+      "staff",
+    ].includes(profile.role)
   ) {
     redirect("/dashboard");
   }
 
-  const admin = createAdminClient();
+  const admin =
+    createAdminClient();
+
   const {
     data: appointment,
     error: appointmentError,
@@ -135,12 +158,16 @@ export default async function MedicalFolderPage({
     appointmentError ||
     !appointment ||
     !appointment.patient_profile_id ||
-    !canReadMedicalFolder(appointment.status)
+    !canReadMedicalFolder(
+      appointment.status
+    )
   ) {
     notFound();
   }
 
   let authorized = false;
+  let familyDoctorCanEditCompleted =
+    false;
 
   if (profile.role === "doctor") {
     const {
@@ -149,12 +176,51 @@ export default async function MedicalFolderPage({
     } = await supabase
       .from("doctors")
       .select("id")
-      .eq("profile_id", user.id)
+      .eq(
+        "profile_id",
+        user.id
+      )
       .maybeSingle();
 
     authorized =
       !doctorError &&
-      doctor?.id === appointment.doctor_id;
+      doctor?.id ===
+        appointment.doctor_id;
+
+    if (
+      authorized &&
+      doctor?.id &&
+      appointment.status ===
+        "completed"
+    ) {
+      const {
+        data: familyLink,
+        error: familyLinkError,
+      } = await admin
+        .from(
+          "patient_family_doctors"
+        )
+        .select("doctor_id")
+        .eq(
+          "patient_profile_id",
+          appointment.patient_profile_id
+        )
+        .eq(
+          "doctor_id",
+          doctor.id
+        )
+        .maybeSingle();
+
+      if (familyLinkError) {
+        console.error(
+          "Family Doctor Medical Folder lookup failed:",
+          familyLinkError
+        );
+      }
+
+      familyDoctorCanEditCompleted =
+        Boolean(familyLink);
+    }
   } else {
     const {
       data: assignment,
@@ -162,14 +228,24 @@ export default async function MedicalFolderPage({
     } = await admin
       .from("doctor_staff")
       .select("id")
-      .eq("staff_profile_id", user.id)
-      .eq("doctor_id", appointment.doctor_id)
-      .eq("status", "active")
+      .eq(
+        "staff_profile_id",
+        user.id
+      )
+      .eq(
+        "doctor_id",
+        appointment.doctor_id
+      )
+      .eq(
+        "status",
+        "active"
+      )
       .limit(1)
       .maybeSingle();
 
     authorized =
-      !assignmentError && Boolean(assignment);
+      !assignmentError &&
+      Boolean(assignment);
   }
 
   if (!authorized) {
@@ -179,13 +255,16 @@ export default async function MedicalFolderPage({
   const effectiveDate =
     appointment.scheduled_date ??
     appointment.requested_date;
+
   const effectiveTime =
     appointment.scheduled_time ??
     appointment.requested_time;
+
   const returnPath =
     profile.role === "doctor"
-      ? "/doctor-dashboard/appointments"
+      ? "/doctor-dashboard/patients"
       : "/staff-dashboard";
+
   const formattedDate =
     new Intl.DateTimeFormat(
       INTL_LOCALE[locale],
@@ -195,13 +274,17 @@ export default async function MedicalFolderPage({
         year: "numeric",
       }
     ).format(
-      new Date(`${effectiveDate}T12:00:00`)
+      new Date(
+        `${effectiveDate}T12:00:00`
+      )
     );
 
   return (
     <NextIntlClientProvider
       locale={locale}
-      messages={messagesByLocale[locale]}
+      messages={
+        messagesByLocale[locale]
+      }
     >
       <main className="min-h-screen bg-[#F0EEE9] px-4 py-8 sm:px-6">
         <div className="mx-auto max-w-7xl">
@@ -211,12 +294,15 @@ export default async function MedicalFolderPage({
                 <p className="text-sm font-semibold text-[#036661]">
                   RomDoc
                 </p>
+
                 <h1 className="mt-2 text-3xl font-bold text-gray-900">
                   {t("title")}
                 </h1>
+
                 <p className="mt-3 text-lg font-semibold text-gray-900">
                   {appointment.patient_name}
                 </p>
+
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
                   <span>
                     {t("status")}: {" "}
@@ -227,6 +313,7 @@ export default async function MedicalFolderPage({
                       )}
                     </strong>
                   </span>
+
                   <span>
                     {t("date")}: {" "}
                     <strong>
@@ -250,14 +337,25 @@ export default async function MedicalFolderPage({
 
           {profile.role === "doctor" ? (
             <DoctorPatientFolderManager
-              appointmentId={appointment.id}
-              appointmentStatus={appointment.status}
+              appointmentId={
+                appointment.id
+              }
+              appointmentStatus={
+                appointment.status
+              }
+              familyDoctorCanEditCompleted={
+                familyDoctorCanEditCompleted
+              }
               standalone
             />
           ) : (
             <StaffPatientFolderManager
-              appointmentId={appointment.id}
-              appointmentStatus={appointment.status}
+              appointmentId={
+                appointment.id
+              }
+              appointmentStatus={
+                appointment.status
+              }
               standalone
             />
           )}

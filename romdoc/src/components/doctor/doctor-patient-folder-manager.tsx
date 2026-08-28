@@ -7,13 +7,21 @@ type Props = {
   appointmentId: string;
   appointmentStatus: string;
   standalone?: boolean;
+  familyDoctorCanEditCompleted?: boolean;
 };
 
 export default function DoctorPatientFolderManager({
   appointmentId,
   appointmentStatus,
   standalone = false,
+  familyDoctorCanEditCompleted = false,
 }: Props) {
+  const effectiveFolderStatus =
+    familyDoctorCanEditCompleted &&
+    appointmentStatus === "completed"
+      ? "confirmed"
+      : appointmentStatus;
+
   if (!standalone) {
     return (
       <>
@@ -25,7 +33,7 @@ export default function DoctorPatientFolderManager({
         <MedicalFolderManager
           appointmentId={appointmentId}
           appointmentStatus={
-            appointmentStatus
+            effectiveFolderStatus
           }
           apiEndpoint="/api/doctor/patient-folder"
           downloadEndpoint="/api/doctor/patient-folder/download"
@@ -49,7 +57,7 @@ export default function DoctorPatientFolderManager({
         <MedicalFolderManager
           appointmentId={appointmentId}
           appointmentStatus={
-            appointmentStatus
+            effectiveFolderStatus
           }
           apiEndpoint="/api/doctor/patient-folder"
           downloadEndpoint="/api/doctor/patient-folder/download"

@@ -1,4 +1,4 @@
-﻿import {
+import {
   NextRequest,
   NextResponse,
 } from "next/server";
@@ -42,8 +42,8 @@ async function requireDoctor():
   const {
     data: { user },
     error: userError,
-  } =
-    await supabase.auth.getUser();
+  } = await supabase.auth
+    .getUser();
 
   if (
     userError ||
@@ -75,10 +75,8 @@ async function requireDoctor():
 
   if (
     profileError ||
-    profile?.role !==
-      "doctor" ||
-    profile.account_status !==
-      "active"
+    profile?.role !== "doctor" ||
+    profile.account_status !== "active"
   ) {
     return {
       authorization: null,
@@ -125,8 +123,7 @@ async function requireDoctor():
   return {
     authorization: {
       userId: user.id,
-      doctorId:
-        doctor.id,
+      doctorId: doctor.id,
     },
     response: null,
   };
@@ -178,6 +175,61 @@ async function loadOwnedAppointment(
   };
 }
 
+async function isFamilyDoctor(
+  patientProfileId: string,
+  doctorId: string
+) {
+  const admin =
+    createAdminClient();
+
+  const {
+    data,
+    error,
+  } = await admin
+    .from(
+      "patient_family_doctors"
+    )
+    .select("doctor_id")
+    .eq(
+      "patient_profile_id",
+      patientProfileId
+    )
+    .eq(
+      "doctor_id",
+      doctorId
+    )
+    .maybeSingle();
+
+  if (error) {
+    console.error(
+      "Family Doctor folder lookup failed:",
+      error
+    );
+    return false;
+  }
+
+  return Boolean(data);
+}
+
+function effectiveAppointment(
+  appointment:
+    MedicalFolderAppointment,
+  familyDoctor:
+    boolean
+): MedicalFolderAppointment {
+  if (
+    familyDoctor &&
+    appointment.status === "completed"
+  ) {
+    return {
+      ...appointment,
+      status: "confirmed",
+    };
+  }
+
+  return appointment;
+}
+
 export async function GET(
   request: NextRequest
 ): Promise<Response> {
@@ -219,8 +271,17 @@ export async function GET(
     );
   }
 
+  const familyDoctor =
+    await isFamilyDoctor(
+      appointment.patient_profile_id,
+      result.authorization.doctorId
+    );
+
   return listMedicalFolderDocuments(
-    appointment,
+    effectiveAppointment(
+      appointment,
+      familyDoctor
+    ),
     {
       actorProfileId:
         result.authorization.userId,
@@ -241,6 +302,7 @@ export async function POST(
   if (result.response) {
     return result.response;
   }
+
   let formData: FormData;
 
   try {
@@ -256,15 +318,14 @@ export async function POST(
     );
   }
 
-  const appointmentId =
-    typeof formData.get(
+  const appointmentValue =
+    formData.get(
       "appointmentId"
-    ) === "string"
-      ? String(
-          formData.get(
-            "appointmentId"
-          )
-        ).trim()
+    );
+
+  const appointmentId =
+    typeof appointmentValue === "string"
+      ? appointmentValue.trim()
       : "";
 
   if (!isUuid(appointmentId)) {
@@ -293,9 +354,18 @@ export async function POST(
     );
   }
 
+  const familyDoctor =
+    await isFamilyDoctor(
+      appointment.patient_profile_id,
+      result.authorization.doctorId
+    );
+
   return createMedicalFolderDocument(
     formData,
-    appointment,
+    effectiveAppointment(
+      appointment,
+      familyDoctor
+    ),
     {
       actorProfileId:
         result.authorization.userId,
@@ -323,10 +393,7 @@ export async function DELETE(
 
   try {
     body =
-      await request.json() as {
-        documentId?: unknown;
-        appointmentId?: unknown;
-      };
+      await request.json();
   } catch {
     return NextResponse.json(
       {
@@ -378,9 +445,18 @@ export async function DELETE(
     );
   }
 
+  const familyDoctor =
+    await isFamilyDoctor(
+      appointment.patient_profile_id,
+      result.authorization.doctorId
+    );
+
   return deleteMedicalFolderDocument(
     documentId,
-    appointment,
+    effectiveAppointment(
+      appointment,
+      familyDoctor
+    ),
     {
       actorProfileId:
         result.authorization.userId,
