@@ -1,4 +1,7 @@
 import ClinicOrganizationBillingEditor from "@/components/admin/clinic-organization-billing-editor";
+import ClinicOrganizationDoctorsManager, {
+  type CoveredClinicDoctorAccount,
+} from "@/components/admin/clinic-organization-doctors-manager";
 import type { AppLocale } from "@/lib/i18n/app-locale";
 import {
   getPlatformOperatorClinics,
@@ -79,6 +82,17 @@ type DoctorRelationship = {
   coverage_status: string;
 };
 
+type DoctorAccountRow = {
+  id: string;
+  profile_id: string | null;
+  slug: string;
+  status: string;
+  profile:
+    | Profile
+    | Profile[]
+    | null;
+};
+
 type BillingSettings = {
   clinic_doctor_monthly_price_ron: number | string | null;
   vat_rate: number | string | null;
@@ -134,6 +148,14 @@ function localLabel(
   values: { ro: string; en: string; de: string }
 ) {
   return values[locale];
+}
+
+function formatSlugName(slug: string) {
+  return slug
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 export default async function ClinicOrganizationsOverview({ locale }: Props) {
@@ -196,6 +218,24 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
       billingProfilesResult.error
     );
   }
+  if (membersResult.error) {
+    console.error(
+      "Clinic organization members query failed:",
+      membersResult.error
+    );
+  }
+  if (clinicLinksResult.error) {
+    console.error(
+      "Clinic organization clinic links query failed:",
+      clinicLinksResult.error
+    );
+  }
+  if (doctorRelationshipsResult.error) {
+    console.error(
+      "Clinic organization Doctor relationships query failed:",
+      doctorRelationshipsResult.error
+    );
+  }
   if (billingSettingsResult.error) {
     console.error(
       "Clinic organization billing settings query failed:",
@@ -222,8 +262,20 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
   const clinicIds = Array.from(
     new Set(clinicLinks.map((link) => link.clinic_id).filter(Boolean))
   );
+  const coveredDoctorIds = Array.from(
+    new Set(
+      doctorRelationships
+        .filter(
+          (relationship) =>
+            relationship.payment_responsibility === "clinic_paid" &&
+            relationship.invitation_status === "accepted" &&
+            Boolean(relationship.doctor_id)
+        )
+        .map((relationship) => relationship.doctor_id as string)
+    )
+  );
 
-  const [profilesResult, clinicsResult, translationsResult] =
+  const [profilesResult, clinicsResult, translationsResult, doctorsResult] =
     await Promise.all([
       profileIds.length
         ? admin
@@ -242,6 +294,24 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
             .from("clinic_translations")
             .select("clinic_id, locale, name")
             .in("clinic_id", clinicIds)
+        : Promise.resolve({ data: [], error: null }),
+      coveredDoctorIds.length
+        ? admin
+            .from("doctors")
+            .select(`
+              id,
+              profile_id,
+              slug,
+              status,
+              profile:profiles!doctors_profile_id_fkey (
+                id,
+                first_name,
+                last_name,
+                role,
+                account_status
+              )
+            `)
+            .in("id", coveredDoctorIds)
         : Promise.resolve({ data: [], error: null }),
     ]);
 
@@ -263,6 +333,12 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
       translationsResult.error
     );
   }
+  if (doctorsResult.error) {
+    console.error(
+      "Clinic organization covered Doctors query failed:",
+      doctorsResult.error
+    );
+  }
 
   const profilesById = new Map(
     ((profilesResult.data ?? []) as Profile[]).map((profile) => [
@@ -274,6 +350,12 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
     ((clinicsResult.data ?? []) as Clinic[]).map((clinic) => [
       clinic.id,
       clinic,
+    ])
+  );
+  const doctorsById = new Map(
+    ((doctorsResult.data ?? []) as DoctorAccountRow[]).map((doctor) => [
+      doctor.id,
+      doctor,
     ])
   );
   const translations =
@@ -363,6 +445,63 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
     ) {
       summary.activeCoveredDoctorCount += 1;
     }
+  }
+
+  const coveredDoctorsByOrganization =
+    new Map<string, CoveredClinicDoctorAccount[]>();
+
+  for (const organization of organizations) {
+    const deduplicated = new Map<string, CoveredClinicDoctorAccount>();
+
+    for (const relationship of doctorRelationships) {
+      if (
+        relationship.organization_id !== organization.id ||
+        relationship.payment_responsibility !== "clinic_paid" ||
+        relationship.invitation_status !== "accepted" ||
+        !relationship.doctor_id
+      ) {
+        continue;
+      }
+
+      const doctor = doctorsById.get(relationship.doctor_id);
+      if (!doctor) continue;
+
+      const rawProfile = doctor.profile;
+      const profile = Array.isArray(rawProfile)
+        ? rawProfile[0] ?? null
+        : rawProfile ?? null;
+      const profileId = doctor.profile_id ?? relationship.accepted_profile_id;
+      const accountName = [profile?.first_name, profile?.last_name]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+      const accountEmail =
+        relationship.accepted_account_email ??
+        relationship.invited_doctor_email ??
+        null;
+      const displayName =
+        accountName ||
+        accountEmail ||
+        formatSlugName(doctor.slug) ||
+        copy.common.unknownDoctor;
+
+      deduplicated.set(doctor.id, {
+        doctorId: doctor.id,
+        profileId,
+        displayName,
+        accountEmail,
+        accountStatus: profile?.account_status ?? "unknown",
+        doctorStatus: doctor.status,
+        coverageStatus: relationship.coverage_status,
+      });
+    }
+
+    coveredDoctorsByOrganization.set(
+      organization.id,
+      Array.from(deduplicated.values()).sort((first, second) =>
+        first.displayName.localeCompare(second.displayName, locale)
+      )
+    );
   }
 
   const totalOrganizations = organizations.length;
@@ -490,6 +629,8 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
           {organizations.map((organization) => {
             const summary = summaries.get(organization.id) ?? emptySummary();
             const billing = billingByOrganization.get(organization.id) ?? null;
+            const coveredDoctors =
+              coveredDoctorsByOrganization.get(organization.id) ?? [];
             const estimatedNet =
               summary.activeCoveredDoctorCount * doctorMonthlyPrice;
             const estimatedGross = estimatedNet + estimatedNet * vatRate;
@@ -566,6 +707,13 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
                         {copy.organizations.labels.openInvitations}:{" "}
                         {summary.invitedDoctorCount}
                       </p>
+
+                      <ClinicOrganizationDoctorsManager
+                        locale={locale}
+                        organizationId={organization.id}
+                        organizationName={organization.name}
+                        coveredDoctors={coveredDoctors}
+                      />
                     </div>
 
                     <div className="rounded-xl bg-gray-50 p-[13px]">
