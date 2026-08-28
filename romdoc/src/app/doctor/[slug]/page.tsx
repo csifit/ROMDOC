@@ -115,6 +115,7 @@ type ClinicOption = {
 type DoctorRecord = {
   id: string;
   slug: string;
+  public_name: string | null;
   photo_url: string | null;
   phone: string | null;
   email: string | null;
@@ -151,12 +152,13 @@ type PublicReviewRow = {
 function formatDoctorName(
   slug: string
 ) {
-  return slug
+  return decodeURIComponent(
+    slug
+  )
     .split("-")
+    .filter(Boolean)
     .map(
-      (
-        part
-      ) =>
+      (part) =>
         part
           .charAt(0)
           .toUpperCase() +
@@ -381,6 +383,7 @@ export default async function DoctorPage({
     .select(`
       id,
       slug,
+      public_name,
       photo_url,
       phone,
       email,
@@ -619,9 +622,8 @@ export default async function DoctorPage({
     );
 
   const doctorName =
-    formatDoctorName(
-      doctor.slug
-    );
+    doctor.public_name?.trim() ||
+    formatDoctorName(doctor.slug);
 
   const specialtyName =
     getSpecialtyName(

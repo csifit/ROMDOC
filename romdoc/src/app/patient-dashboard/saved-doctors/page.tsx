@@ -67,6 +67,7 @@ type DoctorClinicRelation = {
 type DoctorRecord = {
   id: string;
   slug: string;
+  public_name: string | null;
   photo_url: string | null;
   years_experience: number | null;
   consultation_price:
@@ -116,8 +117,11 @@ function getFirstRelation<T>(
 function formatDoctorName(
   slug: string
 ) {
-  return slug
+  return decodeURIComponent(
+    slug
+  )
     .split("-")
+    .filter(Boolean)
     .map(
       (part) =>
         part
@@ -430,6 +434,7 @@ export default async function PatientSavedDoctorsPage() {
         .select(`
           id,
           slug,
+          public_name,
           photo_url,
           years_experience,
           consultation_price,
@@ -650,9 +655,8 @@ export default async function PatientSavedDoctorsPage() {
                   savedAt,
                 }) => {
                   const doctorName =
-                    formatDoctorName(
-                      doctor.slug
-                    );
+                    doctor.public_name?.trim() ||
+                    formatDoctorName(doctor.slug);
 
                   const clinicName =
                     getClinicName(

@@ -59,6 +59,7 @@ type DoctorSpecialtyRelation = {
 type DoctorRelation = {
   id: string;
   slug: string;
+  public_name: string | null;
   doctor_translations:
     DoctorTranslation[] | null;
   doctor_specialties:
@@ -143,16 +144,19 @@ function doctorName(
     return fallback;
   }
 
-  return doctor.slug
-    .split("-")
-    .map(
-      (part) =>
-        part
-          .charAt(0)
-          .toUpperCase() +
-        part.slice(1)
-    )
-    .join(" ");
+  return (
+    doctor.public_name?.trim() ||
+    doctor.slug
+      .split("-")
+      .filter(Boolean)
+      .map(
+        (part) =>
+          part.charAt(0).toUpperCase() +
+          part.slice(1)
+      )
+      .join(" ") ||
+    fallback
+  );
 }
 
 function doctorTitle(
@@ -440,6 +444,7 @@ export default async function PatientDashboardPage() {
     doctors (
       id,
       slug,
+      public_name,
       doctor_translations (
         locale,
         title

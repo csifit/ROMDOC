@@ -1,4 +1,4 @@
-﻿import {
+import {
   NextRequest,
   NextResponse,
 } from "next/server";
@@ -17,9 +17,26 @@ function isUuid(value: string) {
   );
 }
 
-function doctorNameFromSlug(slug: string) {
+function doctorDisplayName({
+  publicName,
+  slug,
+}: {
+  publicName:
+    | string
+    | null
+    | undefined;
+  slug: string;
+}) {
+  const normalized =
+    publicName?.trim();
+
+  if (normalized) {
+    return normalized;
+  }
+
   return slug
     .split("-")
+    .filter(Boolean)
     .map(
       (part) =>
         part.charAt(0).toUpperCase() +
@@ -143,6 +160,7 @@ export async function GET(
       doctors (
         id,
         slug,
+        public_name,
         status
       )
     `)
@@ -187,9 +205,12 @@ export async function GET(
         {
           id: relation.id,
           name:
-            doctorNameFromSlug(
-              relation.slug
-            ),
+            doctorDisplayName({
+              publicName:
+                relation.public_name,
+              slug:
+                relation.slug,
+            }),
         }
       );
     }
@@ -400,7 +421,9 @@ export async function POST(
     data: doctor,
   } = await admin
     .from("doctors")
-    .select("id, slug, status")
+    .select(
+      "id, slug, public_name, status"
+    )
     .eq("id", doctorId)
     .eq("status", "active")
     .maybeSingle();
@@ -484,9 +507,12 @@ export async function POST(
         share_id: share.id,
         doctor_id: doctorId,
         doctor_name:
-          doctorNameFromSlug(
-            doctor.slug
-          ),
+          doctorDisplayName({
+            publicName:
+              doctor.public_name,
+            slug:
+              doctor.slug,
+          }),
         expires_at:
           parsedExpiry,
       },
@@ -546,7 +572,8 @@ export async function DELETE(
       doctor_id,
       revoked_at,
       doctors (
-        slug
+        slug,
+        public_name
       )
     `)
     .eq("id", shareId)
@@ -622,9 +649,12 @@ export async function DELETE(
           share.doctor_id,
         doctor_name:
           doctorRelation?.slug
-            ? doctorNameFromSlug(
-                doctorRelation.slug
-              )
+            ? doctorDisplayName({
+                publicName:
+                  doctorRelation.public_name,
+                slug:
+                  doctorRelation.slug,
+              })
             : "Medic",
       },
     });

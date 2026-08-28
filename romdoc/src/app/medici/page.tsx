@@ -34,6 +34,7 @@ type SpecialtyRow = {
 type DoctorRow = {
   id: string;
   slug: string;
+  public_name: string | null;
   photo_url: string | null;
   years_experience: number | null;
   consultation_price: number | string | null;
@@ -150,8 +151,9 @@ function cityName(
 }
 
 function formatDoctorName(slug: string) {
-  return slug
+  return decodeURIComponent(slug)
     .split("-")
+    .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 }
@@ -199,7 +201,7 @@ export default async function DoctorsPage({ searchParams }: Props) {
     supabase
       .from("doctors")
       .select(
-        "id, slug, photo_url, years_experience, consultation_price, average_rating, review_count, verification_status, doctor_translations(locale,title)"
+        "id, slug, public_name, photo_url, years_experience, consultation_price, average_rating, review_count, verification_status, doctor_translations(locale,title)"
       )
       .eq("status", "active")
       .order("average_rating", { ascending: false, nullsFirst: false })
@@ -349,7 +351,9 @@ export default async function DoctorsPage({ searchParams }: Props) {
           {
             id: doctor.id,
             slug: doctor.slug,
-            name: formatDoctorName(doctor.slug),
+            name:
+              doctor.public_name?.trim() ||
+              formatDoctorName(doctor.slug),
             title:
               localized(
                 doctor.doctor_translations,

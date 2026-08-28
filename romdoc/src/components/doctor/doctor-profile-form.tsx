@@ -19,6 +19,7 @@ import {
 } from "@/lib/i18n/app-locale";
 
 type DoctorProfileFormProps = {
+  initialPublicName: string;
   initialPhone: string;
   initialEmail: string;
 
@@ -40,7 +41,26 @@ type ApiResponse = {
   partialSuccess?: boolean;
 };
 
+const PUBLIC_NAME_COPY = {
+  ro: {
+    label: "Nume public",
+    help: "Numele afișat pacienților pe RomDoc. Modificarea lui actualizează automat și adresa profilului public.",
+    placeholder: "Dr. Ana Ionescu",
+  },
+  en: {
+    label: "Public name",
+    help: "The name shown to patients on RomDoc. Changing it also updates the public profile URL automatically.",
+    placeholder: "Dr. Ana Ionescu",
+  },
+  de: {
+    label: "Öffentlicher Name",
+    help: "Der Name, der Patienten auf RomDoc angezeigt wird. Eine Änderung aktualisiert automatisch auch die öffentliche Profil-URL.",
+    placeholder: "Dr. Ana Ionescu",
+  },
+} as const;
+
 export default function DoctorProfileForm({
+  initialPublicName,
   initialPhone,
   initialEmail,
   initialYearsExperience,
@@ -66,6 +86,14 @@ export default function DoctorProfileForm({
     startTransition,
   ] =
     useTransition();
+
+  const [
+    publicName,
+    setPublicName,
+  ] =
+    useState(
+      initialPublicName
+    );
 
   const [
     phone,
@@ -170,6 +198,9 @@ export default function DoctorProfileForm({
 
                 body:
                   JSON.stringify({
+                    publicName:
+                      publicName.trim(),
+
                     phone:
                       phone.trim() ||
                       null,
@@ -267,6 +298,38 @@ export default function DoctorProfileForm({
           )}
         </p>
       </div>
+
+      <label className="mt-6 block">
+        <span className="text-sm font-medium text-gray-700">
+          {PUBLIC_NAME_COPY[locale].label}
+        </span>
+
+        <input
+          type="text"
+          value={publicName}
+          onChange={(event) =>
+            setPublicName(
+              event.target.value
+            )
+          }
+          disabled={isPending}
+          required
+          minLength={2}
+          maxLength={200}
+          placeholder={
+            PUBLIC_NAME_COPY[locale]
+              .placeholder
+          }
+          className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#D97757] focus:ring-2 focus:ring-[#D97757]/20 disabled:opacity-60"
+        />
+
+        <span className="mt-2 block text-xs leading-5 text-gray-500">
+          {
+            PUBLIC_NAME_COPY[locale]
+              .help
+          }
+        </span>
+      </label>
 
       <div className="mt-6 grid gap-5 sm:grid-cols-2">
         <label className="block">

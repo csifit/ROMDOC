@@ -22,6 +22,7 @@ type DoctorTranslation = {
 type DoctorRelation = {
   id: string;
   slug: string;
+  public_name: string | null;
   doctor_translations: DoctorTranslation[] | null;
 };
 
@@ -63,7 +64,7 @@ function firstRelation<T>(
 }
 
 function doctorNameFromSlug(slug: string) {
-  return slug
+  return decodeURIComponent(slug)
     .split("-")
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
@@ -115,7 +116,7 @@ export default function ReviewsManagement() {
         return copy.reviews.labels.doctorUnavailable;
       }
 
-      return doctorNameFromSlug(doctor.slug);
+      return doctor.public_name?.trim() || doctorNameFromSlug(doctor.slug);
     },
     [copy.reviews.labels.doctorUnavailable]
   );

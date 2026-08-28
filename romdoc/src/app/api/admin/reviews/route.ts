@@ -72,6 +72,7 @@ export async function GET(request: NextRequest): Promise<Response> {
       doctors (
         id,
         slug,
+        public_name,
         doctor_translations (
           locale,
           title

@@ -41,6 +41,7 @@ type DoctorClinicRelation = {
 
 type DoctorMetadataRow = {
   slug: string;
+  public_name: string | null;
   doctor_translations:
     Translation[] | null;
   doctor_clinics:
@@ -373,6 +374,7 @@ getDoctorProfileMetadata({
     .from("doctors")
     .select(`
       slug,
+      public_name,
       doctor_translations (
         locale,
         title,
@@ -415,6 +417,7 @@ getDoctorProfileMetadata({
       | null;
 
   const doctorName =
+    doctor?.public_name?.trim() ||
     formatSlug(slug);
 
   const exactTranslation =

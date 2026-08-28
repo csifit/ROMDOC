@@ -111,6 +111,20 @@ function getRomanianServiceName(
   );
 }
 
+function formatDoctorNameFromSlug(
+  slug: string
+) {
+  return decodeURIComponent(slug)
+    .split("-")
+    .filter(Boolean)
+    .map(
+      (part) =>
+        part.charAt(0).toUpperCase() +
+        part.slice(1)
+    )
+    .join(" ");
+}
+
 function isSupportedCurrency(
   currency:
     string
@@ -203,6 +217,7 @@ export default async function DoctorProfilePage() {
       .select(`
         id,
         slug,
+        public_name,
         status,
         account_type,
         photo_url,
@@ -545,12 +560,16 @@ export default async function DoctorProfilePage() {
               null
             }
             doctorName={
-              displayName ||
-              doctor.slug
+              doctor.public_name?.trim() ||
+              formatDoctorNameFromSlug(doctor.slug)
             }
           />
 
           <DoctorProfileForm
+            initialPublicName={
+              doctor.public_name?.trim() ||
+              formatDoctorNameFromSlug(doctor.slug)
+            }
             initialPhone={
               doctor.phone ??
               ""

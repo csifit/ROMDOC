@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 type DoctorProfileRequestBody = {
+  publicName?: string | null;
   phone?: string | null;
   email?: string | null;
   yearsExperience?: number | null;
@@ -27,6 +28,83 @@ function normalizeOptionalText(
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
     value
+  );
+}
+
+function slugifyDoctorName(
+  value: string
+) {
+  return value
+    .normalize("NFD")
+    .replace(
+      /[\u0300-\u036f]/g,
+      ""
+    )
+    .replace(/ß/g, "ss")
+    .toLowerCase()
+    .replace(
+      /[^a-z0-9]+/g,
+      "-"
+    )
+    .replace(
+      /^-+|-+$/g,
+      ""
+    );
+}
+
+async function getAvailableDoctorSlug({
+  supabase,
+  doctorId,
+  publicName,
+}: {
+  supabase: Awaited<
+    ReturnType<typeof createClient>
+  >;
+  doctorId: string;
+  publicName: string;
+}) {
+  const baseSlug =
+    slugifyDoctorName(
+      publicName
+    ) || "doctor";
+
+  for (
+    let suffix = 1;
+    suffix <= 1000;
+    suffix += 1
+  ) {
+    const candidate =
+      suffix === 1
+        ? baseSlug
+        : `${baseSlug}-${suffix}`;
+
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("doctors")
+      .select("id")
+      .eq(
+        "slug",
+        candidate
+      )
+      .neq(
+        "id",
+        doctorId
+      )
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data) {
+      return candidate;
+    }
+  }
+
+  throw new Error(
+    "Nu a putut fi generată o adresă publică unică pentru medic."
   );
 }
 
@@ -102,7 +180,7 @@ async function getAuthenticatedDoctor() {
     error: doctorError,
   } = await supabase
     .from("doctors")
-    .select("id, slug, profile_id")
+    .select("id, slug, public_name, profile_id")
     .eq("profile_id", user.id)
     .maybeSingle();
 
@@ -155,6 +233,11 @@ export async function PATCH(
     const body =
       (await request.json()) as DoctorProfileRequestBody;
 
+    const publicName =
+      normalizeOptionalText(
+        body.publicName
+      );
+
     const phone =
       normalizeOptionalText(body.phone);
 
@@ -181,6 +264,22 @@ export async function PATCH(
       body.consultationPrice === undefined
         ? null
         : Number(body.consultationPrice);
+
+    if (
+      !publicName ||
+      publicName.length < 2 ||
+      publicName.length > 200
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Numele public trebuie să conțină între 2 și 200 de caractere.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
 
     if (
       phone &&
@@ -294,11 +393,50 @@ export async function PATCH(
       return errorResponse;
     }
 
+    let nextSlug =
+      doctor.slug;
+
+    if (
+      publicName !==
+      doctor.public_name
+    ) {
+      try {
+        nextSlug =
+          await getAvailableDoctorSlug({
+            supabase,
+            doctorId:
+              doctor.id,
+            publicName,
+          });
+      } catch (
+        slugError
+      ) {
+        console.error(
+          "Doctor public slug generation failed:",
+          slugError
+        );
+
+        return NextResponse.json(
+          {
+            error:
+              "Adresa publică a profilului nu a putut fi actualizată.",
+          },
+          {
+            status: 500,
+          }
+        );
+      }
+    }
+
     const {
       error: doctorUpdateError,
     } = await supabase
       .from("doctors")
       .update({
+        public_name:
+          publicName,
+        slug:
+          nextSlug,
         phone,
         email,
         years_experience:
@@ -366,6 +504,8 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
+      slug:
+        nextSlug,
     });
   } catch (error) {
     console.error(

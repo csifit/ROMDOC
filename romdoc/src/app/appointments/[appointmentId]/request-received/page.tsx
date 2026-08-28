@@ -24,6 +24,7 @@ import {
 
 type DoctorRelation = {
   slug: string;
+  public_name: string | null;
 };
 
 type ClinicTranslation = {
@@ -250,7 +251,7 @@ const COPY:
       downloadCalendar:
         ".ics-Datei herunterladen",
       addGoogleCalendar:
-        "Zu Google Kalender hinzufügen",
+        "Zu Google Kalender",
       doctorProfile:
         "Arztprofil ansehen",
       patientDashboard:
@@ -300,20 +301,10 @@ function first<T>(
 function formatNameFromSlug(
   slug: string
 ) {
-  return decodeURIComponent(
-    slug
-  )
+  return decodeURIComponent(slug)
     .split("-")
     .filter(Boolean)
-    .map(
-      (
-        part
-      ) =>
-        part
-          .charAt(0)
-          .toUpperCase() +
-        part.slice(1)
-    )
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 }
 
@@ -676,7 +667,8 @@ AppointmentRequestReceivedPage({
         notes,
         reschedule_reason,
         doctors (
-          slug
+          slug,
+          public_name
         ),
         clinics (
           formatted_address,
@@ -804,9 +796,8 @@ AppointmentRequestReceivedPage({
 
   const displayDoctorName =
     doctor
-      ? formatNameFromSlug(
-          doctor.slug
-        )
+      ? doctor.public_name?.trim() ||
+        formatNameFromSlug(doctor.slug)
       : locale === "de"
         ? "RomDoc-Arzt"
         : locale === "en"

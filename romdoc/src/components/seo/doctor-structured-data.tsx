@@ -55,6 +55,7 @@ type DoctorClinicRelation = {
 type DoctorRecord = {
   id: string;
   slug: string;
+  public_name: string | null;
   photo_url: string | null;
   phone: string | null;
   email: string | null;
@@ -149,9 +150,7 @@ function formatDoctorName(
     .split("-")
     .filter(Boolean)
     .map(
-      (
-        part
-      ) =>
+      (part) =>
         part
           .charAt(0)
           .toUpperCase() +
@@ -231,6 +230,7 @@ export default async function DoctorStructuredData({
     .select(`
       id,
       slug,
+      public_name,
       photo_url,
       phone,
       email,
@@ -329,9 +329,8 @@ export default async function DoctorStructuredData({
     ) as PublicReviewRow[];
 
   const doctorName =
-    formatDoctorName(
-      doctor.slug
-    );
+    doctor.public_name?.trim() ||
+    formatDoctorName(doctor.slug);
 
   const doctorTranslation =
     getTranslation(

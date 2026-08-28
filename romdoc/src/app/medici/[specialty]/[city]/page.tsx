@@ -27,6 +27,7 @@ type Translation = {
 type DoctorRow = {
   id: string;
   slug: string;
+  public_name: string | null;
   photo_url: string | null;
   years_experience: number | null;
   consultation_price: number | string | null;
@@ -37,12 +38,10 @@ type DoctorRow = {
 };
 
 function formatDoctorName(slug: string) {
-  return slug
+  return decodeURIComponent(slug)
     .split("-")
-    .map(
-      (part: string) =>
-        part.charAt(0).toUpperCase() + part.slice(1)
-    )
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 }
 
@@ -158,6 +157,7 @@ export default async function SpecialtyCityPage({
       .select(`
         id,
         slug,
+        public_name,
         photo_url,
         years_experience,
         consultation_price,
@@ -253,6 +253,10 @@ export default async function SpecialtyCityPage({
                   doctor.doctor_translations?.[0] ??
                   null;
 
+                const doctorName =
+                  doctor.public_name?.trim() ||
+                  formatDoctorName(doctor.slug);
+
                 return (
                   <article
                     key={doctor.id}
@@ -262,13 +266,13 @@ export default async function SpecialtyCityPage({
                       <div className="flex items-start gap-4">
                         <PublicDoctorPhoto
                           photoUrl={doctor.photo_url}
-                          doctorName={formatDoctorName(doctor.slug)}
+                          doctorName={doctorName}
                           size="medium"
                         />
 
                         <div>
                           <h2 className="text-2xl font-bold text-gray-900">
-                            {formatDoctorName(doctor.slug)}
+                            {doctorName}
                           </h2>
 
                           <p className="mt-2 text-gray-700">
