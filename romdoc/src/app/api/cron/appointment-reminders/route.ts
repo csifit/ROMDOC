@@ -306,7 +306,7 @@ export async function GET(
         patient_profile_id,
         doctors (
           slug,
-          profiles (
+          profiles!doctors_profile_id_fkey (
             first_name,
             last_name
           )
