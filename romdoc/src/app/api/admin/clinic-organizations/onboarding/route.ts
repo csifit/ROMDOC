@@ -11,6 +11,9 @@ import {
   validateAdminClinicOrganizationOnboardingInput,
 } from "@/lib/admin/clinic-organization-onboarding";
 import {
+  createAdminClinicOrganizationLocation,
+} from "@/lib/admin/create-clinic-organization-location";
+import {
   createClinicOrganizationInvitation,
 } from "@/lib/admin/create-clinic-organization-invitation";
 import {
@@ -246,6 +249,176 @@ export async function POST(
     );
   }
 
+  const {
+    data:
+      billingProfile,
+    error:
+      billingError,
+  } = await admin
+    .from(
+      "clinic_organization_billing_profiles"
+    )
+    .insert({
+      organization_id:
+        organization.id,
+      company_name:
+        input.billing
+          .companyName,
+      tax_id:
+        input.billing
+          .taxId,
+      trade_register_number:
+        input.billing
+          .tradeRegisterNumber,
+      billing_address:
+        input.billing
+          .billingAddress,
+      billing_city:
+        input.billing
+          .billingCity,
+      billing_county:
+        input.billing
+          .billingCounty,
+      billing_country:
+        input.billing
+          .billingCountry,
+      billing_email:
+        input.billing
+          .billingEmail,
+      is_vat_payer:
+        input.billing
+          .isVatPayer,
+      vat_number:
+        input.billing
+          .vatNumber,
+      created_by_profile_id:
+        authorization.profileId,
+      updated_by_profile_id:
+        authorization.profileId,
+    })
+    .select(`
+      organization_id,
+      company_name,
+      tax_id,
+      trade_register_number,
+      billing_address,
+      billing_city,
+      billing_county,
+      billing_country,
+      billing_email,
+      is_vat_payer,
+      vat_number
+    `)
+    .single();
+
+  if (
+    billingError ||
+    !billingProfile
+  ) {
+    console.error(
+      "Admin Clinic Organisation onboarding billing creation failed:",
+      billingError
+    );
+
+    return json(
+      {
+        success:
+          true,
+        organizationCreated:
+          true,
+        billingCreated:
+          false,
+        locationsCreated:
+          0,
+        invitationSent:
+          false,
+        organization,
+        code:
+          "clinic_organization_onboarding_billing_failed",
+        warning:
+          "Organizația a fost creată, dar datele de facturare nu au putut fi salvate. Invitația managerului nu a fost trimisă.",
+      },
+      201
+    );
+  }
+
+  const createdLocations:
+    Array<{
+      clinicId: string;
+      clinicSlug: string;
+      clinicStatus: string;
+      organizationClinicStatus: string;
+      linkedExisting: boolean;
+      formattedAddress: string;
+    }> =
+      [];
+
+  for (
+    let index = 0;
+    index <
+    input.locations.length;
+    index += 1
+  ) {
+    const location =
+      input.locations[
+        index
+      ];
+
+    try {
+      const createdLocation =
+        await createAdminClinicOrganizationLocation({
+          organizationId:
+            organization.id,
+          actorProfileId:
+            authorization.profileId,
+          locale:
+            input.invitationLocale,
+          input:
+            location,
+        });
+
+      createdLocations.push(
+        createdLocation
+      );
+    } catch (
+      locationError
+    ) {
+      console.error(
+        `Admin Clinic Organisation onboarding location ${index + 1} failed:`,
+        locationError
+      );
+
+      return json(
+        {
+          success:
+            true,
+          organizationCreated:
+            true,
+          billingCreated:
+            true,
+          locationsCreated:
+            createdLocations.length,
+          invitationSent:
+            false,
+          organization,
+          billingProfile,
+          locations:
+            createdLocations,
+          code:
+            "clinic_organization_onboarding_location_failed",
+          warning:
+            `Organizația și facturarea au fost create, dar locația ${index + 1} nu a putut fi adăugată. Invitația managerului nu a fost trimisă. ${
+              locationError instanceof
+                Error
+                ? locationError.message
+                : ""
+            }`.trim(),
+        },
+        201
+      );
+    }
+  }
+
   const invitationValidation =
     validateClinicOrganizationInvitationInput({
       organizationName:
@@ -272,7 +445,7 @@ export async function POST(
     !invitationValidation.ok
   ) {
     console.error(
-      "Admin Clinic Organisation invitation validation failed after organization creation:",
+      "Admin Clinic Organisation invitation validation failed after full organization setup:",
       invitationValidation
     );
 
@@ -282,13 +455,20 @@ export async function POST(
           true,
         organizationCreated:
           true,
+        billingCreated:
+          true,
+        locationsCreated:
+          createdLocations.length,
         invitationSent:
           false,
         organization,
+        billingProfile,
+        locations:
+          createdLocations,
         code:
           "clinic_organization_onboarding_invitation_validation_failed",
         warning:
-          "Organizația a fost creată, dar invitația managerului nu a putut fi pregătită.",
+          "Organizația, facturarea și locațiile au fost create, dar invitația managerului nu a putut fi pregătită.",
       },
       201
     );
@@ -311,16 +491,24 @@ export async function POST(
           true,
         organizationCreated:
           true,
+        billingCreated:
+          true,
+        locationsCreated:
+          createdLocations.length,
         invitationSent:
           false,
         organization,
+        billingProfile,
+        locations:
+          createdLocations,
         invitationId:
-          invitationResult.invitationId ??
+          invitationResult
+            .invitationId ??
           null,
         code:
           invitationResult.code,
         warning:
-          `Organizația a fost creată, dar fluxul invitației managerului nu a fost finalizat. ${invitationResult.error}`,
+          `Organizația, facturarea și locațiile au fost create, dar fluxul invitației managerului nu a fost finalizat. ${invitationResult.error}`,
       },
       201
     );
@@ -332,15 +520,23 @@ export async function POST(
         true,
       organizationCreated:
         true,
+      billingCreated:
+        true,
+      locationsCreated:
+        createdLocations.length,
       invitationSent:
         true,
       organization,
+      billingProfile,
+      locations:
+        createdLocations,
       invitation:
-        invitationResult.invitation,
+        invitationResult
+          .invitation,
       code:
         "clinic_organization_onboarding_created",
       message:
-        "Organizația a fost creată și invitația managerului a fost trimisă.",
+        "Organizația, facturarea și locațiile au fost create, iar invitația managerului a fost trimisă.",
     },
     201
   );

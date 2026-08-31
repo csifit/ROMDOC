@@ -11,12 +11,43 @@ import {
   useRouter,
 } from "next/navigation";
 
+import GooglePlaceAutocomplete, {
+  type GooglePlaceAutocompleteCopy,
+} from "@/components/clinic/google-place-autocomplete";
 import type {
   AppLocale,
 } from "@/lib/i18n/app-locale";
+import type {
+  GoogleClinicAddress,
+} from "@/lib/locations/google-address";
 
 type Props = {
   locale: AppLocale;
+};
+
+type BillingState = {
+  companyName: string;
+  taxId: string;
+  tradeRegisterNumber: string;
+  billingAddress: string;
+  billingCity: string;
+  billingCounty: string;
+  billingCountry: string;
+  billingEmail: string;
+  isVatPayer: boolean;
+  vatNumber: string;
+};
+
+type LocationState = {
+  clientId: string;
+  name: string;
+  placeId: string;
+  formattedAddress: string;
+  addressLine2: string;
+  phone: string;
+  email: string;
+  website: string;
+  description: string;
 };
 
 type FormState = {
@@ -30,9 +61,13 @@ type FormState = {
   managerEmail: string;
   managerPhone: string;
   invitationLocale:
-    "ro" | "en" | "de";
+    | "ro"
+    | "en"
+    | "de";
   trialMonths: number;
   personalMessage: string;
+  billing: BillingState;
+  locations: LocationState[];
 };
 
 type ApiResponse = {
@@ -40,11 +75,9 @@ type ApiResponse = {
   warning?: string;
   message?: string;
   organizationCreated?: boolean;
+  billingCreated?: boolean;
+  locationsCreated?: number;
   invitationSent?: boolean;
-  organization?: {
-    id: string;
-    name: string;
-  };
 };
 
 const COPY = {
@@ -54,13 +87,13 @@ const COPY = {
     cardTitle:
       "Adaugă organizație clinică",
     cardDescription:
-      "Creează organizația și trimite invitația inițială managerului. Facturarea și locațiile se configurează în pasul următor.",
+      "Creează organizația, facturarea și locațiile, apoi trimite invitația inițială managerului.",
     cardAction:
       "Adaugă organizație",
     modalTitle:
       "Creează organizație clinică",
     modalDescription:
-      "Administratorul pregătește contul organizației, iar managerul își stabilește singur parola prin invitația securizată.",
+      "Configurează contul organizației înainte ca managerul să își activeze accesul.",
     organizationSection:
       "Organizație",
     organizationName:
@@ -70,7 +103,7 @@ const COPY = {
     contactSection:
       "Contact organizație",
     contactNote:
-      "Câmpurile sunt opționale. Dacă rămân necompletate, RomDoc folosește datele managerului inițial.",
+      "Dacă rămân necompletate, RomDoc folosește datele managerului inițial.",
     contactName:
       "Persoană de contact",
     contactEmail:
@@ -87,6 +120,50 @@ const COPY = {
       "E-mail cont",
     managerPhone:
       "Telefon",
+    billingSection:
+      "Date de facturare",
+    companyName:
+      "Denumire juridică",
+    taxId:
+      "Cod fiscal / CUI",
+    tradeRegisterNumber:
+      "Număr Registrul Comerțului",
+    billingAddress:
+      "Adresă de facturare",
+    billingCity:
+      "Localitate",
+    billingCounty:
+      "Județ / regiune",
+    billingCountry:
+      "Țară",
+    billingEmail:
+      "E-mail facturare",
+    vatPayer:
+      "Plătitor de TVA",
+    vatNumber:
+      "Cod TVA",
+    locationsSection:
+      "Locațiile organizației",
+    locationsDescription:
+      "Adaugă cel puțin o locație. Adresele sunt verificate prin Google Places și sunt aprobate direct deoarece sunt create de Administrator.",
+    location:
+      "Locație",
+    locationName:
+      "Nume locație",
+    addressLine2:
+      "Etaj / cabinet / detalii adresă",
+    locationPhone:
+      "Telefon locație",
+    locationEmail:
+      "E-mail locație",
+    locationWebsite:
+      "Website locație",
+    locationDescription:
+      "Descriere",
+    addLocation:
+      "Adaugă altă locație",
+    removeLocation:
+      "Elimină locația",
     invitationSection:
       "Invitație și perioadă de test",
     language:
@@ -105,24 +182,22 @@ const COPY = {
       "Mesaj personalizat",
     messagePlaceholder:
       "Opțional: un scurt mesaj pentru organizație.",
-    nextStep:
-      "Datele de facturare și locațiile nu sunt create în acest pas. Acestea urmează în Step 113D.",
     cancel:
       "Anulează",
     create:
-      "Creează organizația și invită managerul",
+      "Finalizează onboardingul și invită managerul",
     creating:
       "Se creează...",
     close:
       "Închide",
     required:
-      "Completează câmpurile obligatorii.",
+      "Completează toate câmpurile obligatorii și selectează adresa Google pentru fiecare locație.",
     failed:
-      "Organizația nu a putut fi creată.",
+      "Onboardingul organizației nu a putut fi finalizat.",
     success:
-      "Organizația a fost creată și invitația managerului a fost trimisă.",
+      "Organizația, facturarea și locațiile au fost create, iar invitația managerului a fost trimisă.",
     partial:
-      "Organizația a fost creată, dar fluxul invitației managerului nu a fost finalizat.",
+      "O parte din onboarding a fost salvată, dar fluxul nu a fost finalizat.",
   },
   en: {
     eyebrow:
@@ -130,13 +205,13 @@ const COPY = {
     cardTitle:
       "Add clinic organisation",
     cardDescription:
-      "Create the organisation and send the first manager invitation. Billing and locations are configured in the next step.",
+      "Create the organisation, billing and locations, then send the initial manager invitation.",
     cardAction:
       "Add organisation",
     modalTitle:
       "Create clinic organisation",
     modalDescription:
-      "The Administrator prepares the organisation account, while the manager sets their own password through the secure invitation.",
+      "Configure the organisation account before the manager activates access.",
     organizationSection:
       "Organisation",
     organizationName:
@@ -146,7 +221,7 @@ const COPY = {
     contactSection:
       "Organisation contact",
     contactNote:
-      "These fields are optional. If left empty, RomDoc uses the initial manager's details.",
+      "If left empty, RomDoc uses the initial manager's details.",
     contactName:
       "Contact person",
     contactEmail:
@@ -163,6 +238,50 @@ const COPY = {
       "Account email",
     managerPhone:
       "Phone",
+    billingSection:
+      "Billing details",
+    companyName:
+      "Legal company name",
+    taxId:
+      "Tax ID",
+    tradeRegisterNumber:
+      "Trade-register number",
+    billingAddress:
+      "Billing address",
+    billingCity:
+      "City",
+    billingCounty:
+      "County / region",
+    billingCountry:
+      "Country",
+    billingEmail:
+      "Billing email",
+    vatPayer:
+      "VAT payer",
+    vatNumber:
+      "VAT number",
+    locationsSection:
+      "Organisation locations",
+    locationsDescription:
+      "Add at least one location. Addresses are verified through Google Places and approved directly because they are created by an Administrator.",
+    location:
+      "Location",
+    locationName:
+      "Location name",
+    addressLine2:
+      "Floor / suite / address details",
+    locationPhone:
+      "Location phone",
+    locationEmail:
+      "Location email",
+    locationWebsite:
+      "Location website",
+    locationDescription:
+      "Description",
+    addLocation:
+      "Add another location",
+    removeLocation:
+      "Remove location",
     invitationSection:
       "Invitation and trial",
     language:
@@ -181,24 +300,22 @@ const COPY = {
       "Personal message",
     messagePlaceholder:
       "Optional: a short message for the organisation.",
-    nextStep:
-      "Billing details and locations are not created in this step. They follow in Step 113D.",
     cancel:
       "Cancel",
     create:
-      "Create organisation and invite manager",
+      "Complete onboarding and invite manager",
     creating:
       "Creating...",
     close:
       "Close",
     required:
-      "Complete the required fields.",
+      "Complete all required fields and select a Google address for every location.",
     failed:
-      "The organisation could not be created.",
+      "The organisation onboarding could not be completed.",
     success:
-      "The organisation was created and the manager invitation was sent.",
+      "The organisation, billing and locations were created and the manager invitation was sent.",
     partial:
-      "The organisation was created, but the manager invitation workflow was not completed.",
+      "Part of the onboarding was saved, but the workflow was not completed.",
   },
   de: {
     eyebrow:
@@ -206,13 +323,13 @@ const COPY = {
     cardTitle:
       "Klinikorganisation hinzufügen",
     cardDescription:
-      "Organisation erstellen und die erste Manager-Einladung senden. Rechnungsdaten und Standorte folgen im nächsten Schritt.",
+      "Organisation, Rechnungsdaten und Standorte erstellen und danach den ersten Manager einladen.",
     cardAction:
       "Organisation hinzufügen",
     modalTitle:
       "Klinikorganisation erstellen",
     modalDescription:
-      "Der Administrator bereitet das Organisationskonto vor. Der Manager legt sein Passwort selbst über die sichere Einladung fest.",
+      "Konfigurieren Sie das Organisationskonto, bevor der Manager seinen Zugang aktiviert.",
     organizationSection:
       "Organisation",
     organizationName:
@@ -222,7 +339,7 @@ const COPY = {
     contactSection:
       "Organisationskontakt",
     contactNote:
-      "Diese Felder sind optional. Wenn sie leer bleiben, verwendet RomDoc die Daten des ersten Managers.",
+      "Wenn die Felder leer bleiben, verwendet RomDoc die Daten des ersten Managers.",
     contactName:
       "Kontaktperson",
     contactEmail:
@@ -239,6 +356,50 @@ const COPY = {
       "Konto-E-Mail",
     managerPhone:
       "Telefon",
+    billingSection:
+      "Rechnungsdaten",
+    companyName:
+      "Rechtlicher Firmenname",
+    taxId:
+      "Steuernummer",
+    tradeRegisterNumber:
+      "Handelsregisternummer",
+    billingAddress:
+      "Rechnungsadresse",
+    billingCity:
+      "Ort",
+    billingCounty:
+      "Kreis / Region",
+    billingCountry:
+      "Land",
+    billingEmail:
+      "Rechnungs-E-Mail",
+    vatPayer:
+      "Umsatzsteuerpflichtig",
+    vatNumber:
+      "USt-IdNr.",
+    locationsSection:
+      "Standorte der Organisation",
+    locationsDescription:
+      "Fügen Sie mindestens einen Standort hinzu. Adressen werden über Google Places geprüft und direkt freigegeben, da sie von einem Administrator erstellt werden.",
+    location:
+      "Standort",
+    locationName:
+      "Name des Standorts",
+    addressLine2:
+      "Etage / Praxis / Adresszusatz",
+    locationPhone:
+      "Telefon des Standorts",
+    locationEmail:
+      "E-Mail des Standorts",
+    locationWebsite:
+      "Website des Standorts",
+    locationDescription:
+      "Beschreibung",
+    addLocation:
+      "Weiteren Standort hinzufügen",
+    removeLocation:
+      "Standort entfernen",
     invitationSection:
       "Einladung und Testphase",
     language:
@@ -257,26 +418,158 @@ const COPY = {
       "Persönliche Nachricht",
     messagePlaceholder:
       "Optional: eine kurze Nachricht für die Organisation.",
-    nextStep:
-      "Rechnungsdaten und Standorte werden in diesem Schritt noch nicht erstellt. Sie folgen in Step 113D.",
     cancel:
       "Abbrechen",
     create:
-      "Organisation erstellen und Manager einladen",
+      "Onboarding abschließen und Manager einladen",
     creating:
       "Wird erstellt...",
     close:
       "Schließen",
     required:
-      "Bitte die Pflichtfelder ausfüllen.",
+      "Bitte alle Pflichtfelder ausfüllen und für jeden Standort eine Google-Adresse auswählen.",
     failed:
-      "Die Organisation konnte nicht erstellt werden.",
+      "Das Onboarding der Organisation konnte nicht abgeschlossen werden.",
     success:
-      "Die Organisation wurde erstellt und die Manager-Einladung wurde gesendet.",
+      "Organisation, Rechnungsdaten und Standorte wurden erstellt und die Manager-Einladung wurde gesendet.",
     partial:
-      "Die Organisation wurde erstellt, aber der Einladungsprozess für den Manager wurde nicht abgeschlossen.",
+      "Ein Teil des Onboardings wurde gespeichert, der Vorgang wurde jedoch nicht vollständig abgeschlossen.",
   },
 } as const;
+
+const GOOGLE_COPY:
+  Record<
+    AppLocale,
+    GooglePlaceAutocompleteCopy
+  > = {
+    ro: {
+      placeholder:
+        "Caută adresa locației",
+      importUnavailable:
+        "Google Maps nu este disponibil.",
+      elementUnavailable:
+        "Google Places nu a furnizat selectorul de adresă.",
+      predictionMissing:
+        "Google nu a returnat sugestia selectată.",
+      placeIdMissing:
+        "Google nu a returnat identificatorul adresei.",
+      verifyError:
+        "Adresa nu a putut fi verificată.",
+      loadError:
+        "Google Places nu a putut fi încărcat.",
+      label:
+        "Adresa locației",
+      help:
+        "Selectează o adresă din lista Google",
+      loading:
+        "Se încarcă Google Places...",
+      verifying:
+        "Adresa este verificată...",
+      selected:
+        "Adresă selectată",
+      city:
+        "Oraș",
+      region:
+        "Regiune",
+      postalCode:
+        "Cod poștal",
+      country:
+        "Țară",
+    },
+    en: {
+      placeholder:
+        "Search location address",
+      importUnavailable:
+        "Google Maps is unavailable.",
+      elementUnavailable:
+        "Google Places did not provide the address selector.",
+      predictionMissing:
+        "Google did not return the selected suggestion.",
+      placeIdMissing:
+        "Google did not return the address identifier.",
+      verifyError:
+        "The address could not be verified.",
+      loadError:
+        "Google Places could not be loaded.",
+      label:
+        "Location address",
+      help:
+        "Select an address from Google",
+      loading:
+        "Loading Google Places...",
+      verifying:
+        "Verifying address...",
+      selected:
+        "Selected address",
+      city:
+        "City",
+      region:
+        "Region",
+      postalCode:
+        "Postal code",
+      country:
+        "Country",
+    },
+    de: {
+      placeholder:
+        "Standortadresse suchen",
+      importUnavailable:
+        "Google Maps ist nicht verfügbar.",
+      elementUnavailable:
+        "Google Places hat die Adressauswahl nicht bereitgestellt.",
+      predictionMissing:
+        "Google hat den ausgewählten Vorschlag nicht zurückgegeben.",
+      placeIdMissing:
+        "Google hat keine Adress-ID zurückgegeben.",
+      verifyError:
+        "Die Adresse konnte nicht überprüft werden.",
+      loadError:
+        "Google Places konnte nicht geladen werden.",
+      label:
+        "Standortadresse",
+      help:
+        "Adresse aus Google auswählen",
+      loading:
+        "Google Places wird geladen...",
+      verifying:
+        "Adresse wird überprüft...",
+      selected:
+        "Ausgewählte Adresse",
+      city:
+        "Ort",
+      region:
+        "Region",
+      postalCode:
+        "Postleitzahl",
+      country:
+        "Land",
+    },
+  };
+
+function newLocation(
+  clientId =
+    crypto.randomUUID()
+): LocationState {
+  return {
+    clientId,
+    name:
+      "",
+    placeId:
+      "",
+    formattedAddress:
+      "",
+    addressLine2:
+      "",
+    phone:
+      "",
+    email:
+      "",
+    website:
+      "",
+    description:
+      "",
+  };
+}
 
 function initialForm(
   locale: AppLocale
@@ -306,6 +599,33 @@ function initialForm(
       3,
     personalMessage:
       "",
+    billing: {
+      companyName:
+        "",
+      taxId:
+        "",
+      tradeRegisterNumber:
+        "",
+      billingAddress:
+        "",
+      billingCity:
+        "",
+      billingCounty:
+        "",
+      billingCountry:
+        "România",
+      billingEmail:
+        "",
+      isVatPayer:
+        false,
+      vatNumber:
+        "",
+    },
+    locations: [
+      newLocation(
+        "location-1"
+      ),
+    ],
   };
 }
 
@@ -319,9 +639,14 @@ function Field({
 }: {
   label: string;
   value: string;
-  onChange: (value: string) => void;
+  onChange:
+    (value: string) =>
+      void;
   required?: boolean;
-  type?: "text" | "email" | "tel" | "url";
+  type?:
+    | "text"
+    | "email"
+    | "tel";
   placeholder?: string;
 }) {
   return (
@@ -469,12 +794,97 @@ export default function AdminClinicOrganizationOnboarding({
     );
   }
 
+  function updateBilling<
+    K extends keyof BillingState,
+  >(
+    key: K,
+    value: BillingState[K]
+  ) {
+    setForm(
+      (
+        current
+      ) => ({
+        ...current,
+        billing: {
+          ...current.billing,
+          [key]:
+            value,
+        },
+      })
+    );
+  }
+
+  function updateLocation(
+    clientId: string,
+    patch:
+      Partial<LocationState>
+  ) {
+    setForm(
+      (
+        current
+      ) => ({
+        ...current,
+        locations:
+          current.locations.map(
+            (
+              location
+            ) =>
+              location.clientId ===
+              clientId
+                ? {
+                    ...location,
+                    ...patch,
+                  }
+                : location
+          ),
+      })
+    );
+  }
+
+  function addLocation() {
+    setForm(
+      (
+        current
+      ) => ({
+        ...current,
+        locations: [
+          ...current.locations,
+          newLocation(),
+        ],
+      })
+    );
+  }
+
+  function removeLocation(
+    clientId: string
+  ) {
+    setForm(
+      (
+        current
+      ) => ({
+        ...current,
+        locations:
+          current.locations.length <=
+          1
+            ? current.locations
+            : current.locations.filter(
+                (
+                  location
+                ) =>
+                  location.clientId !==
+                  clientId
+              ),
+      })
+    );
+  }
+
   function openDialog() {
     setForm(
       initialForm(
         locale
       )
     );
+
     setError("");
     setNotice(
       null
@@ -484,13 +894,7 @@ export default function AdminClinicOrganizationOnboarding({
     );
   }
 
-  async function handleSubmit(
-    event:
-      FormEvent<HTMLFormElement>
-  ) {
-    event.preventDefault();
-    setError("");
-
+  function hasRequiredFields() {
     if (
       !form
         .organizationName
@@ -505,6 +909,70 @@ export default function AdminClinicOrganizationOnboarding({
         .managerEmail
         .trim()
     ) {
+      return false;
+    }
+
+    const billing =
+      form.billing;
+
+    if (
+      !billing
+        .companyName
+        .trim() ||
+      !billing
+        .taxId
+        .trim() ||
+      !billing
+        .billingAddress
+        .trim() ||
+      !billing
+        .billingCity
+        .trim() ||
+      !billing
+        .billingCounty
+        .trim() ||
+      !billing
+        .billingCountry
+        .trim() ||
+      !billing
+        .billingEmail
+        .trim() ||
+      (
+        billing
+          .isVatPayer &&
+        !billing
+          .vatNumber
+          .trim()
+      )
+    ) {
+      return false;
+    }
+
+    return form.locations.every(
+      (
+        location
+      ) =>
+        Boolean(
+          location.name
+            .trim()
+        ) &&
+        Boolean(
+          location.placeId
+            .trim()
+        )
+    );
+  }
+
+  async function handleSubmit(
+    event:
+      FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+    setError("");
+
+    if (
+      !hasRequiredFields()
+    ) {
       setError(
         copy.required
       );
@@ -516,6 +984,21 @@ export default function AdminClinicOrganizationOnboarding({
     );
 
     try {
+      const payload = {
+        ...form,
+        locations:
+          form.locations.map(
+            ({
+              clientId:
+                _clientId,
+              formattedAddress:
+                _formattedAddress,
+              ...location
+            }) =>
+              location
+          ),
+      };
+
       const response =
         await fetch(
           "/api/admin/clinic-organizations/onboarding",
@@ -528,7 +1011,7 @@ export default function AdminClinicOrganizationOnboarding({
             },
             body:
               JSON.stringify(
-                form
+                payload
               ),
           }
         );
@@ -546,17 +1029,26 @@ export default function AdminClinicOrganizationOnboarding({
         );
       }
 
-      const invitationSent =
+      const completed =
+        result.organizationCreated ===
+          true &&
+        result.billingCreated ===
+          true &&
+        (
+          result.locationsCreated ??
+          0
+        ) ===
+          form.locations.length &&
         result.invitationSent ===
-        true;
+          true;
 
       setNotice({
         type:
-          invitationSent
+          completed
             ? "success"
             : "warning",
         text:
-          invitationSent
+          completed
             ? result.message ??
               copy.success
             : result.warning ??
@@ -658,7 +1150,7 @@ export default function AdminClinicOrganizationOnboarding({
             role="dialog"
             aria-modal="true"
             aria-labelledby="admin-clinic-organization-onboarding-title"
-            className="relative max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-2xl sm:p-[34px]"
+            className="relative max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-[21px] border border-gray-200 bg-white p-[21px] shadow-2xl sm:p-[34px]"
           >
             <div className="flex items-start justify-between gap-[13px]">
               <div>
@@ -677,7 +1169,7 @@ export default function AdminClinicOrganizationOnboarding({
                   }
                 </h2>
 
-                <p className="mt-[8px] max-w-2xl text-sm leading-6 text-gray-600">
+                <p className="mt-[8px] max-w-3xl text-sm leading-6 text-gray-600">
                   {
                     copy.modalDescription
                   }
@@ -910,6 +1402,472 @@ export default function AdminClinicOrganizationOnboarding({
               <fieldset className="rounded-[13px] border border-gray-200 p-[13px] sm:p-[21px]">
                 <legend className="px-[5px] text-sm font-bold text-gray-900">
                   {
+                    copy.billingSection
+                  }
+                </legend>
+
+                <div className="grid gap-[13px] md:grid-cols-2">
+                  <Field
+                    label={
+                      copy.companyName
+                    }
+                    required
+                    value={
+                      form.billing
+                        .companyName
+                    }
+                    onChange={(
+                      value
+                    ) =>
+                      updateBilling(
+                        "companyName",
+                        value
+                      )
+                    }
+                  />
+
+                  <Field
+                    label={
+                      copy.taxId
+                    }
+                    required
+                    value={
+                      form.billing
+                        .taxId
+                    }
+                    onChange={(
+                      value
+                    ) =>
+                      updateBilling(
+                        "taxId",
+                        value
+                      )
+                    }
+                  />
+
+                  <Field
+                    label={
+                      copy.tradeRegisterNumber
+                    }
+                    value={
+                      form.billing
+                        .tradeRegisterNumber
+                    }
+                    onChange={(
+                      value
+                    ) =>
+                      updateBilling(
+                        "tradeRegisterNumber",
+                        value
+                      )
+                    }
+                  />
+
+                  <Field
+                    label={
+                      copy.billingEmail
+                    }
+                    required
+                    type="email"
+                    value={
+                      form.billing
+                        .billingEmail
+                    }
+                    onChange={(
+                      value
+                    ) =>
+                      updateBilling(
+                        "billingEmail",
+                        value
+                      )
+                    }
+                  />
+
+                  <div className="md:col-span-2">
+                    <Field
+                      label={
+                        copy.billingAddress
+                      }
+                      required
+                      value={
+                        form.billing
+                          .billingAddress
+                      }
+                      onChange={(
+                        value
+                      ) =>
+                        updateBilling(
+                          "billingAddress",
+                          value
+                        )
+                      }
+                    />
+                  </div>
+
+                  <Field
+                    label={
+                      copy.billingCity
+                    }
+                    required
+                    value={
+                      form.billing
+                        .billingCity
+                    }
+                    onChange={(
+                      value
+                    ) =>
+                      updateBilling(
+                        "billingCity",
+                        value
+                      )
+                    }
+                  />
+
+                  <Field
+                    label={
+                      copy.billingCounty
+                    }
+                    required
+                    value={
+                      form.billing
+                        .billingCounty
+                    }
+                    onChange={(
+                      value
+                    ) =>
+                      updateBilling(
+                        "billingCounty",
+                        value
+                      )
+                    }
+                  />
+
+                  <Field
+                    label={
+                      copy.billingCountry
+                    }
+                    required
+                    value={
+                      form.billing
+                        .billingCountry
+                    }
+                    onChange={(
+                      value
+                    ) =>
+                      updateBilling(
+                        "billingCountry",
+                        value
+                      )
+                    }
+                  />
+
+                  <Field
+                    label={
+                      copy.vatNumber
+                    }
+                    required={
+                      form.billing
+                        .isVatPayer
+                    }
+                    value={
+                      form.billing
+                        .vatNumber
+                    }
+                    onChange={(
+                      value
+                    ) =>
+                      updateBilling(
+                        "vatNumber",
+                        value
+                      )
+                    }
+                  />
+                </div>
+
+                <label className="mt-[13px] flex items-center gap-[8px] text-sm font-semibold text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={
+                      form.billing
+                        .isVatPayer
+                    }
+                    onChange={(
+                      event:
+                        ChangeEvent<HTMLInputElement>
+                    ) =>
+                      updateBilling(
+                        "isVatPayer",
+                        event
+                          .target
+                          .checked
+                      )
+                    }
+                    className="h-4 w-4"
+                  />
+
+                  {
+                    copy.vatPayer
+                  }
+                </label>
+              </fieldset>
+
+              <fieldset className="rounded-[13px] border border-gray-200 p-[13px] sm:p-[21px]">
+                <legend className="px-[5px] text-sm font-bold text-gray-900">
+                  {
+                    copy.locationsSection
+                  }
+                </legend>
+
+                <p className="mb-[13px] text-xs leading-5 text-gray-500">
+                  {
+                    copy.locationsDescription
+                  }
+                </p>
+
+                <div className="space-y-[21px]">
+                  {form.locations.map(
+                    (
+                      location,
+                      index
+                    ) => (
+                      <section
+                        key={
+                          location.clientId
+                        }
+                        className="rounded-[13px] border border-gray-200 bg-[#F0EEE9] p-[13px] sm:p-[21px]"
+                      >
+                        <div className="flex items-center justify-between gap-[13px]">
+                          <h3 className="font-bold text-gray-900">
+                            {
+                              copy.location
+                            }{" "}
+                            {index +
+                              1}
+                          </h3>
+
+                          {form
+                            .locations
+                            .length >
+                          1 ? (
+                            <button
+                              type="button"
+                              disabled={
+                                isSaving
+                              }
+                              onClick={() =>
+                                removeLocation(
+                                  location.clientId
+                                )
+                              }
+                              className="romdoc-focus-ring rounded-[8px] border border-red-200 bg-white px-[10px] py-[5px] text-xs font-semibold text-red-700 hover:bg-red-50"
+                            >
+                              {
+                                copy.removeLocation
+                              }
+                            </button>
+                          ) : null}
+                        </div>
+
+                        <div className="mt-[13px] grid gap-[13px] md:grid-cols-2">
+                          <Field
+                            label={
+                              copy.locationName
+                            }
+                            required
+                            value={
+                              location.name
+                            }
+                            onChange={(
+                              value
+                            ) =>
+                              updateLocation(
+                                location.clientId,
+                                {
+                                  name:
+                                    value,
+                                }
+                              )
+                            }
+                          />
+
+                          <Field
+                            label={
+                              copy.addressLine2
+                            }
+                            value={
+                              location.addressLine2
+                            }
+                            onChange={(
+                              value
+                            ) =>
+                              updateLocation(
+                                location.clientId,
+                                {
+                                  addressLine2:
+                                    value,
+                                }
+                              )
+                            }
+                          />
+                        </div>
+
+                        <div className="mt-[13px] rounded-[13px] bg-white p-[13px]">
+                          <GooglePlaceAutocomplete
+                            disabled={
+                              isSaving
+                            }
+                            locale={
+                              locale
+                            }
+                            copy={
+                              GOOGLE_COPY[
+                                locale
+                              ]
+                            }
+                            onAddressSelected={(
+                              address:
+                                GoogleClinicAddress
+                            ) =>
+                              updateLocation(
+                                location.clientId,
+                                {
+                                  placeId:
+                                    address.placeId,
+                                  formattedAddress:
+                                    address.formattedAddress,
+                                }
+                              )
+                            }
+                          />
+                        </div>
+
+                        <div className="mt-[13px] grid gap-[13px] md:grid-cols-3">
+                          <Field
+                            label={
+                              copy.locationPhone
+                            }
+                            type="tel"
+                            value={
+                              location.phone
+                            }
+                            onChange={(
+                              value
+                            ) =>
+                              updateLocation(
+                                location.clientId,
+                                {
+                                  phone:
+                                    value,
+                                }
+                              )
+                            }
+                          />
+
+                          <Field
+                            label={
+                              copy.locationEmail
+                            }
+                            type="email"
+                            value={
+                              location.email
+                            }
+                            onChange={(
+                              value
+                            ) =>
+                              updateLocation(
+                                location.clientId,
+                                {
+                                  email:
+                                    value,
+                                }
+                              )
+                            }
+                          />
+
+                          <Field
+                            label={
+                              copy.locationWebsite
+                            }
+                            value={
+                              location.website
+                            }
+                            placeholder="https://"
+                            onChange={(
+                              value
+                            ) =>
+                              updateLocation(
+                                location.clientId,
+                                {
+                                  website:
+                                    value,
+                                }
+                              )
+                            }
+                          />
+                        </div>
+
+                        <label className="mt-[13px] block">
+                          <span className="text-sm font-semibold text-gray-700">
+                            {
+                              copy.locationDescription
+                            }
+                          </span>
+
+                          <textarea
+                            rows={3}
+                            maxLength={
+                              3000
+                            }
+                            value={
+                              location.description
+                            }
+                            onChange={(
+                              event:
+                                ChangeEvent<HTMLTextAreaElement>
+                            ) =>
+                              updateLocation(
+                                location.clientId,
+                                {
+                                  description:
+                                    event
+                                      .target
+                                      .value,
+                                }
+                              )
+                            }
+                            className="romdoc-focus-ring mt-[5px] w-full rounded-[10px] border border-gray-300 bg-white px-[13px] py-[13px] text-gray-900"
+                          />
+                        </label>
+                      </section>
+                    )
+                  )}
+                </div>
+
+                {form
+                  .locations
+                  .length <
+                10 ? (
+                  <button
+                    type="button"
+                    disabled={
+                      isSaving
+                    }
+                    onClick={
+                      addLocation
+                    }
+                    className="romdoc-focus-ring mt-[13px] rounded-[10px] border border-[#036661] bg-white px-[13px] py-[8px] text-sm font-semibold text-[#036661] transition hover:bg-[#036661] hover:text-white"
+                  >
+                    +{" "}
+                    {
+                      copy.addLocation
+                    }
+                  </button>
+                ) : null}
+              </fieldset>
+
+              <fieldset className="rounded-[13px] border border-gray-200 p-[13px] sm:p-[21px]">
+                <legend className="px-[5px] text-sm font-bold text-gray-900">
+                  {
                     copy.invitationSection
                   }
                 </legend>
@@ -985,11 +1943,13 @@ export default function AdminClinicOrganizationOnboarding({
                           copy.month1
                         }
                       </option>
+
                       <option value={2}>
                         {
                           copy.month2
                         }
                       </option>
+
                       <option value={3}>
                         {
                           copy.month3
@@ -1012,6 +1972,7 @@ export default function AdminClinicOrganizationOnboarding({
                         copy.message
                       }
                     </span>
+
                     <span className="text-xs font-normal text-gray-500">
                       {
                         form.personalMessage.length
@@ -1046,12 +2007,6 @@ export default function AdminClinicOrganizationOnboarding({
                   />
                 </label>
               </fieldset>
-
-              <div className="rounded-[13px] border border-amber-200 bg-amber-50 p-[13px] text-xs leading-5 text-amber-900">
-                {
-                  copy.nextStep
-                }
-              </div>
 
               {error ? (
                 <div
