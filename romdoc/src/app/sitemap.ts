@@ -508,6 +508,17 @@ sitemap(): Promise<
             "/de/ratgeber-aerzte-personal",
         },
       }),
+
+      ...createLocalizedEntries({
+        paths: {
+          ro:
+            "/ro/oferta-clinici",
+          en:
+            "/en/clinic-offer",
+          de:
+            "/de/angebot-fuer-kliniken",
+        },
+      }),
     ];
 
   for (
