@@ -11,6 +11,7 @@ import {
   useRouter,
 } from "next/navigation";
 
+import ClinicOrganizationInvitationHistoryLauncher from "@/components/admin/clinic-organization-invitation-history-launcher";
 import type {
   AppLocale,
 } from "@/lib/i18n/app-locale";
@@ -465,13 +466,19 @@ export default function AdminClinicOrganizationOnboarding({
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={openDialog}
-            className="romdoc-focus-ring shrink-0 rounded-[13px] bg-[#036661] px-[21px] py-[13px] font-semibold text-white transition-colors hover:bg-[#ff2800]"
-          >
-            {copy.cardAction}
-          </button>
+          <div className="flex shrink-0 flex-col gap-[8px] sm:flex-row">
+            <button
+              type="button"
+              onClick={openDialog}
+              className="romdoc-focus-ring rounded-[13px] bg-[#036661] px-[21px] py-[13px] font-semibold text-white transition-colors hover:bg-[#ff2800]"
+            >
+              {copy.cardAction}
+            </button>
+
+            <ClinicOrganizationInvitationHistoryLauncher
+              locale={locale}
+            />
+          </div>
         </div>
       </section>
 
