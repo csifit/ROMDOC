@@ -6,6 +6,7 @@ import {
 } from "next-intl";
 import {
   type FormEvent,
+  useMemo,
   useState,
   useTransition,
 } from "react";
@@ -28,10 +29,7 @@ type BreakItem = {
   id: string;
   startTime: string;
   endTime: string;
-
-  label:
-    | string
-    | null;
+  label: string | null;
 };
 
 export type AvailabilityItem = {
@@ -48,40 +46,19 @@ export type AvailabilityItem = {
 
 export type DayOffItem = {
   id: string;
-
-  clinicId:
-    | string
-    | null;
-
-  clinicName:
-    | string
-    | null;
-
+  clinicId: string | null;
+  clinicName: string | null;
   date: string;
   isAllDay: boolean;
-
-  startTime:
-    | string
-    | null;
-
-  endTime:
-    | string
-    | null;
-
-  reason:
-    | string
-    | null;
+  startTime: string | null;
+  endTime: string | null;
+  reason: string | null;
 };
 
 type Props = {
-  clinics:
-    ClinicOption[];
-
-  availability:
-    AvailabilityItem[];
-
-  daysOff:
-    DayOffItem[];
+  clinics: ClinicOption[];
+  availability: AvailabilityItem[];
+  daysOff: DayOffItem[];
 };
 
 type ApiResponse = {
@@ -89,23 +66,66 @@ type ApiResponse = {
   error?: string;
 };
 
-const DATE_LOCALE:
-  Record<
-    AppLocale,
-    string
-  > = {
-    ro:
-      "ro-RO",
-    en:
-      "en-GB",
-    de:
-      "de-DE",
-  };
+const WEEKDAYS = [
+  0,
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+] as const;
+
+const DATE_LOCALE: Record<AppLocale, string> = {
+  ro: "ro-RO",
+  en: "en-GB",
+  de: "de-DE",
+};
+
+const COMPACT_COPY = {
+  ro: {
+    clinicSchedule: "Program clinică",
+    interval: "interval",
+    intervals: "intervale",
+    break: "pauză",
+    breaks: "pauze",
+    inactive: "inactiv",
+    inactivePlural: "inactive",
+    closed: "Fără program",
+    expandHint: "Deschide ziua pentru editare",
+    noIntervalsForDay:
+      "Nu există intervale de lucru pentru această zi. Folosește cardul „Adaugă un interval de lucru” de mai sus pentru a crea unul.",
+  },
+  en: {
+    clinicSchedule: "Clinic schedule",
+    interval: "interval",
+    intervals: "intervals",
+    break: "break",
+    breaks: "breaks",
+    inactive: "inactive",
+    inactivePlural: "inactive",
+    closed: "No working hours",
+    expandHint: "Open the day to edit",
+    noIntervalsForDay:
+      "There are no working intervals for this day. Use the “Add a working interval” card above to create one.",
+  },
+  de: {
+    clinicSchedule: "Klinikplan",
+    interval: "Intervall",
+    intervals: "Intervalle",
+    break: "Pause",
+    breaks: "Pausen",
+    inactive: "inaktiv",
+    inactivePlural: "inaktiv",
+    closed: "Keine Sprechzeiten",
+    expandHint: "Tag zum Bearbeiten öffnen",
+    noIntervalsForDay:
+      "Für diesen Tag gibt es keine Arbeitsintervalle. Verwenden Sie oben „Arbeitsintervall hinzufügen“, um eines zu erstellen.",
+  },
+} as const;
 
 function shortTime(
-  value:
-    | string
-    | null
+  value: string | null
 ) {
   return value
     ? value.slice(
@@ -116,12 +136,9 @@ function shortTime(
 }
 
 async function readResponse(
-  response:
-    Response,
-  locale:
-    AppLocale,
-  fallback:
-    string
+  response: Response,
+  locale: AppLocale,
+  fallback: string
 ) {
   const result =
     (await response.json()) as
@@ -142,11 +159,8 @@ async function readResponse(
 }
 
 type AvailabilityRowProps = {
-  item:
-    AvailabilityItem;
-
-  clinics:
-    ClinicOption[];
+  item: AvailabilityItem;
+  clinics: ClinicOption[];
 };
 
 function AvailabilityRow({
@@ -556,7 +570,54 @@ function AvailabilityRow({
   }
 
   return (
-    <article className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+    <article className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-4">
+        <div>
+          <p className="font-semibold text-gray-900">
+            {shortTime(
+              item.startTime
+            )}
+            {" – "}
+            {shortTime(
+              item.endTime
+            )}
+          </p>
+
+          <p className="mt-1 text-xs text-gray-500">
+            {t(
+              "minutes",
+              {
+                count:
+                  item.durationMinutes,
+              }
+            )}
+            {item.breaks.length
+              ? ` · ${item.breaks.length} ${
+                  item.breaks.length === 1
+                    ? COMPACT_COPY[locale].break
+                    : COMPACT_COPY[locale].breaks
+                }`
+              : ""}
+          </p>
+        </div>
+
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-semibold ${
+            item.isActive
+              ? "bg-green-100 text-green-800"
+              : "bg-gray-100 text-gray-600"
+          }`}
+        >
+          {item.isActive
+            ? t(
+                "active"
+              )
+            : COMPACT_COPY[
+                locale
+              ].inactive}
+        </span>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         <label>
           <span className="text-sm font-medium text-gray-700">
@@ -627,15 +688,7 @@ function AvailabilityRow({
             }
             className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5"
           >
-            {[
-              0,
-              1,
-              2,
-              3,
-              4,
-              5,
-              6,
-            ].map(
+            {WEEKDAYS.map(
               (
                 value
               ) => (
@@ -834,8 +887,7 @@ function AvailabilityRow({
           )}
         </h3>
 
-        {item.breaks
-          .length > 0 && (
+        {item.breaks.length > 0 && (
           <div className="mt-3 space-y-2">
             {item.breaks.map(
               (
@@ -850,8 +902,8 @@ function AvailabilityRow({
                   <span className="text-sm text-gray-700">
                     {shortTime(
                       breakItem.startTime
-                    )}{" "}
-                    –{" "}
+                    )}
+                    {" – "}
                     {shortTime(
                       breakItem.endTime
                     )}
@@ -979,6 +1031,311 @@ function AvailabilityRow({
         </p>
       )}
     </article>
+  );
+}
+
+type ClinicScheduleGroup = {
+  clinic: ClinicOption;
+  items: AvailabilityItem[];
+};
+
+function WeeklySchedule({
+  clinics,
+  availability,
+}: {
+  clinics: ClinicOption[];
+  availability: AvailabilityItem[];
+}) {
+  const locale =
+    normalizeAppLocale(
+      useLocale()
+    );
+
+  const t =
+    useTranslations(
+      "DoctorConfiguration.availability"
+    );
+
+  const copy =
+    COMPACT_COPY[
+      locale
+    ];
+
+  const clinicGroups =
+    useMemo<
+      ClinicScheduleGroup[]
+    >(
+      () =>
+        clinics
+          .map(
+            (
+              clinic
+            ) => ({
+              clinic,
+              items:
+                availability.filter(
+                  (
+                    item
+                  ) =>
+                    item.clinicId ===
+                    clinic.id
+                ),
+            })
+          )
+          .filter(
+            (
+              group
+            ) =>
+              group.items.length >
+              0
+          ),
+      [
+        clinics,
+        availability,
+      ]
+    );
+
+  if (
+    availability.length ===
+    0
+  ) {
+    return (
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-600">
+        {t(
+          "noSchedule"
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      {clinicGroups.map(
+        (
+          group
+        ) => (
+          <section
+            key={
+              group.clinic.id
+            }
+            className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
+          >
+            <header className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-[#F0EEE9] px-5 py-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  {
+                    copy.clinicSchedule
+                  }
+                </p>
+
+                <h3 className="mt-1 text-lg font-bold text-gray-900">
+                  {
+                    group.clinic.name
+                  }
+                </h3>
+              </div>
+
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-700">
+                {
+                  group.items.length
+                }{" "}
+                {group.items.length ===
+                1
+                  ? copy.interval
+                  : copy.intervals}
+              </span>
+            </header>
+
+            <div className="divide-y divide-gray-200">
+              {WEEKDAYS.map(
+                (
+                  day
+                ) => {
+                  const dayItems =
+                    group.items
+                      .filter(
+                        (
+                          item
+                        ) =>
+                          item.weekday ===
+                          day
+                      )
+                      .sort(
+                        (
+                          first,
+                          second
+                        ) =>
+                          first.startTime.localeCompare(
+                            second.startTime
+                          )
+                      );
+
+                  const activeItems =
+                    dayItems.filter(
+                      (
+                        item
+                      ) =>
+                        item.isActive
+                    );
+
+                  const breakCount =
+                    dayItems.reduce(
+                      (
+                        total,
+                        item
+                      ) =>
+                        total +
+                        item.breaks.length,
+                      0
+                    );
+
+                  const inactiveCount =
+                    dayItems.length -
+                    activeItems.length;
+
+                  const timeSummary =
+                    activeItems.length >
+                    0
+                      ? activeItems
+                          .map(
+                            (
+                              item
+                            ) =>
+                              `${shortTime(
+                                item.startTime
+                              )}–${shortTime(
+                                item.endTime
+                              )}`
+                          )
+                          .join(
+                            " · "
+                          )
+                      : copy.closed;
+
+                  return (
+                    <details
+                      key={
+                        day
+                      }
+                      className="group/day"
+                    >
+                      <summary className="romdoc-focus-ring grid cursor-pointer list-none grid-cols-[minmax(110px,0.8fr)_minmax(0,2fr)_auto] items-center gap-3 px-4 py-3 transition hover:bg-gray-50 sm:px-5 [&::-webkit-details-marker]:hidden">
+                        <div>
+                          <p className="font-semibold text-gray-900">
+                            {t(
+                              `weekdays.${day}`
+                            )}
+                          </p>
+                        </div>
+
+                        <div className="min-w-0">
+                          <p
+                            className={`truncate text-sm ${
+                              activeItems.length >
+                              0
+                                ? "font-medium text-gray-800"
+                                : "text-gray-400"
+                            }`}
+                          >
+                            {
+                              timeSummary
+                            }
+                          </p>
+
+                          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                            {dayItems.length >
+                            0 ? (
+                              <span>
+                                {
+                                  dayItems.length
+                                }{" "}
+                                {dayItems.length ===
+                                1
+                                  ? copy.interval
+                                  : copy.intervals}
+                              </span>
+                            ) : null}
+
+                            {breakCount >
+                            0 ? (
+                              <span>
+                                {
+                                  breakCount
+                                }{" "}
+                                {breakCount ===
+                                1
+                                  ? copy.break
+                                  : copy.breaks}
+                              </span>
+                            ) : null}
+
+                            {inactiveCount >
+                            0 ? (
+                              <span>
+                                {
+                                  inactiveCount
+                                }{" "}
+                                {inactiveCount ===
+                                1
+                                  ? copy.inactive
+                                  : copy.inactivePlural}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="hidden text-xs text-gray-400 lg:inline">
+                            {
+                              copy.expandHint
+                            }
+                          </span>
+
+                          <span className="text-lg text-gray-500 transition-transform group-open/day:rotate-180">
+                            ⌄
+                          </span>
+                        </div>
+                      </summary>
+
+                      <div className="border-t border-gray-100 bg-gray-50/70 p-4 sm:p-5">
+                        {dayItems.length >
+                        0 ? (
+                          <div className="space-y-4">
+                            {dayItems.map(
+                              (
+                                item
+                              ) => (
+                                <AvailabilityRow
+                                  key={
+                                    item.id
+                                  }
+                                  item={
+                                    item
+                                  }
+                                  clinics={
+                                    clinics
+                                  }
+                                />
+                              )
+                            )}
+                          </div>
+                        ) : (
+                          <p className="rounded-xl border border-dashed border-gray-300 bg-white p-4 text-sm text-gray-600">
+                            {
+                              copy.noIntervalsForDay
+                            }
+                          </p>
+                        )}
+                      </div>
+                    </details>
+                  );
+                }
+              )}
+            </div>
+          </section>
+        )
+      )}
+    </div>
   );
 }
 
@@ -1400,15 +1757,7 @@ export default function DoctorAvailabilityManager({
             }
             className="rounded-xl border border-gray-300 px-3 py-3"
           >
-            {[
-              0,
-              1,
-              2,
-              3,
-              4,
-              5,
-              6,
-            ].map(
+            {WEEKDAYS.map(
               (
                 value
               ) => (
@@ -1530,33 +1879,15 @@ export default function DoctorAvailabilityManager({
           )}
         </h2>
 
-        <div className="mt-5 space-y-5">
-          {availability.length >
-          0 ? (
-            availability.map(
-              (
-                item
-              ) => (
-                <AvailabilityRow
-                  key={
-                    item.id
-                  }
-                  item={
-                    item
-                  }
-                  clinics={
-                    clinics
-                  }
-                />
-              )
-            )
-          ) : (
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 text-gray-600">
-              {t(
-                "noSchedule"
-              )}
-            </div>
-          )}
+        <div className="mt-5">
+          <WeeklySchedule
+            clinics={
+              clinics
+            }
+            availability={
+              availability
+            }
+          />
         </div>
       </section>
 
