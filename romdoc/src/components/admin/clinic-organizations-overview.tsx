@@ -2,6 +2,7 @@ import ClinicOrganizationBillingEditor from "@/components/admin/clinic-organizat
 import ClinicOrganizationDoctorsManager, {
   type CoveredClinicDoctorAccount,
 } from "@/components/admin/clinic-organization-doctors-manager";
+import ClinicOrganizationLocationAdder from "@/components/admin/clinic-organization-location-adder";
 import type { AppLocale } from "@/lib/i18n/app-locale";
 import {
   getPlatformOperatorClinics,
@@ -689,6 +690,14 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
                         {copy.organizations.labels.pendingClinics}:{" "}
                         {summary.pendingClinicCount}
                       </p>
+
+                      {organization.status === "active" ? (
+                        <ClinicOrganizationLocationAdder
+                          locale={locale}
+                          organizationId={organization.id}
+                          organizationName={organization.name}
+                        />
+                      ) : null}
                     </div>
 
                     <div className="rounded-xl bg-gray-50 p-[13px]">

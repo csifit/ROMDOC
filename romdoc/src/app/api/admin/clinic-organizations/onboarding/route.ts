@@ -11,9 +11,6 @@ import {
   validateAdminClinicOrganizationOnboardingInput,
 } from "@/lib/admin/clinic-organization-onboarding";
 import {
-  createAdminClinicOrganizationLocation,
-} from "@/lib/admin/create-clinic-organization-location";
-import {
   createClinicOrganizationInvitation,
 } from "@/lib/admin/create-clinic-organization-invitation";
 import {
@@ -24,113 +21,77 @@ import {
   createAdminClient,
 } from "@/lib/supabase/admin";
 
-export const runtime =
-  "nodejs";
-
-export const dynamic =
-  "force-dynamic";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const NO_STORE_HEADERS = {
-  "Cache-Control":
-    "no-store",
+  "Cache-Control": "no-store",
 };
 
-function json(
-  body: unknown,
-  status = 200
-) {
-  return NextResponse.json(
-    body,
-    {
-      status,
-      headers:
-        NO_STORE_HEADERS,
-    }
-  );
+function json(body: unknown, status = 200) {
+  return NextResponse.json(body, {
+    status,
+    headers: NO_STORE_HEADERS,
+  });
 }
 
 export async function POST(
   request: NextRequest
 ): Promise<Response> {
-  const authorization =
-    await requirePlatformOperatorAal2Api();
+  const authorization = await requirePlatformOperatorAal2Api();
 
-  if (
-    authorization.response
-  ) {
+  if (authorization.response) {
     return authorization.response;
   }
 
-  const adminOnly =
-    requireAdministratorCapability(
-      authorization.role,
-      "Doar administratorii pot crea organizații clinice."
-    );
+  const adminOnly = requireAdministratorCapability(
+    authorization.role,
+    "Doar administratorii pot crea organizații clinice."
+  );
 
-  if (
-    adminOnly
-  ) {
+  if (adminOnly) {
     return adminOnly;
   }
 
-  let body:
-    unknown;
+  let body: unknown;
 
   try {
-    body =
-      await request.json();
+    body = await request.json();
   } catch {
     return json(
       {
-        code:
-          "clinic_organization_onboarding_invalid_json",
-        error:
-          "Cererea nu conține date JSON valide.",
+        code: "clinic_organization_onboarding_invalid_json",
+        error: "Cererea nu conține date JSON valide.",
       },
       400
     );
   }
 
   const validation =
-    validateAdminClinicOrganizationOnboardingInput(
-      body
-    );
+    validateAdminClinicOrganizationOnboardingInput(body);
 
-  if (
-    !validation.ok
-  ) {
+  if (!validation.ok) {
     return json(
       {
-        code:
-          "clinic_organization_onboarding_invalid_payload",
-        error:
-          validation.error,
-        field:
-          validation.field ??
-          null,
+        code: "clinic_organization_onboarding_invalid_payload",
+        error: validation.error,
+        field: validation.field ?? null,
       },
       400
     );
   }
 
-  const input =
-    validation.value;
+  const input = validation.value;
+  const organizationId = crypto.randomUUID();
 
-  const organizationId =
-    crypto.randomUUID();
-
-  let organizationSlug:
-    string;
+  let organizationSlug: string;
 
   try {
-    organizationSlug =
-      await createUniqueClinicOrganizationSlug(
-        input.organizationName,
-        organizationId
-      );
-  } catch (
-    slugError
-  ) {
+    organizationSlug = await createUniqueClinicOrganizationSlug(
+      input.organizationName,
+      organizationId
+    );
+  } catch (slugError) {
     console.error(
       "Admin Clinic Organisation slug creation failed:",
       slugError
@@ -138,82 +99,47 @@ export async function POST(
 
     return json(
       {
-        code:
-          "clinic_organization_onboarding_slug_failed",
-        error:
-          "Organizația nu a putut fi pregătită.",
+        code: "clinic_organization_onboarding_slug_failed",
+        error: "Organizația nu a putut fi pregătită.",
       },
       500
     );
   }
 
-  const managerName =
-    [
-      input.managerFirstName,
-      input.managerLastName,
-    ]
-      .filter(
-        Boolean
-      )
-      .join(" ")
-      .trim();
+  const managerName = [
+    input.managerFirstName,
+    input.managerLastName,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
 
-  const contactName =
-    input.contactName ??
-    managerName;
+  const contactName = input.contactName ?? managerName;
+  const contactEmail = input.contactEmail ?? input.managerEmail;
+  const contactPhone = input.contactPhone ?? input.managerPhone;
+  const now = new Date().toISOString();
 
-  const contactEmail =
-    input.contactEmail ??
-    input.managerEmail;
-
-  const contactPhone =
-    input.contactPhone ??
-    input.managerPhone;
-
-  const now =
-    new Date()
-      .toISOString();
-
-  const admin =
-    createAdminClient();
+  const admin = createAdminClient();
 
   const {
-    data:
-      organization,
-    error:
-      organizationError,
+    data: organization,
+    error: organizationError,
   } = await admin
-    .from(
-      "clinic_organizations"
-    )
+    .from("clinic_organizations")
     .insert({
-      id:
-        organizationId,
-      name:
-        input.organizationName,
-      slug:
-        organizationSlug,
-      status:
-        "active",
-      contact_name:
-        contactName ||
-        null,
-      contact_email:
-        contactEmail ||
-        null,
-      contact_phone:
-        contactPhone ||
-        null,
-      website:
-        input.website,
+      id: organizationId,
+      name: input.organizationName,
+      slug: organizationSlug,
+      status: "active",
+      contact_name: contactName || null,
+      contact_email: contactEmail || null,
+      contact_phone: contactPhone || null,
+      website: input.website,
       admin_notes:
         "Creat de Administrator prin fluxul de onboarding asistat.",
-      created_by_profile_id:
-        authorization.profileId,
-      approved_by_profile_id:
-        authorization.profileId,
-      approved_at:
-        now,
+      created_by_profile_id: authorization.profileId,
+      approved_by_profile_id: authorization.profileId,
+      approved_at: now,
     })
     .select(`
       id,
@@ -229,10 +155,7 @@ export async function POST(
     `)
     .single();
 
-  if (
-    organizationError ||
-    !organization
-  ) {
+  if (organizationError || !organization) {
     console.error(
       "Admin Clinic Organisation creation failed:",
       organizationError
@@ -240,61 +163,32 @@ export async function POST(
 
     return json(
       {
-        code:
-          "clinic_organization_onboarding_create_failed",
-        error:
-          "Organizația nu a putut fi creată.",
+        code: "clinic_organization_onboarding_create_failed",
+        error: "Organizația nu a putut fi creată.",
       },
       500
     );
   }
 
   const {
-    data:
-      billingProfile,
-    error:
-      billingError,
+    data: billingProfile,
+    error: billingError,
   } = await admin
-    .from(
-      "clinic_organization_billing_profiles"
-    )
+    .from("clinic_organization_billing_profiles")
     .insert({
-      organization_id:
-        organization.id,
-      company_name:
-        input.billing
-          .companyName,
-      tax_id:
-        input.billing
-          .taxId,
-      trade_register_number:
-        input.billing
-          .tradeRegisterNumber,
-      billing_address:
-        input.billing
-          .billingAddress,
-      billing_city:
-        input.billing
-          .billingCity,
-      billing_county:
-        input.billing
-          .billingCounty,
-      billing_country:
-        input.billing
-          .billingCountry,
-      billing_email:
-        input.billing
-          .billingEmail,
-      is_vat_payer:
-        input.billing
-          .isVatPayer,
-      vat_number:
-        input.billing
-          .vatNumber,
-      created_by_profile_id:
-        authorization.profileId,
-      updated_by_profile_id:
-        authorization.profileId,
+      organization_id: organization.id,
+      company_name: input.billing.companyName,
+      tax_id: input.billing.taxId,
+      trade_register_number: input.billing.tradeRegisterNumber,
+      billing_address: input.billing.billingAddress,
+      billing_city: input.billing.billingCity,
+      billing_county: input.billing.billingCounty,
+      billing_country: input.billing.billingCountry,
+      billing_email: input.billing.billingEmail,
+      is_vat_payer: input.billing.isVatPayer,
+      vat_number: input.billing.vatNumber,
+      created_by_profile_id: authorization.profileId,
+      updated_by_profile_id: authorization.profileId,
     })
     .select(`
       organization_id,
@@ -311,10 +205,7 @@ export async function POST(
     `)
     .single();
 
-  if (
-    billingError ||
-    !billingProfile
-  ) {
+  if (billingError || !billingProfile) {
     console.error(
       "Admin Clinic Organisation onboarding billing creation failed:",
       billingError
@@ -322,19 +213,12 @@ export async function POST(
 
     return json(
       {
-        success:
-          true,
-        organizationCreated:
-          true,
-        billingCreated:
-          false,
-        locationsCreated:
-          0,
-        invitationSent:
-          false,
+        success: true,
+        organizationCreated: true,
+        billingCreated: false,
+        invitationSent: false,
         organization,
-        code:
-          "clinic_organization_onboarding_billing_failed",
+        code: "clinic_organization_onboarding_billing_failed",
         warning:
           "Organizația a fost creată, dar datele de facturare nu au putut fi salvate. Invitația managerului nu a fost trimisă.",
       },
@@ -342,133 +226,37 @@ export async function POST(
     );
   }
 
-  const createdLocations:
-    Array<{
-      clinicId: string;
-      clinicSlug: string;
-      clinicStatus: string;
-      organizationClinicStatus: string;
-      linkedExisting: boolean;
-      formattedAddress: string;
-    }> =
-      [];
-
-  for (
-    let index = 0;
-    index <
-    input.locations.length;
-    index += 1
-  ) {
-    const location =
-      input.locations[
-        index
-      ];
-
-    try {
-      const createdLocation =
-        await createAdminClinicOrganizationLocation({
-          organizationId:
-            organization.id,
-          actorProfileId:
-            authorization.profileId,
-          locale:
-            input.invitationLocale,
-          input:
-            location,
-        });
-
-      createdLocations.push(
-        createdLocation
-      );
-    } catch (
-      locationError
-    ) {
-      console.error(
-        `Admin Clinic Organisation onboarding location ${index + 1} failed:`,
-        locationError
-      );
-
-      return json(
-        {
-          success:
-            true,
-          organizationCreated:
-            true,
-          billingCreated:
-            true,
-          locationsCreated:
-            createdLocations.length,
-          invitationSent:
-            false,
-          organization,
-          billingProfile,
-          locations:
-            createdLocations,
-          code:
-            "clinic_organization_onboarding_location_failed",
-          warning:
-            `Organizația și facturarea au fost create, dar locația ${index + 1} nu a putut fi adăugată. Invitația managerului nu a fost trimisă. ${
-              locationError instanceof
-                Error
-                ? locationError.message
-                : ""
-            }`.trim(),
-        },
-        201
-      );
-    }
-  }
-
   const invitationValidation =
     validateClinicOrganizationInvitationInput({
-      organizationName:
-        input.organizationName,
-      email:
-        input.managerEmail,
-      firstName:
-        input.managerFirstName,
-      lastName:
-        input.managerLastName,
-      phone:
-        input.managerPhone,
-      locale:
-        input.invitationLocale,
-      personalMessage:
-        input.personalMessage,
-      trialMonths:
-        input.trialMonths,
-      organizationId:
-        organization.id,
+      organizationName: input.organizationName,
+      email: input.managerEmail,
+      firstName: input.managerFirstName,
+      lastName: input.managerLastName,
+      phone: input.managerPhone,
+      locale: input.invitationLocale,
+      personalMessage: input.personalMessage,
+      trialMonths: input.trialMonths,
+      organizationId: organization.id,
     });
 
-  if (
-    !invitationValidation.ok
-  ) {
+  if (!invitationValidation.ok) {
     console.error(
-      "Admin Clinic Organisation invitation validation failed after full organization setup:",
+      "Admin Clinic Organisation invitation validation failed after organization setup:",
       invitationValidation
     );
 
     return json(
       {
-        success:
-          true,
-        organizationCreated:
-          true,
-        billingCreated:
-          true,
-        locationsCreated:
-          createdLocations.length,
-        invitationSent:
-          false,
+        success: true,
+        organizationCreated: true,
+        billingCreated: true,
+        invitationSent: false,
         organization,
         billingProfile,
-        locations:
-          createdLocations,
         code:
           "clinic_organization_onboarding_invitation_validation_failed",
         warning:
-          "Organizația, facturarea și locațiile au fost create, dar invitația managerului nu a putut fi pregătită.",
+          "Organizația și facturarea au fost create, dar invitația managerului nu a putut fi pregătită.",
       },
       201
     );
@@ -476,39 +264,23 @@ export async function POST(
 
   const invitationResult =
     await createClinicOrganizationInvitation({
-      actorProfileId:
-        authorization.profileId,
-      input:
-        invitationValidation.value,
+      actorProfileId: authorization.profileId,
+      input: invitationValidation.value,
     });
 
-  if (
-    !invitationResult.ok
-  ) {
+  if (!invitationResult.ok) {
     return json(
       {
-        success:
-          true,
-        organizationCreated:
-          true,
-        billingCreated:
-          true,
-        locationsCreated:
-          createdLocations.length,
-        invitationSent:
-          false,
+        success: true,
+        organizationCreated: true,
+        billingCreated: true,
+        invitationSent: false,
         organization,
         billingProfile,
-        locations:
-          createdLocations,
-        invitationId:
-          invitationResult
-            .invitationId ??
-          null,
-        code:
-          invitationResult.code,
+        invitationId: invitationResult.invitationId ?? null,
+        code: invitationResult.code,
         warning:
-          `Organizația, facturarea și locațiile au fost create, dar fluxul invitației managerului nu a fost finalizat. ${invitationResult.error}`,
+          `Organizația și facturarea au fost create, dar fluxul invitației managerului nu a fost finalizat. ${invitationResult.error}`,
       },
       201
     );
@@ -516,27 +288,16 @@ export async function POST(
 
   return json(
     {
-      success:
-        true,
-      organizationCreated:
-        true,
-      billingCreated:
-        true,
-      locationsCreated:
-        createdLocations.length,
-      invitationSent:
-        true,
+      success: true,
+      organizationCreated: true,
+      billingCreated: true,
+      invitationSent: true,
       organization,
       billingProfile,
-      locations:
-        createdLocations,
-      invitation:
-        invitationResult
-          .invitation,
-      code:
-        "clinic_organization_onboarding_created",
+      invitation: invitationResult.invitation,
+      code: "clinic_organization_onboarding_created",
       message:
-        "Organizația, facturarea și locațiile au fost create, iar invitația managerului a fost trimisă.",
+        "Organizația și facturarea au fost create, iar invitația managerului a fost trimisă.",
     },
     201
   );
