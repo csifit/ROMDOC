@@ -519,6 +519,17 @@ sitemap(): Promise<
             "/de/angebot-fuer-kliniken",
         },
       }),
+
+      ...createLocalizedEntries({
+        paths: {
+          ro:
+            "/ro/telemedicina",
+          en:
+            "/en/telehealth",
+          de:
+            "/de/telemedizin",
+        },
+      }),
     ];
 
   for (

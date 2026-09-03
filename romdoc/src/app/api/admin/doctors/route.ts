@@ -11,6 +11,7 @@ import {
 } from "@/lib/api/platform-operator-doctor-codes";
 import {
   requirePlatformOperatorAal2Api,
+  requireAdministratorCapability,
 } from "@/lib/auth/require-platform-operator-aal2-api";
 import {
   createAdminClient,
@@ -31,6 +32,8 @@ type DoctorActionBody = {
   verificationStatus?: unknown;
   registrationNumber?: unknown;
   verificationExpiresAt?: unknown;
+  telehealthRestricted?: unknown;
+  restrictionReason?: unknown;
 };
 
 type AuthUserMap = Map<
@@ -168,6 +171,7 @@ export async function GET(): Promise<Response> {
     clinicLinksResult,
     staffResult,
     organizationsResult,
+    telehealthRestrictionsResult,
   ] = await Promise.all([
     admin
       .from("doctors")
@@ -269,6 +273,9 @@ export async function GET(): Promise<Response> {
     admin
       .from("clinic_organizations")
       .select("id, name"),
+    admin
+      .from("doctor_telehealth_restrictions")
+      .select("doctor_id, is_restricted, restriction_reason"),
   ]);
 
   if (doctorsResult.error) {
@@ -440,6 +447,10 @@ export async function GET(): Promise<Response> {
     ])
   );
 
+  const telehealthRestrictionByDoctorId = new Map(
+    (telehealthRestrictionsResult.data ?? []).map((restriction) => [restriction.doctor_id, restriction])
+  );
+
   const doctors = (
     (doctorsResult.data ?? []) as Array<
       DoctorRow & Record<string, unknown>
@@ -487,6 +498,10 @@ export async function GET(): Promise<Response> {
       clinic_count: clinicCountByDoctorId.get(doctor.id) ?? 0,
       active_staff_count:
         activeStaffCountByDoctorId.get(doctor.id) ?? 0,
+      telehealth_admin_restricted:
+        telehealthRestrictionByDoctorId.get(doctor.id)?.is_restricted ?? false,
+      telehealth_restriction_reason:
+        telehealthRestrictionByDoctorId.get(doctor.id)?.restriction_reason ?? null,
 
       /*
        * The existing Admin component still recognizes the historical display
@@ -548,7 +563,8 @@ export async function PATCH(
   if (
     action !== "set_status" &&
     action !== "set_account_status" &&
-    action !== "set_verification"
+    action !== "set_verification" &&
+    action !== "set_telehealth_restriction"
   ) {
     return failure(
       CODE.invalidAction,
@@ -579,6 +595,47 @@ export async function PATCH(
   }
 
   const now = new Date().toISOString();
+
+  if (action === "set_telehealth_restriction") {
+    const capabilityError = requireAdministratorCapability(
+      authorization.role,
+      "Doar administratorii pot modifica accesul telehealth."
+    );
+    if (capabilityError) return capabilityError;
+
+    const restricted = body.telehealthRestricted === true;
+    const reason = normalizeString(body.restrictionReason, 1000) || null;
+    const { error: restrictionError } = await admin
+      .from("doctor_telehealth_restrictions")
+      .upsert(
+        {
+          doctor_id: doctorId,
+          is_restricted: restricted,
+          restricted_at: restricted ? now : null,
+          restricted_by_profile_id: restricted ? authorization.profileId : null,
+          restriction_reason: restricted ? reason : null,
+          updated_at: now,
+        },
+        { onConflict: "doctor_id" }
+      );
+
+    if (restrictionError) {
+      console.error("Admin telehealth restriction update failed:", restrictionError);
+      return failure("telehealth_restriction_update_failed", "Accesul telehealth nu a putut fi actualizat.", 500);
+    }
+
+    await admin.from("telehealth_audit_events").insert({
+      doctor_id: doctorId,
+      event_type: restricted ? "admin_restricted" : "admin_allowed",
+      actor_profile_id: authorization.profileId,
+      metadata: reason ? { reason } : {},
+    });
+
+    return success(
+      restricted ? "telehealth_restricted" : "telehealth_allowed",
+      restricted ? "Accesul telehealth al medicului a fost restricționat." : "Accesul telehealth al medicului a fost permis."
+    );
+  }
 
   if (action === "set_status") {
     const status = normalizeString(body.status, 50);

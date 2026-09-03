@@ -273,6 +273,18 @@ export default function DoctorDashboardSidebar({
           },
           {
             href:
+              "/doctor-dashboard/telehealth",
+            label:
+              locale === "ro"
+                ? "Consultații video"
+                : locale === "de"
+                  ? "Videosprechstunden"
+                  : "Video consultations",
+            icon:
+              "◉",
+          },
+          {
+            href:
               "/doctor-dashboard/profile",
             label:
               t(

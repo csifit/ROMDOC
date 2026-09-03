@@ -17,6 +17,7 @@ type AppointmentSmsMessageInput = {
   clinicName: string;
   clinicAddress:
     string | null;
+  videoUrl?: string | null;
 };
 
 function normalizeSmsValue(
@@ -87,6 +88,7 @@ buildAppointmentSmsMessage({
   doctorName,
   clinicName,
   clinicAddress,
+  videoUrl,
 }: AppointmentSmsMessageInput) {
   const date =
     formatSmsDate(
@@ -114,6 +116,24 @@ buildAppointmentSmsMessage({
       locale,
       clinicAddress
     );
+
+  if (videoUrl) {
+    if (event === "reminder_24_hours") {
+      switch (locale) {
+        case "en": return `RomDoc: Video appointment tomorrow, ${date}, ${time}, with ${doctor}. Join: ${videoUrl}. Not recorded or stored.`;
+        case "de": return `RomDoc: Videosprechstunde morgen, ${date}, ${time}, bei ${doctor}. Link: ${videoUrl}. Keine Aufzeichnung oder Speicherung.`;
+        case "ro":
+        default: return `RomDoc: Consultație video mâine, ${date}, ${time}, cu ${doctor}. Acces: ${videoUrl}. Nu este înregistrată sau stocată.`;
+      }
+    }
+
+    switch (locale) {
+      case "en": return `RomDoc: Video appointment with ${doctor} confirmed for ${date}, ${time}. Join: ${videoUrl}. Not recorded or stored.`;
+      case "de": return `RomDoc: Videosprechstunde bei ${doctor} bestätigt: ${date}, ${time}. Link: ${videoUrl}. Keine Aufzeichnung oder Speicherung.`;
+      case "ro":
+      default: return `RomDoc: Consultație video cu ${doctor} confirmată: ${date}, ${time}. Acces: ${videoUrl}. Nu este înregistrată sau stocată.`;
+    }
+  }
 
   if (
     event ===

@@ -22,6 +22,9 @@ import {
 import {
   createClient,
 } from "@/lib/supabase/server";
+import {
+  isJoinableTelehealthPaymentStatus,
+} from "@/lib/telehealth/constants";
 
 type ClinicTranslation = {
   locale: string;
@@ -90,6 +93,12 @@ type Appointment = {
   source: string;
   status: string;
   created_at: string;
+  consultation_mode: string;
+  telehealth_public_reference: string | null;
+  telehealth_payments:
+    | { status: string }
+    | Array<{ status: string }>
+    | null;
   clinics:
     | ClinicRelation
     | ClinicRelation[]
@@ -269,9 +278,8 @@ DoctorAppointmentsPage() {
       | null;
 
   const isClinicSubAccount =
-    doctor
-      ?.account_type ===
-      "clinic_sub_account";
+    doctor?.account_type === "clinic_sub_account" ||
+    doctor?.account_type === "clinic_invited";
 
   const displayName =
     profile.first_name ||
@@ -486,6 +494,11 @@ DoctorAppointmentsPage() {
         source,
         status,
         created_at,
+        consultation_mode,
+        telehealth_public_reference,
+        telehealth_payments (
+          status
+        ),
         clinics (
           id,
           slug,
@@ -594,6 +607,20 @@ DoctorAppointmentsPage() {
           createdAt:
             appointment
               .created_at,
+          consultationMode:
+            appointment.consultation_mode,
+          telehealthReference:
+            appointment.telehealth_public_reference,
+          canJoinTelehealth:
+            isJoinableTelehealthPaymentStatus(
+              getFirstRelation(
+                appointment.telehealth_payments
+              )?.status
+            ),
+          canRefundTelehealth:
+            !isClinicSubAccount &&
+            appointment.consultation_mode === "video" &&
+            getFirstRelation(appointment.telehealth_payments)?.status === "paid",
           clinicName:
             getClinicName(
               clinic,

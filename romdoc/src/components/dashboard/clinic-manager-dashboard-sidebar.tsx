@@ -9,14 +9,14 @@ import { type AppLocale, normalizeAppLocale } from "@/lib/i18n/app-locale";
 import { createClient } from "@/lib/supabase/client";
 
 type Props = { userName: string; userEmail: string; children: ReactNode };
-type Icon = "overview" | "locations" | "doctors" | "invitations" | "billing" | "reports" | "sms" | "contract" | "security" | "home";
+type Icon = "overview" | "locations" | "doctors" | "invitations" | "billing" | "telehealth" | "reports" | "sms" | "contract" | "security" | "home";
 type Item = { href: string; label: (locale: AppLocale, t: ReturnType<typeof useTranslations>) => string; icon: Icon };
 
 const REPORTS_LABEL: Record<AppLocale, string> = { ro: "Rapoarte", en: "Reports", de: "Berichte" };
 const CONTRACT_LABEL: Record<AppLocale, string> = { ro: "Contract și documente", en: "Contract and documents", de: "Vertrag und Dokumente" };
 
 function iconSymbol(icon: Icon) {
-  return ({ overview: "▦", locations: "⌖", doctors: "☤", invitations: "✉", billing: "▤", reports: "▥", sms: "◌", contract: "§", security: "◇", home: "⌂" } as const)[icon];
+  return ({ overview: "▦", locations: "⌖", doctors: "☤", invitations: "✉", billing: "▤", telehealth: "◉", reports: "▥", sms: "◌", contract: "§", security: "◇", home: "⌂" } as const)[icon];
 }
 
 function MenuIcon() { return <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" d="M4 7h16M4 12h16M4 17h16" /></svg>; }
@@ -41,6 +41,7 @@ export default function ClinicManagerDashboardSidebar({ userName, userEmail, chi
     { href: "/clinic-manager-dashboard/doctors", label: (_, tr) => tr("navigation.doctors"), icon: "doctors" },
     { href: "/clinic-manager-dashboard/invitations", label: (_, tr) => tr("navigation.invitations"), icon: "invitations" },
     { href: "/clinic-manager-dashboard/billing", label: (_, tr) => tr("navigation.billing"), icon: "billing" },
+    { href: "/clinic-manager-dashboard/telehealth", label: (loc) => loc === "ro" ? "Consultații video" : loc === "de" ? "Videosprechstunden" : "Video consultations", icon: "telehealth" },
     { href: "/clinic-manager-dashboard/reports", label: (loc) => REPORTS_LABEL[loc], icon: "reports" },
     { href: "/clinic-manager-dashboard/sms", label: (_, tr) => tr("navigation.sms"), icon: "sms" },
     { href: "/clinic-manager-dashboard/contract", label: (loc) => CONTRACT_LABEL[loc], icon: "contract" },

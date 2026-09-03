@@ -101,6 +101,12 @@ export const routing =
         de:
           "/angebot-fuer-kliniken",
       },
+
+      "/telemedicina": {
+        ro: "/telemedicina",
+        en: "/telehealth",
+        de: "/telemedizin",
+      },
     },
   });
 

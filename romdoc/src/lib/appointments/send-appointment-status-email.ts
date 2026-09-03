@@ -31,6 +31,8 @@ type SendAppointmentStatusEmailInput = {
     string | null;
   rescheduleReason:
     string | null;
+  consultationMode?: string;
+  telehealthReference?: string | null;
 };
 
 export type SendAppointmentStatusEmailResult = {
@@ -122,6 +124,7 @@ function getGoogleCalendarUrl(
       string | null;
     scheduledTime:
       string | null;
+    telehealthUrl?: string | null;
   }
 ) {
   if (
@@ -192,10 +195,13 @@ function getGoogleCalendarUrl(
       dates:
         `${compact(start)}/${compact(end)}`,
       details:
-        calendarCopy
-          .googleDescription,
+        input.telehealthUrl
+          ? `${calendarCopy.googleDescription} ${input.locale === "ro" ? "Consultația nu este înregistrată sau stocată." : input.locale === "de" ? "Die Sprechstunde wird weder aufgezeichnet noch gespeichert." : "The consultation is not recorded or stored."} ${input.telehealthUrl}`
+          : calendarCopy.googleDescription,
       location:
-        input.clinicName,
+        input.telehealthUrl
+          ? (input.locale === "ro" ? "Consultație video RomDoc" : input.locale === "de" ? "RomDoc Videosprechstunde" : "RomDoc video consultation")
+          : input.clinicName,
       ctz:
         "Europe/Bucharest",
     });
@@ -305,6 +311,16 @@ sendAppointmentStatusEmail(
       locale
     );
 
+  const telehealthUrl = input.consultationMode === "video" && input.telehealthReference
+    ? `${getSiteUrl()}/telehealth/${encodeURIComponent(input.telehealthReference)}`
+    : null;
+
+  const telehealthCopy = locale === "ro"
+    ? { title: "Consultație video", notice: "Conținutul audio și video nu este înregistrat, transcris sau stocat de RomDoc ori Daily. Autentifică-te cu contul de Pacient asociat programării înainte de conectare.", action: "Deschide consultația video" }
+    : locale === "de"
+      ? { title: "Videosprechstunde", notice: "Audio und Video werden weder von RomDoc noch von Daily aufgezeichnet, transkribiert oder gespeichert. Melden Sie sich vor dem Beitritt mit dem Patientenkonto an, das mit dem Termin verknüpft ist.", action: "Videosprechstunde öffnen" }
+      : { title: "Video consultation", notice: "Audio and video are not recorded, transcribed, or stored by RomDoc or Daily. Sign in with the Patient account linked to this appointment before joining.", action: "Open video consultation" };
+
   const calendarDownloadUrl =
     getCalendarDownloadUrl(
       input.appointmentId,
@@ -323,6 +339,7 @@ sendAppointmentStatusEmail(
         input.scheduledDate,
       scheduledTime:
         input.scheduledTime,
+      telehealthUrl,
     });
 
   const calendarIsAvailable =
@@ -371,6 +388,14 @@ sendAppointmentStatusEmail(
                     <p><strong>${escapeHtml(copy.dateLabel)}:</strong> ${escapeHtml(formattedDate)}</p>
                     <p><strong>${escapeHtml(copy.timeLabel)}:</strong> ${escapeHtml(formattedTime)}</p>
                   </div>
+
+                  ${telehealthUrl ? `
+                    <div style="margin-top:24px;padding:20px;border-radius:12px;border:1px solid #a7f3d0;background:#ecfdf5">
+                      <p style="margin:0 0 10px;font-weight:700;color:#036661">${escapeHtml(telehealthCopy.title)}</p>
+                      <p style="margin:0;line-height:1.7;color:#374151">${escapeHtml(telehealthCopy.notice)}</p>
+                      <p style="margin:18px 0 0"><a href="${escapeHtml(telehealthUrl)}" style="display:inline-block;border-radius:10px;background:#036661;color:#fff;padding:12px 18px;text-decoration:none;font-weight:700">${escapeHtml(telehealthCopy.action)}</a></p>
+                    </div>
+                  ` : ""}
 
                   ${
                     calendarIsAvailable
@@ -470,6 +495,9 @@ sendAppointmentStatusEmail(
           `${copy.clinicLabel}: ${input.clinicName}`,
           `${copy.dateLabel}: ${formattedDate}`,
           `${copy.timeLabel}: ${formattedTime}`,
+          telehealthUrl
+            ? `${telehealthCopy.title}\n${telehealthCopy.notice}\n${telehealthCopy.action}: ${telehealthUrl}`
+            : "",
           input.status ===
               "rescheduled" &&
             input.rescheduleReason

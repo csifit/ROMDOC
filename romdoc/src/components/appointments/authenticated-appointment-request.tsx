@@ -17,6 +17,13 @@ type Props = {
   doctorName: string;
   doctorSlug: string;
   clinics: ClinicOption[];
+  telehealthOffer: {
+    price_minor: number;
+    currency: "RON" | "EUR";
+    duration_minutes: number;
+    recipient_type: "doctor" | "clinic_organization";
+    recipient_name: string;
+  } | null;
 };
 
 export default async function AuthenticatedAppointmentRequest({
@@ -24,6 +31,7 @@ export default async function AuthenticatedAppointmentRequest({
   doctorName,
   doctorSlug,
   clinics,
+  telehealthOffer,
 }: Props) {
   const locale = normalizeAppLocale(await getLocale());
   const copy = BOOKING_COPY[locale].gate;
@@ -101,6 +109,7 @@ export default async function AuthenticatedAppointmentRequest({
       clinics={clinics}
       initialPatientName={patientName}
       authenticatedEmail={user.email ?? ""}
+      telehealthOffer={telehealthOffer}
     />
   );
 }

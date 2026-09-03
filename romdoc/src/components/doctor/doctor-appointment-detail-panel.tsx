@@ -17,6 +17,8 @@ import AppointmentTimeline, {
   type AppointmentTimelineCopy,
 } from "@/components/appointments/appointment-timeline";
 import DoctorPatientFolderManager from "@/components/doctor/doctor-patient-folder-manager";
+import TelehealthLaunchButton from "@/components/telehealth/telehealth-launch-button";
+import TelehealthRefundButton from "@/components/telehealth/telehealth-refund-button";
 import {
   getAppointmentStatusLabel,
 } from "@/lib/appointments/appointment-status";
@@ -41,6 +43,10 @@ export type DoctorAppointmentDetail = {
   status: string;
   createdAt: string;
   clinicName: string;
+  consultationMode?: string;
+  telehealthReference?: string | null;
+  canJoinTelehealth?: boolean;
+  canRefundTelehealth?: boolean;
 };
 
 type Props = {
@@ -482,6 +488,13 @@ export default function DoctorAppointmentDetailPanel({
 
         <div className="mt-6 border-t border-gray-200 pt-5">
           <div className="flex flex-wrap gap-2">
+            {appointment.canJoinTelehealth && appointment.consultationMode === "video" && appointment.telehealthReference && ["confirmed", "rescheduled", "completed"].includes(appointment.status) && (
+              <TelehealthLaunchButton
+                reference={appointment.telehealthReference}
+                locale={locale}
+              />
+            )}
+            {appointment.canRefundTelehealth && <TelehealthRefundButton appointmentId={appointment.id} />}
             <Link
               href={`/appointments/${appointment.id}/messages?locale=${locale}`}
               className="romdoc-button romdoc-button-secondary romdoc-button-sm"

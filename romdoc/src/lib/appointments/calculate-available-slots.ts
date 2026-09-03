@@ -26,6 +26,7 @@ type GetAvailableSlotsInput = {
   doctorId: string;
   clinicId: string;
   date: string;
+  durationMinutes?: number;
 };
 
 type GetAvailableDatesInput = {
@@ -33,6 +34,7 @@ type GetAvailableDatesInput = {
   clinicId: string;
   from: string;
   to: string;
+  durationMinutes?: number;
 };
 
 type GetNextAvailableAppointmentInput = {
@@ -158,6 +160,9 @@ export async function getAvailableSlotsForDate(
       target_doctor_id: input.doctorId,
       target_clinic_id: input.clinicId,
       target_date: input.date,
+      ...(input.durationMinutes
+        ? { target_duration_minutes: input.durationMinutes }
+        : {}),
     }
   );
 
@@ -188,6 +193,7 @@ export async function getAvailableDatesInRange(
           doctorId: input.doctorId,
           clinicId: input.clinicId,
           date,
+          durationMinutes: input.durationMinutes,
         }
       );
 

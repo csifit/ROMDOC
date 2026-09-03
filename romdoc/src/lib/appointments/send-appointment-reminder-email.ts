@@ -25,6 +25,8 @@ type SendAppointmentReminderEmailInput = {
   scheduledDate: string;
   scheduledTime: string;
   cancellationUrl: string;
+  consultationMode?: "in_person" | "video";
+  telehealthReference?: string | null;
   idempotencyKey: string;
 };
 
@@ -208,6 +210,16 @@ sendAppointmentReminderEmail(
   const resend =
     new Resend(apiKey);
 
+  const telehealthUrl = input.consultationMode === "video" && input.telehealthReference
+    ? `${cancellationUrl.origin}/telehealth/${encodeURIComponent(input.telehealthReference)}`
+    : null;
+
+  const telehealthCopy = input.locale === "ro"
+    ? { title: "Consultație video", notice: "Conținutul audio și video nu este înregistrat, transcris sau stocat de RomDoc ori Daily. Autentifică-te cu contul de Pacient asociat programării.", action: "Deschide consultația video" }
+    : input.locale === "de"
+      ? { title: "Videosprechstunde", notice: "Audio und Video werden weder von RomDoc noch von Daily aufgezeichnet, transkribiert oder gespeichert. Melden Sie sich mit dem Patientenkonto an, das mit dem Termin verknüpft ist.", action: "Videosprechstunde öffnen" }
+      : { title: "Video consultation", notice: "Audio and video are not recorded, transcribed, or stored by RomDoc or Daily. Sign in with the Patient account linked to this appointment.", action: "Open video consultation" };
+
   try {
     const result =
       await resend.emails.send(
@@ -248,6 +260,14 @@ sendAppointmentReminderEmail(
                       ${escapeHtml(content.notice)}
                     </p>
 
+                    ${telehealthUrl ? `
+                      <div style="margin-top:24px;padding:20px;border:1px solid #a7f3d0;border-radius:14px;background:#ecfdf5">
+                        <p style="margin:0 0 10px;font-weight:700;color:#036661">${escapeHtml(telehealthCopy.title)}</p>
+                        <p style="margin:0;line-height:1.7;color:#374151">${escapeHtml(telehealthCopy.notice)}</p>
+                        <p style="margin:18px 0 0"><a href="${escapeHtml(telehealthUrl)}" style="display:inline-block;border-radius:10px;background:#036661;padding:12px 18px;color:#ffffff;font-weight:700;text-decoration:none">${escapeHtml(telehealthCopy.action)}</a></p>
+                      </div>
+                    ` : ""}
+
                     <div style="margin-top:26px">
                       <a
                         href="${escapeHtml(cancellationUrl.toString())}"
@@ -285,6 +305,7 @@ sendAppointmentReminderEmail(
             `${copy.timeLabel}: ${formattedTime}`,
             "",
             content.notice,
+            ...(telehealthUrl ? ["", telehealthCopy.title, telehealthCopy.notice, `${telehealthCopy.action}: ${telehealthUrl}`] : []),
             "",
             `${copy.reminderAction}: ${cancellationUrl.toString()}`,
             "",

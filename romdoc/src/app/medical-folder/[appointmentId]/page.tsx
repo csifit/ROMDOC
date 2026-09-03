@@ -149,7 +149,8 @@ export default async function MedicalFolderPage({
       requested_date,
       requested_time,
       scheduled_date,
-      scheduled_time
+      scheduled_time,
+      consultation_mode
     `)
     .eq("id", appointmentId)
     .maybeSingle();
@@ -321,6 +322,15 @@ export default async function MedicalFolderPage({
                       {effectiveTime
                         ? `, ${effectiveTime.slice(0, 5)}`
                         : ""}
+                    </strong>
+                  </span>
+
+                  <span>
+                    {locale === "ro" ? "Tip consultație" : locale === "de" ? "Terminart" : "Consultation type"}: {" "}
+                    <strong>
+                      {appointment.consultation_mode === "video"
+                        ? (locale === "ro" ? "Video" : locale === "de" ? "Video" : "Video")
+                        : (locale === "ro" ? "În persoană" : locale === "de" ? "Persönlich" : "In person")}
                     </strong>
                   </span>
                 </div>

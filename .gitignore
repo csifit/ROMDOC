@@ -14,6 +14,11 @@ Thumbs.db
 # Logs
 *.log
 
+# Local database backups (sensitive data; never commit)
+_database/_backup/
+backup_procedure.txt
+
+
 # Node modules anywhere
 **/node_modules
 
@@ -23,3 +28,6 @@ Thumbs.db
 
 # Vercel
 **/.vercel
+
+# Supabase CLI generated state
+supabase/.temp/

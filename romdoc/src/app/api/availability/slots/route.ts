@@ -114,6 +114,23 @@ export async function GET(request: NextRequest) {
       request.nextUrl.searchParams.get("from")?.trim() ?? "";
     const to =
       request.nextUrl.searchParams.get("to")?.trim() ?? "";
+    const rawDurationMinutes =
+      request.nextUrl.searchParams.get("durationMinutes")?.trim() ?? "";
+    const durationMinutes = rawDurationMinutes
+      ? Number(rawDurationMinutes)
+      : undefined;
+
+    if (
+      durationMinutes !== undefined &&
+      (!Number.isInteger(durationMinutes) ||
+        durationMinutes < 5 ||
+        durationMinutes > 480)
+    ) {
+      return errorResponse(
+        "Durata consultației nu este validă.",
+        400
+      );
+    }
 
     if (!isUuid(doctorId)) {
       return errorResponse(
@@ -185,6 +202,7 @@ export async function GET(request: NextRequest) {
           doctorId,
           clinicId,
           date,
+          durationMinutes,
         }
       );
 
@@ -275,6 +293,7 @@ export async function GET(request: NextRequest) {
         clinicId,
         from: effectiveFrom,
         to,
+        durationMinutes,
       }
     );
 

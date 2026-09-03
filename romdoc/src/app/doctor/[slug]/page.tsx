@@ -31,6 +31,7 @@ import {
 import {
   createClient,
 } from "@/lib/supabase/server";
+import { SPOKEN_LANGUAGE_OPTIONS } from "@/lib/telehealth/constants";
 
 type Props = {
   params: Promise<{
@@ -138,6 +139,9 @@ type DoctorRecord = {
     | null;
   doctor_clinics:
     | DoctorClinicRelation[]
+    | null;
+  doctor_spoken_languages:
+    | Array<{ language_code: string }>
     | null;
 };
 
@@ -397,6 +401,9 @@ export default async function DoctorPage({
         title,
         biography
       ),
+      doctor_spoken_languages (
+        language_code
+      ),
       doctor_specialties (
         specialties (
           specialty_translations (
@@ -460,18 +467,12 @@ export default async function DoctorPage({
     data as unknown as
       DoctorRecord;
 
-  const {
-    data:
-      publicReviewData,
-    error:
-      publicReviewError,
-  } = await supabase.rpc(
-    "get_public_doctor_reviews",
-    {
-      target_doctor_id:
-        doctor.id,
-    }
-  );
+  const [publicReviewsResult, telehealthOfferResult] = await Promise.all([
+    supabase.rpc("get_public_doctor_reviews", { target_doctor_id: doctor.id }),
+    supabase.rpc("get_public_telehealth_offer", { target_doctor_id: doctor.id }),
+  ]);
+  const publicReviewData = publicReviewsResult.data;
+  const publicReviewError = publicReviewsResult.error;
 
   if (
     publicReviewError
@@ -635,6 +636,19 @@ export default async function DoctorPage({
     doctor.verification_status ===
     "verified";
 
+  const telehealthOffer = ((telehealthOfferResult.data ?? []) as Array<{
+    price_minor: number;
+    currency: "RON" | "EUR";
+    duration_minutes: number;
+    recipient_type: "doctor" | "clinic_organization";
+    recipient_name: string;
+  }>)[0] ?? null;
+
+  const spokenLanguages = (doctor.doctor_spoken_languages ?? []).flatMap((spoken) => {
+    const language = SPOKEN_LANGUAGE_OPTIONS.find((option) => option.code === spoken.language_code);
+    return language ? [language.labels[locale]] : [];
+  });
+
   const primaryClinicOption =
     clinicOptions[0] ??
     null;
@@ -772,6 +786,10 @@ export default async function DoctorPage({
                         }
                       )}
                     </span>
+                  )}
+
+                  {spokenLanguages.length > 0 && (
+                    <span>{locale === "ro" ? "Limbi" : locale === "de" ? "Sprachen" : "Languages"}: {spokenLanguages.join(", ")}</span>
                   )}
 
                   {consultationPrice !==
@@ -949,6 +967,7 @@ export default async function DoctorPage({
                 clinics={
                   clinicOptions
                 }
+                telehealthOffer={telehealthOffer}
               />
             </section>
 

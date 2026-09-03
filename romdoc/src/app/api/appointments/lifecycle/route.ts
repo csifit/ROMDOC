@@ -25,6 +25,7 @@ import {
 import {
   createClient,
 } from "@/lib/supabase/server";
+import { expirePendingTelehealthCheckout } from "@/lib/telehealth/expire-checkout";
 
 export const runtime =
   "nodejs";
@@ -646,6 +647,12 @@ export async function PATCH(
     actionToStatus[
       action
     ];
+
+  if (action === "cancel") {
+    await expirePendingTelehealthCheckout(appointmentId).catch((expireError) => {
+      console.error(`Appointment ${appointmentId} was cancelled, but its pending telehealth Checkout could not be expired:`, expireError);
+    });
+  }
 
   let notificationResult = {
     dashboardCreated:

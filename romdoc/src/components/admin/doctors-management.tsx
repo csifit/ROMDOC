@@ -108,6 +108,8 @@ type Doctor = {
   complimentary_access: ComplimentaryAccess | null;
   clinic_count: number;
   active_staff_count: number;
+  telehealth_admin_restricted: boolean;
+  telehealth_restriction_reason: string | null;
 };
 
 type ApiResponse = PlatformOperatorDoctorApiPayload & {
@@ -370,6 +372,16 @@ export default function DoctorsManagement() {
     useState<string | null>(
       null
     );
+
+  const [
+    telehealthRestrictionDoctorId,
+    setTelehealthRestrictionDoctorId,
+  ] = useState<string | null>(null);
+
+  const [
+    telehealthRestrictionReason,
+    setTelehealthRestrictionReason,
+  ] = useState("");
 
   const [
     isLoading,
@@ -936,6 +948,38 @@ export default function DoctorsManagement() {
       setChangingDoctorId(
         null
       );
+    }
+  }
+
+  async function updateTelehealthRestriction(
+    doctor: Doctor,
+    restricted: boolean,
+    reason: string | null = null
+  ) {
+    setChangingDoctorId(doctor.id);
+    setError(null);
+    setSuccess(null);
+    try {
+      const response = await fetch("/api/admin/doctors", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          doctorId: doctor.id,
+          action: "set_telehealth_restriction",
+          telehealthRestricted: restricted,
+          restrictionReason: reason?.trim() || null,
+        }),
+      });
+      const result = (await response.json()) as ApiResponse;
+      if (!response.ok) throw new Error(resolveActionMessage(result, copy.doctors.states.actionFailed));
+      setSuccess(restricted ? "Telehealth access restricted." : "Telehealth access allowed.");
+      setTelehealthRestrictionDoctorId(null);
+      setTelehealthRestrictionReason("");
+      await loadDoctors();
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : copy.doctors.states.actionFailed);
+    } finally {
+      setChangingDoctorId(null);
     }
   }
 
@@ -2318,6 +2362,27 @@ export default function DoctorsManagement() {
                         </details>
 
                         <div className="mt-[21px] flex flex-wrap gap-[13px]">
+                          <Button
+                            type="button"
+                            disabled={changing}
+                            onClick={() => {
+                              if (doctor.telehealth_admin_restricted) {
+                                void updateTelehealthRestriction(doctor, false);
+                                return;
+                              }
+
+                              setTelehealthRestrictionDoctorId(doctor.id);
+                              setTelehealthRestrictionReason(
+                                doctor.telehealth_restriction_reason ?? ""
+                              );
+                            }}
+                            variant={doctor.telehealth_admin_restricted ? "secondary" : "danger-outline"}
+                            size="sm"
+                          >
+                            {doctor.telehealth_admin_restricted
+                              ? locale === "ro" ? "Permite telehealth" : locale === "de" ? "Telehealth erlauben" : "Allow telehealth"
+                              : locale === "ro" ? "Restricționează telehealth" : locale === "de" ? "Telehealth einschränken" : "Restrict telehealth"}
+                          </Button>
                           <Link
                             href={`/doctor/${doctor.slug}`}
                             target="_blank"
@@ -2459,6 +2524,70 @@ export default function DoctorsManagement() {
                             </Button>
                           )}
                         </div>
+
+                        {telehealthRestrictionDoctorId === doctor.id &&
+                          !doctor.telehealth_admin_restricted && (
+                            <form
+                              className="mt-[13px] rounded-[13px] border border-red-200 bg-red-50 p-[13px]"
+                              onSubmit={(event) => {
+                                event.preventDefault();
+                                void updateTelehealthRestriction(
+                                  doctor,
+                                  true,
+                                  telehealthRestrictionReason
+                                );
+                              }}
+                            >
+                              <label
+                                htmlFor={`telehealth-restriction-reason-${doctor.id}`}
+                                className="block text-sm font-semibold text-red-950"
+                              >
+                                {locale === "ro"
+                                  ? "Motiv opțional pentru restricție"
+                                  : locale === "de"
+                                    ? "Optionaler Grund für die Einschränkung"
+                                    : "Optional restriction reason"}
+                              </label>
+                              <input
+                                id={`telehealth-restriction-reason-${doctor.id}`}
+                                value={telehealthRestrictionReason}
+                                onChange={(event) =>
+                                  setTelehealthRestrictionReason(event.target.value)
+                                }
+                                className="romdoc-focus-ring mt-[8px] w-full rounded-[8px] border border-red-200 bg-white px-[13px] py-[8px] text-sm text-gray-950"
+                              />
+                              <div className="mt-[13px] flex flex-wrap gap-[8px]">
+                                <Button
+                                  type="submit"
+                                  disabled={changing}
+                                  variant="danger-outline"
+                                  size="sm"
+                                >
+                                  {locale === "ro"
+                                    ? "Aplică restricția"
+                                    : locale === "de"
+                                      ? "Einschränkung anwenden"
+                                      : "Apply restriction"}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  disabled={changing}
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => {
+                                    setTelehealthRestrictionDoctorId(null);
+                                    setTelehealthRestrictionReason("");
+                                  }}
+                                >
+                                  {locale === "ro"
+                                    ? "Renunță"
+                                    : locale === "de"
+                                      ? "Abbrechen"
+                                      : "Cancel"}
+                                </Button>
+                              </div>
+                            </form>
+                          )}
                       </div>
                     )}
                   </article>

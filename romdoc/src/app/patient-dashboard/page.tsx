@@ -15,6 +15,7 @@ import PatientFolderShortcut from "@/components/patient/patient-folder-shortcut"
 import PatientReminderPreferencesShortcut from "@/components/patient/patient-reminder-preferences-shortcut";
 import PatientReviewForm from "@/components/reviews/patient-review-form";
 import RatingStars from "@/components/reviews/rating-stars";
+import TelehealthLaunchButton from "@/components/telehealth/telehealth-launch-button";
 import {
   getAppointmentStatusLabel,
 } from "@/lib/appointments/appointment-status";
@@ -31,6 +32,9 @@ import {
 import {
   createClient,
 } from "@/lib/supabase/server";
+import {
+  isJoinableTelehealthPaymentStatus,
+} from "@/lib/telehealth/constants";
 
 type DoctorTranslation = {
   locale: string;
@@ -101,6 +105,12 @@ type Appointment = {
   status: string;
   notes: string | null;
   created_at: string;
+  consultation_mode: string;
+  telehealth_public_reference: string | null;
+  telehealth_payments:
+    | { status: string }
+    | Array<{ status: string }>
+    | null;
   doctors:
     | DoctorRelation
     | DoctorRelation[]
@@ -441,6 +451,11 @@ export default async function PatientDashboardPage() {
     status,
     notes,
     created_at,
+    consultation_mode,
+    telehealth_public_reference,
+    telehealth_payments (
+      status
+    ),
     doctors (
       id,
       slug,
@@ -1080,6 +1095,12 @@ export default async function PatientDashboardPage() {
                         )}
 
                         <div className="mt-6 flex flex-wrap gap-3 border-t border-gray-200 pt-5">
+                          {isJoinableTelehealthPaymentStatus(first(appointment.telehealth_payments)?.status) && appointment.consultation_mode === "video" && appointment.telehealth_public_reference && ["confirmed", "rescheduled", "completed"].includes(appointment.status) && (
+                            <TelehealthLaunchButton
+                              reference={appointment.telehealth_public_reference}
+                              locale={locale}
+                            />
+                          )}
                           <Link
                             href={`/appointments/${appointment.id}/request-received?locale=${locale}`}
                             target="_blank"

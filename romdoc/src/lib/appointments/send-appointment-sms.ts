@@ -88,6 +88,8 @@ type AppointmentRow = {
   scheduled_time: string | null;
   requested_date: string | null;
   requested_time: string | null;
+  consultation_mode: string;
+  telehealth_public_reference: string | null;
   doctors: DoctorRelation | DoctorRelation[] | null;
   clinics: ClinicRelation | ClinicRelation[] | null;
 };
@@ -282,6 +284,9 @@ function buildMessage(
         appointment,
         locale
       ),
+    videoUrl: appointment.consultation_mode === "video" && appointment.telehealth_public_reference
+      ? `${(process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? process.env.SITE_URL ?? "https://www.romdoc.fit").replace(/\/+$/, "")}/telehealth/${encodeURIComponent(appointment.telehealth_public_reference)}`
+      : null,
   });
 }
 
@@ -545,6 +550,8 @@ export async function sendAppointmentSms({
       scheduled_time,
       requested_date,
       requested_time,
+      consultation_mode,
+      telehealth_public_reference,
       doctors (
         slug,
         account_type,

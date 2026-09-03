@@ -9,6 +9,7 @@ import {
 import {
   createClient,
 } from "@/lib/supabase/server";
+import { expirePendingTelehealthCheckout } from "@/lib/telehealth/expire-checkout";
 
 type RouteContext = {
   params: Promise<{
@@ -437,6 +438,10 @@ export async function PATCH(
     smsSkipped:
       null as boolean | null,
   };
+
+  await expirePendingTelehealthCheckout(appointmentId).catch((expireError) => {
+    console.error(`Patient appointment ${appointmentId} was cancelled, but its pending telehealth Checkout could not be expired:`, expireError);
+  });
 
   try {
     notificationResult =

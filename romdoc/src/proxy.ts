@@ -35,6 +35,7 @@ const localeNeutralPrefixes = [
   "/reset-password",
   "/set-password",
   "/support",
+  "/telehealth",
 ] as const;
 
 const publicEntryPaths = [

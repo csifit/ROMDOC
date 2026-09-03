@@ -16,6 +16,7 @@ export type CoveredClinicDoctorAccount = {
   accountStatus: string;
   doctorStatus: string;
   coverageStatus: string;
+  telehealthRestricted: boolean;
 };
 
 type Props = {
@@ -57,6 +58,10 @@ const COPY = {
     confirmSuspend: "Suspendă contul medicului {name}?",
     confirmBlock: "Blochează contul medicului {name}?",
     confirmReactivate: "Reactivează contul medicului {name}?",
+    telehealthAllowed: "Telehealth permis",
+    telehealthRestricted: "Telehealth restricționat",
+    restrictTelehealth: "Restricționează telehealth",
+    allowTelehealth: "Permite telehealth",
   },
   en: {
     manage: "Manage doctors",
@@ -84,6 +89,10 @@ const COPY = {
     confirmSuspend: "Suspend the Doctor account for {name}?",
     confirmBlock: "Block the Doctor account for {name}?",
     confirmReactivate: "Reactivate the Doctor account for {name}?",
+    telehealthAllowed: "Telehealth allowed",
+    telehealthRestricted: "Telehealth restricted",
+    restrictTelehealth: "Restrict telehealth",
+    allowTelehealth: "Allow telehealth",
   },
   de: {
     manage: "Ärzte verwalten",
@@ -111,6 +120,10 @@ const COPY = {
     confirmSuspend: "Arztkonto von {name} aussetzen?",
     confirmBlock: "Arztkonto von {name} sperren?",
     confirmReactivate: "Arztkonto von {name} reaktivieren?",
+    telehealthAllowed: "Telehealth erlaubt",
+    telehealthRestricted: "Telehealth eingeschränkt",
+    restrictTelehealth: "Telehealth einschränken",
+    allowTelehealth: "Telehealth erlauben",
   },
 } as const;
 
@@ -277,6 +290,33 @@ export default function ClinicOrganizationDoctorsManager({
     }
   }
 
+  async function updateTelehealthRestriction(
+    doctor: CoveredClinicDoctorAccount,
+    restricted: boolean
+  ) {
+    setChangingDoctorId(doctor.doctorId);
+    setError("");
+    try {
+      const response = await fetch("/api/admin/doctors", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          doctorId: doctor.doctorId,
+          action: "set_telehealth_restriction",
+          telehealthRestricted: restricted,
+        }),
+      });
+      const result = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(result.error ?? copy.failed);
+      setDoctors((current) => current.map((item) => item.doctorId === doctor.doctorId ? { ...item, telehealthRestricted: restricted } : item));
+      router.refresh();
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : copy.failed);
+    } finally {
+      setChangingDoctorId(null);
+    }
+  }
+
   return (
     <>
       <button
@@ -372,6 +412,9 @@ export default function ClinicOrganizationDoctorsManager({
                                 doctor.accountStatus
                               )}
                             </span>
+                            <span className={`rounded-full px-[10px] py-[5px] text-xs font-semibold ${doctor.telehealthRestricted ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"}`}>
+                              {doctor.telehealthRestricted ? copy.telehealthRestricted : copy.telehealthAllowed}
+                            </span>
 
                             <span
                               className={`rounded-full px-[10px] py-[5px] text-xs font-semibold ${profileStatusClasses(
@@ -398,6 +441,9 @@ export default function ClinicOrganizationDoctorsManager({
                         </div>
 
                         <div className="flex shrink-0 flex-wrap gap-[8px]">
+                          <button type="button" disabled={changing} onClick={() => void updateTelehealthRestriction(doctor, !doctor.telehealthRestricted)} className="romdoc-button romdoc-button-secondary romdoc-button-sm">
+                            {changing ? copy.processing : doctor.telehealthRestricted ? copy.allowTelehealth : copy.restrictTelehealth}
+                          </button>
                           {doctor.accountStatus === "active" && (
                             <button
                               type="button"

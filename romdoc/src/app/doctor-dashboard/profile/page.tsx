@@ -9,6 +9,7 @@ import {
 import DoctorClinicEditingPanel from "@/components/doctor/doctor-clinic-editing-panel";
 import DoctorPhotoManager from "@/components/doctor/doctor-photo-manager";
 import DoctorProfileForm from "@/components/doctor/doctor-profile-form";
+import DoctorSpokenLanguagesForm from "@/components/doctor/doctor-spoken-languages-form";
 import DoctorServicesManager, {
   type DoctorServiceItem,
 } from "@/components/doctor/doctor-services-manager";
@@ -270,6 +271,7 @@ export default async function DoctorProfilePage() {
     servicesResult,
     specialtiesResult,
     doctorSpecialtiesResult,
+    spokenLanguagesResult,
   ] =
     await Promise.all([
       supabase
@@ -341,6 +343,10 @@ export default async function DoctorProfilePage() {
           "doctor_id",
           doctor.id
         ),
+      supabase
+        .from("doctor_spoken_languages")
+        .select("language_code")
+        .eq("doctor_id", doctor.id),
     ]);
 
   const translation =
@@ -602,6 +608,10 @@ export default async function DoctorProfilePage() {
                 ?.biography ??
               ""
             }
+          />
+
+          <DoctorSpokenLanguagesForm
+            initialLanguages={(spokenLanguagesResult.data ?? []).map((item) => item.language_code)}
           />
 
           {isIndependentDoctor && (

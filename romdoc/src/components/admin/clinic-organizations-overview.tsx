@@ -276,7 +276,7 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
     )
   );
 
-  const [profilesResult, clinicsResult, translationsResult, doctorsResult] =
+  const [profilesResult, clinicsResult, translationsResult, doctorsResult, restrictionsResult] =
     await Promise.all([
       profileIds.length
         ? admin
@@ -313,6 +313,12 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
               )
             `)
             .in("id", coveredDoctorIds)
+        : Promise.resolve({ data: [], error: null }),
+      coveredDoctorIds.length
+        ? admin
+            .from("doctor_telehealth_restrictions")
+            .select("doctor_id, is_restricted")
+            .in("doctor_id", coveredDoctorIds)
         : Promise.resolve({ data: [], error: null }),
     ]);
 
@@ -358,6 +364,9 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
       doctor.id,
       doctor,
     ])
+  );
+  const restrictionByDoctorId = new Map(
+    (restrictionsResult.data ?? []).map((restriction) => [restriction.doctor_id, restriction.is_restricted])
   );
   const translations =
     (translationsResult.data ?? []) as ClinicTranslation[];
@@ -494,6 +503,7 @@ export default async function ClinicOrganizationsOverview({ locale }: Props) {
         accountStatus: profile?.account_status ?? "unknown",
         doctorStatus: doctor.status,
         coverageStatus: relationship.coverage_status,
+        telehealthRestricted: restrictionByDoctorId.get(doctor.id) ?? false,
       });
     }
 

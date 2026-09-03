@@ -14,6 +14,9 @@ import {
 import {
   createClient,
 } from "@/lib/supabase/server";
+import {
+  isJoinableTelehealthPaymentStatus,
+} from "@/lib/telehealth/constants";
 
 type DoctorRelation = {
   slug: string;
@@ -56,6 +59,12 @@ type AppointmentRecord = {
     | number
     | null;
   status: string;
+  consultation_mode: string;
+  telehealth_public_reference: string | null;
+  telehealth_payments:
+    | { status: string }
+    | Array<{ status: string }>
+    | null;
   doctors:
     | DoctorRelation
     | DoctorRelation[]
@@ -369,6 +378,11 @@ export async function GET(
         scheduled_time,
         duration_minutes,
         status,
+        consultation_mode,
+        telehealth_public_reference,
+        telehealth_payments (
+          status
+        ),
         doctors (
           slug
         ),
@@ -534,6 +548,21 @@ export async function GET(
       request.nextUrl.origin
     ).toString();
 
+  const isVideo =
+    appointment.consultation_mode === "video" &&
+    Boolean(appointment.telehealth_public_reference) &&
+    isJoinableTelehealthPaymentStatus(
+      first(
+        appointment.telehealth_payments
+      )?.status
+    );
+  const eventUrl = isVideo
+    ? new URL(`/telehealth/${appointment.telehealth_public_reference}`, request.nextUrl.origin).toString()
+    : requestUrl;
+  const eventLocation = isVideo
+    ? (locale === "ro" ? "Consultație video RomDoc" : locale === "de" ? "RomDoc Videosprechstunde" : "RomDoc video consultation")
+    : [clinicName, address].filter(Boolean).join(", ");
+
   const ics = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -560,18 +589,13 @@ export async function GET(
       `${copy.summaryPrefix} - ${doctorName}`
     )}`,
     `DESCRIPTION:${escapeIcs(
-      `${copy.description}\n${requestUrl}`
+      `${copy.description}\n${isVideo ? (locale === "ro" ? "Conținutul audio și video nu este înregistrat, transcris sau stocat de RomDoc ori Daily." : locale === "de" ? "Audio und Video werden weder von RomDoc noch von Daily aufgezeichnet, transkribiert oder gespeichert." : "Audio and video are not recorded, transcribed, or stored by RomDoc or Daily.") : ""}\n${eventUrl}`
     )}`,
     `LOCATION:${escapeIcs(
-      [
-        clinicName,
-        address,
-      ]
-        .filter(Boolean)
-        .join(", ")
+      eventLocation
     )}`,
     `URL:${escapeIcs(
-      requestUrl
+      eventUrl
     )}`,
     "STATUS:CONFIRMED",
     "END:VEVENT",

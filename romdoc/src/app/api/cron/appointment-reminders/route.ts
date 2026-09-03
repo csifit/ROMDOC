@@ -65,6 +65,8 @@ type AppointmentRecord = {
   doctor_id: string;
   clinic_id: string | null;
   patient_profile_id: string | null;
+  consultation_mode: "in_person" | "video";
+  telehealth_public_reference: string | null;
   doctors: DoctorRelation | DoctorRelation[] | null;
   clinics: ClinicRelation | ClinicRelation[] | null;
 };
@@ -304,6 +306,8 @@ export async function GET(
         doctor_id,
         clinic_id,
         patient_profile_id,
+        consultation_mode,
+        telehealth_public_reference,
         doctors (
           slug,
           profiles!doctors_profile_id_fkey (
@@ -578,6 +582,8 @@ export async function GET(
         scheduledTime: appointment.scheduled_time,
         cancellationUrl:
           `${request.nextUrl.origin}/patient-dashboard?locale=${notificationLocale}`,
+        consultationMode: appointment.consultation_mode,
+        telehealthReference: appointment.telehealth_public_reference,
         idempotencyKey,
       });
 

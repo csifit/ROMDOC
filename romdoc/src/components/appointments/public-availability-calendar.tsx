@@ -18,7 +18,7 @@ import {
 type PublicSlot = { time: string; durationMinutes: number };
 type AvailableDate = { date: string; availableSlotCount: number; slots: PublicSlot[] };
 type AvailabilityApiResponse = { dates?: AvailableDate[]; error?: string };
-type Props = { doctorId: string; clinicId: string; minimumDate: string; maximumDate: string; selectedDate: string; selectedTime: string; disabled?: boolean; onDateChange: (date: string) => void; onTimeChange: (time: string, durationMinutes: number) => void };
+type Props = { doctorId: string; clinicId: string; minimumDate: string; maximumDate: string; selectedDate: string; selectedTime: string; requiredDurationMinutes?: number; disabled?: boolean; onDateChange: (date: string) => void; onTimeChange: (time: string, durationMinutes: number) => void };
 
 const WEEKDAYS = { ro: ["Lu", "Ma", "Mi", "Jo", "Vi", "Sâ", "Du"], en: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"], de: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"] } as const;
 const INTL_LOCALE = { ro: "ro-RO", en: "en-GB", de: "de-DE" } as const;
@@ -38,7 +38,7 @@ function getCalendarCells(month: Date) {
 }
 function getRange(month: Date, minimumDate: string, maximumDate: string) { const start = formatDate(getMonthStart(month)); const end = formatDate(getMonthEnd(month)); const from = start < minimumDate ? minimumDate : start; const to = end > maximumDate ? maximumDate : end; return from <= to ? { from, to } : null; }
 
-export default function PublicAvailabilityCalendar({ doctorId, clinicId, minimumDate, maximumDate, selectedDate, selectedTime, disabled = false, onDateChange, onTimeChange }: Props) {
+export default function PublicAvailabilityCalendar({ doctorId, clinicId, minimumDate, maximumDate, selectedDate, selectedTime, requiredDurationMinutes, disabled = false, onDateChange, onTimeChange }: Props) {
   const locale = normalizeAppLocale(useLocale());
   const t = BOOKING_COPY[locale].calendar;
   const dateFormatter = useMemo(() => new Intl.DateTimeFormat(INTL_LOCALE[locale], { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }), [locale]);
@@ -61,17 +61,24 @@ export default function PublicAvailabilityCalendar({ doctorId, clinicId, minimum
       setIsLoading(true); setLoadError(null);
       try {
         const query = new URLSearchParams({ doctorId, clinicId, from: range!.from, to: range!.to });
+        if (requiredDurationMinutes) query.set("durationMinutes", String(requiredDurationMinutes));
         const response = await fetch(`/api/availability/slots?${query.toString()}`, { method: "GET", cache: "no-store", signal: controller.signal });
         const result = await response.json() as AvailabilityApiResponse;
         if (!response.ok) throw new Error(locale === "ro" && result.error ? result.error : t.loadFailed);
-        setAvailability(result.dates ?? []); setHasLoaded(true);
+        const dates = (result.dates ?? []).map((date) => {
+          const slots = requiredDurationMinutes
+            ? date.slots.filter((slot) => slot.durationMinutes === requiredDurationMinutes)
+            : date.slots;
+          return { ...date, slots, availableSlotCount: slots.length };
+        });
+        setAvailability(dates); setHasLoaded(true);
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setAvailability([]); setHasLoaded(true); setLoadError(error instanceof Error ? error.message : t.loadFailed);
       } finally { if (!controller.signal.aborted) setIsLoading(false); }
     }
     void load(); return () => controller.abort();
-  }, [clinicId, doctorId, locale, maximumDate, minimumDate, reloadKey, t.loadFailed, visibleMonth]);
+  }, [clinicId, doctorId, locale, maximumDate, minimumDate, reloadKey, requiredDurationMinutes, t.loadFailed, visibleMonth]);
 
   const byDate = useMemo(() => new Map(availability.map(item => [item.date, item])), [availability]);
   const selectedAvailability = selectedDate ? byDate.get(selectedDate) ?? null : null;

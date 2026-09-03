@@ -7,6 +7,8 @@ import {
 import AppLocaleCookieSync from "@/components/i18n/app-locale-cookie-sync";
 import PublicFooter from "@/components/public/public-footer";
 import AppointmentStatusBadge from "@/components/ui/appointment-status-badge";
+import TelehealthLaunchButton from "@/components/telehealth/telehealth-launch-button";
+import TelehealthPaymentResumeButton from "@/components/telehealth/telehealth-payment-resume-button";
 import {
   type AppointmentStatus,
 } from "@/lib/appointments/appointment-status";
@@ -21,6 +23,9 @@ import {
 import {
   createClient,
 } from "@/lib/supabase/server";
+import {
+  isJoinableTelehealthPaymentStatus,
+} from "@/lib/telehealth/constants";
 
 type DoctorRelation = {
   slug: string;
@@ -66,6 +71,12 @@ type AppointmentRecord = {
     | number
     | null;
   status: string;
+  consultation_mode: string;
+  telehealth_public_reference: string | null;
+  telehealth_payments:
+    | { status: string }
+    | Array<{ status: string }>
+    | null;
   notes:
     | string
     | null;
@@ -89,6 +100,7 @@ type PageProps = {
   searchParams: Promise<{
     emailSent?: string;
     locale?: string;
+    payment?: string;
   }>;
 };
 
@@ -411,6 +423,7 @@ function getGoogleCalendarUrl({
   date,
   time,
   durationMinutes,
+  videoUrl,
 }: {
   locale: AppLocale;
   doctorName: string;
@@ -421,6 +434,7 @@ function getGoogleCalendarUrl({
   date: string;
   time: string;
   durationMinutes: number;
+  videoUrl?: string | null;
 }) {
   const [
     year,
@@ -476,8 +490,13 @@ function getGoogleCalendarUrl({
         ? `Appointment - ${doctorName}`
         : `Programare - ${doctorName}`;
 
-  const details =
-    locale === "de"
+  const details = videoUrl
+    ? locale === "de"
+      ? `RomDoc Videosprechstunde. Die Sprechstunde wird weder aufgezeichnet noch gespeichert. ${videoUrl}`
+      : locale === "en"
+        ? `RomDoc video consultation. The consultation is not recorded or stored. ${videoUrl}`
+        : `Consultație video RomDoc. Consultația nu este înregistrată sau stocată. ${videoUrl}`
+    : locale === "de"
       ? "Über RomDoc bestätigter Arzttermin."
       : locale === "en"
         ? "Medical appointment confirmed through RomDoc."
@@ -497,12 +516,9 @@ function getGoogleCalendarUrl({
         )}`,
       details,
       location:
-        [
-          clinicName,
-          address,
-        ]
-          .filter(Boolean)
-          .join(", "),
+        videoUrl
+          ? (locale === "de" ? "RomDoc Videosprechstunde" : locale === "en" ? "RomDoc video consultation" : "Consultație video RomDoc")
+          : [clinicName, address].filter(Boolean).join(", "),
       ctz:
         "Europe/Bucharest",
     });
@@ -664,6 +680,11 @@ AppointmentRequestReceivedPage({
         scheduled_time,
         duration_minutes,
         status,
+        consultation_mode,
+        telehealth_public_reference,
+        telehealth_payments (
+          status
+        ),
         notes,
         reschedule_reason,
         doctors (
@@ -854,6 +875,13 @@ AppointmentRequestReceivedPage({
       appointment.id
     )}/calendar?locale=${locale}`;
 
+  const hasJoinableVideoPayment =
+    isJoinableTelehealthPaymentStatus(
+      first(
+        appointment.telehealth_payments
+      )?.status
+    );
+
   const googleCalendarUrl =
     calendarAvailable &&
     effectiveTime
@@ -874,6 +902,9 @@ AppointmentRequestReceivedPage({
                 .duration_minutes ??
               30
             ),
+          videoUrl: hasJoinableVideoPayment && appointment.consultation_mode === "video" && appointment.telehealth_public_reference
+            ? `${process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ?? "https://www.romdoc.fit"}/telehealth/${encodeURIComponent(appointment.telehealth_public_reference)}`
+            : null,
         })
       : null;
 
@@ -1035,6 +1066,12 @@ AppointmentRequestReceivedPage({
             )}
 
             <div className="mt-8 flex flex-wrap gap-3">
+              {hasJoinableVideoPayment && appointment.consultation_mode === "video" && appointment.telehealth_public_reference && ["confirmed", "rescheduled", "completed"].includes(appointment.status) && (
+                <TelehealthLaunchButton
+                  reference={appointment.telehealth_public_reference}
+                  locale={locale}
+                />
+              )}
               {doctor && (
                 <Link
                   href={
@@ -1057,6 +1094,13 @@ AppointmentRequestReceivedPage({
               </Link>
             </div>
           </section>
+
+          {appointment.consultation_mode === "video" && appointment.status === "pending" && (
+            <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm leading-6 text-amber-950">
+              {locale === "ro" ? "Plata este în curs de confirmare. Reîncarcă pagina în câteva momente." : locale === "de" ? "Die Zahlung wird bestätigt. Laden Sie die Seite in wenigen Augenblicken erneut." : "Payment confirmation is in progress. Refresh this page in a few moments."}
+              <TelehealthPaymentResumeButton appointmentId={appointment.id} />
+            </section>
+          )}
 
           <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
             <h2 className="text-xl font-bold text-gray-900">

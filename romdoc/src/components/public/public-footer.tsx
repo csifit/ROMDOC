@@ -29,6 +29,7 @@ type FooterCopy = {
   doctors: string;
   specialties: string;
   patientGuide: string;
+  telehealth: string;
   createAccount: string;
   signIn: string;
   joinAsDoctor: string;
@@ -61,6 +62,7 @@ const footerCopy: Record<
     doctors: "Medici",
     specialties: "Specializări",
     patientGuide: "Ghid pentru pacienți",
+    telehealth: "Consultații video",
     createAccount: "Creează cont",
     signIn: "Autentificare",
     joinAsDoctor: "Înscrie-te ca medic",
@@ -88,6 +90,7 @@ const footerCopy: Record<
     doctors: "Doctors",
     specialties: "Specialties",
     patientGuide: "Patient guide",
+    telehealth: "Video consultations",
     createAccount: "Create account",
     signIn: "Sign in",
     joinAsDoctor: "Join as a doctor",
@@ -115,6 +118,7 @@ const footerCopy: Record<
     doctors: "Ärzte",
     specialties: "Fachrichtungen",
     patientGuide: "Ratgeber für Patienten",
+    telehealth: "Videosprechstunden",
     createAccount: "Konto erstellen",
     signIn: "Anmelden",
     joinAsDoctor: "Als Arzt registrieren",
@@ -209,6 +213,12 @@ export default async function PublicFooter({
       href: "/ghid-pacienti",
     });
 
+  const telehealthHref =
+    getPathname({
+      locale,
+      href: "/telemedicina",
+    });
+
   const doctorStaffGuideHref =
     getPathname({
       locale,
@@ -280,6 +290,10 @@ export default async function PublicFooter({
         href: patientGuideHref,
         label:
           copy.patientGuide,
+      },
+      {
+        href: telehealthHref,
+        label: copy.telehealth,
       },
       {
         href: registerHref,

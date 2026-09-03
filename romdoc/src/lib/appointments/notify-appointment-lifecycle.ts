@@ -42,6 +42,8 @@ type AppointmentRow = {
   requested_date: string | null;
   requested_time: string | null;
   reschedule_reason: string | null;
+  consultation_mode: string;
+  telehealth_public_reference: string | null;
   doctors:
     | {
         id: string;
@@ -421,6 +423,8 @@ export async function notifyAppointmentLifecycle({
       requested_date,
       requested_time,
       reschedule_reason,
+      consultation_mode,
+      telehealth_public_reference,
       doctors (
         id,
         slug,
@@ -639,6 +643,10 @@ export async function notifyAppointmentLifecycle({
           "rescheduled"
             ? appointment.reschedule_reason
             : null,
+        consultationMode:
+          appointment.consultation_mode,
+        telehealthReference:
+          appointment.telehealth_public_reference,
       });
 
     emailSent =
