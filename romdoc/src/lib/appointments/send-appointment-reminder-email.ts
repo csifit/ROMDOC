@@ -9,6 +9,7 @@ import {
 import type {
   AppointmentNotificationLocale,
 } from "@/lib/appointments/notification-locale";
+import { getPublicTelehealthUrl } from "@/lib/telehealth/constants";
 
 export type AppointmentReminderType =
   AppointmentReminderKind;
@@ -211,7 +212,7 @@ sendAppointmentReminderEmail(
     new Resend(apiKey);
 
   const telehealthUrl = input.consultationMode === "video" && input.telehealthReference
-    ? `${cancellationUrl.origin}/telehealth/${encodeURIComponent(input.telehealthReference)}`
+    ? getPublicTelehealthUrl(input.telehealthReference)
     : null;
 
   const telehealthCopy = input.locale === "ro"

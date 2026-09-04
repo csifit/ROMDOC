@@ -24,6 +24,7 @@ import {
   createClient,
 } from "@/lib/supabase/server";
 import {
+  getPublicTelehealthUrl,
   isJoinableTelehealthPaymentStatus,
 } from "@/lib/telehealth/constants";
 
@@ -903,7 +904,7 @@ AppointmentRequestReceivedPage({
               30
             ),
           videoUrl: hasJoinableVideoPayment && appointment.consultation_mode === "video" && appointment.telehealth_public_reference
-            ? `${process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ?? "https://www.romdoc.fit"}/telehealth/${encodeURIComponent(appointment.telehealth_public_reference)}`
+            ? getPublicTelehealthUrl(appointment.telehealth_public_reference)
             : null,
         })
       : null;

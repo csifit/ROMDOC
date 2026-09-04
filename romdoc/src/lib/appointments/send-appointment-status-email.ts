@@ -10,6 +10,7 @@ import {
   resolveAppointmentNotificationLocale,
   type AppointmentNotificationLocale,
 } from "@/lib/appointments/notification-locale";
+import { getPublicTelehealthUrl } from "@/lib/telehealth/constants";
 
 export type PatientNotificationStatus =
   AppointmentNotificationStatus;
@@ -312,7 +313,7 @@ sendAppointmentStatusEmail(
     );
 
   const telehealthUrl = input.consultationMode === "video" && input.telehealthReference
-    ? `${getSiteUrl()}/telehealth/${encodeURIComponent(input.telehealthReference)}`
+    ? getPublicTelehealthUrl(input.telehealthReference)
     : null;
 
   const telehealthCopy = locale === "ro"

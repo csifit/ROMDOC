@@ -1,5 +1,7 @@
 export const TELEHEALTH_CONSENT_VERSION = "2026-09-02";
 
+export const TELEHEALTH_PUBLIC_ORIGIN = "https://www.romdoc.fit";
+
 export const JOINABLE_TELEHEALTH_PAYMENT_STATUSES = [
   "paid",
   "partially_refunded",
@@ -39,4 +41,8 @@ export function isSpokenLanguageCode(value: string): value is SpokenLanguageCode
 
 export function getTelehealthReferencePath(reference: string) {
   return `/telehealth/${encodeURIComponent(reference)}`;
+}
+
+export function getPublicTelehealthUrl(reference: string) {
+  return `${TELEHEALTH_PUBLIC_ORIGIN}${getTelehealthReferencePath(reference)}`;
 }

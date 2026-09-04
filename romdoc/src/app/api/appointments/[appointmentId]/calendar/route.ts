@@ -15,6 +15,7 @@ import {
   createClient,
 } from "@/lib/supabase/server";
 import {
+  getPublicTelehealthUrl,
   isJoinableTelehealthPaymentStatus,
 } from "@/lib/telehealth/constants";
 
@@ -548,16 +549,18 @@ export async function GET(
       request.nextUrl.origin
     ).toString();
 
+  const telehealthReference =
+    appointment.telehealth_public_reference;
   const isVideo =
     appointment.consultation_mode === "video" &&
-    Boolean(appointment.telehealth_public_reference) &&
+    Boolean(telehealthReference) &&
     isJoinableTelehealthPaymentStatus(
       first(
         appointment.telehealth_payments
       )?.status
     );
-  const eventUrl = isVideo
-    ? new URL(`/telehealth/${appointment.telehealth_public_reference}`, request.nextUrl.origin).toString()
+  const eventUrl = isVideo && telehealthReference
+    ? getPublicTelehealthUrl(telehealthReference)
     : requestUrl;
   const eventLocation = isVideo
     ? (locale === "ro" ? "Consultație video RomDoc" : locale === "de" ? "RomDoc Videosprechstunde" : "RomDoc video consultation")

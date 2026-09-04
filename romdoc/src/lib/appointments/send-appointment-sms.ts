@@ -8,6 +8,7 @@ import {
   selectNotificationTranslation,
   type AppointmentNotificationLocale,
 } from "@/lib/appointments/notification-locale";
+import { getPublicTelehealthUrl } from "@/lib/telehealth/constants";
 
 export type AppointmentSmsEvent =
   | "confirmed"
@@ -285,7 +286,7 @@ function buildMessage(
         locale
       ),
     videoUrl: appointment.consultation_mode === "video" && appointment.telehealth_public_reference
-      ? `${(process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? process.env.SITE_URL ?? "https://www.romdoc.fit").replace(/\/+$/, "")}/telehealth/${encodeURIComponent(appointment.telehealth_public_reference)}`
+      ? getPublicTelehealthUrl(appointment.telehealth_public_reference)
       : null,
   });
 }
