@@ -560,7 +560,7 @@ export async function GET(
       )?.status
     );
   const eventUrl = isVideo && telehealthReference
-    ? getPublicTelehealthUrl(telehealthReference)
+    ? getPublicTelehealthUrl(telehealthReference, locale)
     : requestUrl;
   const eventLocation = isVideo
     ? (locale === "ro" ? "Consultație video RomDoc" : locale === "de" ? "RomDoc Videosprechstunde" : "RomDoc video consultation")

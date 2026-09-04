@@ -212,7 +212,7 @@ sendAppointmentReminderEmail(
     new Resend(apiKey);
 
   const telehealthUrl = input.consultationMode === "video" && input.telehealthReference
-    ? getPublicTelehealthUrl(input.telehealthReference)
+    ? getPublicTelehealthUrl(input.telehealthReference, input.locale)
     : null;
 
   const telehealthCopy = input.locale === "ro"

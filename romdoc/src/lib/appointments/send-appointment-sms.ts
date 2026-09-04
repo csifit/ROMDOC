@@ -286,7 +286,7 @@ function buildMessage(
         locale
       ),
     videoUrl: appointment.consultation_mode === "video" && appointment.telehealth_public_reference
-      ? getPublicTelehealthUrl(appointment.telehealth_public_reference)
+      ? getPublicTelehealthUrl(appointment.telehealth_public_reference, locale)
       : null,
   });
 }

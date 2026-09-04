@@ -313,7 +313,7 @@ sendAppointmentStatusEmail(
     );
 
   const telehealthUrl = input.consultationMode === "video" && input.telehealthReference
-    ? getPublicTelehealthUrl(input.telehealthReference)
+    ? getPublicTelehealthUrl(input.telehealthReference, locale)
     : null;
 
   const telehealthCopy = locale === "ro"

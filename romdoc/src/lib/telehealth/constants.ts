@@ -1,3 +1,5 @@
+import type { AppLocale } from "@/lib/i18n/app-locale";
+
 export const TELEHEALTH_CONSENT_VERSION = "2026-09-02";
 
 export const TELEHEALTH_PUBLIC_ORIGIN = "https://www.romdoc.fit";
@@ -39,10 +41,20 @@ export function isSpokenLanguageCode(value: string): value is SpokenLanguageCode
   return SPOKEN_LANGUAGE_OPTIONS.some((language) => language.code === value);
 }
 
-export function getTelehealthReferencePath(reference: string) {
-  return `/telehealth/${encodeURIComponent(reference)}`;
+export function getTelehealthReferencePath(
+  reference: string,
+  locale?: AppLocale
+) {
+  const path = `/telehealth/${encodeURIComponent(reference)}`;
+
+  return locale
+    ? `${path}?locale=${encodeURIComponent(locale)}`
+    : path;
 }
 
-export function getPublicTelehealthUrl(reference: string) {
-  return `${TELEHEALTH_PUBLIC_ORIGIN}${getTelehealthReferencePath(reference)}`;
+export function getPublicTelehealthUrl(
+  reference: string,
+  locale?: AppLocale
+) {
+  return `${TELEHEALTH_PUBLIC_ORIGIN}${getTelehealthReferencePath(reference, locale)}`;
 }
