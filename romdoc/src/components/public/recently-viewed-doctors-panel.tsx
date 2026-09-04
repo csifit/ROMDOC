@@ -175,6 +175,7 @@ export default function RecentlyViewedDoctorsPanel({
       <section
         id="recently-viewed-doctors-panel"
         aria-hidden={!isOpen}
+        inert={!isOpen}
         aria-label={copy.title}
         className={`absolute inset-0 z-30 overflow-y-auto bg-[#F0EEE9] transition duration-300 ${
           isOpen
