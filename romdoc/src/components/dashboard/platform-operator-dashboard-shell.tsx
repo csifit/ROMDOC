@@ -27,6 +27,7 @@ export type PlatformOperatorNavigationIcon =
   | "invoices"
   | "privacy"
   | "ai"
+  | "capabilities"
   | "security"
   | "home";
 
@@ -165,6 +166,16 @@ function Icon({
         <svg {...commonProps}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M8 4h8a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3Z" />
           <path strokeLinecap="round" d="M9 10h.01M15 10h.01M9 14c1.8 1.4 4.2 1.4 6 0M12 1v3M12 18v3M2 11h3M19 11h3" />
+        </svg>
+      );
+
+    case "capabilities":
+      return (
+        <svg {...commonProps}>
+          <path strokeLinecap="round" d="M4 6h3M11 6h9M4 12h9M17 12h3M4 18h5M13 18h7" />
+          <circle cx="9" cy="6" r="2" />
+          <circle cx="15" cy="12" r="2" />
+          <circle cx="11" cy="18" r="2" />
         </svg>
       );
 

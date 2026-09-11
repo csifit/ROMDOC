@@ -41,6 +41,15 @@ const CLINIC_ORGANISATIONS_LABEL: Record<
   de: "Klinikorganisationen",
 };
 
+const CAPABILITIES_LABEL: Record<
+  AppLocale,
+  string
+> = {
+  ro: "Capabilități",
+  en: "Capabilities",
+  de: "Berechtigungen",
+};
+
 const NAVIGATION_ITEMS = [
   {
     href:
@@ -174,6 +183,16 @@ const NAVIGATION_ITEMS = [
     icon:
       "security",
   },
+  {
+    href:
+      "/admin/capabilities",
+    labelKey:
+      null,
+    icon:
+      "capabilities",
+    customLabel:
+      "capabilities",
+  },
 ] as const;
 
 export default function AdminDashboardSidebar({
@@ -217,9 +236,19 @@ export default function AdminDashboardSidebar({
               CLINIC_ORGANISATIONS_LABEL[
                 locale
               ];
-          } else {
+          } else if (
+            "customLabel" in
+              item &&
+            item.customLabel ===
+              "contracts"
+          ) {
             label =
               CONTRACTS_LABEL[
+                locale
+              ];
+          } else {
+            label =
+              CAPABILITIES_LABEL[
                 locale
               ];
           }
