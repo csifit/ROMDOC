@@ -1,6 +1,6 @@
 # RomDoc
 
-Multilingual healthcare directory and appointment platform for Romania.
+Multilingual telemedicina,  healthcare directory and appointment platform for Romania.
 
 Tech Stack:
 - Next.js
